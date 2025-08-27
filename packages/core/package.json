@@ -1,0 +1,23 @@
+{
+  "name": "@tally/core",
+  "version": "0.1.0",
+  "description": "Core business logic for Tally",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@tally/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@tally/config": "workspace:*",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.2"
+  }
+}
