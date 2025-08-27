@@ -135,10 +135,8 @@ export const CreateWatchlistItemSchema = z.object({
   // Optional fields for enhanced search
   year: z.number().optional(),
   type: z.enum(['movie', 'series']).optional(),
-  // TMDB integration fields
-  tmdbId: z.number().optional(),
-  releasePattern: ReleasePatternSchema.optional(),
-  watchProviders: z.array(TMDBWatchProviderSchema).optional(),
+  // Note: TMDB fields (tmdbShowId, detectedReleasePattern, watchProviders) 
+  // are populated by API, not provided by user input
 });
 
 export const WatchlistResponseSchema = z.array(WatchlistItemSchema);

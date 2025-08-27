@@ -54,10 +54,12 @@ export class TMDBService {
         return null;
       }
 
-      const enhancement: TMDBEnhancedWatchlistItem = {
-        tmdbShowId: patternResult.tmdbId,
-        detectedReleasePattern: patternResult.pattern,
-      };
+      const enhancement: TMDBEnhancedWatchlistItem = {};
+      
+      if (patternResult.tmdbId) {
+        enhancement.tmdbShowId = patternResult.tmdbId;
+      }
+      enhancement.detectedReleasePattern = patternResult.pattern;
 
       // Get watch providers if we have a TMDB ID
       if (patternResult.tmdbId) {

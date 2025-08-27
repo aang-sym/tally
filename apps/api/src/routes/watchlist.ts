@@ -3,7 +3,6 @@ import {
   CreateWatchlistItemSchema,
   WatchlistResponseSchema,
   type WatchlistItem,
-  type CreateWatchlistItem,
 } from '@tally/types';
 import { watchlistStore } from '../storage/index.js';
 import { ValidationError, NotFoundError } from '../middleware/errorHandler.js';
@@ -50,6 +49,7 @@ router.post('/', async (req, res, next) => {
     let enhancedItemData: Omit<WatchlistItem, 'id' | 'createdAt'> = {
       ...itemData,
       availability: undefined,
+      releasePattern: undefined,
       year: itemData.year,
       type: itemData.type,
       imdbId: undefined,
@@ -228,6 +228,7 @@ router.post('/bulk', async (req, res, next) => {
         let enhancedItemData: Omit<WatchlistItem, 'id' | 'createdAt'> = {
           ...validatedData,
           availability: undefined,
+          releasePattern: undefined,
           year: validatedData.year,
           type: validatedData.type,
           imdbId: undefined,
