@@ -30,6 +30,71 @@ export const WaitlistResponseSchema = z.object({
   success: z.boolean(),
 });
 
+// Streaming availability schemas
+export const StreamingServiceSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  homePage: z.string(),
+  themeColorCode: z.string(),
+});
+
+export const StreamingOptionSchema = z.object({
+  service: StreamingServiceSchema,
+  type: z.enum(['subscription', 'rent', 'buy']),
+  price: z.object({
+    amount: z.number(),
+    currency: z.string(),
+  }).optional(),
+  expiresSoon: z.boolean(),
+  expiresOn: z.number().optional(), // Unix timestamp
+  availableSince: z.number().optional(), // Unix timestamp
+  link: z.string(),
+});
+
+export const ContentAvailabilitySchema = z.object({
+  available: z.boolean(),
+  expiresOn: z.string().datetime().optional(),
+  leavingSoon: z.boolean(),
+  streamingOptions: z.array(StreamingOptionSchema).optional(),
+});
+
+// Release pattern schemas - defined early to avoid dependency issues
+export const ReleasePatternSchema = z.enum(['weekly', 'binge', 'unknown']);
+
+export const EpisodeMetadataSchema = z.object({
+  id: z.string(),
+  seasonNumber: z.number(),
+  episodeNumber: z.number(),
+  airDate: z.string().datetime(),
+  title: z.string(),
+});
+
+export const StreamingAvailabilitySchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  year: z.number().optional(),
+  type: z.enum(['movie', 'series']),
+  imdbId: z.string().optional(),
+  tmdbId: z.string().optional(),
+  streamingOptions: z.record(z.array(StreamingOptionSchema)),
+  episodes: z.array(EpisodeMetadataSchema).optional(),
+});
+
+export const SearchResultSchema = z.object({
+  shows: z.array(StreamingAvailabilitySchema),
+  hasMore: z.boolean(),
+  nextCursor: z.string().optional(),
+});
+
+export const ReleasePatternAnalysisSchema = z.object({
+  pattern: ReleasePatternSchema,
+  confidence: z.number(),
+  episodeInterval: z.number().optional(),
+  seasonStart: z.string().datetime().optional(),
+  seasonEnd: z.string().datetime().optional(),
+  totalEpisodes: z.number().optional(),
+});
+
 // Watchlist schemas
 export const WatchlistItemSchema = z.object({
   id: z.string(),
@@ -39,6 +104,14 @@ export const WatchlistItemSchema = z.object({
   serviceName: z.string(),
   rule: z.string().optional(),
   createdAt: z.string().datetime(),
+  // Availability data
+  availability: ContentAvailabilitySchema.optional(),
+  releasePattern: ReleasePatternAnalysisSchema.optional(),
+  // Additional metadata from streaming API
+  year: z.number().optional(),
+  type: z.enum(['movie', 'series']).optional(),
+  imdbId: z.string().optional(),
+  tmdbId: z.string().optional(),
 });
 
 export const CreateWatchlistItemSchema = z.object({
@@ -47,6 +120,9 @@ export const CreateWatchlistItemSchema = z.object({
   serviceId: z.string(),
   serviceName: z.string(),
   rule: z.string().optional(),
+  // Optional fields for enhanced search
+  year: z.number().optional(),
+  type: z.enum(['movie', 'series']).optional(),
 });
 
 export const WatchlistResponseSchema = z.array(WatchlistItemSchema);
@@ -90,6 +166,14 @@ export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 
 export type WaitlistRequest = z.infer<typeof WaitlistRequestSchema>;
 export type WaitlistResponse = z.infer<typeof WaitlistResponseSchema>;
+
+export type ReleasePattern = z.infer<typeof ReleasePatternSchema>;
+export type EpisodeMetadata = z.infer<typeof EpisodeMetadataSchema>;
+export type ReleasePatternAnalysis = z.infer<typeof ReleasePatternAnalysisSchema>;
+
+export type StreamingService = z.infer<typeof StreamingServiceSchema>;
+export type StreamingOption = z.infer<typeof StreamingOptionSchema>;
+export type ContentAvailability = z.infer<typeof ContentAvailabilitySchema>;
 
 export type WatchlistItem = z.infer<typeof WatchlistItemSchema>;
 export type CreateWatchlistItem = z.infer<typeof CreateWatchlistItemSchema>;

@@ -1,5 +1,26 @@
 import type { ServiceWindow, SavingsEstimate } from '@tally/types';
 
+// Re-export streaming availability client and types
+export { 
+  StreamingAvailabilityClient, 
+  StreamingAvailabilityError,
+  type StreamingAvailability,
+  type StreamingService as StreamingAPIService,
+  type StreamingOption as StreamingAPIOption,
+  type SearchResult,
+  type Episode
+} from './external/streaming-availability.js';
+
+// Export types for release pattern detection
+export type { 
+  EpisodeMetadata,
+  ReleasePattern,
+  ReleasePatternAnalysis 
+} from './types';
+
+// Export release pattern service
+export { releasePatternService } from './services/release-pattern';
+
 // Mock streaming services data
 export const STREAMING_SERVICES = {
   netflix: { id: 'netflix', name: 'Netflix', monthlyPrice: 15.49 },
