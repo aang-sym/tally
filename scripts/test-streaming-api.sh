@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Tally Streaming API Testing Script
-# Safely test the Streaming Availability API with quota monitoring
+# Tally TMDB API Integration Testing Script
+# Test TMDB integration for release pattern detection and watch providers
 
 set -e
 
@@ -62,21 +62,21 @@ phase1_setup() {
     check_quota
     
     echo "📋 Make sure your .env has:"
-    echo "   STREAMING_AVAILABILITY_API_KEY=your_rapidapi_key"
-    echo "   STREAMING_API_MONTHLY_LIMIT=20"
-    echo "   STREAMING_API_DEV_MODE=false"
+    echo "   TMDB_API_READ_TOKEN=your_tmdb_read_token"
+    echo "   TMDB_DEV_MODE=false"
+    echo "   STREAMING_AVAILABILITY_API_KEY=your_rapidapi_key (for leaving soon detection)"
     echo
     confirm
 }
 
 # Phase 2: Single API Call Testing
 phase2_single_call() {
-    print_header "Phase 2: Single API Call Testing (2-4 calls expected)"
+    print_header "Phase 2: TMDB Integration Testing (2-4 TMDB calls expected)"
     
-    print_warning "This will consume 2 API calls (search + availability check)"
+    print_warning "This will use TMDB API for release pattern detection and watch providers"
     confirm
     
-    echo "🎬 Adding 'Stranger Things' to watchlist..."
+    echo "🎬 Adding 'Stranger Things' to watchlist (with TMDB enhancement)..."
     RESPONSE=$(curl -s -X POST "$BASE_URL/api/watchlist" \
         -H "$AUTH_HEADER" \
         -H "$CONTENT_TYPE" \
@@ -88,12 +88,30 @@ phase2_single_call() {
             "type": "series"
         }')
     
-    echo "📤 Response:"
-    echo "$RESPONSE" | python3 -m json.tool 2>/dev/null || echo "$RESPONSE"
+    echo "📤 Response with TMDB data:"
+    echo "$RESPONSE" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    print('🎯 TMDB Integration Results:')
+    if 'tmdbShowId' in data:
+        print(f'   TMDB Show ID: {data[\"tmdbShowId\"]}')
+    if 'detectedReleasePattern' in data:
+        print(f'   Release Pattern: {data[\"detectedReleasePattern\"]}')
+    if 'watchProviders' in data and data['watchProviders']:
+        print(f'   Watch Providers: {len(data[\"watchProviders\"])} found')
+        for provider in data['watchProviders'][:3]:  # Show first 3
+            print(f'     • {provider[\"provider_name\"]}')
+    print()
+    print('Full Response:')
+    print(json.dumps(data, indent=2))
+except:
+    print(sys.stdin.read())
+"
     
     check_quota
     
-    echo "🔄 Testing cache - adding same item again (should use cache)..."
+    echo "🔄 Testing TMDB caching - adding same item again..."
     curl -s -X POST "$BASE_URL/api/watchlist" \
         -H "$AUTH_HEADER" \
         -H "$CONTENT_TYPE" \
@@ -388,16 +406,16 @@ phase8_departure_detection() {
 
 # Main menu
 show_menu() {
-    echo -e "\n${BLUE}🎬 Tally Streaming API Test Suite${NC}"
+    echo -e "\n${BLUE}🎬 Tally TMDB Integration Test Suite${NC}"
     echo "Choose a testing phase:"
     echo "1) Phase 1: Setup & Baseline (0 API calls)"
-    echo "2) Phase 2: Single Call Testing (2-4 calls)"
+    echo "2) Phase 2: TMDB Integration Testing (2-4 TMDB calls)"
     echo "3) Phase 3: Edge Cases (2-4 calls)"
     echo "4) Phase 4: Integration Testing (cached)"
-    echo "5) Phase 5: Quota Safety Testing"
-    echo "6) Phase 6: Release Pattern Detection (4-6 calls)"
-    echo "7) Phase 7: Smart Window Planning (with pattern analysis)"
-    echo "8) Phase 8: Departure Detection"
+    echo "5) Phase 5: Quota Safety Testing (for Streaming API)"
+    echo "6) Phase 6: TMDB Release Pattern Detection (4-6 TMDB calls)"
+    echo "7) Phase 7: Smart Window Planning (with TMDB patterns)"
+    echo "8) Phase 8: Departure Detection (Streaming API)"
     echo "q) Check Quota Status"
     echo "r) Reset Quota (dev only)"
     echo "c) Clear Cache"
@@ -423,9 +441,9 @@ clear_cache() {
 
 # Main script
 main() {
-    echo -e "${GREEN}🚀 Tally Streaming API Testing Script${NC}"
-    echo "This script helps you safely test the real Streaming Availability API"
-    echo "while monitoring quota usage in real-time."
+    echo -e "${GREEN}🚀 Tally TMDB Integration Testing Script${NC}"
+    echo "This script helps you test TMDB integration for release pattern detection"
+    echo "and watch provider data, with fallback streaming API quota monitoring."
     echo
     
     while true; do

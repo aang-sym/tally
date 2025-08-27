@@ -3,6 +3,7 @@ import { PlanResponseSchema, type ServiceWindow } from '@tally/types';
 import { generateActivationWindows, calculateSavingsEstimate } from '@tally/core';
 import { watchlistStore } from '../storage/index.js';
 import { streamingAvailabilityService } from '../services/streaming-availability.js';
+import { tmdbService } from '../services/tmdb.js';
 import { ValidationError } from '../middleware/errorHandler.js';
 
 const router = Router();
@@ -155,10 +156,11 @@ router.post('/optimize', async (req, res, next) => {
       const group = serviceGroups.get(key);
       group.items.push(item);
       
-      // Categorize by release pattern
-      if (item.releasePattern?.pattern === 'weekly') {
+      // Categorize by release pattern - prioritize TMDB detected patterns
+      const releasePattern = item.detectedReleasePattern || item.releasePattern?.pattern;
+      if (releasePattern === 'weekly') {
         group.weeklyShows.push(item);
-      } else if (item.releasePattern?.pattern === 'binge') {
+      } else if (releasePattern === 'binge') {
         group.bingeShows.push(item);
       }
     }

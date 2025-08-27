@@ -8,6 +8,7 @@ import {
 import { watchlistStore } from '../storage/index.js';
 import { ValidationError, NotFoundError } from '../middleware/errorHandler.js';
 import { streamingAvailabilityService } from '../services/streaming-availability.js';
+import { tmdbService } from '../services/tmdb.js';
 import { StreamingAvailabilityError } from '@tally/core';
 import { config } from '../config/index.js';
 
@@ -53,6 +54,10 @@ router.post('/', async (req, res, next) => {
       type: itemData.type,
       imdbId: undefined,
       tmdbId: undefined,
+      // Initialize TMDB fields
+      tmdbShowId: undefined,
+      detectedReleasePattern: undefined,
+      watchProviders: undefined,
     };
 
     // Try to enhance with streaming availability data
@@ -100,6 +105,21 @@ router.post('/', async (req, res, next) => {
       } else {
         console.warn(`Unexpected error fetching availability data:`, error);
       }
+      // Continue with basic data
+    }
+
+    // Try to enhance with TMDB data (release patterns and watch providers)
+    try {
+      if (tmdbService.isAvailable) {
+        const tmdbEnhancement = await tmdbService.enhanceWatchlistItem(itemData.title);
+        if (tmdbEnhancement) {
+          enhancedItemData.tmdbShowId = tmdbEnhancement.tmdbShowId;
+          enhancedItemData.detectedReleasePattern = tmdbEnhancement.detectedReleasePattern;
+          enhancedItemData.watchProviders = tmdbEnhancement.watchProviders;
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to enhance "${itemData.title}" with TMDB data:`, error);
       // Continue with basic data
     }
 
@@ -212,6 +232,10 @@ router.post('/bulk', async (req, res, next) => {
           type: validatedData.type,
           imdbId: undefined,
           tmdbId: undefined,
+          // Initialize TMDB fields
+          tmdbShowId: undefined,
+          detectedReleasePattern: undefined,
+          watchProviders: undefined,
         };
 
         // Try to enhance with streaming availability data
@@ -253,6 +277,21 @@ router.post('/bulk', async (req, res, next) => {
           }
         } catch (enhancementError) {
           console.warn(`Failed to enhance item "${validatedData.title}":`, enhancementError);
+          // Continue with basic item
+        }
+
+        // Try to enhance with TMDB data
+        try {
+          if (tmdbService.isAvailable) {
+            const tmdbEnhancement = await tmdbService.enhanceWatchlistItem(validatedData.title);
+            if (tmdbEnhancement) {
+              enhancedItemData.tmdbShowId = tmdbEnhancement.tmdbShowId;
+              enhancedItemData.detectedReleasePattern = tmdbEnhancement.detectedReleasePattern;
+              enhancedItemData.watchProviders = tmdbEnhancement.watchProviders;
+            }
+          }
+        } catch (tmdbError) {
+          console.warn(`Failed to enhance "${validatedData.title}" with TMDB data:`, tmdbError);
           // Continue with basic item
         }
 

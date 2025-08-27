@@ -95,6 +95,14 @@ export const ReleasePatternAnalysisSchema = z.object({
   totalEpisodes: z.number().optional(),
 });
 
+// TMDB schemas
+export const TMDBWatchProviderSchema = z.object({
+  provider_id: z.number(),
+  provider_name: z.string(),
+  logo_path: z.string(),
+  display_priority: z.number(),
+});
+
 // Watchlist schemas
 export const WatchlistItemSchema = z.object({
   id: z.string(),
@@ -112,6 +120,10 @@ export const WatchlistItemSchema = z.object({
   type: z.enum(['movie', 'series']).optional(),
   imdbId: z.string().optional(),
   tmdbId: z.string().optional(),
+  // TMDB integration data
+  tmdbShowId: z.number().optional(),
+  detectedReleasePattern: ReleasePatternSchema.optional(),
+  watchProviders: z.array(TMDBWatchProviderSchema).optional(),
 });
 
 export const CreateWatchlistItemSchema = z.object({
@@ -123,6 +135,10 @@ export const CreateWatchlistItemSchema = z.object({
   // Optional fields for enhanced search
   year: z.number().optional(),
   type: z.enum(['movie', 'series']).optional(),
+  // TMDB integration fields
+  tmdbId: z.number().optional(),
+  releasePattern: ReleasePatternSchema.optional(),
+  watchProviders: z.array(TMDBWatchProviderSchema).optional(),
 });
 
 export const WatchlistResponseSchema = z.array(WatchlistItemSchema);
@@ -170,6 +186,7 @@ export type WaitlistResponse = z.infer<typeof WaitlistResponseSchema>;
 export type ReleasePattern = z.infer<typeof ReleasePatternSchema>;
 export type EpisodeMetadata = z.infer<typeof EpisodeMetadataSchema>;
 export type ReleasePatternAnalysis = z.infer<typeof ReleasePatternAnalysisSchema>;
+export type TMDBWatchProvider = z.infer<typeof TMDBWatchProviderSchema>;
 
 export type StreamingService = z.infer<typeof StreamingServiceSchema>;
 export type StreamingOption = z.infer<typeof StreamingOptionSchema>;

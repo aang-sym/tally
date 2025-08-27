@@ -1,6 +1,6 @@
 {
   "month": "2025-08",
-  "callsUsed": 16,
+  "callsUsed": 22,
   "lastReset": "2025-08-27T03:32:25.697Z",
   "callLog": [
     {
@@ -82,6 +82,36 @@
       "timestamp": "2025-08-27T05:02:22.952Z",
       "endpoint": "search",
       "success": true
+    },
+    {
+      "timestamp": "2025-08-27T08:55:15.268Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T08:55:21.726Z",
+      "endpoint": "search",
+      "success": false
+    },
+    {
+      "timestamp": "2025-08-27T08:55:21.826Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T08:55:24.040Z",
+      "endpoint": "search",
+      "success": false
+    },
+    {
+      "timestamp": "2025-08-27T08:55:24.096Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T08:55:25.431Z",
+      "endpoint": "search",
+      "success": false
     }
   ]
 }

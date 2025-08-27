@@ -11,6 +11,18 @@ export {
   type Episode
 } from './external/streaming-availability.js';
 
+// Re-export TMDB client and types
+export {
+  TMDBClient,
+  TMDBError,
+  type TMDBTVShow,
+  type TMDBSeason,
+  type TMDBEpisode,
+  type TMDBSearchResult,
+  type TMDBWatchProvider,
+  type TMDBWatchProviderData
+} from './external/tmdb.js';
+
 // Export types for release pattern detection
 export type { 
   EpisodeMetadata,
@@ -105,4 +117,29 @@ export function isValidStreamingService(serviceId: string): boolean {
  */
 export function getStreamingService(serviceId: string) {
   return STREAMING_SERVICES[serviceId as keyof typeof STREAMING_SERVICES];
+}
+
+/**
+ * Detect release pattern for a TV show using TMDB API
+ */
+export async function detectReleasePatternFromTMDB(
+  showTitle: string, 
+  tmdbApiKey: string
+): Promise<{ pattern: 'weekly' | 'binge' | 'unknown'; tmdbId?: number } | null> {
+  const { TMDBClient } = await import('./external/tmdb.js');
+  const tmdbClient = new TMDBClient(tmdbApiKey);
+  return tmdbClient.detectReleasePatternFromTitle(showTitle);
+}
+
+/**
+ * Get watch providers for a TV show using TMDB API
+ */
+export async function getWatchProvidersFromTMDB(
+  showId: number,
+  tmdbApiKey: string,
+  country: string = 'US'
+): Promise<import('./external/tmdb.js').TMDBWatchProvider[]> {
+  const { TMDBClient } = await import('./external/tmdb.js');
+  const tmdbClient = new TMDBClient(tmdbApiKey);
+  return tmdbClient.getWatchProvidersForCountry(showId, country);
 }
