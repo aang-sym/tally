@@ -1,5 +1,38 @@
 import type { ServiceWindow, SavingsEstimate } from '@tally/types';
 
+// Re-export streaming availability client and types
+export { 
+  StreamingAvailabilityClient, 
+  StreamingAvailabilityError,
+  type StreamingAvailability,
+  type StreamingService as StreamingAPIService,
+  type StreamingOption as StreamingAPIOption,
+  type SearchResult,
+  type Episode
+} from './external/streaming-availability.js';
+
+// Re-export TMDB client and types
+export {
+  TMDBClient,
+  TMDBError,
+  type TMDBTVShow,
+  type TMDBSeason,
+  type TMDBEpisode,
+  type TMDBSearchResult,
+  type TMDBWatchProvider,
+  type TMDBWatchProviderData
+} from './external/tmdb.js';
+
+// Export types for release pattern detection
+export type { 
+  EpisodeMetadata,
+  ReleasePattern,
+  ReleasePatternAnalysis 
+} from './types';
+
+// Export release pattern service
+export { releasePatternService } from './services/release-pattern';
+
 // Mock streaming services data
 export const STREAMING_SERVICES = {
   netflix: { id: 'netflix', name: 'Netflix', monthlyPrice: 15.49 },
@@ -84,4 +117,29 @@ export function isValidStreamingService(serviceId: string): boolean {
  */
 export function getStreamingService(serviceId: string) {
   return STREAMING_SERVICES[serviceId as keyof typeof STREAMING_SERVICES];
+}
+
+/**
+ * Detect release pattern for a TV show using TMDB API
+ */
+export async function detectReleasePatternFromTMDB(
+  showTitle: string, 
+  tmdbApiKey: string
+): Promise<{ pattern: 'weekly' | 'binge' | 'unknown'; tmdbId?: number } | null> {
+  const { TMDBClient } = await import('./external/tmdb.js');
+  const tmdbClient = new TMDBClient(tmdbApiKey);
+  return tmdbClient.detectReleasePatternFromTitle(showTitle);
+}
+
+/**
+ * Get watch providers for a TV show using TMDB API
+ */
+export async function getWatchProvidersFromTMDB(
+  showId: number,
+  tmdbApiKey: string,
+  country: string = 'US'
+): Promise<import('./external/tmdb.js').TMDBWatchProvider[]> {
+  const { TMDBClient } = await import('./external/tmdb.js');
+  const tmdbClient = new TMDBClient(tmdbApiKey);
+  return tmdbClient.getWatchProvidersForCountry(showId, country);
 }

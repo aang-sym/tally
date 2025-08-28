@@ -13,10 +13,10 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@tally/types": "workspace:*"
+    "@tally/types": "file:../types"
   },
   "devDependencies": {
-    "@tally/config": "workspace:*",
+    "@tally/config": "file:../config",
     "typescript": "^5.3.3",
     "vitest": "^1.2.2"
   }

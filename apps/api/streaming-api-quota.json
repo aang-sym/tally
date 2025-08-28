@@ -1,0 +1,117 @@
+{
+  "month": "2025-08",
+  "callsUsed": 22,
+  "lastReset": "2025-08-27T03:32:25.697Z",
+  "callLog": [
+    {
+      "timestamp": "2025-08-27T04:00:34.399Z",
+      "endpoint": "search",
+      "success": false
+    },
+    {
+      "timestamp": "2025-08-27T04:00:35.428Z",
+      "endpoint": "search",
+      "success": false
+    },
+    {
+      "timestamp": "2025-08-27T04:04:27.469Z",
+      "endpoint": "search",
+      "success": false
+    },
+    {
+      "timestamp": "2025-08-27T04:04:48.095Z",
+      "endpoint": "search",
+      "success": false
+    },
+    {
+      "timestamp": "2025-08-27T04:08:31.237Z",
+      "endpoint": "search",
+      "success": false
+    },
+    {
+      "timestamp": "2025-08-27T04:09:05.671Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T04:12:21.640Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T04:27:33.926Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T04:37:48.729Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T04:37:51.675Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T04:44:15.222Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T04:44:18.021Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T04:52:06.034Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T04:52:08.867Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T05:02:19.579Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T05:02:22.952Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T08:55:15.268Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T08:55:21.726Z",
+      "endpoint": "search",
+      "success": false
+    },
+    {
+      "timestamp": "2025-08-27T08:55:21.826Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T08:55:24.040Z",
+      "endpoint": "search",
+      "success": false
+    },
+    {
+      "timestamp": "2025-08-27T08:55:24.096Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T08:55:25.431Z",
+      "endpoint": "search",
+      "success": false
+    }
+  ]
+}

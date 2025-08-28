@@ -66,6 +66,17 @@ export const watchlistStore = {
     return watchlistItem;
   },
 
+  async updateItem(userId: string, itemId: string, updatedItem: WatchlistItem): Promise<boolean> {
+    const userWatchlist = watchlists.get(userId) || [];
+    const index = userWatchlist.findIndex(item => item.id === itemId);
+    
+    if (index === -1) return false;
+    
+    userWatchlist[index] = updatedItem;
+    watchlists.set(userId, userWatchlist);
+    return true;
+  },
+
   async removeItem(userId: string, itemId: string): Promise<boolean> {
     const userWatchlist = watchlists.get(userId) || [];
     const index = userWatchlist.findIndex(item => item.id === itemId);
@@ -84,7 +95,7 @@ export const waitlistStore = {
     const entry: WaitlistEntry = {
       id: uuidv4(),
       email,
-      country,
+      ...(country && { country }),
       createdAt: new Date().toISOString(),
     };
     waitlist.set(entry.id, entry);
