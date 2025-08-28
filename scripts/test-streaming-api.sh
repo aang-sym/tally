@@ -215,118 +215,394 @@ phase5_quota_safety() {
 phase6_release_pattern() {
     print_header "Phase 6: Release Pattern Detection"
     
-    print_warning "This phase will analyze show release patterns (4-6 API calls)"
+    print_warning "This phase will analyze show release patterns using the dedicated analysis endpoint"
     echo "📊 This will test automatic detection of weekly vs binge release patterns"
     confirm
     
-    echo "🎬 Testing well-known weekly show (The Last of Us)..."
-    echo "Expected: Weekly release pattern with ~7 day intervals"
-    TLOU_RESPONSE=$(curl -s -X POST "$BASE_URL/api/watchlist" \
+    echo "🎬 Testing pattern analysis endpoint with well-known shows..."
+    
+    # Test 1: Stranger Things (should be binge)
+    echo "🍿 Testing Stranger Things (expected: binge)..."
+    ST_ANALYSIS=$(curl -s -X POST "$BASE_URL/api/shows/analyze-pattern" \
+        -H "$CONTENT_TYPE" \
+        -d '{
+            "title": "Stranger Things"
+        }')
+    
+    echo "📤 Pattern analysis result:"
+    echo "$ST_ANALYSIS" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    if 'releasePattern' in data and data['releasePattern']:
+        pattern = data['releasePattern']
+        print(f'🎯 Release Pattern Detected: {pattern[\"pattern\"]}')
+        print(f'   Confidence: {pattern[\"confidence\"]}')
+        if 'episodeInterval' in pattern:
+            print(f'   Episode Interval: {pattern[\"episodeInterval\"]} days')
+        if 'totalEpisodes' in pattern:
+            print(f'   Total Episodes: {pattern[\"totalEpisodes\"]}')
+        if 'diagnostics' in pattern and pattern['diagnostics']:
+            diag = pattern['diagnostics']
+            print(f'   Reasoning: {diag[\"reasoning\"]}')
+            print(f'   Episode Intervals: {diag[\"intervals\"]} days')
+            print(f'   Avg Interval: {diag[\"avgInterval\"]:.1f} days')
+            print(f'   Std Deviation: {diag[\"stdDev\"]:.1f} days')
+        print()
+    else:
+        print('⚠️ No releasePattern found in response!')
+        print('   This indicates pattern detection failed or wasn\\'t triggered.')
+        print()
+    print('Full Response:')
+    print(json.dumps(data, indent=2))
+except Exception as e:
+    print(f'❌ JSON parsing failed: {e}')
+    print('Raw response:')
+    print(sys.stdin.read())
+"
+    
+    echo -e "\n📺 Testing The Boys (expected: weekly)..."
+    BOYS_ANALYSIS=$(curl -s -X POST "$BASE_URL/api/shows/analyze-pattern" \
+        -H "$CONTENT_TYPE" \
+        -d '{
+            "title": "The Boys"
+        }')
+    
+    echo "📤 Pattern analysis result:"
+    echo "$BOYS_ANALYSIS" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    if 'releasePattern' in data and data['releasePattern']:
+        pattern = data['releasePattern']
+        print(f'🎯 Release Pattern: {pattern[\"pattern\"]} (confidence: {pattern[\"confidence\"]})')
+        if 'diagnostics' in pattern and pattern['diagnostics']:
+            print(f'   Reasoning: {pattern[\"diagnostics\"][\"reasoning\"]}')
+    else:
+        print('⚠️ No pattern detected')
+    print(f'📺 Title: {data.get(\"title\", \"N/A\")}')
+except Exception as e:
+    print(f'❌ Analysis failed: {e}')
+"
+    
+    # Test traditional watchlist endpoint for comparison
+    echo -e "\n🔄 Comparing with watchlist endpoint enhancement..."
+    WATCHLIST_RESPONSE=$(curl -s -X POST "$BASE_URL/api/watchlist" \
         -H "$AUTH_HEADER" \
         -H "$CONTENT_TYPE" \
         -d '{
-            "titleId": "tlou-test",
-            "title": "The Last of Us",
+            "titleId": "comparison-test",
+            "title": "House of the Dragon",
             "serviceId": "hbo",
             "serviceName": "HBO Max",
             "type": "series"
         }')
     
-    echo "📤 Response with release pattern analysis:"
-    echo "$TLOU_RESPONSE" | python3 -c "
+    echo "📤 Watchlist enhancement result:"
+    echo "$WATCHLIST_RESPONSE" | python3 -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
-    if 'releasePattern' in data:
-        pattern = data['releasePattern']
-        print(f'🎯 Release Pattern Detected: {pattern[\"pattern\"]}')
-        print(f'   Confidence: {pattern[\"confidence\"]}')
-        if 'episodeInterval' in pattern:
-            print(f'   Episode Interval: {pattern[\"episodeInterval\"]} days')
-        if 'totalEpisodes' in pattern:
-            print(f'   Total Episodes: {pattern[\"totalEpisodes\"]}')
-        print()
-    print('Full Response:')
-    print(json.dumps(data, indent=2))
-except:
-    print(sys.stdin.read())
+    if 'detectedReleasePattern' in data:
+        print(f'🎯 Detected Pattern: {data[\"detectedReleasePattern\"]}')
+    if 'tmdbShowId' in data:
+        print(f'   TMDB Show ID: {data[\"tmdbShowId\"]}')
+    if 'watchProviders' in data and data['watchProviders']:
+        print(f'   Watch Providers: {len(data[\"watchProviders\"])} found')
+    print()
+except Exception as e:
+    print(f'❌ Failed to parse watchlist response: {e}')
 "
-    
-    check_quota
-    
-    echo -e "\n🍿 Testing well-known binge show (Stranger Things)..."
-    echo "Expected: Binge release pattern (same-day releases)"
-    ST_RESPONSE=$(curl -s -X POST "$BASE_URL/api/watchlist" \
-        -H "$AUTH_HEADER" \
-        -H "$CONTENT_TYPE" \
-        -d '{
-            "titleId": "st-test",
-            "title": "Stranger Things",
-            "serviceId": "netflix",
-            "serviceName": "Netflix",
-            "type": "series"
-        }')
-    
-    echo "📤 Response with release pattern analysis:"
-    echo "$ST_RESPONSE" | python3 -c "
-import sys, json
-try:
-    data = json.load(sys.stdin)
-    if 'releasePattern' in data:
-        pattern = data['releasePattern']
-        print(f'🎯 Release Pattern Detected: {pattern[\"pattern\"]}')
-        print(f'   Confidence: {pattern[\"confidence\"]}')
-        if 'episodeInterval' in pattern:
-            print(f'   Episode Interval: {pattern[\"episodeInterval\"]} days')
-        if 'totalEpisodes' in pattern:
-            print(f'   Total Episodes: {pattern[\"totalEpisodes\"]}')
-        print()
-    else:
-        print('⚠️  No release pattern detected in response')
-    print('Full Response:')
-    print(json.dumps(data, indent=2))
-except:
-    print(sys.stdin.read())
-"
-    
-    check_quota
-    
-    echo -e "\n🔄 Testing another weekly show (Wednesday)..."
-    echo "Expected: Weekly release pattern"
-    WED_RESPONSE=$(curl -s -X POST "$BASE_URL/api/watchlist" \
-        -H "$AUTH_HEADER" \
-        -H "$CONTENT_TYPE" \
-        -d '{
-            "titleId": "wednesday-test",
-            "title": "Wednesday",
-            "serviceId": "netflix",
-            "serviceName": "Netflix",
-            "type": "series"
-        }')
-    
-    echo "📤 Response summary:"
-    echo "$WED_RESPONSE" | python3 -c "
-import sys, json
-try:
-    data = json.load(sys.stdin)
-    if 'releasePattern' in data:
-        pattern = data['releasePattern']
-        print(f'🎯 Pattern: {pattern[\"pattern\"]} (confidence: {pattern[\"confidence\"]})')
-    else:
-        print('⚠️  No pattern detected')
-    print(f'📺 Title: {data.get(\"title\", \"N/A\")}')
-    print(f'📍 Service: {data.get(\"serviceName\", \"N/A\")}')
-except:
-    print('Could not parse response')
-"
-    
-    check_quota
     
     print_success "Release pattern detection testing complete!"
-    echo "💡 Summary:"
-    echo "   • Weekly shows should show pattern='weekly' with ~7 day intervals"
-    echo "   • Binge shows should show pattern='binge' with same-day releases"
-    echo "   • Unknown patterns indicate insufficient episode data or irregular release schedule"
+    echo "💡 Pattern Types:"
+    echo "   • binge: All episodes ≤1 day apart"
+    echo "   • weekly: 6-8 days average, low variance"
+    echo "   • premiere_weekly: 2+ episodes day 1, then weekly"
+    echo "   • multi_weekly: Multiple episodes every ~7 days consistently"
+    echo "   • mixed: Irregular but identifiable pattern"
+    echo "   • unknown: Truly irregular or insufficient data"
+    echo
+}
+
+# Phase 6.5: Direct TMDB Testing and Dynamic Discovery
+phase6_5_direct_tmdb() {
+    print_header "Phase 6.5: Direct TMDB Testing and Dynamic Discovery"
+    
+    print_warning "This phase will test direct TMDB API calls and pattern discovery"
+    echo "📊 This will discover current shows and analyze their patterns automatically"
+    confirm
+    
+    echo "🏆 Testing TOP RATED shows discovery..."
+    DISCOVERY_RESPONSE=$(curl -s "$BASE_URL/api/shows/discover-patterns?sampleSize=5")
+    
+    echo "📤 TOP RATED Discovery results:"
+    echo "$DISCOVERY_RESPONSE" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    if 'success' in data and data['success']:
+        report = data['report']
+        print(f'🎯 TOP RATED Shows Analysis Summary:')
+        print(f'   Total Analyzed: {report[\"totalAnalyzed\"]}')
+        print(f'   Errors: {report[\"errors\"]}')
+        print(f'   Pattern Distribution:')
+        for pattern, count in report['patternDistribution'].items():
+            if count > 0:
+                print(f'     • {pattern}: {count} shows')
+        
+        stats = report['confidenceStats']
+        print(f'   Confidence Stats: avg={stats[\"avg\"]:.2f}, min={stats[\"min\"]:.2f}, max={stats[\"max\"]:.2f}')
+        
+        print(f'\\n🎬 TOP RATED Shows Found and Analyzed:')
+        for show in report['examples']:
+            analyzed_season = show.get('analyzedSeason', 1)
+            show_status = show.get('showStatus', 'Unknown')
+            print(f'   🏆 \"{show[\"title\"]}\" (TMDB ID: {show[\"tmdbId\"]})')
+            print(f'      • Total Seasons: {show[\"seasons\"]} | Analyzed Season {analyzed_season}: {show[\"episodesInSeason1\"]} episodes')
+            print(f'      • Show Status: {show_status} | Pattern: {show[\"pattern\"]} (confidence: {show[\"confidence\"]:.2f})')
+            print(f'      • Reasoning: {show[\"reasoning\"]}')
+            print()
+            
+        # Show detailed info if available
+        if 'detailedShows' in report and report['detailedShows']:
+            print(f'\\n📺 Detailed Show Information:')
+            for show in report['detailedShows'][:3]:  # Show first 3 in detail
+                print(f'   🎬 \"{show[\"title\"]}\" (First aired: {show[\"firstAirDate\"]})')
+                print(f'      Overview: {show[\"overview\"]}')
+                print(f'      Total Seasons: {len(show[\"seasons\"])}')
+                for season in show['seasons'][:3]:  # Show first 3 seasons
+                    print(f'        - Season {season[\"seasonNumber\"]}: {season[\"episodeCount\"]} episodes (aired: {season[\"airDate\"]})')
+                if show.get('season1Analysis'):
+                    s1 = show['season1Analysis']
+                    print(f'      Season 1 Pattern: {s1[\"pattern\"]} ({s1[\"confidence\"]:.2f} confidence)')
+                print()
+        print()
+    else:
+        print('⚠️ Discovery failed or TMDB unavailable')
+        print(f'Message: {data.get(\"message\", \"Unknown error\")}')
+except Exception as e:
+    print(f'❌ Failed to parse discovery response: {e}')
+    print('Raw response:')
+    print(sys.stdin.read())
+"
+    
+    echo -e "\n🧪 Testing pattern validation with known shows..."
+    VALIDATION_RESPONSE=$(curl -s "$BASE_URL/api/shows/validate-patterns")
+    
+    echo "📤 Validation results:"
+    echo "$VALIDATION_RESPONSE" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    if 'success' in data and data['success']:
+        validation = data['validation']
+        print(f'🎯 Validation Results:')
+        print(f'   Overall Accuracy: {data[\"accuracy\"]}')
+        print(f'\\n🧪 Individual Test Cases:')
+        for result in validation['validationResults']:
+            status = '✅' if result['match'] else '❌'
+            print(f'   {status} {result[\"title\"]}: Expected {result[\"expected\"]}, Got {result[\"detected\"]} (confidence: {result[\"confidence\"]:.2f})')
+        print()
+    else:
+        print('⚠️ Validation failed or TMDB unavailable')
+        print(f'Message: {data.get(\"message\", \"Unknown error\")}')
+except Exception as e:
+    print(f'❌ Failed to parse validation response: {e}')
+"
+    
+    echo -e "\n🔍 Testing detailed diagnostics for a specific show..."
+    echo -n "Enter a TMDB ID to analyze (or press Enter for default 66732 - Stranger Things): "
+    read TMDB_ID
+    
+    if [ -z "$TMDB_ID" ]; then
+        TMDB_ID=66732
+    fi
+    
+    echo "🔬 Getting detailed diagnostics for TMDB ID: $TMDB_ID..."
+    DIAGNOSTICS_RESPONSE=$(curl -s "$BASE_URL/api/shows/diagnostics/$TMDB_ID")
+    
+    echo "📤 Detailed diagnostics:"
+    echo "$DIAGNOSTICS_RESPONSE" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    if 'analysis' in data:
+        analysis = data['analysis']
+        print(f'🎯 Analysis for TMDB ID {data[\"tmdbId\"]} (Season {data[\"seasonNumber\"]}):')
+        print(f'   Pattern: {analysis[\"pattern\"]} (confidence: {analysis[\"confidence\"]:.2f})')
+        print(f'   Total Episodes: {analysis.get(\"totalEpisodes\", \"N/A\")}')
+        
+        if 'fullDiagnostics' in data and data['fullDiagnostics']:
+            diag = data['fullDiagnostics']
+            print(f'\\n🔬 Detailed Diagnostics:')
+            print(f'   Reasoning: {diag[\"reasoning\"]}')
+            print(f'   Episode Intervals: {diag[\"intervals\"]} days')
+            print(f'   Average Interval: {diag[\"avgInterval\"]:.1f} days')
+            print(f'   Standard Deviation: {diag[\"stdDev\"]:.1f} days')
+            print(f'   Min/Max Intervals: {diag[\"minInterval\"]}/{diag[\"maxInterval\"]} days')
+            if 'premiereEpisodes' in diag:
+                print(f'   Premiere Episodes: {diag[\"premiereEpisodes\"]}')
+                print(f'   Has Premiere Pattern: {diag.get(\"hasPremierePattern\", False)}')
+                print(f'   Has Multi-Weekly Pattern: {diag.get(\"hasMultiWeeklyPattern\", False)}')
+        print()
+    else:
+        print(f'⚠️ Analysis failed for TMDB ID {TMDB_ID}')
+        print(f'Error: {data.get(\"message\", \"Unknown error\")}')
+except Exception as e:
+    print(f'❌ Failed to parse diagnostics response: {e}')
+"
+    
+    print_success "Direct TMDB testing complete!"
+    echo "💡 Use these endpoints for development and debugging:"
+    echo "   • POST /api/shows/analyze-pattern - Analyze specific show by title or TMDB ID"
+    echo "   • GET /api/shows/discover-patterns?sampleSize=N - Discover patterns in current shows"
+    echo "   • GET /api/shows/validate-patterns - Test accuracy against known patterns"
+    echo "   • GET /api/shows/diagnostics/:tmdbId - Get detailed pattern diagnostics"
+    echo
+}
+
+# Phase 6.6: Popular Shows Discovery
+phase6_6_popular_discovery() {
+    print_header "Phase 6.6: Popular Shows Discovery"
+    
+    print_warning "This phase will discover and analyze POPULAR shows from TMDB"
+    echo "📊 This will find trending/popular shows and analyze their release patterns"
+    confirm
+    
+    echo "🔥 Testing POPULAR shows discovery..."
+    POPULAR_RESPONSE=$(curl -s "$BASE_URL/api/shows/discover-popular?sampleSize=5")
+    
+    echo "📤 POPULAR Discovery results:"
+    echo "$POPULAR_RESPONSE" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    if 'success' in data and data['success']:
+        report = data['report']
+        print(f'🎯 POPULAR Shows Analysis Summary:')
+        print(f'   Total Analyzed: {report[\"totalAnalyzed\"]}')
+        print(f'   Errors: {report[\"errors\"]}')
+        print(f'   Pattern Distribution:')
+        for pattern, count in report['patternDistribution'].items():
+            if count > 0:
+                print(f'     • {pattern}: {count} shows')
+        
+        stats = report['confidenceStats']
+        print(f'   Confidence Stats: avg={stats[\"avg\"]:.2f}, min={stats[\"min\"]:.2f}, max={stats[\"max\"]:.2f}')
+        
+        print(f'\\n🎬 POPULAR Shows Found and Analyzed:')
+        for show in report['examples']:
+            analyzed_season = show.get('analyzedSeason', 1)
+            show_status = show.get('showStatus', 'Unknown')
+            print(f'   🔥 \"{show[\"title\"]}\" (TMDB ID: {show[\"tmdbId\"]})')
+            print(f'      • Total Seasons: {show[\"seasons\"]} | Analyzed Season {analyzed_season}: {show[\"episodesInSeason1\"]} episodes')
+            print(f'      • Show Status: {show_status} | Pattern: {show[\"pattern\"]} (confidence: {show[\"confidence\"]:.2f})')
+            print(f'      • Reasoning: {show[\"reasoning\"]}')
+            print()
+            
+        # Show detailed info if available
+        if 'detailedShows' in report and report['detailedShows']:
+            print(f'\\n📺 Detailed Show Information:')
+            for show in report['detailedShows'][:3]:  # Show first 3 in detail
+                print(f'   🎬 \"{show[\"title\"]}\" (First aired: {show[\"firstAirDate\"]})')
+                print(f'      Overview: {show[\"overview\"]}')
+                print(f'      Total Seasons: {len(show[\"seasons\"])}')
+                for season in show['seasons'][:3]:  # Show first 3 seasons
+                    print(f'        - Season {season[\"seasonNumber\"]}: {season[\"episodeCount\"]} episodes (aired: {season[\"airDate\"]})')
+                if show.get('season1Analysis'):
+                    s1 = show['season1Analysis']
+                    print(f'      Season 1 Pattern: {s1[\"pattern\"]} ({s1[\"confidence\"]:.2f} confidence)')
+                print()
+        print()
+    else:
+        print('⚠️ Discovery failed or TMDB unavailable')
+        print(f'Message: {data.get(\"message\", \"Unknown error\")}')
+except Exception as e:
+    print(f'❌ Failed to parse popular discovery response: {e}')
+    print('Raw response:')
+    print(sys.stdin.read())
+"
+    
+    print_success "Popular shows discovery complete!"
+    echo "💡 This phase discovered actual popular shows from TMDB and analyzed their real release patterns."
+    echo
+}
+
+# Phase 6.7: On-The-Air Shows Discovery (Current Season Analysis)
+phase6_7_on_air_discovery() {
+    print_header "Phase 6.7: On-The-Air Shows Discovery"
+    
+    print_warning "This phase will discover and analyze ON THE AIR shows from TMDB"
+    echo "📊 This analyzes the MOST RECENT season of currently airing shows"
+    echo "💡 Key insight: Currently airing shows analyze their latest season (like Summer I Turned Pretty S3)"
+    confirm
+    
+    echo "📺 Testing ON THE AIR shows discovery..."
+    ON_AIR_RESPONSE=$(curl -s "$BASE_URL/api/shows/discover-on-air?sampleSize=5")
+    
+    echo "📤 ON THE AIR Discovery results:"
+    echo "$ON_AIR_RESPONSE" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    if 'success' in data and data['success']:
+        report = data['report']
+        print(f'🎯 ON THE AIR Shows Analysis Summary:')
+        print(f'   Total Analyzed: {report[\"totalAnalyzed\"]}')
+        print(f'   Errors: {report[\"errors\"]}')
+        print(f'   Pattern Distribution:')
+        for pattern, count in report['patternDistribution'].items():
+            if count > 0:
+                print(f'     • {pattern}: {count} shows')
+        
+        stats = report['confidenceStats']
+        print(f'   Confidence Stats: avg={stats[\"avg\"]:.2f}, min={stats[\"min\"]:.2f}, max={stats[\"max\"]:.2f}')
+        
+        print(f'\\n🎬 CURRENTLY AIRING Shows Found and Analyzed:')
+        for show in report['examples']:
+            airing_status = '📡 AIRING' if show['isCurrentlyAiring'] else '✅ COMPLETE'
+            print(f'   {airing_status} \"{show[\"title\"]}\" (TMDB ID: {show[\"tmdbId\"]})')
+            print(f'      • Current Season: {show[\"currentSeason\"]} | Episodes: {show[\"episodesInCurrentSeason\"]}')
+            print(f'      • Pattern: {show[\"pattern\"]} (confidence: {show[\"confidence\"]:.2f})')
+            print(f'      • Reasoning: {show[\"reasoning\"]}')
+            print()
+            
+        # Show detailed info if available
+        if 'detailedShows' in report and report['detailedShows']:
+            print(f'\\n📺 Detailed Currently Airing Show Information:')
+            for show in report['detailedShows'][:3]:  # Show first 3 in detail
+                print(f'   📡 \"{show[\"title\"]}\" ({show[\"airingStatus\"]})')
+                print(f'      Status: {show[\"status\"]} | First Aired: {show[\"firstAirDate\"]}')
+                if show.get('lastAirDate'):
+                    print(f'      Last Aired: {show[\"lastAirDate\"]}')
+                print(f'      Overview: {show[\"overview\"]}')
+                print(f'      Total Seasons: {len(show[\"seasons\"])}')
+                
+                # Show all seasons for context
+                for season in show['seasons']:
+                    print(f'        - Season {season[\"seasonNumber\"]}: {season[\"episodeCount\"]} episodes (aired: {season[\"airDate\"]})')
+                
+                if show.get('currentSeasonAnalysis'):
+                    current = show['currentSeasonAnalysis']
+                    print(f'      🎯 Current Season {current[\"seasonNumber\"]} Analysis:')
+                    print(f'         Pattern: {current[\"pattern\"]} ({current[\"confidence\"]:.2f} confidence)')
+                    print(f'         Episodes: {current[\"totalEpisodes\"]} | Reasoning: {current[\"reasoning\"]}')
+                print()
+        print()
+    else:
+        print('⚠️ Discovery failed or TMDB unavailable')
+        print(f'Message: {data.get(\"message\", \"Unknown error\")}')
+except Exception as e:
+    print(f'❌ Failed to parse on-air discovery response: {e}')
+    print('Raw response:')
+    print(sys.stdin.read())
+"
+    
+    print_success "On-the-air shows discovery complete!"
+    echo "💡 This phase analyzed the MOST RECENT season of currently airing shows."
+    echo "   Currently airing shows often have weekly patterns for their current season."
+    echo "   Completed shows can be binged since all episodes are available."
     echo
 }
 
@@ -413,9 +689,12 @@ show_menu() {
     echo "3) Phase 3: Edge Cases (2-4 calls)"
     echo "4) Phase 4: Integration Testing (cached)"
     echo "5) Phase 5: Quota Safety Testing (for Streaming API)"
-    echo "6) Phase 6: TMDB Release Pattern Detection (4-6 TMDB calls)"
-    echo "7) Phase 7: Smart Window Planning (with TMDB patterns)"
-    echo "8) Phase 8: Departure Detection (Streaming API)"
+    echo "6) Phase 6: Enhanced Pattern Detection (Direct API testing)"
+    echo "7) Phase 6.5: Top Rated Shows Discovery (Live TMDB data)"
+    echo "8) Phase 6.6: Popular Shows Discovery (Live TMDB data)"
+    echo "9) Phase 6.7: On-The-Air Shows (Current Season Analysis)"
+    echo "10) Phase 7: Smart Window Planning (with TMDB patterns)"
+    echo "11) Phase 8: Departure Detection (Streaming API)"
     echo "q) Check Quota Status"
     echo "r) Reset Quota (dev only)"
     echo "c) Clear Cache"
@@ -457,8 +736,11 @@ main() {
             4) phase4_integration ;;
             5) phase5_quota_safety ;;
             6) phase6_release_pattern ;;
-            7) phase7_window_planning ;;
-            8) phase8_departure_detection ;;
+            7) phase6_5_direct_tmdb ;;
+            8) phase6_6_popular_discovery ;;
+            9) phase6_7_on_air_discovery ;;
+            10) phase7_window_planning ;;
+            11) phase8_departure_detection ;;
             q) check_quota ;;
             r) reset_quota ;;
             c) clear_cache ;;

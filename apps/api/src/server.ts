@@ -9,6 +9,8 @@ import { watchlistRouter } from './routes/watchlist.js';
 import { planRouter } from './routes/plan.js';
 import { healthRouter } from './routes/health.js';
 import { streamingQuotaRouter } from './routes/streaming-quota.js';
+import { showsRouter } from './routes/shows.js';
+import { tmdbRouter } from './routes/tmdb.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { config } from './config/index.js';
 import { quotaTracker } from './services/quota-tracker.js';
@@ -36,6 +38,8 @@ app.use('/api/watchlist', watchlistRouter);
 app.use('/api/plan', planRouter);
 app.use('/api/health', healthRouter);
 app.use('/api/streaming-quota', streamingQuotaRouter);
+app.use('/api/shows', showsRouter);
+app.use('/api/tmdb', tmdbRouter);
 
 // 404 handler
 app.use('*', (req, res) => {

@@ -37,6 +37,7 @@ export interface TMDBTVShow {
   number_of_episodes: number;
   status: string;
   type: string;
+  poster_path?: string;
   seasons?: TMDBSeason[];
 }
 
@@ -91,16 +92,20 @@ export class TMDBClient {
   private async makeRequest<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
     const url = new URL(`${this.baseUrl}${endpoint}`);
     
-    // Add API key and default language
-    params.api_key = this.apiKey;
+    // Add default language
     params.language = params.language || 'en-US';
     
-    // Add query parameters
+    // Add query parameters (no longer adding api_key here)
     Object.entries(params).forEach(([key, value]) => {
       url.searchParams.append(key, value);
     });
 
-    const response = await fetch(url.toString());
+    const response = await fetch(url.toString(), {
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
     if (response.status === 429) {
       throw new TMDBError('Rate limit exceeded', 429);

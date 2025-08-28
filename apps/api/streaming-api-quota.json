@@ -1,6 +1,6 @@
 {
   "month": "2025-08",
-  "callsUsed": 22,
+  "callsUsed": 24,
   "lastReset": "2025-08-27T03:32:25.697Z",
   "callLog": [
     {
@@ -110,6 +110,16 @@
     },
     {
       "timestamp": "2025-08-27T08:55:25.431Z",
+      "endpoint": "search",
+      "success": false
+    },
+    {
+      "timestamp": "2025-08-27T13:13:53.052Z",
+      "endpoint": "search",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-27T13:13:56.066Z",
       "endpoint": "search",
       "success": false
     }

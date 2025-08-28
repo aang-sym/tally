@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import type { WaitlistRequest } from '@tally/types';
+import TMDBTestingDashboard from './components/TMDBTestingDashboard';
 
 function App() {
+  const [showTMDBDashboard, setShowTMDBDashboard] = useState(false);
   const [email, setEmail] = useState('');
   const [country, setCountry] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,6 +42,11 @@ function App() {
     }
   };
 
+  // Show TMDB Dashboard if enabled
+  if (showTMDBDashboard) {
+    return <TMDBTestingDashboard />;
+  }
+
   if (isSubmitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-primary-50 to-white flex items-center justify-center px-4">
@@ -60,8 +67,14 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-white">
       {/* Header */}
       <header className="px-4 py-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="text-2xl font-bold text-primary-600">Tally</div>
+          <button
+            onClick={() => setShowTMDBDashboard(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+          >
+            TMDB Dashboard
+          </button>
         </div>
       </header>
 
