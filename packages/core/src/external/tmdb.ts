@@ -100,25 +100,35 @@ export class TMDBClient {
       url.searchParams.append(key, value);
     });
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json'
+    const startTime = Date.now();
+    let success = false;
+    
+    try {
+      const response = await fetch(url.toString(), {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const responseTime = Date.now() - startTime;
+      success = response.ok;
+
+      if (response.status === 429) {
+        throw new TMDBError('Rate limit exceeded', 429);
       }
-    });
 
-    if (response.status === 429) {
-      throw new TMDBError('Rate limit exceeded', 429);
+      if (!response.ok) {
+        throw new TMDBError(
+          `TMDB API request failed: ${response.statusText}`,
+          response.status
+        );
+      }
+
+      return response.json();
+    } catch (error) {
+      throw error;
     }
-
-    if (!response.ok) {
-      throw new TMDBError(
-        `TMDB API request failed: ${response.statusText}`,
-        response.status
-      );
-    }
-
-    return response.json();
   }
 
   /**

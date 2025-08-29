@@ -13,6 +13,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.39.7",
     "@tally/core": "file:../../packages/core",
     "@tally/types": "file:../../packages/types",
     "cors": "^2.8.5",

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface PatternAnalysisProps {
   analysis: {
@@ -47,6 +47,46 @@ interface PatternAnalysisProps {
   error?: string;
 }
 
+// Simple Provider Card Component
+const ProviderCard: React.FC<{ 
+  provider: {
+    providerId: number;
+    name: string;
+    logo: string;
+    type: string;
+    deepLink?: string;
+  }
+}> = ({ provider }) => {
+  return (
+    <div className="bg-gray-50 rounded-lg p-3">
+      {/* Logo centered at top */}
+      <div className="flex justify-center mb-2">
+        {provider.logo && (
+          <img
+            src={provider.logo}
+            alt={provider.name}
+            className="w-10 h-10 rounded object-cover"
+          />
+        )}
+      </div>
+      
+      {/* Provider name - full text, no truncation */}
+      <div className="text-center mb-1">
+        <p className="text-sm font-medium text-gray-900 leading-tight">
+          {provider.name}
+        </p>
+      </div>
+      
+      {/* Service type */}
+      <div className="text-center">
+        <p className="text-xs text-gray-500 capitalize">
+          {provider.type}
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const PatternAnalysis: React.FC<PatternAnalysisProps> = ({ analysis, loading, error }) => {
   if (loading) {
     return (
@@ -86,6 +126,7 @@ const PatternAnalysis: React.FC<PatternAnalysisProps> = ({ analysis, loading, er
       case 'weekly': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'premiere_weekly': return 'bg-green-100 text-green-800 border-green-200';
       case 'multi_weekly': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'multi_episodes_per_week': return 'bg-cyan-100 text-cyan-800 border-cyan-200';
       case 'mixed': return 'bg-orange-100 text-orange-800 border-orange-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -251,29 +292,26 @@ const PatternAnalysis: React.FC<PatternAnalysisProps> = ({ analysis, loading, er
           <h3 className="font-medium text-gray-900 mb-3">
             Available on ({analysis.country})
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-3">
             {analysis.watchProviders.map((provider) => (
-              <div
-                key={provider.providerId}
-                className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                {provider.logo && (
-                  <img
-                    src={provider.logo}
-                    alt={provider.name}
-                    className="w-8 h-8 rounded object-cover"
-                  />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-gray-900 truncate">
-                    {provider.name}
-                  </p>
-                  <p className="text-xs text-gray-500 capitalize">
-                    {provider.type}
-                  </p>
-                </div>
-              </div>
+              <ProviderCard key={provider.providerId} provider={provider} />
             ))}
+          </div>
+          
+          {/* JustWatch Attribution */}
+          <div className="text-xs text-gray-500 bg-gray-50 rounded p-2 border-l-2 border-blue-200">
+            <div className="flex items-center space-x-1">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <span>
+                Provider data powered by{' '}
+                <a href="https://www.justwatch.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">
+                  JustWatch
+                </a>
+                . Availability may vary by region and change frequently.
+              </span>
+            </div>
           </div>
         </div>
       )}

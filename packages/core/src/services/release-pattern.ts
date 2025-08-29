@@ -85,7 +85,7 @@ export class ReleasePatternService {
     };
 
     // Pattern detection logic with enhanced rules
-    const result = this.detectPattern(intervals, avgInterval, stdDev, maxInterval, minInterval, hasPremierePattern, hasMultiWeeklyPattern, totalEpisodes);
+    const result = this.detectPattern(episodes, intervals, avgInterval, stdDev, maxInterval, minInterval, hasPremierePattern, hasMultiWeeklyPattern, totalEpisodes);
     
     return {
       pattern: result.pattern,
@@ -102,6 +102,7 @@ export class ReleasePatternService {
   }
 
   private detectPattern(
+    episodes: EpisodeMetadata[],
     intervals: number[], 
     avgInterval: number, 
     stdDev: number, 
@@ -145,6 +146,16 @@ export class ReleasePatternService {
         pattern: 'multi_weekly',
         confidence: 0.8,
         reasoning: 'Multiple episodes released consistently every ~7 days'
+      };
+    }
+
+    // Multi episodes per week: Check for weekly clusters of episodes
+    const clusterPattern = this.detectWeeklyEpisodeClusters(episodes);
+    if (clusterPattern.isClusterPattern) {
+      return {
+        pattern: 'multi_episodes_per_week' as ReleasePattern,
+        confidence: clusterPattern.confidence,
+        reasoning: clusterPattern.reasoning
       };
     }
 
@@ -194,6 +205,117 @@ export class ReleasePatternService {
     // Look for pattern where multiple episodes are released with ~7 day gaps
     const weeklyIntervals = intervals.filter(int => int >= 6 && int <= 8);
     return weeklyIntervals.length >= intervals.length * 0.7; // 70% of intervals should be weekly
+  }
+
+  private detectWeeklyEpisodeClusters(episodes: EpisodeMetadata[]): { 
+    isClusterPattern: boolean; 
+    confidence: number; 
+    reasoning: string 
+  } {
+    if (episodes.length < 6) {
+      return { isClusterPattern: false, confidence: 0, reasoning: 'Not enough episodes to detect cluster pattern' };
+    }
+
+    // Group episodes into weeks based on air dates
+    const weekGroups: EpisodeMetadata[][] = [];
+    let currentWeek: EpisodeMetadata[] = [episodes[0]];
+    
+    for (let i = 1; i < episodes.length; i++) {
+      const currentDate = new Date(episodes[i].airDate);
+      const lastDate = new Date(currentWeek[currentWeek.length - 1].airDate);
+      const daysDiff = Math.floor((currentDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // If gap is more than 3 days, start a new week
+      if (daysDiff > 3) {
+        weekGroups.push([...currentWeek]);
+        currentWeek = [episodes[i]];
+      } else {
+        currentWeek.push(episodes[i]);
+      }
+    }
+    weekGroups.push(currentWeek);
+
+    // Analyze cluster patterns
+    if (weekGroups.length < 3) {
+      return { isClusterPattern: false, confidence: 0, reasoning: 'Not enough weeks to establish pattern' };
+    }
+
+    // Check for consistent multi-episode weeks
+    const multiEpisodeWeeks = weekGroups.filter(week => week.length > 1);
+    const multiEpisodeRatio = multiEpisodeWeeks.length / weekGroups.length;
+    
+    if (multiEpisodeRatio < 0.6) {
+      return { isClusterPattern: false, confidence: 0, reasoning: 'Not enough multi-episode weeks' };
+    }
+
+    // Check consistency of episodes per week
+    const episodesPerWeek = weekGroups.map(week => week.length);
+    const mostCommonCount = this.getMostCommonValue(episodesPerWeek);
+    const consistentWeeks = episodesPerWeek.filter(count => count === mostCommonCount).length;
+    const consistency = consistentWeeks / weekGroups.length;
+
+    if (consistency < 0.7 || mostCommonCount < 2) {
+      return { isClusterPattern: false, confidence: 0, reasoning: 'Inconsistent episode count per week' };
+    }
+
+    // Check intervals between week starts (should be roughly weekly)
+    const weekStartDates = weekGroups.map(week => new Date(week[0].airDate));
+    const weekIntervals = [];
+    for (let i = 1; i < weekStartDates.length; i++) {
+      const days = Math.floor((weekStartDates[i].getTime() - weekStartDates[i-1].getTime()) / (1000 * 60 * 60 * 24));
+      weekIntervals.push(days);
+    }
+
+    // const avgWeekInterval = weekIntervals.reduce((sum, interval) => sum + interval, 0) / weekIntervals.length;
+    const weeklyConsistency = weekIntervals.filter(interval => interval >= 5 && interval <= 9).length / weekIntervals.length;
+
+    if (weeklyConsistency < 0.7) {
+      return { isClusterPattern: false, confidence: 0, reasoning: 'Weeks not consistently spaced' };
+    }
+
+    // Calculate confidence based on consistency metrics
+    const confidence = Math.min(0.9, (consistency + weeklyConsistency + multiEpisodeRatio) / 3);
+    
+    // Generate descriptive reasoning
+    const daysOfWeek = this.getCommonDaysOfWeek(weekGroups);
+    const reasoning = `${mostCommonCount} episodes per week pattern${daysOfWeek ? `: ${daysOfWeek} schedule` : ''} repeated weekly (${(consistency * 100).toFixed(0)}% consistent)`;
+
+    return {
+      isClusterPattern: true,
+      confidence,
+      reasoning
+    };
+  }
+
+  private getMostCommonValue(arr: number[]): number {
+    const counts: { [key: number]: number } = {};
+    arr.forEach(val => counts[val] = (counts[val] || 0) + 1);
+    return parseInt(Object.keys(counts).reduce((a, b) => counts[parseInt(a)] > counts[parseInt(b)] ? a : b));
+  }
+
+  private getCommonDaysOfWeek(weekGroups: EpisodeMetadata[][]): string | null {
+    if (weekGroups.length < 2) return null;
+    
+    // Get day patterns from first few weeks
+    const dayPatterns = weekGroups.slice(0, 3).map(week => {
+      return week.map(ep => {
+        const date = new Date(ep.airDate);
+        return date.toLocaleDateString('en-US', { weekday: 'long' });
+      }).sort();
+    });
+    
+    // Check if patterns are consistent
+    const firstPattern = dayPatterns[0];
+    const isConsistent = dayPatterns.every(pattern => 
+      pattern.length === firstPattern.length && 
+      pattern.every((day, index) => day === firstPattern[index])
+    );
+    
+    if (isConsistent && firstPattern.length > 1) {
+      return firstPattern.join('-');
+    }
+    
+    return null;
   }
 
   private countPremiereEpisodes(episodes: EpisodeMetadata[]): number {

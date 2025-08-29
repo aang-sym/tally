@@ -59,7 +59,7 @@ export const ContentAvailabilitySchema = z.object({
 });
 
 // Release pattern schemas - defined early to avoid dependency issues
-export const ReleasePatternSchema = z.enum(['weekly', 'binge', 'premiere_weekly', 'multi_weekly', 'mixed', 'unknown']);
+export const ReleasePatternSchema = z.enum(['weekly', 'binge', 'premiere_weekly', 'multi_weekly', 'multi_episodes_per_week', 'mixed', 'unknown']);
 
 export const EpisodeMetadataSchema = z.object({
   id: z.string(),
@@ -269,3 +269,225 @@ export type PlanResponse = z.infer<typeof PlanResponseSchema>;
 
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+
+// Database Model Schemas for Supabase Integration
+export const UserSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  password_hash: z.string(),
+  country_code: z.string().length(2).default('US'),
+  timezone: z.string().default('UTC'),
+  created_at: z.string().datetime(),
+  updated_at: z.string().datetime(),
+});
+
+export const ShowSchema = z.object({
+  id: z.string().uuid(),
+  tmdb_id: z.number(),
+  title: z.string(),
+  overview: z.string().optional(),
+  poster_path: z.string().optional(),
+  first_air_date: z.string().optional(),
+  last_air_date: z.string().optional(),
+  status: z.enum(['Airing', 'Ended', 'Cancelled', 'In Production', 'Planned', 'Pilot']),
+  total_seasons: z.number().optional(),
+  total_episodes: z.number().optional(),
+  release_pattern: z.any().optional(),
+  tmdb_last_updated: z.string().datetime(),
+  is_popular: z.boolean(),
+  created_at: z.string().datetime(),
+  updated_at: z.string().datetime(),
+});
+
+export const SeasonSchema = z.object({
+  id: z.string().uuid(),
+  show_id: z.string().uuid(),
+  tmdb_season_id: z.number(),
+  season_number: z.number(),
+  name: z.string().optional(),
+  overview: z.string().optional(),
+  air_date: z.string().optional(),
+  episode_count: z.number().optional(),
+  poster_path: z.string().optional(),
+});
+
+export const EpisodeSchema = z.object({
+  id: z.string().uuid(),
+  season_id: z.string().uuid(),
+  tmdb_episode_id: z.number(),
+  episode_number: z.number(),
+  name: z.string().optional(),
+  overview: z.string().optional(),
+  air_date: z.string().optional(),
+  runtime: z.number().optional(),
+});
+
+export const UserShowSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  show_id: z.string().uuid(),
+  status: z.enum(['watchlist', 'watching', 'completed', 'dropped']),
+  added_at: z.string().datetime(),
+  started_watching_at: z.string().datetime().optional(),
+  completed_at: z.string().datetime().optional(),
+  last_episode_watched_id: z.string().uuid().optional(),
+  show_rating: z.number().min(0).max(10).optional(),
+  notes: z.string().optional(),
+});
+
+export const UserEpisodeProgressSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  episode_id: z.string().uuid(),
+  status: z.enum(['unwatched', 'watching', 'watched']),
+  started_watching_at: z.string().datetime().optional(),
+  watched_at: z.string().datetime().optional(),
+  episode_rating: z.number().min(0).max(10).optional(),
+});
+
+export const UserSeasonRatingSchema = z.object({
+  id: z.string().uuid(),
+  user_id: z.string().uuid(),
+  season_id: z.string().uuid(),
+  rating: z.number().min(0).max(10),
+  created_at: z.string().datetime(),
+});
+
+export const StreamingServiceDBSchema = z.object({
+  id: z.string().uuid(),
+  tmdb_provider_id: z.number(),
+  name: z.string(),
+  logo_path: z.string().optional(),
+  homepage: z.string().optional(),
+});
+
+export const ShowAvailabilitySchema = z.object({
+  id: z.string().uuid(),
+  show_id: z.string().uuid(),
+  service_id: z.string().uuid(),
+  country_code: z.string().length(2),
+  availability_type: z.enum(['subscription', 'rent', 'buy']),
+  price_amount: z.number().optional(),
+  price_currency: z.string().length(3).optional(),
+  deep_link: z.string().optional(),
+  updated_at: z.string().datetime(),
+});
+
+// API Response Schemas for the new endpoints
+export const WatchlistV2ResponseSchema = z.object({
+  success: z.boolean(),
+  data: z.object({
+    shows: z.array(z.object({
+      id: z.string().uuid(),
+      user_id: z.string().uuid(),
+      show_id: z.string().uuid(),
+      status: z.enum(['watchlist', 'watching', 'completed', 'dropped']),
+      added_at: z.string().datetime(),
+      show: ShowSchema,
+      progress: z.object({
+        totalEpisodes: z.number(),
+        watchedEpisodes: z.number(),
+        currentEpisode: z.object({
+          season_number: z.number(),
+          episode_number: z.number(),
+          name: z.string().optional(),
+        }).optional(),
+      }).optional(),
+    })),
+    totalCount: z.number(),
+    statusFilter: z.string(),
+  }),
+});
+
+export const EpisodeWithProgressSchema = z.object({
+  id: z.string().uuid(),
+  season_id: z.string().uuid(),
+  tmdb_episode_id: z.number(),
+  episode_number: z.number(),
+  name: z.string().optional(),
+  overview: z.string().optional(),
+  air_date: z.string().optional(),
+  runtime: z.number().optional(),
+  progress: UserEpisodeProgressSchema.optional(),
+  liveStats: z.object({
+    currentlyWatching: z.number(),
+    totalWatched: z.number(),
+    averageRating: z.number().optional(),
+  }).optional(),
+});
+
+export const ProgressResponseSchema = z.object({
+  success: z.boolean(),
+  data: z.object({
+    show: ShowSchema,
+    seasons: z.array(z.object({
+      id: z.string().uuid(),
+      show_id: z.string().uuid(),
+      season_number: z.number(),
+      name: z.string().optional(),
+      episode_count: z.number().optional(),
+      episodes: z.array(EpisodeWithProgressSchema),
+    })),
+    progress: z.object({
+      totalEpisodes: z.number(),
+      watchedEpisodes: z.number(),
+      currentlyWatching: z.number(),
+      completionPercentage: z.number(),
+    }),
+  }),
+});
+
+export const RecommendationSchema = z.object({
+  type: z.enum(['cancel', 'subscribe', 'pause']),
+  serviceId: z.string().optional(),
+  serviceName: z.string(),
+  reason: z.string(),
+  confidence: z.number().min(0).max(1),
+  potentialSavings: z.object({
+    monthly: z.number(),
+    annual: z.number().optional(),
+    shortTerm: z.number().optional(),
+  }),
+  timing: z.string().optional(),
+  shows: z.array(z.string()).optional(),
+});
+
+export const RecommendationsResponseSchema = z.object({
+  success: z.boolean(),
+  data: z.object({
+    recommendations: z.array(RecommendationSchema),
+    totalPotentialSavings: z.number(),
+    servicesAnalyzed: z.number(),
+    timestamp: z.string().datetime(),
+  }),
+});
+
+// Database Health Response
+export const DatabaseHealthSchema = z.object({
+  success: z.boolean(),
+  data: z.object({
+    connected: z.boolean(),
+    tables: z.record(z.string(), z.number()),
+    timestamp: z.string().datetime(),
+    error: z.string().optional(),
+  }),
+});
+
+// Type exports for database models
+export type User = z.infer<typeof UserSchema>;
+export type Show = z.infer<typeof ShowSchema>;
+export type Season = z.infer<typeof SeasonSchema>;
+export type Episode = z.infer<typeof EpisodeSchema>;
+export type UserShow = z.infer<typeof UserShowSchema>;
+export type UserEpisodeProgress = z.infer<typeof UserEpisodeProgressSchema>;
+export type UserSeasonRating = z.infer<typeof UserSeasonRatingSchema>;
+export type StreamingServiceDB = z.infer<typeof StreamingServiceDBSchema>;
+export type ShowAvailability = z.infer<typeof ShowAvailabilitySchema>;
+
+// Type exports for API responses
+export type WatchlistV2Response = z.infer<typeof WatchlistV2ResponseSchema>;
+export type EpisodeWithProgress = z.infer<typeof EpisodeWithProgressSchema>;
+export type ProgressResponse = z.infer<typeof ProgressResponseSchema>;
+export type Recommendation = z.infer<typeof RecommendationSchema>;
+export type RecommendationsResponse = z.infer<typeof RecommendationsResponseSchema>;
+export type DatabaseHealth = z.infer<typeof DatabaseHealthSchema>;

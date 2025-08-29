@@ -8,6 +8,7 @@
 import { TMDBClient, TMDBError } from '@tally/core';
 import type { ReleasePattern, TMDBWatchProvider } from '@tally/types';
 import { config } from '../config/index.js';
+import { providerNormalizer, type ProviderVariant } from './provider-normalizer.js';
 
 export interface TMDBEnhancedWatchlistItem {
   tmdbShowId?: number;
@@ -273,13 +274,7 @@ export class TMDBService {
             title: ep.title
           }))
         },
-        watchProviders: providers.map(provider => ({
-          providerId: provider.provider_id,
-          name: provider.provider_name,
-          logo: provider.logo_path ? `https://image.tmdb.org/t/p/w92${provider.logo_path}` : '',
-          type: 'subscription' as const, // Simplified for now
-          deepLink: undefined // TMDB doesn't provide deep links directly
-        })),
+        watchProviders: this.normalizeWatchProviders(providers),
         analyzedSeason: targetSeason,
         country
       };
@@ -287,6 +282,31 @@ export class TMDBService {
       console.error(`Error analyzing show ${showId}:`, error);
       return null;
     }
+  }
+
+  /**
+   * Normalize watch providers by consolidating variants
+   */
+  private normalizeWatchProviders(providers: TMDBWatchProvider[]): any[] {
+    // Convert TMDB providers to our format
+    const providerVariants: ProviderVariant[] = providers.map(provider => ({
+      id: provider.provider_id,
+      name: provider.provider_name,
+      logo: provider.logo_path ? `https://image.tmdb.org/t/p/w92${provider.logo_path}` : '',
+      type: 'subscription' // Simplified for now, could be enhanced based on TMDB data
+    }));
+
+    // Normalize using the provider normalizer
+    const normalizedProviders = providerNormalizer.normalizeProviders(providerVariants);
+
+    // Convert to simplified API format - just the consolidated providers
+    return normalizedProviders.map(normalized => ({
+      providerId: normalized.parentId,
+      name: normalized.parentName,
+      logo: normalized.logo,
+      type: normalized.type,
+      deepLink: undefined // TMDB doesn't provide deep links directly
+    }));
   }
 
   /**

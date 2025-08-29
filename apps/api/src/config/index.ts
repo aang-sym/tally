@@ -16,6 +16,9 @@ export interface ApiConfig {
   streamingApiMonthlyLimit: number;
   streamingApiDevMode: boolean;
   tmdbDevMode: boolean;
+  // Supabase Configuration
+  supabaseUrl: string;
+  supabaseApiKey: string;
 }
 
 function getEnvVar(name: string, defaultValue?: string): string {
@@ -84,6 +87,10 @@ export const config: ApiConfig = {
   streamingApiMonthlyLimit: parseInt(getOptionalEnvVar('STREAMING_API_MONTHLY_LIMIT', '950'), 10),
   streamingApiDevMode: getOptionalEnvVar('STREAMING_API_DEV_MODE', 'false').toLowerCase() === 'true',
   tmdbDevMode: getOptionalEnvVar('TMDB_DEV_MODE', 'false').toLowerCase() === 'true',
+  
+  // Supabase Configuration - required for database operations
+  supabaseUrl: getEnvVar('SUPABASE_URL'),
+  supabaseApiKey: getEnvVar('SUPABASE_API_KEY'),
 };
 
 export default config;
