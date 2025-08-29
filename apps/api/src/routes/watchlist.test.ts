@@ -169,7 +169,7 @@ describe('Watchlist Routes with Streaming Availability', () => {
 
       const updatedAvailability = {
         available: true,
-        expiresOn: new Date('2024-11-30'),
+        expiresOn: new Date('2024-11-30').toISOString(),
         leavingSoon: true,
       };
 

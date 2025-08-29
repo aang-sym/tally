@@ -8,7 +8,7 @@ import { watchlistStore } from '../storage/index.js';
 import { ValidationError, NotFoundError } from '../middleware/errorHandler.js';
 import { streamingAvailabilityService } from '../services/streaming-availability.js';
 import { tmdbService } from '../services/tmdb.js';
-import { StreamingAvailabilityError } from '@tally/core';
+import { StreamingAvailabilityError, releasePatternService } from '@tally/core';
 import { config } from '../config/index.js';
 
 const router = Router();
@@ -116,6 +116,17 @@ router.post('/', async (req, res, next) => {
           enhancedItemData.tmdbShowId = tmdbEnhancement.tmdbShowId;
           enhancedItemData.detectedReleasePattern = tmdbEnhancement.detectedReleasePattern;
           enhancedItemData.watchProviders = tmdbEnhancement.watchProviders;
+          
+          // Add detailed logging in development mode
+          if (config.nodeEnv === 'development' && tmdbEnhancement.tmdbShowId) {
+            console.log(`🎯 Enhanced "${itemData.title}" with TMDB data:`);
+            console.log(`   TMDB ID: ${tmdbEnhancement.tmdbShowId}`);
+            console.log(`   Release Pattern: ${tmdbEnhancement.detectedReleasePattern}`);
+            console.log(`   Watch Providers: ${tmdbEnhancement.watchProviders?.length || 0} found`);
+            
+            // Enhanced logging would require async TMDB calls
+            // For now, just log basic TMDB enhancement info
+          }
         }
       }
     } catch (error) {
