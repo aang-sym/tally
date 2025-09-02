@@ -1,5 +1,44 @@
 # Tally Development Progress Changelog
 
+## Calendar UI Redesign - September 2025
+
+**Status:** Iterating (live in Overview view)
+
+### Highlights
+- Monday-first grid with 6×7 layout, showing adjacent-month spillover days.
+- Subtle rounded tiles, selection ring, and hover states.
+- Stacked provider logos: larger (+~20%), full-bleed circles, centered both vertically and horizontally, with gentle overlap and status dots (start/ending soon/end).
+- Ongoing period represented by small service-colored pips (not bars); matching legend added.
+- Header controls: chevrons + Today button and monthly spend summary.
+- Hover price badge per day shows unique-provider total for that date.
+- Sharper logos: TMDB image URLs upgraded to /original; full-bleed logos in day modal.
+- Day detail modal refreshed with avatar circles and TOTAL row.
+- Error handling: error boundary added around the calendar view to prevent blank screens.
+- Clean-up: removed the descriptive blue info panel from Calendar page.
+
+### Implementation Notes
+- Data construction calculates displayType per provider per day (logo vs. in-between "pip" day) and sets flags for status dots.
+- Legend clarifies pip semantics and status dots to avoid color ambiguity between providers.
+- Capsule (row-spanning) mock was prototyped, reviewed, and then removed per direction.
+
+### Files Touched
+- apps/web/src/components/calendar/CalendarView.tsx — grid, tile visuals, stacked logos, pips, hover price badge, Monday start.
+- apps/web/src/components/calendar/OverviewCalendar.tsx — data shaping, legend, monthly spend, header controls, modal styling, TMDB logo upgrade, selection state.
+- apps/web/src/pages/Calendar.tsx — removed info panel; wrapped current view with ErrorBoundary.
+- apps/web/src/components/ErrorBoundary.tsx — new lightweight boundary component.
+- docs/CalendarRedesignPlan.md — plan and progress tracking for redesign.
+
+### Design Decisions
+- Use minimal pips for continuity to reduce visual noise versus full bars.
+- Provider color on pips; status conveyed via dots on the logo bubble (start/ending soon/end) for clarity.
+- Keep light theme for now; dark mode will come as a separate pass.
+
+### Next Steps
+- Fine-tune logo size/overlap and pip size/placement if desired.
+- Optional: responsive srcset for TMDB logos (w185/w500/original) to balance bandwidth and sharpness.
+- Optional: compact provider-icon legend row.
+- Optional: keyboard navigation for the grid and subtle month transition animation.
+
 ## Recent Updates - September 2025
 
 ### ✅ Episode Selection & Dynamic Button States Implementation (07_EPISODE_SELECTION_AND_DYNAMIC_BUTTONS.md)

@@ -7,7 +7,7 @@ Primary reference: Image 2 (stacked logo bubbles), light theme only.
 - Monday-first calendar with previous/next month spillover days.
 - Subtle rounded day tiles (8–12px), dim out-of-month days.
 - Chevrons header with `Month, Year` and monthly spend.
-- Represent ongoing subscriptions with thin “rails” spanning days.
+- Represent ongoing subscriptions with small provider-colored pips (not bars).
 - Show stacked/overlapping provider logo bubbles (max 3) on key days.
 - Overflow indicator (`+N`) when >3 providers for a day.
 - Hover/selection price badge and a day-detail modal (image 2 style).
@@ -20,8 +20,9 @@ Primary reference: Image 2 (stacked logo bubbles), light theme only.
    - Render spillover days from adjacent months to always show 6×7.
 2. Tile styling and content
    - Rounded tiles, dim out-of-month.
-   - Implement rails with start/end caps per provider aggregate.
    - Stacked logo bubbles (overlap) up to 3; `+N` overflow.
+   - Centered, larger, full‑bleed logos (no inner square), with lazy loading.
+   - Continuity pips (color = provider), placed near bottom of tile.
    - Hover price badge (sum of unique provider costs that day).
 3. Header overhaul (in `OverviewCalendar`)
    - Left/right chevrons; `Month, Year` centered/left.
@@ -30,20 +31,31 @@ Primary reference: Image 2 (stacked logo bubbles), light theme only.
    - List providers with icon, name, price; total row.
    - Close/Confirm buttons (Confirm stubbed for now).
 5. Status dots
-   - Start=blue, Active=green, Ending soon (<7d)=orange, End=red.
+   - Start=green, Ending soon (<7d)=orange, End=red (on the logo bubble).
+6. Legend
+   - Add compact legend explaining pips and status dots.
+7. Robustness
+   - Wrap calendar in ErrorBoundary to avoid white-screen on runtime errors.
+8. Asset quality
+   - Upgrade TMDB logo URLs to `/original` when detected; consider responsive `srcset` later.
 
 ## Notes
 
 - Service logos: use `streaming_provider.logo_url` when available; fallback color dot.
-- Data model: enrich aggregated provider-per-day with `barLeftCap`, `barRightCap`, and `hasLogo` flags derived from show date ranges.
+- Data model: compute per-provider per-day `displayType` (`logo` vs `bar` → now `pip`), with flags for `isStart`, `isEnd`, `isEndingSoon` for status dots.
 - Keep `SavingsCalendar` behavior intact by making new props optional with safe defaults.
+
+Out of Scope / Removed
+- Row-spanning “capsule” overlay was prototyped for comparison and removed per direction.
 
 ## Progress
 
 - [x] Refactor CalendarView (Monday start + spillover days)
-- [x] Implement stacked centered logos (full-bleed)
-- [x] Replace rails with subtle continuity pips
+- [x] Implement stacked centered logos (full‑bleed)
+- [x] Continuity pips (provider-colored) with legend
 - [x] Add overflow +N and hover price badge
 - [x] Revamp header (chevrons + monthly spend)
 - [x] Enhance day detail modal + totals
-- [x] Wire status dots + caps logic
+- [x] TMDB logo quality upgrade (/original)
+- [x] ErrorBoundary integration around Calendar view
+- [x] Remove old blue info panel from Calendar page
