@@ -33,7 +33,7 @@ Primary reference: Image 2 (stacked logo bubbles), light theme only.
 5. Status dots
    - Start=green, Ending soon (<7d)=orange, End=red (on the logo bubble).
 6. Legend
-   - Add compact legend explaining pips and status dots.
+   - Provider pip list only (status dots live on logos, not duplicated in legend).
 7. Robustness
    - Wrap calendar in ErrorBoundary to avoid white-screen on runtime errors.
 8. Asset quality
@@ -59,3 +59,13 @@ Out of Scope / Removed
 - [x] TMDB logo quality upgrade (/original)
 - [x] ErrorBoundary integration around Calendar view
 - [x] Remove old blue info panel from Calendar page
+- [x] Responsive logo layout with container queries (stacked → grid) and overflow clipping
+- [x] Extra services indicator
+  - Stacked mode: circular plus bubble to the right of logos
+  - Grid/narrow mode: +N badge shown via container queries
+- [x] Dynamic pips count
+  - Render a pip per active provider on the day (no hard cap)
+
+## Known Issues / Follow-ups
+- Lock background scroll/content under the day-detail modal to avoid any underlying numbers peeking through on some screen sizes.
+- Optionally add aria-label for the stacked “+” bubble to aid screen readers.

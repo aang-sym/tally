@@ -616,29 +616,29 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-6 text-xs text-gray-600">
-        <div className="flex items-center gap-1">
-          <span className="inline-flex -space-x-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span>
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-          </span>
-          <span>Ongoing pips (color = provider)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-gray-700">Status dots on logo:</span>
-          <span className="w-2 h-2 rounded-full bg-green-500"></span>
-          <span>Start</span>
-          <span className="w-2 h-2 rounded-full bg-orange-500 ml-3"></span>
-          <span>Ending soon</span>
-          <span className="w-2 h-2 rounded-full bg-red-500 ml-3"></span>
-          <span>End</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700 font-medium">+3</span>
-          <span>More services</span>
-        </div>
+      {/* Legend: provider pips only */}
+      <div className="flex flex-wrap items-center gap-4 text-xs text-gray-600">
+        {userProviders && userProviders.length > 0 ? (
+          <>
+            {userProviders.slice(0, 8).map((p) => (
+              <div key={p.serviceName} className="flex items-center gap-2">
+                <span className={`inline-block w-2 h-2 rounded-full ${p.color}`}></span>
+                <span>{p.serviceName}</span>
+              </div>
+            ))}
+            {userProviders.length > 8 && (
+              <div className="flex items-center gap-1 text-gray-500">
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 border border-gray-200">+{userProviders.length - 8}</span>
+                <span>more</span>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-gray-400"></span>
+            <span>Ongoing pips (color = provider)</span>
+          </div>
+        )}
       </div>
 
       {/* Main Calendar */}

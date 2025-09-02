@@ -165,19 +165,19 @@ const CalendarView: React.FC<CalendarProps> = ({
       .filter((s) => s.displayType === 'logo')
       .slice(0, 3);
     const extraCount = Math.max(0, dayData.activeServices.filter(s => s.displayType === 'logo').length - 3);
-    const pipServices = dayData.activeServices.filter((s) => s.displayType === 'bar').slice(0, 3);
+    const pipServices = dayData.activeServices.filter((s) => s.displayType === 'bar');
 
     return (
       <>
         {/* Centered stacked logos */}
         {logosToShow.length > 0 && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="flex items-center justify-center">
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="logos w-full h-full flex items-center justify-center">
               {logosToShow.map((service, idx) => (
                 <div
                   key={`logo-${service.serviceId}-${idx}`}
-                  className="relative w-10 h-10 md:w-11 md:h-11 rounded-full overflow-hidden ring-1 ring-gray-300 shadow"
-                  style={{ marginLeft: idx === 0 ? 0 : -12, zIndex: 10 + idx }}
+                  className="logo relative rounded-full overflow-hidden ring-1 ring-gray-300 shadow"
+                  style={{ marginLeft: idx === 0 ? 0 : 'calc(var(--overlap) * -1)', zIndex: 10 + idx }}
                   title={service.serviceName}
                 >
                   {service.logoUrl ? (
@@ -190,7 +190,7 @@ const CalendarView: React.FC<CalendarProps> = ({
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
                         const parent = target.parentElement as HTMLElement;
-                        if (parent) parent.className = `relative w-10 h-10 md:w-11 md:h-11 rounded-full ${getServiceColor(service.serviceName, service.intensity)} flex items-center justify-center`;
+                        if (parent) parent.className = `logo relative rounded-full ${getServiceColor(service.serviceName, service.intensity)} flex items-center justify-center`;
                       }}
                     />
                   ) : (
@@ -207,9 +207,17 @@ const CalendarView: React.FC<CalendarProps> = ({
                 </div>
               ))}
               {extraCount > 0 && (
-                <div className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700 font-medium">
-                  +{extraCount}
-                </div>
+                <>
+                  {/* Stacked mode: small circular plus */}
+                  <div className="plus-stacked ml-1 rounded-full bg-gray-200 text-gray-700 text-xs shadow-sm"
+                       style={{ zIndex: 10 + logosToShow.length }}>
+                    +
+                  </div>
+                  {/* Grid/narrow mode: show +N badge */}
+                  <div className="more-badge hidden ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700 font-medium">
+                    +{extraCount}
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -250,9 +258,9 @@ const CalendarView: React.FC<CalendarProps> = ({
   };
 
   const getDayClasses = (dayData: CalendarDay | null) => {
-    if (!dayData) return 'relative p-2 h-24 rounded-lg';
+    if (!dayData) return 'relative p-2 h-24 rounded-lg day-cq overflow-hidden';
 
-    let classes = 'relative p-2 h-24 rounded-lg border cursor-pointer group transition-colors ';
+    let classes = 'relative p-2 h-24 rounded-lg border cursor-pointer group transition-colors day-cq overflow-hidden ';
 
     if (dayData.isToday) {
       classes += 'border-blue-400 ';
