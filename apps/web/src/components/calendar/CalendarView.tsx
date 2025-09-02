@@ -12,6 +12,15 @@ export interface CalendarDay {
     userShows: any[];
     allShows: any[];
     cost: number;
+    logoUrl?: string;
+    displayType?: 'logo' | 'bar';
+    // Visual rail hints for ongoing period
+    barLeftCap?: boolean;
+    barRightCap?: boolean;
+    // Status indicators
+    isStart?: boolean;
+    isEnd?: boolean;
+    isEndingSoon?: boolean;
   }[];
   savings?: number;
   recommendations?: any[];
@@ -24,6 +33,9 @@ export interface CalendarProps {
   onDateClick?: (day: CalendarDay) => void;
   mode?: 'overview' | 'provider' | 'savings' | 'personal';
   selectedService?: string;
+  userProviders?: { serviceName: string; color: string; }[];
+  selectedDate?: string | undefined; // YYYY-MM-DD
+  showHeader?: boolean;
 }
 
 const CalendarView: React.FC<CalendarProps> = ({
@@ -32,30 +44,48 @@ const CalendarView: React.FC<CalendarProps> = ({
   data,
   onDateClick,
   mode = 'overview',
-  selectedService
+  selectedService,
+  userProviders = [],
+  selectedDate,
+  showHeader = true
 }) => {
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  // Monday-first labels
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   // Generate calendar grid
   const firstDayOfMonth = new Date(year, month, 1);
   const lastDayOfMonth = new Date(year, month + 1, 0);
-  const firstDayWeekday = firstDayOfMonth.getDay();
   const daysInMonth = lastDayOfMonth.getDate();
 
-  // Generate calendar days including padding
-  const calendarDays: (CalendarDay | null)[] = [];
-  
-  // Add empty cells for days before the first day of the month
-  for (let i = 0; i < firstDayWeekday; i++) {
-    calendarDays.push(null);
+  // Convert Sunday=0..Saturday=6 to Monday=0..Sunday=6
+  const firstDayWeekday = (firstDayOfMonth.getDay() + 6) % 7;
+
+  // Generate 6x7 grid with spillover days
+  const calendarDays: CalendarDay[] = [];
+
+  // Previous month spillover
+  const prevMonthLastDay = new Date(year, month, 0).getDate();
+  for (let i = firstDayWeekday - 1; i >= 0; i--) {
+    const day = prevMonthLastDay - i;
+    const prevMonthDate = new Date(year, month - 1, day);
+    const dateStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dayData = data.find(d => d.date === dateStr) || {
+      date: dateStr,
+      day,
+      isCurrentMonth: false,
+      isToday: false,
+      activeServices: [],
+      savings: 0
+    };
+    calendarDays.push(dayData);
   }
 
-  // Add the days of the month
+  // Current month days
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const dayData = data.find(d => d.date === dateStr) || {
@@ -66,7 +96,23 @@ const CalendarView: React.FC<CalendarProps> = ({
       activeServices: [],
       savings: 0
     };
-    
+    calendarDays.push(dayData);
+  }
+
+  // Next month spillover to reach 42 cells
+  const totalCells = 42;
+  const nextMonthDaysToAdd = totalCells - calendarDays.length;
+  for (let i = 1; i <= nextMonthDaysToAdd; i++) {
+    const nextMonthDate = new Date(year, month + 1, i);
+    const dateStr = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+    const dayData = data.find(d => d.date === dateStr) || {
+      date: dateStr,
+      day: i,
+      isCurrentMonth: false,
+      isToday: false,
+      activeServices: [],
+      savings: 0
+    };
     calendarDays.push(dayData);
   }
 
@@ -114,21 +160,68 @@ const CalendarView: React.FC<CalendarProps> = ({
       return <div className="h-2 bg-gray-100 rounded-sm" />;
     }
 
-    // Overview mode - show all services as colored bars
+    // Overview mode – rails + stacked icons
+    const servicesToShow = dayData.activeServices.slice(0, 3);
+    const extraCount = Math.max(0, dayData.activeServices.length - 3);
+
     return (
-      <div className="space-y-px">
-        {dayData.activeServices.slice(0, 4).map((service, idx) => (
-          <div 
-            key={service.serviceId}
-            className={`h-1 rounded-sm ${getServiceColor(service.serviceName, service.intensity)}`}
-            title={`${service.serviceName}: ${service.userShows.length} shows`}
-          />
-        ))}
-        {dayData.activeServices.length > 4 && (
-          <div className="text-xs text-gray-400 text-center">
-            +{dayData.activeServices.length - 4}
-          </div>
-        )}
+      <div className="relative h-full">
+        {/* Rails (stacked vertically) */}
+        <div className="absolute inset-x-1 bottom-2 space-y-1">
+          {servicesToShow.map((service, idx) => (
+            <div key={`rail-${service.serviceId}-${idx}`} className="relative h-1.5">
+              <div
+                className={
+                  `absolute left-0 right-0 h-1.5 ${getServiceColor(service.serviceName, service.intensity)} ` +
+                  `${service.barLeftCap ? 'rounded-l-full' : ''} ${service.barRightCap ? 'rounded-r-full' : ''}`
+                }
+                title={`${service.serviceName}: Active period`}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Stacked logos */}
+        <div className="absolute left-1 bottom-5 flex items-center">
+          {servicesToShow.map((service, idx) => (
+            <div
+              key={`logo-${service.serviceId}-${idx}`}
+              className="relative w-6 h-6 rounded-full overflow-hidden bg-white shadow border border-gray-300 flex items-center justify-center"
+              style={{ marginLeft: idx === 0 ? 0 : -8, zIndex: 10 + idx }}
+              title={`${service.serviceName}`}
+            >
+              {service.logoUrl ? (
+                <img
+                  src={service.logoUrl}
+                  alt={service.serviceName}
+                  className="w-4 h-4 object-contain"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement as HTMLElement;
+                    if (parent) parent.className = `relative w-6 h-6 rounded-full ${getServiceColor(service.serviceName, service.intensity)} flex items-center justify-center`;
+                  }}
+                />
+              ) : (
+                <div className={`w-4 h-4 rounded-full ${getServiceColor(service.serviceName, service.intensity)}`} />
+              )}
+              {/* Status dot */}
+              {(service.isStart || service.isEnd || service.isEndingSoon) && (
+                <span
+                  className={
+                    `absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ` +
+                    `${service.isEnd ? 'bg-red-500' : service.isEndingSoon ? 'bg-orange-500' : 'bg-green-500'}`
+                  }
+                />
+              )}
+            </div>
+          ))}
+          {extraCount > 0 && (
+            <div className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700 font-medium">
+              +{extraCount}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -138,75 +231,84 @@ const CalendarView: React.FC<CalendarProps> = ({
       'Netflix': intensity > 0.5 ? 'bg-red-500' : 'bg-red-300',
       'HBO Max': intensity > 0.5 ? 'bg-purple-500' : 'bg-purple-300',
       'Disney Plus': intensity > 0.5 ? 'bg-blue-500' : 'bg-blue-300',
+      'Disney+': intensity > 0.5 ? 'bg-blue-500' : 'bg-blue-300',
       'Hulu': intensity > 0.5 ? 'bg-green-500' : 'bg-green-300',
-      'Amazon Prime': intensity > 0.5 ? 'bg-indigo-500' : 'bg-indigo-300',
-      'Apple TV': intensity > 0.5 ? 'bg-gray-500' : 'bg-gray-300'
+      'Amazon Prime Video': intensity > 0.5 ? 'bg-indigo-500' : 'bg-indigo-300',
+      'Prime Video': intensity > 0.5 ? 'bg-indigo-500' : 'bg-indigo-300',
+      'Apple TV Plus': intensity > 0.5 ? 'bg-gray-500' : 'bg-gray-300',
+      'Apple TV+': intensity > 0.5 ? 'bg-gray-500' : 'bg-gray-300',
+      'Paramount+ with Showtime': intensity > 0.5 ? 'bg-orange-500' : 'bg-orange-300',
+      'Paramount+': intensity > 0.5 ? 'bg-orange-500' : 'bg-orange-300'
     };
     
     return colors[serviceName as keyof typeof colors] || 'bg-gray-400';
   };
 
   const getDayClasses = (dayData: CalendarDay | null) => {
-    if (!dayData) return 'p-2 h-20';
-    
-    let classes = 'p-2 h-20 border border-gray-200 cursor-pointer hover:bg-gray-50 ';
-    
+    if (!dayData) return 'relative p-2 h-24 rounded-lg';
+
+    let classes = 'relative p-2 h-24 rounded-lg border cursor-pointer group transition-colors ';
+
     if (dayData.isToday) {
-      classes += 'ring-2 ring-blue-500 ';
+      classes += 'border-blue-400 ';
+    } else {
+      classes += 'border-gray-200 ';
     }
-    
+
     if (!dayData.isCurrentMonth) {
       classes += 'bg-gray-50 text-gray-400 ';
+    } else {
+      classes += 'bg-gray-100 text-gray-900 hover:bg-gray-200 ';
     }
-    
+
+    if (dayData.date === selectedDate) {
+      classes += ' ring-2 ring-gray-300 ';
+    }
+
     return classes;
   };
 
   return (
     <div className="bg-white rounded-lg shadow">
       {/* Calendar Header */}
-      <div className="px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">
-          {monthNames[month]} {year}
-        </h2>
-        <div className="flex items-center space-x-4 mt-2">
-          <div className="flex items-center space-x-2">
-            {mode === 'overview' && (
-              <>
-                <div className="flex items-center space-x-1">
-                  <div className="w-3 h-3 bg-red-500 rounded"></div>
-                  <span className="text-xs text-gray-600">Netflix</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <div className="w-3 h-3 bg-purple-500 rounded"></div>
-                  <span className="text-xs text-gray-600">HBO Max</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                  <span className="text-xs text-gray-600">Disney+</span>
-                </div>
-              </>
-            )}
-            {mode === 'savings' && (
-              <>
-                <div className="flex items-center space-x-1">
-                  <div className="w-3 h-3 bg-green-500 rounded"></div>
-                  <span className="text-xs text-gray-600">Savings</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <div className="w-3 h-3 bg-red-500 rounded"></div>
-                  <span className="text-xs text-gray-600">Costs</span>
-                </div>
-              </>
-            )}
+      {showHeader && (
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">
+            {monthNames[month]} {year}
+          </h2>
+          <div className="flex items-center space-x-4 mt-2">
+            <div className="flex items-center space-x-2">
+              {mode === 'overview' && userProviders.length > 0 && (
+                <>
+                  {userProviders.map((provider) => (
+                    <div key={provider.serviceName} className="flex items-center space-x-1">
+                      <div className={`w-3 h-3 rounded ${provider.color}`}></div>
+                      <span className="text-xs text-gray-600">{provider.serviceName}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+              {mode === 'savings' && (
+                <>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-3 bg-green-500 rounded"></div>
+                    <span className="text-xs text-gray-600">Savings</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-3 bg-red-500 rounded"></div>
+                    <span className="text-xs text-gray-600">Costs</span>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Calendar Grid */}
       <div className="p-4">
         {/* Week day headers */}
-        <div className="grid grid-cols-7 gap-px mb-2">
+        <div className="grid grid-cols-7 gap-2 mb-2">
           {weekDays.map((day) => (
             <div key={day} className="p-2 text-center text-sm font-medium text-gray-700">
               {day}
@@ -215,7 +317,7 @@ const CalendarView: React.FC<CalendarProps> = ({
         </div>
 
         {/* Calendar days */}
-        <div className="grid grid-cols-7 gap-px bg-gray-200">
+        <div className="grid grid-cols-7 gap-2">
           {calendarDays.map((dayData, index) => (
             <div
               key={index}
@@ -225,7 +327,7 @@ const CalendarView: React.FC<CalendarProps> = ({
               {dayData && (
                 <>
                   <div className="flex justify-between items-start mb-1">
-                    <span className={`text-sm ${dayData.isToday ? 'font-bold text-blue-600' : 'text-gray-900'}`}>
+                    <span className={`text-sm ${dayData.isToday ? 'font-bold text-blue-600' : ''}`}>
                       {dayData.day}
                     </span>
                     {dayData.recommendations && dayData.recommendations.length > 0 && (
@@ -235,6 +337,14 @@ const CalendarView: React.FC<CalendarProps> = ({
                   <div className="flex-1">
                     {renderServiceBars(dayData)}
                   </div>
+                  {/* Hover price badge */}
+                  {dayData.activeServices.length > 0 && (
+                    <div className="absolute top-1 right-1 hidden group-hover:block">
+                      <div className="text-[10px] px-1.5 py-0.5 rounded-md bg-white shadow border border-gray-200 text-gray-700">
+                        ${sumUniqueCosts(dayData).toFixed(2)}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -246,3 +356,12 @@ const CalendarView: React.FC<CalendarProps> = ({
 };
 
 export default CalendarView;
+
+// Helpers
+function sumUniqueCosts(day: CalendarDay): number {
+  const unique = new Map<string, number>();
+  for (const s of day.activeServices) {
+    if (!unique.has(s.serviceId)) unique.set(s.serviceId, s.cost || 0);
+  }
+  return Array.from(unique.values()).reduce((a, b) => a + b, 0);
+}

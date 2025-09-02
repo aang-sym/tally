@@ -1,45 +1,142 @@
 import React, { useState, useEffect } from 'react';
 import CalendarView, { CalendarDay } from './CalendarView';
+import { UserManager } from '../UserSwitcher';
+
+interface UserSubscription {
+  id: string;
+  service_id: string;
+  monthly_cost: number;
+  is_active: boolean;
+  service: {
+    id: string;
+    name: string;
+    logo_url?: string;
+  };
+}
+
+interface UserShow {
+  id: string;
+  show_id: string;
+  status: 'watchlist' | 'watching' | 'completed' | 'dropped';
+  show: {
+    title: string;
+    tmdb_id: number;
+  };
+}
+
+interface OverviewCalendarProps {
+  useUserData?: boolean;
+  userSubscriptions?: UserSubscription[] | undefined;
+  userShows?: UserShow[] | undefined;
+}
+
+interface ShowEpisodeData {
+  tmdbId: number;
+  episodes: Array<{
+    seasonNumber: number;
+    episodeNumber: number;
+    airDate: string;
+    title: string;
+  }>;
+  lastAirDate: Date;
+}
+
+interface EpisodeDataCache {
+  [tmdbId: number]: ShowEpisodeData;
+}
 
 // API base URL
 const API_BASE = 'http://localhost:3001';
 
-// Mock user ID (would come from authentication)
-const USER_ID = 'user-1';
-
-const OverviewCalendar: React.FC = () => {
+const OverviewCalendar: React.FC<OverviewCalendarProps> = ({ 
+  useUserData = false, 
+  userSubscriptions = [], 
+  userShows = [] 
+}) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarData, setCalendarData] = useState<CalendarDay[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
+  const [userProviders, setUserProviders] = useState<{ serviceName: string; color: string; }[]>([]);
+  const [episodeDataCache, setEpisodeDataCache] = useState<EpisodeDataCache>({});
+  const [selectedDate, setSelectedDate] = useState<string>('');
 
   useEffect(() => {
     fetchCalendarData();
-  }, [currentDate]);
+  }, [currentDate, useUserData, userSubscriptions, userShows]);
+
+  // Fetch episode data for a show
+  const fetchEpisodeData = async (tmdbId: number): Promise<ShowEpisodeData | null> => {
+    // Check cache first
+    if (episodeDataCache[tmdbId]) {
+      return episodeDataCache[tmdbId];
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/api/tmdb/show/${tmdbId}/analyze`, {
+        headers: {
+          'x-user-id': 'user-1' // TODO: Use actual user ID
+        }
+      });
+
+      if (!response.ok) {
+        console.warn(`Failed to fetch episode data for show ${tmdbId}`);
+        return null;
+      }
+
+      const data = await response.json();
+      const episodes = data.analysis?.diagnostics?.episodeDetails || [];
+      
+      if (episodes.length === 0) {
+        return null;
+      }
+
+      // Find the latest air date
+      const sortedEpisodes = episodes
+        .filter((ep: any) => ep.airDate)
+        .sort((a: any, b: any) => new Date(b.airDate).getTime() - new Date(a.airDate).getTime());
+
+      const lastAirDate = sortedEpisodes.length > 0 
+        ? new Date(sortedEpisodes[0].airDate)
+        : new Date();
+
+      const episodeData: ShowEpisodeData = {
+        tmdbId,
+        episodes,
+        lastAirDate
+      };
+
+      // Cache the data
+      setEpisodeDataCache(prev => ({
+        ...prev,
+        [tmdbId]: episodeData
+      }));
+
+      return episodeData;
+    } catch (error) {
+      console.error(`Error fetching episode data for show ${tmdbId}:`, error);
+      return null;
+    }
+  };
 
   const fetchCalendarData = async () => {
     try {
       setLoading(true);
       
-      // Fetch calendar recommendations from API
-      const response = await fetch(`${API_BASE}/api/recommendations/calendar?months=3`, {
-        headers: { 'x-user-id': USER_ID }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const calendarRecommendations = data.data.calendar;
-        
-        // Transform API data to calendar format
-        const transformedData = generateCalendarData(calendarRecommendations);
-        setCalendarData(transformedData);
-      } else {
-        // Generate mock data if API fails
-        setCalendarData(generateMockCalendarData());
+      if ((userShows?.length || 0) === 0) {
+        // No shows available, show empty state
+        setCalendarData([]);
+        setLoading(false);
+        return;
       }
+      
+      // Generate calendar data directly from user's shows
+      const { calendarData, providersLegend } = await generateUserBasedCalendarData();
+      setCalendarData(calendarData);
+      setUserProviders(providersLegend);
     } catch (error) {
-      console.error('Failed to fetch calendar data:', error);
-      setCalendarData(generateMockCalendarData());
+      console.error('OverviewCalendar - Failed to generate calendar data:', error);
+      setCalendarData([]);
     } finally {
       setLoading(false);
     }
@@ -81,6 +178,281 @@ const OverviewCalendar: React.FC = () => {
     }
     
     return data;
+  };
+
+  const generateUserBasedCalendarData = async (): Promise<{ calendarData: CalendarDay[]; providersLegend: { serviceName: string; color: string; }[] }> => {
+    const data: CalendarDay[] = [];
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    // Get watching shows with streaming providers
+    const watchingShows = userShows?.filter(show => show.status === 'watching') || [];
+    
+    // Pre-fetch episode data for all shows to avoid repeated API calls
+    const showDateCache = new Map<string, { startDate: Date; endDate: Date }>();
+    
+    for (const show of watchingShows) {
+      try {
+        const showStartDate = await getShowStartDate(show);
+        const showEndDate = await getShowEndDate(show.show.tmdb_id);
+        showDateCache.set(show.id, { startDate: showStartDate, endDate: showEndDate });
+      } catch (error) {
+        console.warn(`Failed to fetch dates for show ${show.show.title}:`, error);
+        // Use fallback dates if API calls fail
+        const fallbackStart = new Date((show as any).added_at || Date.now());
+        const fallbackEnd = new Date();
+        fallbackEnd.setMonth(fallbackEnd.getMonth() + 6);
+        showDateCache.set(show.id, { startDate: fallbackStart, endDate: fallbackEnd });
+      }
+    }
+    
+    // Create a map of unique streaming providers from watching shows
+    const activeProviders = new Map<string, any>();
+    watchingShows.forEach(show => {
+      const providerName = getProviderNameFromShow(show);
+      const providerLogoUrl = getProviderLogoFromShow(show);
+      if (providerName) {
+        activeProviders.set(providerName.toLowerCase().replace(/\s+/g, '-'), {
+          serviceId: providerName.toLowerCase().replace(/\s+/g, '-'),
+          serviceName: providerName,
+          intensity: 0.7, // Medium usage for watching shows
+          userShows: watchingShows
+            .filter(s => getProviderNameFromShow(s) === providerName)
+            .map(s => ({ title: s.show.title, tmdbId: s.show.tmdb_id })),
+          allShows: watchingShows
+            .filter(s => getProviderNameFromShow(s) === providerName)
+            .map(s => s.show.title),
+          cost: getProviderCost(providerName),
+          logoUrl: providerLogoUrl,
+          shows: watchingShows.filter(s => getProviderNameFromShow(s) === providerName)
+        });
+      }
+    });
+
+    // Generate legend data for providers
+    const providersLegend = Array.from(activeProviders.values()).map(provider => ({
+      serviceName: provider.serviceName,
+      color: getProviderLegendColor(provider.serviceName)
+    }));
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const currentDay = new Date(year, month, day);
+      const today = new Date();
+      
+      // Filter active services based on show end dates - treat each show separately
+      const activeServicesForDay: any[] = [];
+      
+      // Check each provider synchronously using cached data
+      for (const provider of activeProviders.values()) {
+        // Check if ANY show for this provider is still active on this day
+        const activeShowsForProvider: any[] = [];
+        let barLeftCap = false;
+        let barRightCap = false;
+        let isStartFlag = false;
+        let isEndFlag = false;
+        let isEndingSoonFlag = false;
+        
+        for (const show of provider.shows) {
+          const cachedDates = showDateCache.get(show.id);
+          if (!cachedDates) continue;
+          
+          const { startDate, endDate } = cachedDates;
+          const oneWeekAfterEnd = new Date(endDate);
+          oneWeekAfterEnd.setDate(oneWeekAfterEnd.getDate() + 7);
+          
+          // Check what should be displayed on this day
+          const displayType = getDateDisplayType(currentDay, startDate, oneWeekAfterEnd);
+          
+          if (displayType !== 'none') {
+            const isStart = currentDay.toDateString() === startDate.toDateString();
+            const isEnd = currentDay.toDateString() === endDate.toDateString();
+            const diffDays = Math.ceil((endDate.getTime() - currentDay.getTime()) / (1000 * 60 * 60 * 24));
+            const isEndingSoon = diffDays > 0 && diffDays <= 7;
+
+            if (isStart) {
+              barLeftCap = true;
+              isStartFlag = true;
+            }
+            if (isEnd) {
+              barRightCap = true;
+              isEndFlag = true;
+            }
+            if (isEndingSoon) {
+              isEndingSoonFlag = true;
+            }
+
+            activeShowsForProvider.push({
+              ...show,
+              displayType, // Add display type to show object
+              isStart,
+              isEnd,
+              isEndingSoon
+            });
+          }
+        }
+        
+        // Only show provider if at least one show is still active
+        if (activeShowsForProvider.length > 0) {
+          // Determine the overall display type for this provider on this day
+          const hasLogo = activeShowsForProvider.some((show: any) => show.displayType === 'logo');
+          const providerDisplayType = hasLogo ? 'logo' : 'bar';
+          
+          // Update the provider data to only include active shows
+          const updatedProvider = {
+            ...provider,
+            userShows: activeShowsForProvider.map((show: any) => ({ title: show.show.title, tmdbId: show.show.tmdb_id })),
+            allShows: activeShowsForProvider.map((show: any) => show.show.title),
+            shows: activeShowsForProvider,
+            displayType: providerDisplayType,
+            barLeftCap,
+            barRightCap,
+            isStart: isStartFlag,
+            isEnd: isEndFlag,
+            isEndingSoon: isEndingSoonFlag
+          };
+          activeServicesForDay.push(updatedProvider);
+        }
+      }
+
+      data.push({
+        date: dateStr,
+        day,
+        isCurrentMonth: true,
+        isToday: dateStr === today.toISOString().split('T')[0],
+        activeServices: activeServicesForDay,
+        savings: 0 // No savings calculation for now
+      });
+    }
+    
+    return { calendarData: data, providersLegend };
+  };
+
+  // Helper function to determine what should be displayed on a specific day
+  const getDateDisplayType = (currentDay: Date, showStartDate: Date, showEndDate: Date): 'logo' | 'bar' | 'none' => {
+    // Normalize dates to compare only the date part (ignore time)
+    const current = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate());
+    const start = new Date(showStartDate.getFullYear(), showStartDate.getMonth(), showStartDate.getDate());
+    const end = new Date(showEndDate.getFullYear(), showEndDate.getMonth(), showEndDate.getDate());
+    
+    // Outside the date range
+    if (current < start || current > end) {
+      return 'none';
+    }
+    
+    // Key dates that should show logos:
+    // 1. First air date of the show
+    if (current.getTime() === start.getTime()) {
+      return 'logo';
+    }
+    
+    // 2. Last end date (+ 1 week buffer)
+    if (current.getTime() === end.getTime()) {
+      return 'logo';
+    }
+    
+    // 3. First day of months between first air date and last end date
+    if (current.getDate() === 1) {
+      return 'logo';
+    }
+    
+    // 4. Last day of months between first air date and last end date
+    const lastDayOfMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
+    if (current.getDate() === lastDayOfMonth) {
+      return 'logo';
+    }
+    
+    // 5. All other days between start and end show connecting bars
+    return 'bar';
+  };
+
+  // Helper function to get show start date (when user added it or first episode aired)
+  const getShowStartDate = async (show: any): Promise<Date> => {
+    // Try to get the first episode air date
+    const episodeData = await fetchEpisodeData(show.show.tmdb_id);
+    
+    if (episodeData?.episodes && episodeData.episodes.length > 0) {
+      // Find the earliest episode air date
+      const sortedEpisodes = episodeData.episodes
+        .filter((ep: any) => ep.airDate)
+        .sort((a: any, b: any) => new Date(a.airDate).getTime() - new Date(b.airDate).getTime());
+      
+      if (sortedEpisodes.length > 0) {
+        return new Date(sortedEpisodes[0].airDate);
+      }
+    }
+    
+    // Fallback to when user added the show
+    return new Date((show as any).added_at || Date.now());
+  };
+
+  // Helper function to get show end date dynamically from episode data
+  const getShowEndDate = async (tmdbId: number): Promise<Date> => {
+    const episodeData = await fetchEpisodeData(tmdbId);
+    
+    if (episodeData && episodeData.lastAirDate) {
+      return episodeData.lastAirDate;
+    }
+    
+    // Fallback: assume show runs for 6 months from today (for shows without known end dates)
+    const fallbackDate = new Date();
+    fallbackDate.setMonth(fallbackDate.getMonth() + 6);
+    return fallbackDate;
+  };
+
+  // Helper function to extract provider name from show
+  const getProviderNameFromShow = (show: any): string | null => {
+    // This will depend on the show data structure
+    // For now, let's check if streaming_provider exists
+    if (show.streaming_provider?.name) {
+      return show.streaming_provider.name;
+    }
+    return null;
+  };
+
+  // Helper function to extract provider logo URL from show
+  const getProviderLogoFromShow = (show: any): string | null => {
+    if (show.streaming_provider?.logo_url) {
+      return show.streaming_provider.logo_url;
+    }
+    return null;
+  };
+
+  // Helper function to get estimated provider cost
+  const getProviderCost = (providerName: string): number => {
+    const costs: Record<string, number> = {
+      'Netflix': 15.99,
+      'HBO Max': 14.99,
+      'Disney Plus': 12.99,
+      'Disney+': 12.99,
+      'Hulu': 11.99,
+      'Amazon Prime Video': 8.99,
+      'Prime Video': 8.99,
+      'Apple TV Plus': 6.99,
+      'Apple TV+': 6.99,
+      'Paramount+ with Showtime': 11.99,
+      'Paramount+': 8.99
+    };
+    return costs[providerName] || 9.99;
+  };
+
+  // Helper function to get provider legend color
+  const getProviderLegendColor = (providerName: string): string => {
+    const colors: Record<string, string> = {
+      'Netflix': 'bg-red-500',
+      'HBO Max': 'bg-purple-500',
+      'Disney Plus': 'bg-blue-500',
+      'Disney+': 'bg-blue-500',
+      'Hulu': 'bg-green-500',
+      'Amazon Prime Video': 'bg-indigo-500',
+      'Prime Video': 'bg-indigo-500',
+      'Apple TV Plus': 'bg-gray-500',
+      'Apple TV+': 'bg-gray-500',
+      'Paramount+ with Showtime': 'bg-orange-500',
+      'Paramount+': 'bg-orange-500'
+    };
+    return colors[providerName] || 'bg-gray-400';
   };
 
   const generateMockCalendarData = (): CalendarDay[] => {
@@ -160,7 +532,20 @@ const OverviewCalendar: React.FC = () => {
 
   const handleDateClick = (day: CalendarDay) => {
     setSelectedDay(day);
+    setSelectedDate(day.date);
   };
+
+  // Monthly spend must be declared as a hook before any conditional return
+  const monthlySpend = React.useMemo(() => {
+    const unique = new Map<string, number>();
+    calendarData.forEach(d => {
+      if (!d.isCurrentMonth) return;
+      d.activeServices.forEach(s => {
+        if (!unique.has(s.serviceId)) unique.set(s.serviceId, s.cost || 0);
+      });
+    });
+    return Array.from(unique.values()).reduce((a, b) => a + b, 0);
+  }, [calendarData, currentDate]);
 
   if (loading) {
     return (
@@ -183,25 +568,31 @@ const OverviewCalendar: React.FC = () => {
             Visual overview of your streaming services usage and optimization opportunities
           </p>
         </div>
-        
-        <div className="flex items-center space-x-4">
+
+        <div className="flex items-center space-x-3">
           <button
             onClick={() => navigateMonth('prev')}
-            className="p-2 text-gray-500 hover:text-gray-700"
+            className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
+            aria-label="Previous month"
           >
-            ← Previous
+            ←
+          </button>
+          <div className="text-lg font-semibold text-gray-900">
+            {currentDate.toLocaleString('default', { month: 'long' })}, {currentDate.getFullYear()}
+            <span className="ml-2 text-sm font-normal text-gray-500">${monthlySpend.toFixed(2)} monthly spend</span>
+          </div>
+          <button
+            onClick={() => navigateMonth('next')}
+            className="p-2 rounded-md hover:bg-gray-100 text-gray-600"
+            aria-label="Next month"
+          >
+            →
           </button>
           <button
             onClick={() => setCurrentDate(new Date())}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="ml-2 px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Today
-          </button>
-          <button
-            onClick={() => navigateMonth('next')}
-            className="p-2 text-gray-500 hover:text-gray-700"
-          >
-            Next →
           </button>
         </div>
       </div>
@@ -213,12 +604,15 @@ const OverviewCalendar: React.FC = () => {
         data={calendarData}
         onDateClick={handleDateClick}
         mode="overview"
+        userProviders={userProviders}
+        selectedDate={selectedDate}
+        showHeader={false}
       />
 
       {/* Day Detail Modal */}
       {selectedDay && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 shadow-lg">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">
                 {new Date(selectedDay.date).toLocaleDateString('en-US', {
@@ -241,29 +635,29 @@ const OverviewCalendar: React.FC = () => {
               {selectedDay.activeServices.length > 0 ? (
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">Active Services</h4>
-                  <div className="space-y-2">
-                    {selectedDay.activeServices.map((service) => (
-                      <div key={service.serviceId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <div className="font-medium">{service.serviceName}</div>
-                          <div className="text-sm text-gray-600">
-                            {service.userShows.length} show{service.userShows.length !== 1 ? 's' : ''}
-                            {service.userShows.length > 0 && ': ' + service.userShows.join(', ')}
+                  <div className="divide-y divide-gray-200 rounded-lg border border-gray-200 overflow-hidden">
+                    {selectedDay.activeServices.slice(0, 10).map((service) => (
+                      <div key={service.serviceId} className="flex items-center justify-between p-3 bg-white">
+                        <div className="flex items-center gap-3">
+                          <div className="w-7 h-7 rounded-full bg-white shadow border border-gray-200 flex items-center justify-center overflow-hidden">
+                            {service.logoUrl ? (
+                              <img src={service.logoUrl} alt={service.serviceName} className="w-5 h-5 object-contain" />
+                            ) : (
+                              <div className={`w-4 h-4 rounded-full ${getProviderLegendColor(service.serviceName)}`} />
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-medium">{service.serviceName}</div>
+                            <div className="text-xs text-gray-600">{service.userShows.length} show{service.userShows.length !== 1 ? 's' : ''}</div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-medium">${service.cost.toFixed(2)}</div>
-                          <div className={`text-sm ${
-                            service.intensity > 0.7 ? 'text-green-600' : 
-                            service.intensity > 0.3 ? 'text-yellow-600' : 
-                            'text-gray-600'
-                          }`}>
-                            {service.intensity > 0.7 ? 'Heavy use' : 
-                             service.intensity > 0.3 ? 'Light use' : 'Minimal use'}
-                          </div>
-                        </div>
+                        <div className="text-right text-sm font-medium">${service.cost.toFixed(2)}</div>
                       </div>
                     ))}
+                    <div className="flex items-center justify-between p-3 bg-gray-50">
+                      <div className="text-xs font-semibold text-gray-700 tracking-wide">TOTAL</div>
+                      <div className="text-sm font-semibold">${selectedDay.activeServices.reduce((sum, s) => sum + (s.cost || 0), 0).toFixed(2)}</div>
+                    </div>
                   </div>
                 </div>
               ) : (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 interface PatternAnalysisProps {
   analysis: {
@@ -45,6 +45,9 @@ interface PatternAnalysisProps {
   } | null;
   loading?: boolean;
   error?: string;
+  onEpisodeClick?: (episode: { number: number; airDate: string; title: string; seasonNumber: number }) => void;
+  showInteractiveEpisodes?: boolean;
+  watchedEpisodes?: Set<string>;
 }
 
 // Simple Provider Card Component
@@ -87,7 +90,14 @@ const ProviderCard: React.FC<{
   );
 };
 
-const PatternAnalysis: React.FC<PatternAnalysisProps> = ({ analysis, loading, error }) => {
+const PatternAnalysis: React.FC<PatternAnalysisProps> = ({ 
+  analysis, 
+  loading, 
+  error, 
+  onEpisodeClick, 
+  showInteractiveEpisodes = false,
+  watchedEpisodes = new Set()
+}) => {
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-6">
@@ -146,6 +156,43 @@ const PatternAnalysis: React.FC<PatternAnalysisProps> = ({ analysis, loading, er
     return weeks === 1 ? '1 week' : `${weeks} weeks`;
   };
 
+  // Helper function to determine episode state for interactive episodes
+  const getEpisodeState = (episode: { airDate: string; number: number }, index: number, episodes: Array<{ airDate: string }>, seasonNumber: number) => {
+    const episodeKey = `S${seasonNumber}E${episode.number}`;
+    const isWatched = watchedEpisodes.has(episodeKey);
+    
+    if (isWatched) {
+      return 'watched';
+    }
+    
+    const now = new Date();
+    const episodeDate = new Date(episode.airDate);
+    
+    if (episodeDate > now) {
+      // Future episode
+      const nextUnaired = episodes.findIndex(ep => new Date(ep.airDate) > now);
+      return index === nextUnaired ? 'next' : 'future';
+    }
+    return 'aired';
+  };
+
+  const getEpisodeStyles = (state: string, isClickable: boolean) => {
+    const baseStyles = "flex items-center justify-between py-2 px-3 rounded border transition-all";
+    const clickableStyles = isClickable ? "cursor-pointer hover:shadow-md" : "";
+    
+    switch (state) {
+      case 'watched':
+        return `${baseStyles} ${clickableStyles} bg-green-50 border-green-200 text-green-800`;
+      case 'next':
+        return `${baseStyles} ${clickableStyles} bg-blue-50 border-blue-200 ring-2 ring-blue-100`;
+      case 'future':
+        return `${baseStyles} ${clickableStyles} bg-gray-100 border-gray-200 opacity-60`;
+      case 'aired':
+      default:
+        return `${baseStyles} ${clickableStyles} bg-white border-gray-200 hover:bg-gray-50`;
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 space-y-6">
       {/* Show Header */}
@@ -193,19 +240,53 @@ const PatternAnalysis: React.FC<PatternAnalysisProps> = ({ analysis, loading, er
       {/* Episode Timeline */}
       {analysis.diagnostics.episodeDetails.length > 0 && (
         <div>
-          <h3 className="font-medium text-gray-900 mb-3">Episode Timeline</h3>
+          <h3 className="font-medium text-gray-900 mb-3">
+            Episode Timeline
+            {showInteractiveEpisodes && (
+              <span className="ml-2 text-xs text-gray-500">(Click episode to set progress)</span>
+            )}
+          </h3>
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="grid gap-2 max-h-64 overflow-y-auto">
               {analysis.diagnostics.episodeDetails.map((episode, index) => {
                 const interval = index > 0 ? analysis.diagnostics.intervals[index - 1] : 0;
+                const episodeState = showInteractiveEpisodes 
+                  ? getEpisodeState(episode, index, analysis.diagnostics.episodeDetails, analysis.analyzedSeason)
+                  : 'aired';
+                const isClickable = showInteractiveEpisodes && !!onEpisodeClick;
+                
                 return (
-                  <div key={episode.number} className="flex items-center justify-between py-2 px-3 bg-white rounded border">
+                  <div 
+                    key={episode.number} 
+                    className={getEpisodeStyles(episodeState, isClickable)}
+                    onClick={() => {
+                      if (isClickable && onEpisodeClick) {
+                        onEpisodeClick({
+                          ...episode,
+                          seasonNumber: analysis.analyzedSeason
+                        });
+                      }
+                    }}
+                  >
                     <div className="flex items-center space-x-3">
-                      <span className="w-6 h-6 bg-blue-100 text-blue-800 rounded-full text-xs font-medium flex items-center justify-center">
-                        {episode.number}
+                      <span className={`w-6 h-6 rounded-full text-xs font-medium flex items-center justify-center ${
+                        episodeState === 'watched'
+                          ? 'bg-green-200 text-green-800'
+                          : episodeState === 'next' 
+                          ? 'bg-blue-200 text-blue-800' 
+                          : episodeState === 'future'
+                          ? 'bg-gray-300 text-gray-600'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {episodeState === 'watched' ? '✓' : episode.number}
                       </span>
-                      <span className="text-sm font-medium text-gray-900 truncate">
+                      <span className={`text-sm font-medium truncate ${
+                        episodeState === 'future' ? 'text-gray-500' : 'text-gray-900'
+                      }`}>
                         {episode.title}
+                        {episodeState === 'next' && showInteractiveEpisodes && (
+                          <span className="ml-2 text-xs text-blue-600">(Next airing)</span>
+                        )}
                       </span>
                     </div>
                     <div className="text-right text-xs text-gray-500">

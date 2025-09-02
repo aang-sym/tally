@@ -1,13 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import CalendarView, { CalendarDay } from './CalendarView';
+import { UserManager } from '../UserSwitcher';
+
+interface UserSubscription {
+  id: string;
+  service_id: string;
+  monthly_cost: number;
+  is_active: boolean;
+  service: {
+    id: string;
+    name: string;
+    logo_url?: string;
+  };
+}
+
+interface UserShow {
+  id: string;
+  show_id: string;
+  status: 'watchlist' | 'watching' | 'completed' | 'dropped';
+  show: {
+    title: string;
+    tmdb_id: number;
+  };
+}
+
+interface SavingsCalendarProps {
+  useUserData?: boolean;
+  userSubscriptions?: UserSubscription[] | undefined;
+  userShows?: UserShow[] | undefined;
+}
 
 // API base URL
 const API_BASE = 'http://localhost:3001';
 
-// Mock user ID (would come from authentication)
-const USER_ID = 'user-1';
-
-const SavingsCalendar: React.FC = () => {
+const SavingsCalendar: React.FC<SavingsCalendarProps> = ({ 
+  useUserData = false, 
+  userSubscriptions = [], 
+  userShows = [] 
+}) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarData, setCalendarData] = useState<CalendarDay[]>([]);
   const [loading, setLoading] = useState(true);
@@ -15,16 +45,34 @@ const SavingsCalendar: React.FC = () => {
 
   useEffect(() => {
     fetchSavingsData();
-  }, [currentDate, selectedStrategy]);
+  }, [currentDate, selectedStrategy, useUserData, userSubscriptions, userShows]);
 
   const fetchSavingsData = async () => {
     try {
       setLoading(true);
       
-      // Fetch savings simulation data
-      const response = await fetch(`${API_BASE}/api/recommendations/savings-simulator`, {
-        headers: { 'x-user-id': USER_ID }
-      });
+      if (useUserData && (userSubscriptions?.length || 0) === 0) {
+        // No subscription data for savings calculation
+        setCalendarData([]);
+        setLoading(false);
+        return;
+      }
+      
+      // Get user ID for API calls
+      const userId = UserManager.getCurrentUserId();
+      
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      try {
+        // Fetch savings simulation data
+        const response = await fetch(`${API_BASE}/api/recommendations/savings-simulator`, {
+          headers: { 'x-user-id': userId },
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
 
       if (response.ok) {
         const data = await response.json();
@@ -36,12 +84,30 @@ const SavingsCalendar: React.FC = () => {
         // Generate calendar data based on selected strategy
         const transformedData = generateSavingsCalendarData(selectedStrategyData);
         setCalendarData(transformedData);
-      } else {
-        // Generate mock savings data if API fails
+        } else {
+          // API returned error status
+          console.warn('SavingsCalendar - API returned non-OK status:', response.status, response.statusText);
+          setCalendarData(generateMockSavingsData());
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        console.error('SavingsCalendar - Fetch error:', fetchError);
+        
+        if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+          console.warn('SavingsCalendar - Request timed out after 10 seconds');
+        }
+        
+        // Fall back to mock data on fetch error
         setCalendarData(generateMockSavingsData());
       }
     } catch (error) {
-      console.error('Failed to fetch savings data:', error);
+      const currentUserId = UserManager.getCurrentUserId();
+      console.error('SavingsCalendar - Failed to fetch savings data:', error);
+      console.error('SavingsCalendar - API URL was:', `${API_BASE}/api/recommendations/savings-simulator`);
+      console.error('SavingsCalendar - User ID was:', currentUserId);
+      console.error('SavingsCalendar - useUserData:', useUserData, 'hasUserData:', (userSubscriptions?.length || 0) > 0);
+      
+      // Fall back to mock data
       setCalendarData(generateMockSavingsData());
     } finally {
       setLoading(false);

@@ -1,11 +1,85 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import OverviewCalendar from '../components/calendar/OverviewCalendar';
 import SavingsCalendar from '../components/calendar/SavingsCalendar';
+import { UserManager } from '../components/UserSwitcher';
 
 type CalendarView = 'overview' | 'savings' | 'provider' | 'personal';
 
+interface UserSubscription {
+  id: string;
+  service_id: string;
+  monthly_cost: number;
+  is_active: boolean;
+  service: {
+    id: string;
+    name: string;
+    logo_url?: string;
+  };
+}
+
+interface UserShow {
+  id: string;
+  show_id: string;
+  status: 'watchlist' | 'watching' | 'completed' | 'dropped';
+  streaming_provider?: {
+    id: number;
+    name: string;
+    logo_url: string;
+  } | null;
+  show: {
+    title: string;
+    tmdb_id: number;
+  };
+}
+
+const API_BASE = 'http://localhost:3001';
+
 const Calendar: React.FC = () => {
   const [currentView, setCurrentView] = useState<CalendarView>('overview');
+  const [userSubscriptions, setUserSubscriptions] = useState<UserSubscription[]>([]);
+  const [userShows, setUserShows] = useState<UserShow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const userId = UserManager.getCurrentUserId();
+
+      // Load user subscriptions
+      const subscriptionsResponse = await fetch(`${API_BASE}/api/users/${userId}/subscriptions`, {
+        headers: { 'x-user-id': userId }
+      });
+      if (subscriptionsResponse.ok) {
+        const subscriptionsData = await subscriptionsResponse.json();
+        setUserSubscriptions(subscriptionsData.data.subscriptions || []);
+      }
+
+      // Load user shows
+      const showsResponse = await fetch(`${API_BASE}/api/watchlist-v2`, {
+        headers: { 'x-user-id': userId }
+      });
+      if (showsResponse.ok) {
+        const showsData = await showsResponse.json();
+        setUserShows(showsData.data.shows || []);
+      }
+
+    } catch (err) {
+      console.error('Failed to load user data:', err);
+      setError('Failed to load your data. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const hasUserData = () => {
+    return userSubscriptions.length > 0 || userShows.length > 0;
+  };
 
   const views = [
     { id: 'overview' as const, name: 'Overview', icon: '📊', description: 'Multi-service overview' },
@@ -15,11 +89,17 @@ const Calendar: React.FC = () => {
   ];
 
   const renderCurrentView = () => {
+    const viewProps = {
+      useUserData: hasUserData(),
+      userSubscriptions: userSubscriptions,
+      userShows: userShows
+    };
+
     switch (currentView) {
       case 'overview':
-        return <OverviewCalendar />;
+        return <OverviewCalendar {...viewProps} />;
       case 'savings':
-        return <SavingsCalendar />;
+        return <SavingsCalendar {...viewProps} />;
       case 'provider':
         return (
           <div className="bg-white rounded-lg shadow p-8 text-center">
@@ -31,17 +111,43 @@ const Calendar: React.FC = () => {
           </div>
         );
       case 'personal':
-        return (
+        return userShows.length > 0 ? (
+          <div className="bg-white rounded-lg shadow p-8">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Your Shows Timeline</h3>
+            <div className="space-y-3">
+              {userShows.slice(0, 10).map((userShow) => (
+                <div key={userShow.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                  <div>
+                    <span className="font-medium">{userShow.show.title}</span>
+                    <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                      userShow.status === 'watching' ? 'bg-green-100 text-green-800' :
+                      userShow.status === 'completed' ? 'bg-purple-100 text-purple-800' :
+                      userShow.status === 'watchlist' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {userShow.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {userShows.length > 10 && (
+                <p className="text-sm text-gray-500 text-center">
+                  And {userShows.length - 10} more shows...
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
           <div className="bg-white rounded-lg shadow p-8 text-center">
             <div className="text-6xl mb-4">👤</div>
             <h3 className="text-xl font-semibold text-gray-700 mb-2">Personal Schedule</h3>
             <p className="text-gray-500">
-              Your personalized show timeline and viewing schedule coming soon
+              Add shows to your watchlist to see your personalized timeline
             </p>
           </div>
         );
       default:
-        return <OverviewCalendar />;
+        return <OverviewCalendar {...viewProps} />;
     }
   };
 
@@ -49,34 +155,63 @@ const Calendar: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header and View Selector */}
       <div className="mb-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Calendar</h1>
-            <p className="text-gray-600 mt-2">
-              View your subscription calendar and optimize your streaming costs
-            </p>
+        <div className="flex flex-col space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Calendar</h1>
+              <p className="text-gray-600 mt-2">
+                View your subscription calendar and optimize your streaming costs
+              </p>
+            </div>
+            
+            {/* View Tabs */}
+            <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+              {views.map((view) => (
+                <button
+                  key={view.id}
+                  onClick={() => setCurrentView(view.id)}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    currentView === view.id
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  title={view.description}
+                >
+                  <span className="mr-2">{view.icon}</span>
+                  {view.name}
+                </button>
+              ))}
+            </div>
           </div>
           
-          {/* View Tabs */}
-          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-            {views.map((view) => (
-              <button
-                key={view.id}
-                onClick={() => setCurrentView(view.id)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  currentView === view.id
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-                title={view.description}
-              >
-                <span className="mr-2">{view.icon}</span>
-                {view.name}
-              </button>
-            ))}
+          {/* User Data Status */}
+          <div className="flex items-center justify-end">
+            <div className="text-sm">
+              <div className="flex items-center space-x-4 text-gray-600">
+                <span>{userSubscriptions.filter(s => s.is_active).length} active subscriptions</span>
+                <span>{userShows.length} shows</span>
+                {loading && <span className="ml-2">⏳ Loading...</span>}
+              </div>
+            </div>
           </div>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="mt-4">
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <span className="text-yellow-400 text-xl">⚠️</span>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">{error}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* View Description */}
         <div className="mt-4">
           <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
@@ -90,6 +225,7 @@ const Calendar: React.FC = () => {
                 <p className="text-sm text-blue-700">
                   <strong>{views.find(v => v.id === currentView)?.name}:</strong>{' '}
                   {views.find(v => v.id === currentView)?.description}
+                  <span className="ml-2 font-medium">(Using your data)</span>
                 </p>
                 {currentView === 'overview' && (
                   <p className="text-xs text-blue-600 mt-1">
@@ -99,6 +235,11 @@ const Calendar: React.FC = () => {
                 {currentView === 'savings' && (
                   <p className="text-xs text-blue-600 mt-1">
                     Green days show savings opportunities, red days show costs - compare different optimization strategies
+                  </p>
+                )}
+                {!hasUserData() && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    💡 Add streaming subscriptions in Settings and shows in your Watchlist to see personalized data
                   </p>
                 )}
               </div>

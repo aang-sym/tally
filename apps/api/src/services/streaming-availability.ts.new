@@ -1,0 +1,16 @@
+/**
+ * Streaming Availability Service
+ * 
+ * Service layer wrapper around the Streaming Availability API client
+ * with caching, rate limiting, and error handling specific to our API.
+ */
+
+import { 
+  StreamingAvailabilityClient, 
+  StreamingAvailabilityError,
+  type StreamingAvailability,
+  releasePatternService,
+} from '@tally/core';
+import type { Episode, ReleasePatternAnalysis } from '@tally/core/types';
+import { config } from '../config/index.js';
+import { quotaTracker } from './quota-tracker.js';

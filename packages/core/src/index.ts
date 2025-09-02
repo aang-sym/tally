@@ -1,5 +1,4 @@
 import type { ServiceWindow, SavingsEstimate } from '@tally/types';
-import type { ReleasePattern } from './types.js';
 
 // Re-export streaming availability client and types
 export { 
@@ -28,8 +27,7 @@ export {
 export type { 
   EpisodeMetadata,
   ReleasePattern,
-  ReleasePatternAnalysis,
-  PatternDiagnostic
+  ReleasePatternAnalysis 
 } from './types';
 
 // Export release pattern service
@@ -127,7 +125,7 @@ export function getStreamingService(serviceId: string) {
 export async function detectReleasePatternFromTMDB(
   showTitle: string, 
   tmdbApiKey: string
-): Promise<{ pattern: ReleasePattern; tmdbId?: number } | null> {
+): Promise<{ pattern: 'weekly' | 'binge' | 'unknown'; tmdbId?: number } | null> {
   const { TMDBClient } = await import('./external/tmdb.js');
   const tmdbClient = new TMDBClient(tmdbApiKey);
   return tmdbClient.detectReleasePatternFromTitle(showTitle);

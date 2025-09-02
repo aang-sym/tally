@@ -1,4 +1,3 @@
-import { FC } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // Layout Components
@@ -10,9 +9,9 @@ import Dashboard from './pages/Dashboard';
 import MyShows from './pages/MyShows';
 import Calendar from './pages/Calendar';
 import Recommendations from './pages/Recommendations';
-
-// Development Components
-import TMDBTestingDashboard from './components/TMDBTestingDashboard';
+import SearchShows from './pages/SearchShows';
+import Settings from './pages/Settings';
+import Admin from './pages/Admin';
 
 function App() {
   return (
@@ -27,9 +26,13 @@ function App() {
           <Route path="/my-shows" element={<MyShows />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/recommendations" element={<Recommendations />} />
+          <Route path="/search" element={<SearchShows />} />
+          <Route path="/settings" element={<Settings />} />
           
           {/* Development Routes */}
-          <Route path="/tmdb-testing" element={<TMDBTestingDashboard />} />
+          {process.env.NODE_ENV === 'development' && (
+            <Route path="/admin" element={<Admin />} />
+          )}
         </Route>
 
         {/* Redirect /app to /dashboard for convenience */}

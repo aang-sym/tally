@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
+import UserSwitcher from './UserSwitcher';
 
 const Layout: React.FC = () => {
   const location = useLocation();
@@ -7,12 +8,10 @@ const Layout: React.FC = () => {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: '🏠' },
     { name: 'My Shows', href: '/my-shows', icon: '📺' },
+    { name: 'Search Shows', href: '/search', icon: '🔍' },
     { name: 'Calendar', href: '/calendar', icon: '📅' },
     { name: 'Recommendations', href: '/recommendations', icon: '💡' },
-  ];
-
-  const devNavigation = [
-    { name: 'TMDB Testing', href: '/tmdb-testing', icon: '🔧' },
+    { name: 'Settings', href: '/settings', icon: '⚙️' },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -48,34 +47,25 @@ const Layout: React.FC = () => {
               ))}
             </nav>
 
-            {/* Dev Tools & User Menu */}
+            {/* User Menu */}
             <div className="flex items-center space-x-4">
-              {/* Dev Navigation (only in development) */}
+              {/* Dev Admin Link (only in development) */}
               {process.env.NODE_ENV === 'development' && (
-                <div className="hidden md:flex space-x-4">
-                  {devNavigation.map((item) => (
-                    <Link
-                      key={item.name}
-                      to={item.href}
-                      className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                        isActive(item.href)
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <span className="mr-2">{item.icon}</span>
-                      {item.name}
-                    </Link>
-                  ))}
-                </div>
+                <Link
+                  to="/admin"
+                  className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    isActive('/admin')
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="mr-2">⚙️</span>
+                  Admin
+                </Link>
               )}
-
-              {/* User Menu Placeholder */}
-              <div className="flex items-center">
-                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-medium text-gray-600">U</span>
-                </div>
-              </div>
+              
+              {/* User Switcher */}
+              <UserSwitcher />
             </div>
           </div>
         </div>
@@ -98,24 +88,21 @@ const Layout: React.FC = () => {
               </Link>
             ))}
             
-            {/* Dev tools in mobile */}
+            {/* Dev admin in mobile */}
             {process.env.NODE_ENV === 'development' && (
               <>
                 <div className="border-t border-gray-200 my-2"></div>
-                {devNavigation.map((item) => (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className={`block px-3 py-2 text-base font-medium rounded-md transition-colors ${
-                      isActive(item.href)
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    }`}
-                  >
-                    <span className="mr-3">{item.icon}</span>
-                    {item.name}
-                  </Link>
-                ))}
+                <Link
+                  to="/admin"
+                  className={`block px-3 py-2 text-base font-medium rounded-md transition-colors ${
+                    isActive('/admin')
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="mr-3">⚙️</span>
+                  Admin
+                </Link>
               </>
             )}
           </div>
