@@ -414,9 +414,28 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
   // Helper function to extract provider logo URL from show
   const getProviderLogoFromShow = (show: any): string | null => {
     if (show.streaming_provider?.logo_url) {
-      return show.streaming_provider.logo_url;
+      return upgradeTmdbLogoUrl(show.streaming_provider.logo_url);
     }
     return null;
+  };
+
+  // Prefer highest-quality TMDB images if URL is from TMDB
+  const upgradeTmdbLogoUrl = (url: string | null): string | null => {
+    if (!url) return url;
+    try {
+      const u = new URL(url, window.location.origin);
+      if (u.hostname.includes('image.tmdb.org') && u.pathname.includes('/t/p/')) {
+        // Replace size segment (e.g., /w92/, /w185/) with /original/
+        const parts = u.pathname.split('/');
+        const idx = parts.findIndex(p => /^w\d+$/.test(p));
+        if (idx !== -1) {
+          parts[idx] = 'original';
+          u.pathname = parts.join('/');
+          return u.toString();
+        }
+      }
+    } catch (_) { /* ignore malformed URL */ }
+    return url;
   };
 
   // Helper function to get estimated provider cost
@@ -597,6 +616,31 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
         </div>
       </div>
 
+      {/* Legend */}
+      <div className="flex items-center gap-6 text-xs text-gray-600">
+        <div className="flex items-center gap-1">
+          <span className="inline-flex -space-x-1">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span>
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+          </span>
+          <span>Ongoing pips (color = provider)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-700">Status dots on logo:</span>
+          <span className="w-2 h-2 rounded-full bg-green-500"></span>
+          <span>Start</span>
+          <span className="w-2 h-2 rounded-full bg-orange-500 ml-3"></span>
+          <span>Ending soon</span>
+          <span className="w-2 h-2 rounded-full bg-red-500 ml-3"></span>
+          <span>End</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700 font-medium">+3</span>
+          <span>More services</span>
+        </div>
+      </div>
+
       {/* Main Calendar */}
       <CalendarView
         year={currentDate.getFullYear()}
@@ -608,6 +652,7 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
         selectedDate={selectedDate}
         showHeader={false}
       />
+
 
       {/* Day Detail Modal */}
       {selectedDay && (
@@ -639,11 +684,11 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
                     {selectedDay.activeServices.slice(0, 10).map((service) => (
                       <div key={service.serviceId} className="flex items-center justify-between p-3 bg-white">
                         <div className="flex items-center gap-3">
-                          <div className="w-7 h-7 rounded-full bg-white shadow border border-gray-200 flex items-center justify-center overflow-hidden">
+                          <div className="w-8 h-8 rounded-full overflow-hidden ring-1 ring-gray-300 shadow">
                             {service.logoUrl ? (
-                              <img src={service.logoUrl} alt={service.serviceName} className="w-5 h-5 object-contain" />
+                              <img src={service.logoUrl} alt={service.serviceName} className="w-full h-full object-cover" />
                             ) : (
-                              <div className={`w-4 h-4 rounded-full ${getProviderLegendColor(service.serviceName)}`} />
+                              <div className={`w-full h-full ${getProviderLegendColor(service.serviceName)}`} />
                             )}
                           </div>
                           <div>

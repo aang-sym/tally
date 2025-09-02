@@ -41,7 +41,8 @@ Primary reference: Image 2 (stacked logo bubbles), light theme only.
 ## Progress
 
 - [x] Refactor CalendarView (Monday start + spillover days)
-- [x] Implement tile styling + rails + stacked icons
+- [x] Implement stacked centered logos (full-bleed)
+- [x] Replace rails with subtle continuity pips
 - [x] Add overflow +N and hover price badge
 - [x] Revamp header (chevrons + monthly spend)
 - [x] Enhance day detail modal + totals

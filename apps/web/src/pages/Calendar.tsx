@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import OverviewCalendar from '../components/calendar/OverviewCalendar';
 import SavingsCalendar from '../components/calendar/SavingsCalendar';
 import { UserManager } from '../components/UserSwitcher';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 type CalendarView = 'overview' | 'savings' | 'provider' | 'personal';
 
@@ -212,44 +213,13 @@ const Calendar: React.FC = () => {
           </div>
         )}
         
-        {/* View Description */}
-        <div className="mt-4">
-          <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <span className="text-blue-400 text-xl">
-                  {views.find(v => v.id === currentView)?.icon}
-                </span>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-blue-700">
-                  <strong>{views.find(v => v.id === currentView)?.name}:</strong>{' '}
-                  {views.find(v => v.id === currentView)?.description}
-                  <span className="ml-2 font-medium">(Using your data)</span>
-                </p>
-                {currentView === 'overview' && (
-                  <p className="text-xs text-blue-600 mt-1">
-                    Service logos as colored bars showing usage intensity across all your streaming services
-                  </p>
-                )}
-                {currentView === 'savings' && (
-                  <p className="text-xs text-blue-600 mt-1">
-                    Green days show savings opportunities, red days show costs - compare different optimization strategies
-                  </p>
-                )}
-                {!hasUserData() && (
-                  <p className="text-xs text-blue-600 mt-1">
-                    💡 Add streaming subscriptions in Settings and shows in your Watchlist to see personalized data
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* View Description removed per request */}
       </div>
 
       {/* Current View Content */}
-      {renderCurrentView()}
+      <ErrorBoundary>
+        {renderCurrentView()}
+      </ErrorBoundary>
 
       {/* Quick Actions */}
       <div className="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">

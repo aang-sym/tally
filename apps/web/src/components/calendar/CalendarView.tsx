@@ -160,69 +160,74 @@ const CalendarView: React.FC<CalendarProps> = ({
       return <div className="h-2 bg-gray-100 rounded-sm" />;
     }
 
-    // Overview mode – rails + stacked icons
-    const servicesToShow = dayData.activeServices.slice(0, 3);
-    const extraCount = Math.max(0, dayData.activeServices.length - 3);
+    // Overview mode – Stacked centered logos + subtle continuity pips
+    const logosToShow = dayData.activeServices
+      .filter((s) => s.displayType === 'logo')
+      .slice(0, 3);
+    const extraCount = Math.max(0, dayData.activeServices.filter(s => s.displayType === 'logo').length - 3);
+    const pipServices = dayData.activeServices.filter((s) => s.displayType === 'bar').slice(0, 3);
 
     return (
-      <div className="relative h-full">
-        {/* Rails (stacked vertically) */}
-        <div className="absolute inset-x-1 bottom-2 space-y-1">
-          {servicesToShow.map((service, idx) => (
-            <div key={`rail-${service.serviceId}-${idx}`} className="relative h-1.5">
-              <div
-                className={
-                  `absolute left-0 right-0 h-1.5 ${getServiceColor(service.serviceName, service.intensity)} ` +
-                  `${service.barLeftCap ? 'rounded-l-full' : ''} ${service.barRightCap ? 'rounded-r-full' : ''}`
-                }
-                title={`${service.serviceName}: Active period`}
-              />
+      <>
+        {/* Centered stacked logos */}
+        {logosToShow.length > 0 && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="flex items-center justify-center">
+              {logosToShow.map((service, idx) => (
+                <div
+                  key={`logo-${service.serviceId}-${idx}`}
+                  className="relative w-10 h-10 md:w-11 md:h-11 rounded-full overflow-hidden ring-1 ring-gray-300 shadow"
+                  style={{ marginLeft: idx === 0 ? 0 : -12, zIndex: 10 + idx }}
+                  title={service.serviceName}
+                >
+                  {service.logoUrl ? (
+                    <img
+                      src={service.logoUrl}
+                      alt={service.serviceName}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement as HTMLElement;
+                        if (parent) parent.className = `relative w-10 h-10 md:w-11 md:h-11 rounded-full ${getServiceColor(service.serviceName, service.intensity)} flex items-center justify-center`;
+                      }}
+                    />
+                  ) : (
+                    <div className={`w-full h-full ${getServiceColor(service.serviceName, service.intensity)}`} />
+                  )}
+                  {(service.isStart || service.isEnd || service.isEndingSoon) && (
+                    <span
+                      className={
+                        `absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ` +
+                        `${service.isEnd ? 'bg-red-500' : service.isEndingSoon ? 'bg-orange-500' : 'bg-green-500'}`
+                      }
+                    />
+                  )}
+                </div>
+              ))}
+              {extraCount > 0 && (
+                <div className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700 font-medium">
+                  +{extraCount}
+                </div>
+              )}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
-        {/* Stacked logos */}
-        <div className="absolute left-1 bottom-5 flex items-center">
-          {servicesToShow.map((service, idx) => (
-            <div
-              key={`logo-${service.serviceId}-${idx}`}
-              className="relative w-6 h-6 rounded-full overflow-hidden bg-white shadow border border-gray-300 flex items-center justify-center"
-              style={{ marginLeft: idx === 0 ? 0 : -8, zIndex: 10 + idx }}
-              title={`${service.serviceName}`}
-            >
-              {service.logoUrl ? (
-                <img
-                  src={service.logoUrl}
-                  alt={service.serviceName}
-                  className="w-4 h-4 object-contain"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                    const parent = target.parentElement as HTMLElement;
-                    if (parent) parent.className = `relative w-6 h-6 rounded-full ${getServiceColor(service.serviceName, service.intensity)} flex items-center justify-center`;
-                  }}
-                />
-              ) : (
-                <div className={`w-4 h-4 rounded-full ${getServiceColor(service.serviceName, service.intensity)}`} />
-              )}
-              {/* Status dot */}
-              {(service.isStart || service.isEnd || service.isEndingSoon) && (
-                <span
-                  className={
-                    `absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ` +
-                    `${service.isEnd ? 'bg-red-500' : service.isEndingSoon ? 'bg-orange-500' : 'bg-green-500'}`
-                  }
-                />
-              )}
-            </div>
-          ))}
-          {extraCount > 0 && (
-            <div className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-700 font-medium">
-              +{extraCount}
-            </div>
-          )}
-        </div>
-      </div>
+        {/* Continuity pips (for bar days) */}
+        {pipServices.length > 0 && (
+          <div className="absolute bottom-2 inset-x-0 flex items-center justify-center space-x-1.5 pointer-events-none">
+            {pipServices.map((s, i) => (
+              <span
+                key={`pip-${s.serviceId}-${i}`}
+                className={`inline-block w-1.5 h-1.5 rounded-full opacity-80 ${getServiceColor(s.serviceName, s.intensity)}`}
+                title={`${s.serviceName}: ongoing`}
+              />)
+            )}
+          </div>
+        )}
+      </>
     );
   };
 
