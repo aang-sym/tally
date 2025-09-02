@@ -11,7 +11,17 @@ import { healthRouter } from './routes/health.js';
 import { streamingQuotaRouter } from './routes/streaming-quota.js';
 import { showsRouter } from './routes/shows.js';
 import { tmdbRouter } from './routes/tmdb.js';
+import { usageStatsRouter } from './routes/usage-stats.js';
+// New v4 routes
+import watchlistV2Router from './routes/watchlist-v2-simple.js';
+import progressRouter from './routes/progress.js';
+import ratingsRouter from './routes/ratings.js';
+import recommendationsRouter from './routes/recommendations.js';
+import dbAdminRouter from './routes/db-admin.js';
+import usersRouter from './routes/users-simple.js';
+import streamingServicesRouter from './routes/streaming-services.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { trackAPIUsage } from './middleware/usage-tracker.js';
 import { config } from './config/index.js';
 import { quotaTracker } from './services/quota-tracker.js';
 
@@ -20,7 +30,11 @@ const app = express();
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: config.frontendUrl,
+  origin: [
+    config.frontendUrl, 
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+  ],
   credentials: true,
 }));
 
@@ -39,7 +53,17 @@ app.use('/api/plan', planRouter);
 app.use('/api/health', healthRouter);
 app.use('/api/streaming-quota', streamingQuotaRouter);
 app.use('/api/shows', showsRouter);
-app.use('/api/tmdb', tmdbRouter);
+app.use('/api/tmdb', trackAPIUsage('tmdb'), tmdbRouter);
+app.use('/api/usage-stats', usageStatsRouter);
+
+// New v4 API routes
+app.use('/api/watchlist-v2', watchlistV2Router);
+app.use('/api/progress', progressRouter);
+app.use('/api/ratings', ratingsRouter);
+app.use('/api/recommendations', recommendationsRouter);
+app.use('/api/admin', dbAdminRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/streaming-services', streamingServicesRouter);
 
 // 404 handler
 app.use('*', (req, res) => {

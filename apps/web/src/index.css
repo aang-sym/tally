@@ -1,3 +1,55 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Calendar day container queries + responsive logo layout */
+.day-cq {
+  container-type: inline-size;
+}
+
+/* Defaults for stacked logos; adjusted via container queries */
+.logos {
+  --bubble: 42px;      /* default bubble diameter */
+  --overlap: 12px;     /* negative overlap between bubbles */
+}
+
+.logo {
+  width: var(--bubble);
+  height: var(--bubble);
+}
+
+/* Small circular plus that stacks with logos in wide/stacked mode */
+.plus-stacked {
+  width: calc(var(--bubble) * 0.5);
+  height: calc(var(--bubble) * 0.5);
+  margin-left: calc(var(--overlap) * -0.6);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+/* Medium tiles: slightly smaller */
+@container (max-width: 119px) {
+  .logos { --bubble: 36px; --overlap: 10px; }
+}
+
+/* Narrow tiles: switch to 2x2 grid; remove overlap */
+@container (max-width: 79px) {
+  .logos {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    place-items: center;
+  }
+  .logo { margin-left: 0 !important; }
+  .plus-stacked { display: none !important; }
+  .more-badge { display: inline-flex !important; }
+}
+
+/* Extra narrow: show one logo and a +N badge */
+@container (max-width: 59px) {
+  .logos { grid-template-columns: 1fr; }
+  .logo:nth-child(n+2) { display: none !important; }
+  .more-badge { display: inline-flex !important; }
+}

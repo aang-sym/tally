@@ -45,9 +45,59 @@ interface PatternAnalysisProps {
   } | null;
   loading?: boolean;
   error?: string;
+  onEpisodeClick?: (episode: { number: number; airDate: string; title: string; seasonNumber: number }) => void;
+  showInteractiveEpisodes?: boolean;
+  watchedEpisodes?: Set<string>;
 }
 
-const PatternAnalysis: React.FC<PatternAnalysisProps> = ({ analysis, loading, error }) => {
+// Simple Provider Card Component
+const ProviderCard: React.FC<{ 
+  provider: {
+    providerId: number;
+    name: string;
+    logo: string;
+    type: string;
+    deepLink?: string;
+  }
+}> = ({ provider }) => {
+  return (
+    <div className="bg-gray-50 rounded-lg p-3">
+      {/* Logo centered at top */}
+      <div className="flex justify-center mb-2">
+        {provider.logo && (
+          <img
+            src={provider.logo}
+            alt={provider.name}
+            className="w-10 h-10 rounded object-cover"
+          />
+        )}
+      </div>
+      
+      {/* Provider name - full text, no truncation */}
+      <div className="text-center mb-1">
+        <p className="text-sm font-medium text-gray-900 leading-tight">
+          {provider.name}
+        </p>
+      </div>
+      
+      {/* Service type */}
+      <div className="text-center">
+        <p className="text-xs text-gray-500 capitalize">
+          {provider.type}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+const PatternAnalysis: React.FC<PatternAnalysisProps> = ({ 
+  analysis, 
+  loading, 
+  error, 
+  onEpisodeClick, 
+  showInteractiveEpisodes = false,
+  watchedEpisodes = new Set()
+}) => {
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-6">
@@ -86,6 +136,7 @@ const PatternAnalysis: React.FC<PatternAnalysisProps> = ({ analysis, loading, er
       case 'weekly': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'premiere_weekly': return 'bg-green-100 text-green-800 border-green-200';
       case 'multi_weekly': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'multi_episodes_per_week': return 'bg-cyan-100 text-cyan-800 border-cyan-200';
       case 'mixed': return 'bg-orange-100 text-orange-800 border-orange-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -103,6 +154,43 @@ const PatternAnalysis: React.FC<PatternAnalysisProps> = ({ analysis, loading, er
     if (days < 7) return `${days} days`;
     const weeks = Math.round(days / 7);
     return weeks === 1 ? '1 week' : `${weeks} weeks`;
+  };
+
+  // Helper function to determine episode state for interactive episodes
+  const getEpisodeState = (episode: { airDate: string; number: number }, index: number, episodes: Array<{ airDate: string }>, seasonNumber: number) => {
+    const episodeKey = `S${seasonNumber}E${episode.number}`;
+    const isWatched = watchedEpisodes.has(episodeKey);
+    
+    if (isWatched) {
+      return 'watched';
+    }
+    
+    const now = new Date();
+    const episodeDate = new Date(episode.airDate);
+    
+    if (episodeDate > now) {
+      // Future episode
+      const nextUnaired = episodes.findIndex(ep => new Date(ep.airDate) > now);
+      return index === nextUnaired ? 'next' : 'future';
+    }
+    return 'aired';
+  };
+
+  const getEpisodeStyles = (state: string, isClickable: boolean) => {
+    const baseStyles = "flex items-center justify-between py-2 px-3 rounded border transition-all";
+    const clickableStyles = isClickable ? "cursor-pointer hover:shadow-md" : "";
+    
+    switch (state) {
+      case 'watched':
+        return `${baseStyles} ${clickableStyles} bg-green-50 border-green-200 text-green-800`;
+      case 'next':
+        return `${baseStyles} ${clickableStyles} bg-blue-50 border-blue-200 ring-2 ring-blue-100`;
+      case 'future':
+        return `${baseStyles} ${clickableStyles} bg-gray-100 border-gray-200 opacity-60`;
+      case 'aired':
+      default:
+        return `${baseStyles} ${clickableStyles} bg-white border-gray-200 hover:bg-gray-50`;
+    }
   };
 
   return (
@@ -152,19 +240,53 @@ const PatternAnalysis: React.FC<PatternAnalysisProps> = ({ analysis, loading, er
       {/* Episode Timeline */}
       {analysis.diagnostics.episodeDetails.length > 0 && (
         <div>
-          <h3 className="font-medium text-gray-900 mb-3">Episode Timeline</h3>
+          <h3 className="font-medium text-gray-900 mb-3">
+            Episode Timeline
+            {showInteractiveEpisodes && (
+              <span className="ml-2 text-xs text-gray-500">(Click episode to set progress)</span>
+            )}
+          </h3>
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="grid gap-2 max-h-64 overflow-y-auto">
               {analysis.diagnostics.episodeDetails.map((episode, index) => {
                 const interval = index > 0 ? analysis.diagnostics.intervals[index - 1] : 0;
+                const episodeState = showInteractiveEpisodes 
+                  ? getEpisodeState(episode, index, analysis.diagnostics.episodeDetails, analysis.analyzedSeason)
+                  : 'aired';
+                const isClickable = showInteractiveEpisodes && !!onEpisodeClick;
+                
                 return (
-                  <div key={episode.number} className="flex items-center justify-between py-2 px-3 bg-white rounded border">
+                  <div 
+                    key={episode.number} 
+                    className={getEpisodeStyles(episodeState, isClickable)}
+                    onClick={() => {
+                      if (isClickable && onEpisodeClick) {
+                        onEpisodeClick({
+                          ...episode,
+                          seasonNumber: analysis.analyzedSeason
+                        });
+                      }
+                    }}
+                  >
                     <div className="flex items-center space-x-3">
-                      <span className="w-6 h-6 bg-blue-100 text-blue-800 rounded-full text-xs font-medium flex items-center justify-center">
-                        {episode.number}
+                      <span className={`w-6 h-6 rounded-full text-xs font-medium flex items-center justify-center ${
+                        episodeState === 'watched'
+                          ? 'bg-green-200 text-green-800'
+                          : episodeState === 'next' 
+                          ? 'bg-blue-200 text-blue-800' 
+                          : episodeState === 'future'
+                          ? 'bg-gray-300 text-gray-600'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {episodeState === 'watched' ? '✓' : episode.number}
                       </span>
-                      <span className="text-sm font-medium text-gray-900 truncate">
+                      <span className={`text-sm font-medium truncate ${
+                        episodeState === 'future' ? 'text-gray-500' : 'text-gray-900'
+                      }`}>
                         {episode.title}
+                        {episodeState === 'next' && showInteractiveEpisodes && (
+                          <span className="ml-2 text-xs text-blue-600">(Next airing)</span>
+                        )}
                       </span>
                     </div>
                     <div className="text-right text-xs text-gray-500">
@@ -251,29 +373,26 @@ const PatternAnalysis: React.FC<PatternAnalysisProps> = ({ analysis, loading, er
           <h3 className="font-medium text-gray-900 mb-3">
             Available on ({analysis.country})
           </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-3">
             {analysis.watchProviders.map((provider) => (
-              <div
-                key={provider.providerId}
-                className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                {provider.logo && (
-                  <img
-                    src={provider.logo}
-                    alt={provider.name}
-                    className="w-8 h-8 rounded object-cover"
-                  />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-gray-900 truncate">
-                    {provider.name}
-                  </p>
-                  <p className="text-xs text-gray-500 capitalize">
-                    {provider.type}
-                  </p>
-                </div>
-              </div>
+              <ProviderCard key={provider.providerId} provider={provider} />
             ))}
+          </div>
+          
+          {/* JustWatch Attribution */}
+          <div className="text-xs text-gray-500 bg-gray-50 rounded p-2 border-l-2 border-blue-200">
+            <div className="flex items-center space-x-1">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+              <span>
+                Provider data powered by{' '}
+                <a href="https://www.justwatch.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">
+                  JustWatch
+                </a>
+                . Availability may vary by region and change frequently.
+              </span>
+            </div>
           </div>
         </div>
       )}

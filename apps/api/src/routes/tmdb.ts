@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { ValidationError } from '../middleware/errorHandler.js';
 import { tmdbService } from '../services/tmdb.js';
 import { releasePatternService } from '@tally/core';
+import { watchlistStorageService } from '../storage/simple-watchlist.js';
 // Types are inferred from the API responses, no imports needed from @tally/types for this router
 
 const router = Router();
@@ -150,6 +151,68 @@ router.post('/batch-analyze', async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error in batch analysis:', error);
+    next(error);
+  }
+});
+
+// Simple watchlist endpoints
+router.post('/watchlist', async (req, res, next) => {
+  try {
+    const { tmdbId, title, status = 'watchlist' } = req.body;
+    const userId = req.headers['x-user-id'] as string || 'user-1';
+
+    if (!tmdbId || !title) {
+      throw new ValidationError('tmdbId and title are required');
+    }
+
+    if (!['watchlist', 'watching', 'completed', 'dropped'].includes(status)) {
+      throw new ValidationError('status must be watchlist, watching, completed, or dropped');
+    }
+
+    // Add to shared storage
+    const item = watchlistStorageService.addItem(userId, {
+      tmdbId,
+      title,
+      status: status as any,
+      addedAt: new Date().toISOString()
+    });
+
+    // Check if it was an update or new item
+    const userWatchlist = watchlistStorageService.getUserWatchlist(userId);
+    const wasUpdate = userWatchlist.filter(i => i.tmdbId === tmdbId).length === 1;
+
+    const message = wasUpdate 
+      ? `Updated "${title}" status to ${status}`
+      : `Added "${title}" to ${status}`;
+
+    res.status(201).json({
+      success: true,
+      message,
+      item
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get user's watchlist
+router.get('/watchlist', async (req, res, next) => {
+  try {
+    const userId = req.headers['x-user-id'] as string || 'user-1';
+    const status = req.query.status as string;
+
+    const userWatchlist = watchlistStorageService.getUserWatchlist(userId);
+    
+    const filteredList = status 
+      ? userWatchlist.filter(item => item.status === status)
+      : userWatchlist;
+
+    res.json({
+      success: true,
+      items: filteredList,
+      total: filteredList.length
+    });
+  } catch (error) {
     next(error);
   }
 });

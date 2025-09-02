@@ -59,7 +59,7 @@ export const ContentAvailabilitySchema = z.object({
 });
 
 // Release pattern schemas - defined early to avoid dependency issues
-export const ReleasePatternSchema = z.enum(['weekly', 'binge', 'premiere_weekly', 'multi_weekly', 'mixed', 'unknown']);
+export const ReleasePatternSchema = z.enum(['weekly', 'binge', 'unknown']);
 
 export const EpisodeMetadataSchema = z.object({
   id: z.string(),
@@ -86,18 +86,6 @@ export const SearchResultSchema = z.object({
   nextCursor: z.string().optional(),
 });
 
-export const PatternDiagnosticSchema = z.object({
-  intervals: z.array(z.number()),
-  avgInterval: z.number(),
-  stdDev: z.number(),
-  maxInterval: z.number(),
-  minInterval: z.number(),
-  reasoning: z.string(),
-  premiereEpisodes: z.number().optional(),
-  hasPremierePattern: z.boolean().optional(),
-  hasMultiWeeklyPattern: z.boolean().optional(),
-});
-
 export const ReleasePatternAnalysisSchema = z.object({
   pattern: ReleasePatternSchema,
   confidence: z.number(),
@@ -105,7 +93,6 @@ export const ReleasePatternAnalysisSchema = z.object({
   seasonStart: z.string().datetime().optional(),
   seasonEnd: z.string().datetime().optional(),
   totalEpisodes: z.number().optional(),
-  diagnostics: PatternDiagnosticSchema.optional(),
 });
 
 // TMDB schemas
@@ -196,64 +183,8 @@ export type WaitlistResponse = z.infer<typeof WaitlistResponseSchema>;
 
 export type ReleasePattern = z.infer<typeof ReleasePatternSchema>;
 export type EpisodeMetadata = z.infer<typeof EpisodeMetadataSchema>;
-export type PatternDiagnostic = z.infer<typeof PatternDiagnosticSchema>;
 export type ReleasePatternAnalysis = z.infer<typeof ReleasePatternAnalysisSchema>;
 export type TMDBWatchProvider = z.infer<typeof TMDBWatchProviderSchema>;
-
-// TMDB Web Interface Types
-export const TMDBShowResultSchema = z.object({
-  id: z.number(),
-  title: z.string(),
-  year: z.number().optional(),
-  poster: z.string().optional(),
-  overview: z.string(),
-  firstAirDate: z.string().optional(),
-  status: z.string().optional(),
-});
-
-export const SeasonAnalysisSchema = z.object({
-  seasonNumber: z.number(),
-  episodeCount: z.number(),
-  airDate: z.string().optional(),
-  pattern: ReleasePatternSchema.optional(),
-  confidence: z.number().optional(),
-});
-
-export const EpisodeDiagnosticsSchema = z.object({
-  intervals: z.array(z.number()),
-  avgInterval: z.number(),
-  stdDev: z.number(),
-  reasoning: z.string(),
-  episodeDetails: z.array(z.object({
-    number: z.number(),
-    airDate: z.string(),
-    title: z.string(),
-  })).optional(),
-});
-
-export const PatternAnalysisSchema = z.object({
-  pattern: ReleasePatternSchema,
-  confidence: z.number(),
-  episodeCount: z.number(),
-  seasonInfo: z.array(SeasonAnalysisSchema),
-  reasoning: z.string(),
-  diagnostics: EpisodeDiagnosticsSchema,
-});
-
-export const WatchProviderSchema = z.object({
-  providerId: z.number(),
-  name: z.string(),
-  logo: z.string(),
-  type: z.enum(['subscription', 'rent', 'buy']),
-  price: z.string().optional(),
-  deepLink: z.string().optional(),
-});
-
-export type TMDBShowResult = z.infer<typeof TMDBShowResultSchema>;
-export type SeasonAnalysis = z.infer<typeof SeasonAnalysisSchema>;
-export type EpisodeDiagnostics = z.infer<typeof EpisodeDiagnosticsSchema>;
-export type PatternAnalysis = z.infer<typeof PatternAnalysisSchema>;
-export type WatchProvider = z.infer<typeof WatchProviderSchema>;
 
 export type StreamingService = z.infer<typeof StreamingServiceSchema>;
 export type StreamingOption = z.infer<typeof StreamingOptionSchema>;

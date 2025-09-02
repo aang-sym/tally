@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import TMDBSearch from './TMDBSearch';
 import PatternAnalysis from './PatternAnalysis';
+import APIUsageWidget from './APIUsageWidget';
 
 interface TMDBShow {
   id: number;
@@ -232,28 +233,34 @@ const TMDBTestingDashboard: React.FC = () => {
 
 
         {/* Stats Footer */}
-        <div className="mt-12 bg-white rounded-lg shadow-lg p-6">
-          <h3 className="font-medium text-gray-900 mb-4">Dashboard Statistics</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {selectedShow ? '1' : '0'}
+        <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Dashboard Statistics */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h3 className="font-medium text-gray-900 mb-4">Dashboard Statistics</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {selectedShow ? '1' : '0'}
+                </div>
+                <div className="text-sm text-gray-500">Shows Selected</div>
               </div>
-              <div className="text-sm text-gray-500">Shows Selected</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {analysisData ? '1' : '0'}
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {analysisData ? '1' : '0'}
+                </div>
+                <div className="text-sm text-gray-500">Patterns Analyzed</div>
               </div>
-              <div className="text-sm text-gray-500">Patterns Analyzed</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
-                {country}
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  {country}
+                </div>
+                <div className="text-sm text-gray-500">Active Region</div>
               </div>
-              <div className="text-sm text-gray-500">Active Region</div>
             </div>
           </div>
+          
+          {/* API Usage Widget */}
+          <APIUsageWidget />
         </div>
 
         {/* Quick Actions */}
