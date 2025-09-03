@@ -162,7 +162,93 @@ All major bug fixes and features have been successfully implemented:
 - **Calendar**: Resolved TypeError with proper date object handling
 - **Database**: Comprehensive Supabase schema ready for production with full user management
 
-The application is now ready for testing and deployment with all critical issues resolved.
+## Phase 6: Additional Bug Fixes & Enhancements ✅
+
+### 6.1 Database Query Tools ✅
+**Files**: 
+- `/apps/api/src/db/queries.sql` - Comprehensive SQL query collection
+- `/apps/api/src/db/README.md` - Database documentation and usage guide
+
+**Actions Completed**:
+- ✅ Added 18 useful SQL queries for user data analysis
+- ✅ Created database documentation with schema explanations
+- ✅ Included troubleshooting queries and performance tips
+- ✅ Added example queries for user shows, episode progress, and statistics
+
+### 6.2 SearchShows Poster Bug Fix ✅
+**Issue**: Poster persisted between different show searches (Dexter showed Alien Earth poster, etc.)
+**Files**: `/apps/web/src/pages/SearchShows.tsx` - Fixed selectShow function
+**Actions Completed**:
+- ✅ Clear analysis state when selecting new shows
+- ✅ Reset poster, loading, and error states between selections
+- ✅ Prevent poster caching issues across different shows
+
+### 6.3 TV Guide Date Offset Bug Fix ✅
+**Issue**: TV Guide showed dates ~5 days earlier than actual premiere dates
+**Files**: `/apps/api/src/routes/tv-guide.ts` - Fixed activeWindow calculation
+**Actions Completed**:
+- ✅ Removed artificial 5-day buffer from window start calculation
+- ✅ Use actual premiere dates without negative offset
+- ✅ Fixed Alien Earth (Aug 12) and Dexter (Aug 10) date display
+
+### 6.4 TV Guide Episode Slots Enhancement ✅
+**Feature**: Individual episode slots instead of show blocks
+**Files**: 
+- `/apps/api/src/routes/tv-guide.ts` - Episode-level API data
+- `/apps/web/src/components/tv-guide/TVGuide.tsx` - Episode slot rendering
+
+**Actions Completed**:
+- ✅ Modified API to return individual episode entries instead of show windows
+- ✅ Each episode gets its own time slot with specific details
+- ✅ Display format: Show Name + S#E## + Episode Title + Air Date
+- ✅ Improved visual layout for episode-specific information
+- ✅ Better poster sizing and episode metadata display
+
+## Implementation Checklist - UPDATED
+
+### Search Pattern Detection
+- [x] Fix premiere-weekly detection algorithm
+- [x] Add binge classification for completed seasons  
+- [x] Test with Alien Earth and other multi-premiere shows
+- [x] Verify pattern display in UI
+- [x] Fix search interface pattern detection consistency
+
+### My Shows Features
+- [x] Implement poster fetching from TMDB season endpoint
+- [x] Fix episode counter calculation (x/total episodes)
+- [ ] Add per-season vs per-show progress toggle (future enhancement)
+- [x] Test poster loading and episode counting
+
+### TV Guide Restoration
+- [x] Debug TV Guide API connection
+- [x] Fix user show data integration
+- [x] Test guide navigation and scrolling
+- [x] Verify show scheduling accuracy
+- [x] Fix date offset bug (-5 days)
+- [x] Add individual episode slots with detailed information
+
+### Calendar Bug Fix
+- [x] Fix endDate.toDateString TypeError
+- [x] Add date object validation
+- [x] Test calendar data generation
+- [x] Verify calendar displays correctly
+
+### Database Migration
+- [x] Set up Supabase project and connection
+- [x] Create user authentication system
+- [x] Implement user-specific show storage
+- [x] Migrate existing functionality to database
+- [x] Add data backup and sync features
+- [x] Create comprehensive SQL query reference
+- [x] Document database schema and operations
+
+### Bug Fixes & Enhancements
+- [x] Fix SearchShows poster caching between different shows
+- [x] Fix TV Guide date offset showing wrong premiere dates
+- [x] Enhance TV Guide with individual episode slots
+- [x] Add database query tools and documentation
+
+The application is now ready for testing and deployment with all critical issues resolved and enhanced features implemented.
 
 ---
 **Status Legend**: ✅ Completed | 🔄 In Progress | ❌ Not Started

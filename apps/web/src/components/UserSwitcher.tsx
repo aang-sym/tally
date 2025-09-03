@@ -15,7 +15,6 @@ interface UserSwitcherProps {
 
 // API base URL
 const API_BASE = 'http://localhost:3001';
-const isUUID = (id: string) => /^[0-9a-fA-F-]{36}$/.test(id);
 
 // User management utilities
 export const UserManager = {
@@ -30,8 +29,8 @@ export const UserManager = {
   getCurrentUser: async (): Promise<User | null> => {
     try {
       const userId = UserManager.getCurrentUserId();
-      const path = isUUID(userId) ? `/api/users-db/${userId}/profile` : `/api/users/${userId}`;
-      const response = await fetch(`${API_BASE}${path}`);
+      // Always use Supabase endpoint - /api/users/{id}/profile
+      const response = await fetch(`${API_BASE}/api/users/${userId}/profile`);
       if (response.ok) {
         const data = await response.json();
         return (data.data && (data.data.user || data.data)) as User;
@@ -54,8 +53,7 @@ export const UserManager = {
 };
 
 const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
-  const [users, setUsers] = useState<User[]>([]); // simple
-  const [dbUsers, setDbUsers] = useState<User[]>([]); // supabase
+  const [users, setUsers] = useState<User[]>([]); // All users from Supabase
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -68,17 +66,11 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
 
   const loadUsers = async () => {
     try {
-      const [simpleRes, dbRes] = await Promise.all([
-        fetch(`${API_BASE}/api/users`),
-        fetch(`${API_BASE}/api/users-db`)
-      ]);
-      if (simpleRes.ok) {
-        const data = await simpleRes.json();
+      // Only load Supabase users - /api/users already uses Supabase
+      const response = await fetch(`${API_BASE}/api/users`);
+      if (response.ok) {
+        const data = await response.json();
         setUsers(data.data.users || []);
-      }
-      if (dbRes.ok) {
-        const data = await dbRes.json();
-        setDbUsers(data.data.users || []);
       }
     } catch (error) {
       console.error('Failed to load users:', error);
@@ -151,40 +143,9 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
           <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg z-50 border">
             <div className="py-1">
               <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b">
-                Test Users (In‑Memory)
+                Users
               </div>
               {users.map((user) => (
-                <button
-                  key={user.id}
-                  onClick={() => switchUser(user.id)}
-                  className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors ${
-                    user.id === currentUserId ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
-                      user.id === currentUserId ? 'bg-blue-500' : 'bg-gray-400'
-                    }`}>
-                      {user.display_name.charAt(0)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm">{user.display_name}</div>
-                      <div className="text-xs text-gray-500 truncate">{user.email}</div>
-                    </div>
-                    {user.id === currentUserId && (
-                      <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                </button>
-              ))}
-
-              {/* Supabase users */}
-              <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-t">
-                Supabase Users
-              </div>
-              {dbUsers.map((user) => (
                 <button
                   key={user.id}
                   onClick={() => switchUser(user.id)}

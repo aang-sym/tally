@@ -154,10 +154,24 @@ const SearchShows: React.FC = () => {
       Object.assign(result,{pattern:'binge',confidence:0.95,avg,std,intervals,reasoning:'All episodes within ≤1 day'});
       return result;
     }
-    // premiere_weekly: at least 2 same‑day drops followed by weekly cadence
+    // premiere_weekly: episodes 1-2 same day (interval=0), then weekly intervals
+    const hasZeroDayPremiere = intervals[0] === 0;
+    if (hasZeroDayPremiere && intervals.length >= 2) {
+      // Check if episodes after the premiere drop are mostly weekly
+      const weeklyIntervals = intervals.slice(1).filter(d => Math.abs(d - 7) <= 2);
+      const weeklyRatio = intervals.length > 1 ? weeklyIntervals.length / (intervals.length - 1) : 0;
+      
+      // Require at least 70% of post-premiere intervals to be weekly
+      if (weeklyRatio >= 0.7) {
+        Object.assign(result,{pattern:'premiere_weekly',confidence:0.85+0.1*weeklyRatio,avg,std,intervals,reasoning:'Multiple episodes premiered same day, then weekly releases'});
+        return result;
+      }
+    }
+    
+    // Alternative premiere_weekly: at least 1 same-day drop + mostly weekly
     const looksPremiereWeekly = sameDayPairs>=1 && nearWeeklyRatio>=0.6;
-    if (looksPremiereWeekly && std<=2 && avg>=5 && avg<=8) {
-      Object.assign(result,{pattern:'premiere_weekly',confidence:0.9,avg,std,intervals,reasoning:'Double‑premiere then weekly cadence'});
+    if (looksPremiereWeekly && nearWeeklyRatio >= 0.7) {
+      Object.assign(result,{pattern:'premiere_weekly',confidence:0.8,avg,std,intervals,reasoning:'Premiere episodes same day, then weekly cadence'});
       return result;
     }
     // weekly

@@ -14,7 +14,7 @@ export interface EpisodeMetadata {
   title: string;
 }
 
-export type ReleasePattern = 'weekly' | 'binge' | 'unknown';
+export type ReleasePattern = 'weekly' | 'binge' | 'unknown' | 'premiere_weekly';
 
 export interface ReleasePatternAnalysis {
   pattern: ReleasePattern;

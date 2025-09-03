@@ -30,6 +30,12 @@ export class ReleasePatternService {
       intervals.push(interval);
     }
 
+    // Debug logging to help diagnose pattern detection
+    if (totalEpisodes > 1) {
+      const dates = sortedEpisodes.map(ep => `${ep.episodeNumber}:${ep.airDate}`);
+      console.log(`Pattern analysis for ${totalEpisodes} episodes:`, dates.join(', '), `intervals: [${intervals.join(', ')}]`);
+    }
+
     // Get average interval
     const avgInterval = intervals.length ? 
       intervals.reduce((sum, int) => sum + int, 0) / intervals.length :
@@ -48,19 +54,38 @@ export class ReleasePatternService {
     const nearWeeklyRatio = intervals.length ? nearWeekly / intervals.length : 0;
 
     // Check for premiere_weekly pattern first (multiple episodes premiere, then weekly)
-    // This is when first few episodes are released same day/close together, then weekly
+    // This is when first few episodes are released same day (interval=0), then weekly intervals
     if (intervals.length >= 2) {
-      const firstFewIntervals = intervals.slice(0, Math.min(3, intervals.length));
-      const remainingIntervals = intervals.slice(Math.min(3, intervals.length));
+      // Look for specific pattern: episodes 1-2 same day (first interval = 0), then weekly
+      const hasZeroDayPremiere = intervals[0] === 0;
       
-      // Check if first intervals are 0 or very small (premiere episodes)
-      const premiereDrop = firstFewIntervals.filter(d => d <= 1).length >= 1;
-      // Check if remaining intervals are mostly weekly
-      const remainingWeekly = remainingIntervals.filter(d => Math.abs(d - 7) <= 2).length;
-      const remainingWeeklyRatio = remainingIntervals.length > 0 ? remainingWeekly / remainingIntervals.length : 0;
+      if (hasZeroDayPremiere) {
+        // Check if episodes after the premiere drop are mostly weekly
+        const weeklyIntervals = intervals.slice(1).filter(d => Math.abs(d - 7) <= 2);
+        const weeklyRatio = intervals.length > 1 ? weeklyIntervals.length / (intervals.length - 1) : 0;
+        
+        // Require at least 70% of post-premiere intervals to be weekly
+        if (weeklyRatio >= 0.7) {
+          console.log(`Detected premiere_weekly pattern: first interval=${intervals[0]}, weekly ratio=${weeklyRatio.toFixed(2)}`);
+          const confidence = Math.min(0.8 + 0.15 * weeklyRatio, 0.95);
+          return {
+            pattern: 'premiere_weekly',
+            confidence,
+            episodeInterval: 7, // Weekly after premiere
+            seasonStart,
+            seasonEnd,
+            totalEpisodes
+          };
+        }
+      }
       
-      if (premiereDrop && remainingIntervals.length > 0 && remainingWeeklyRatio >= 0.6) {
-        const confidence = Math.min(0.7 + 0.25 * remainingWeeklyRatio, 0.95);
+      // Alternative check: multiple episodes same day followed by weekly
+      const sameDayCount = intervals.filter(d => d === 0).length;
+      const weeklyCount = intervals.filter(d => Math.abs(d - 7) <= 2).length;
+      
+      if (sameDayCount >= 1 && weeklyCount >= intervals.length * 0.6) {
+        console.log(`Detected premiere_weekly pattern (alt): same day=${sameDayCount}, weekly=${weeklyCount}/${intervals.length}`);
+        const confidence = Math.min(0.7 + 0.2 * (weeklyCount / intervals.length), 0.95);
         return {
           pattern: 'premiere_weekly',
           confidence,

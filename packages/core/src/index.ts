@@ -125,7 +125,7 @@ export function getStreamingService(serviceId: string) {
 export async function detectReleasePatternFromTMDB(
   showTitle: string, 
   tmdbApiKey: string
-): Promise<{ pattern: 'weekly' | 'binge' | 'unknown'; tmdbId?: number } | null> {
+): Promise<{ pattern: 'weekly' | 'binge' | 'unknown' | 'premiere_weekly'; tmdbId?: number } | null> {
   const { TMDBClient } = await import('./external/tmdb.js');
   const tmdbClient = new TMDBClient(tmdbApiKey);
   return tmdbClient.detectReleasePatternFromTitle(showTitle);
