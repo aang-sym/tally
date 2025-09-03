@@ -31,7 +31,7 @@ UPDATE users SET
   is_test_user = true 
 WHERE id = '550e8400-e29b-41d4-a716-446655440000' AND display_name IS NULL;
 
--- Insert some sample test users for different scenarios
+-- Insert some sample test users for different scenarios  
 INSERT INTO users (id, email, password_hash, display_name, is_test_user, country_code, timezone, created_by) VALUES 
 ('11111111-1111-1111-1111-111111111111', 'emma.chen@example.com', 'test-password-hash', 'Emma Chen', true, 'US', 'America/Los_Angeles', 'system'),
 ('22222222-2222-2222-2222-222222222222', 'alex.rodriguez@example.com', 'test-password-hash', 'Alex Rodriguez', true, 'US', 'America/New_York', 'system'),

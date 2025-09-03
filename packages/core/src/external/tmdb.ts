@@ -67,6 +67,25 @@ export interface TMDBWatchProviderData {
   };
 }
 
+export interface TMDBProviderListItem {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string;
+  display_priorities: {
+    [countryCode: string]: number;
+  };
+}
+
+export interface TMDBProviderListResponse {
+  results: TMDBProviderListItem[];
+}
+
+export interface TMDBRegion {
+  iso_3166_1: string;
+  english_name: string;
+  native_name: string;
+}
+
 export class TMDBError extends Error {
   constructor(
     message: string,
@@ -250,6 +269,78 @@ export class TMDBClient {
     } catch (error) {
       console.error('Error getting watch providers from TMDB:', error);
       return [];
+    }
+  }
+
+  /**
+   * Get list of available streaming providers for TV shows in a specific region
+   */
+  async getWatchProvidersList(region: string = 'US'): Promise<TMDBProviderListItem[]> {
+    try {
+      const response = await this.makeRequest<TMDBProviderListResponse>(`/watch/providers/tv?watch_region=${region}`);
+      return response.results || [];
+    } catch (error) {
+      console.error('Error getting watch providers list from TMDB:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get list of available regions for watch providers
+   */
+  async getWatchProviderRegions(): Promise<TMDBRegion[]> {
+    try {
+      const response = await this.makeRequest<{ results: TMDBRegion[] }>('/watch/providers/regions');
+      return response.results || [];
+    } catch (error) {
+      console.error('Error getting watch provider regions from TMDB:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get comprehensive provider data for multiple regions
+   */
+  async getAllProviders(regions: string[] = ['US', 'GB', 'CA', 'AU']): Promise<{
+    providers: TMDBProviderListItem[];
+    regions: string[];
+    total: number;
+  }> {
+    try {
+      const allProviders = new Map<number, TMDBProviderListItem>();
+      
+      for (const region of regions) {
+        const regionProviders = await this.getWatchProvidersList(region);
+        for (const provider of regionProviders) {
+          if (!allProviders.has(provider.provider_id)) {
+            allProviders.set(provider.provider_id, provider);
+          } else {
+            // Merge display priorities from multiple regions
+            const existing = allProviders.get(provider.provider_id)!;
+            existing.display_priorities = {
+              ...existing.display_priorities,
+              ...provider.display_priorities
+            };
+          }
+        }
+      }
+
+      const providers = Array.from(allProviders.values()).sort((a, b) => 
+        a.provider_name.localeCompare(b.provider_name)
+      );
+
+      return {
+        providers,
+        regions,
+        total: providers.length
+      };
+    } catch (error) {
+      console.error('Error getting all providers from TMDB:', error);
+      return {
+        providers: [],
+        regions,
+        total: 0
+      };
     }
   }
 }

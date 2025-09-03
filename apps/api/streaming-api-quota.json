@@ -1,6 +1,12 @@
 {
   "month": "2025-09",
-  "callsUsed": 0,
+  "callsUsed": 1,
   "lastReset": "2025-09-01T01:09:48.242Z",
-  "callLog": []
+  "callLog": [
+    {
+      "timestamp": "2025-09-03T08:48:22.792Z",
+      "endpoint": "getShow",
+      "success": false
+    }
+  ]
 }

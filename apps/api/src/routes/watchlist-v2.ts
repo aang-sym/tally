@@ -98,7 +98,8 @@ router.get('/', async (req: Request, res: Response) => {
     const watchlist = await watchlistService.getUserWatchlist(userId, status as any);
     // Normalize poster paths to full TMDB URLs for the web client
     const normalized = (watchlist || []).map(item => {
-      const show: any = { ...item.show };
+      // Fix: Supabase returns show data under 'shows' key, but frontend expects 'show' key
+      const show: any = { ...item.shows };
       if (show && show.poster_path) {
         if (typeof show.poster_path === 'string' && show.poster_path.startsWith('/')) {
           show.poster_path = `https://image.tmdb.org/t/p/w500${show.poster_path}`;
@@ -557,15 +558,36 @@ router.put('/:id/provider', async (req: Request, res: Response) => {
     // Resolve provider UUID from tmdb_provider_id
     let selected_service_id: string | null = null;
     if (provider) {
-      const { data: svc, error } = await (await import('../db/supabase.js')).supabase
+      let { data: svc, error } = await (await import('../db/supabase.js')).supabase
         .from('streaming_services')
         .select('id')
         .eq('tmdb_provider_id', provider.id)
         .single();
-      if (error) {
-        return res.status(400).json({ success: false, error: 'Unknown provider' });
+      
+      if (error && error.code === 'PGRST116') {
+        // Provider not found - try to auto-discover it
+        console.log(`🔍 Auto-discovering missing provider: ${provider.name} (TMDB ID: ${provider.id})`);
+        
+        const discoveredService = await (await import('../services/StreamingService.js')).streamingService.autoDiscoverProvider(
+          provider.id, 
+          provider.name, 
+          provider.logo_url
+        );
+        
+        if (discoveredService) {
+          selected_service_id = discoveredService.id;
+          console.log(`✅ Successfully auto-discovered provider: ${provider.name}`);
+        } else {
+          return res.status(400).json({ 
+            success: false, 
+            error: `Failed to auto-discover provider: ${provider.name}. Please try the backfill endpoint first.` 
+          });
+        }
+      } else if (error) {
+        return res.status(500).json({ success: false, error: 'Database error while looking up provider' });
+      } else {
+        selected_service_id = svc?.id || null;
       }
-      selected_service_id = svc?.id || null;
     }
 
     const { error: updateError } = await (await import('../db/supabase.js')).supabase

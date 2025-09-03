@@ -18,7 +18,6 @@ import progressRouter from './routes/progress.js';
 import ratingsRouter from './routes/ratings.js';
 import recommendationsRouter from './routes/recommendations.js';
 import dbAdminRouter from './routes/db-admin.js';
-import usersRouter from './routes/users-simple.js';
 import usersDbRouter from './routes/users.js';
 import streamingServicesRouter from './routes/streaming-services.js';
 import tvGuideRouter from './routes/tv-guide.js';
@@ -47,6 +46,10 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Identify user from x-user-id header and upsert to DB
+import { identifyUser } from './middleware/user-identity.js';
+app.use(identifyUser);
+
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/waitlist', waitlistRouter);
@@ -63,9 +66,7 @@ app.use('/api/watchlist-v2', watchlistV2Router);
 app.use('/api/progress', progressRouter);
 app.use('/api/ratings', ratingsRouter);
 app.use('/api/recommendations', recommendationsRouter);
-app.use('/api/admin', dbAdminRouter);
-app.use('/api/users', usersRouter);
-app.use('/api/users-db', usersDbRouter);
+app.use('/api/users', usersDbRouter);
 app.use('/api/streaming-services', streamingServicesRouter);
 app.use('/api/tv-guide', tvGuideRouter);
 

@@ -489,6 +489,43 @@ export class TMDBService {
   }
 
   /**
+   * Get comprehensive provider data for multiple regions
+   */
+  async getAllProviders(regions: string[] = ['US']): Promise<{
+    providers: any[];
+    regions: string[];
+    total: number;
+  }> {
+    if (!this.client) {
+      return { providers: [], regions, total: 0 };
+    }
+    
+    return await this.client.getAllProviders(regions);
+  }
+
+  /**
+   * Get list of available streaming providers for TV shows in a specific region
+   */
+  async getWatchProvidersList(region: string = 'US'): Promise<any[]> {
+    if (!this.client) {
+      return [];
+    }
+    
+    return await this.client.getWatchProvidersList(region);
+  }
+
+  /**
+   * Get list of available regions for watch providers
+   */
+  async getWatchProviderRegions(): Promise<any[]> {
+    if (!this.client) {
+      return [];
+    }
+    
+    return await this.client.getWatchProviderRegions();
+  }
+
+  /**
    * Batch analyze multiple shows
    */
   async batchAnalyze(showIds: number[], country: string = 'US'): Promise<any[]> {
