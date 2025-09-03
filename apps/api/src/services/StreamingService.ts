@@ -542,14 +542,20 @@ export class StreamingService {
         homepage: null
       };
 
-      const { data: newService, error: createError } = await supabase
+      const { data: newServices, error: createError } = await supabase
         .from('streaming_services')
         .insert([serviceData])
-        .select()
-        .single();
+        .select();
 
       if (createError) {
         console.error('Failed to auto-discover streaming service:', createError);
+        return null;
+      }
+
+      const newService = newServices ? newServices[0] : null;
+
+      if (!newService) {
+        console.error('Failed to retrieve newly created service during auto-discovery.');
         return null;
       }
 

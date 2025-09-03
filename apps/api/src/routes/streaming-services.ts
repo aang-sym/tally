@@ -18,7 +18,7 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const { data: services, error } = await supabase
       .from('streaming_services')
-      .select('id, name, logo_url, base_url, country_code')
+      .select('id, name, logo_path, homepage')
       .order('name');
 
     if (error) {
@@ -52,7 +52,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     const { data: service, error } = await supabase
       .from('streaming_services')
-      .select('id, name, logo_url, base_url, country_code')
+      .select('id, name, logo_path, homepage')
       .eq('id', id)
       .single();
 
@@ -94,9 +94,8 @@ router.get('/popular', async (req: Request, res: Response) => {
       .select(`
         id,
         name,
-        logo_url,
-        base_url,
-        country_code,
+        logo_path,
+        homepage,
         user_streaming_subscriptions!inner(
           id,
           is_active
@@ -113,9 +112,8 @@ router.get('/popular', async (req: Request, res: Response) => {
     const popularServices = services?.map(service => ({
       id: service.id,
       name: service.name,
-      logo_url: service.logo_url,
-      base_url: service.base_url,
-      country_code: service.country_code,
+      logo_path: service.logo_path,
+      homepage: service.homepage,
       subscriber_count: Array.isArray(service.user_streaming_subscriptions) 
         ? service.user_streaming_subscriptions.length 
         : 1
