@@ -68,7 +68,18 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed && typeof parsed === 'object') {
-          setEpisodeDataCache(parsed);
+          // Convert string dates back to Date objects
+          const processedCache: EpisodeDataCache = {};
+          Object.keys(parsed).forEach(tmdbId => {
+            const data = parsed[tmdbId];
+            if (data && data.lastAirDate) {
+              processedCache[parseInt(tmdbId)] = {
+                ...data,
+                lastAirDate: new Date(data.lastAirDate)
+              };
+            }
+          });
+          setEpisodeDataCache(processedCache);
         }
       }
     } catch {}
@@ -467,7 +478,15 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
     const episodeData = await fetchEpisodeData(tmdbId);
     
     if (episodeData && episodeData.lastAirDate) {
-      return episodeData.lastAirDate;
+      // Ensure lastAirDate is a Date object (it might be a string from cache)
+      const endDate = episodeData.lastAirDate instanceof Date 
+        ? episodeData.lastAirDate 
+        : new Date(episodeData.lastAirDate);
+      
+      // Validate the date is valid
+      if (!isNaN(endDate.getTime())) {
+        return endDate;
+      }
     }
     
     // Fallback: assume show runs for 6 months from today (for shows without known end dates)

@@ -145,7 +145,7 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
     try {
       const userId = UserManager.getCurrentUserId();
       const response = await fetch(
-        `/api/tv-guide?startDate=${format(startDate, 'yyyy-MM-dd')}&endDate=${format(endDate, 'yyyy-MM-dd')}`,
+        `http://localhost:3001/api/tv-guide?startDate=${format(startDate, 'yyyy-MM-dd')}&endDate=${format(endDate, 'yyyy-MM-dd')}`,
         { headers: { 'x-user-id': userId } }
       );
       

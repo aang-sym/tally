@@ -92,13 +92,6 @@ interface UserShow {
   };
 }
 
-interface Season {
-  seasonNumber: number;
-  episodeCount: number;
-  airDate?: string;
-  pattern?: string;
-  confidence?: number;
-}
 
 interface Episode {
   number: number;
@@ -168,10 +161,14 @@ const MyShows: React.FC = () => {
       setShows(data.data.shows);
       setError(null);
 
-      // Fetch providers for all shows
+      // Fetch providers and posters for all shows
       if (data.data.shows && data.data.shows.length > 0) {
         data.data.shows.forEach((show: UserShow) => {
           fetchShowProviders(show.show.tmdb_id);
+          // Only fetch poster if not already present
+          if (!show.show.poster_path && !posterOverrides[show.show.tmdb_id]) {
+            fetchShowPoster(show.show.tmdb_id);
+          }
         });
       }
     } catch (err) {
@@ -468,7 +465,7 @@ const MyShows: React.FC = () => {
         throw new Error('Failed to update episode progress');
       }
 
-      const result = await response.json();
+      await response.json();
       
       // Update local UI state to reflect the change
       setEpisodeData(prev => ({
@@ -520,6 +517,51 @@ const MyShows: React.FC = () => {
     } catch (error) {
       console.error('Failed to save episode progress:', error);
       alert('Failed to save episode progress. Please try again.');
+    }
+  };
+
+  // Fetch poster from TMDB API
+  const fetchShowPoster = async (tmdbId: number) => {
+    try {
+      const country = UserManager.getCountry();
+      // Try to get poster from the show details API first
+      const response = await fetch(`${API_BASE}/api/tmdb/show/${tmdbId}/analyze?country=${country}`);
+      if (!response.ok) {
+        console.warn(`Failed to fetch show analysis for poster: ${response.status}`);
+        return null;
+      }
+      
+      const data = await response.json();
+      const posterPath = data.analysis?.showDetails?.poster;
+      
+      if (posterPath) {
+        setPosterOverrides(prev => ({
+          ...prev,
+          [tmdbId]: posterPath
+        }));
+        return posterPath;
+      }
+      
+      // Fallback: try the raw season endpoint as mentioned in the issue
+      const latestSeasonNumber = data.analysis?.seasonInfo?.[data.analysis.seasonInfo.length - 1]?.seasonNumber || 1;
+      const seasonResponse = await fetch(`${API_BASE}/api/tmdb/show/${tmdbId}/season/${latestSeasonNumber}/raw?country=${country}`);
+      if (seasonResponse.ok) {
+        const seasonData = await seasonResponse.json();
+        const seasonPosterPath = seasonData.raw?.poster_path;
+        if (seasonPosterPath) {
+          const fullPosterUrl = `https://image.tmdb.org/t/p/w500${seasonPosterPath}`;
+          setPosterOverrides(prev => ({
+            ...prev,
+            [tmdbId]: fullPosterUrl
+          }));
+          return fullPosterUrl;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error(`Failed to fetch poster for show ${tmdbId}:`, error);
+      return null;
     }
   };
 
@@ -769,7 +811,18 @@ const MyShows: React.FC = () => {
                                   <span>Progress</span>
                                   <span>
                                     {userShow.progress.watchedEpisodes}/
-                                    {(episodeData[userShow.show.tmdb_id]?.[selectedSeasons[userShow.show.tmdb_id] || 0]?.length) || userShow.progress.totalEpisodes} episodes
+                                    {(() => {
+                                      // First try to get episode count from current season data
+                                      const currentSeasonNumber = selectedSeasons[userShow.show.tmdb_id];
+                                      const currentSeasonEpisodes = episodeData[userShow.show.tmdb_id]?.[currentSeasonNumber]?.length;
+                                      
+                                      if (currentSeasonEpisodes) {
+                                        return currentSeasonEpisodes;
+                                      }
+                                      
+                                      // Fallback to total episodes for the whole show
+                                      return userShow.progress.totalEpisodes || 0;
+                                    })()} episodes
                                   </span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-2">

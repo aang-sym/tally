@@ -59,7 +59,7 @@ export const ContentAvailabilitySchema = z.object({
 });
 
 // Release pattern schemas - defined early to avoid dependency issues
-export const ReleasePatternSchema = z.enum(['weekly', 'binge', 'unknown']);
+export const ReleasePatternSchema = z.enum(['weekly', 'binge', 'unknown', 'premiere_weekly']);
 
 export const EpisodeMetadataSchema = z.object({
   id: z.string(),

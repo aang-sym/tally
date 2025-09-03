@@ -337,6 +337,9 @@ export class TMDBService {
         ? releasePatternService.analyzeReleasePattern(episodes)
         : { pattern: 'unknown', confidence: 0.5 } as any;
 
+      const finalPattern = patternAnalysis.pattern;
+      const finalConfidence = patternAnalysis.confidence;
+
       // Build diagnostics (intervals, stats) for UI timeline
       const sortedEpisodes = [...episodes].sort((a, b) => new Date(a.airDate).getTime() - new Date(b.airDate).getTime());
       const intervals: number[] = [];
@@ -351,9 +354,11 @@ export class TMDBService {
         ? Math.sqrt(intervals.reduce((s, d) => s + Math.pow(d - avgInterval, 2), 0) / intervals.length)
         : 0;
       const reasoning = (
-        patternAnalysis.pattern === 'weekly'
+        finalPattern === 'weekly'
           ? `Detected weekly cadence (~${Math.round(avgInterval)} days)`
-          : patternAnalysis.pattern === 'binge'
+          : finalPattern === 'premiere_weekly'
+          ? `Detected premiere-weekly pattern: multiple episodes premiered, then weekly releases`
+          : finalPattern === 'binge'
           ? 'Episodes released together or within 1 day'
           : 'Insufficient signal for a clear pattern'
       );
@@ -367,15 +372,40 @@ export class TMDBService {
       }
 
       // Build season info
-      const seasonInfo = realSeasons.map((season: any) => ({
-        seasonNumber: season.season_number,
-        episodeCount: season.episode_count,
-        airDate: season.air_date,
-        ...(season.season_number === targetSeason && {
-          pattern: finalPattern,
-          confidence: finalConfidence
-        })
-      }));
+      const latestSeasonNumber = realSeasons[realSeasons.length - 1]?.season_number;
+      const seasonInfo = realSeasons.map((season: any) => {
+        const isLatestSeason = season.season_number === latestSeasonNumber;
+        const isAnalyzedSeason = season.season_number === targetSeason;
+        
+        // For older seasons (not the latest), mark as 'binge' since they're fully released
+        let seasonPattern = 'unknown';
+        let seasonConfidence = 0.5;
+        
+        if (isAnalyzedSeason) {
+          seasonPattern = finalPattern;
+          seasonConfidence = finalConfidence;
+        } else if (!isLatestSeason && season.air_date) {
+          // Older seasons are considered 'binge' since the entire season is already out
+          const seasonDate = new Date(season.air_date);
+          const oneYearAgo = new Date();
+          oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+          
+          if (seasonDate < oneYearAgo) {
+            seasonPattern = 'binge';
+            seasonConfidence = 0.9;
+          }
+        }
+        
+        return {
+          seasonNumber: season.season_number,
+          episodeCount: season.episode_count,
+          airDate: season.air_date,
+          ...(seasonPattern !== 'unknown' && {
+            pattern: seasonPattern,
+            confidence: seasonConfidence
+          })
+        };
+      });
 
       return {
         showDetails: {

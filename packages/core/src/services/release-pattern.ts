@@ -47,17 +47,37 @@ export class ReleasePatternService {
     const shortGaps = intervals.filter((d) => d <= 1).length;
     const nearWeeklyRatio = intervals.length ? nearWeekly / intervals.length : 0;
 
+    // Check for premiere_weekly pattern first (multiple episodes premiere, then weekly)
+    // This is when first few episodes are released same day/close together, then weekly
+    if (intervals.length >= 2) {
+      const firstFewIntervals = intervals.slice(0, Math.min(3, intervals.length));
+      const remainingIntervals = intervals.slice(Math.min(3, intervals.length));
+      
+      // Check if first intervals are 0 or very small (premiere episodes)
+      const premiereDrop = firstFewIntervals.filter(d => d <= 1).length >= 1;
+      // Check if remaining intervals are mostly weekly
+      const remainingWeekly = remainingIntervals.filter(d => Math.abs(d - 7) <= 2).length;
+      const remainingWeeklyRatio = remainingIntervals.length > 0 ? remainingWeekly / remainingIntervals.length : 0;
+      
+      if (premiereDrop && remainingIntervals.length > 0 && remainingWeeklyRatio >= 0.6) {
+        const confidence = Math.min(0.7 + 0.25 * remainingWeeklyRatio, 0.95);
+        return {
+          pattern: 'premiere_weekly',
+          confidence,
+          episodeInterval: 7, // Weekly after premiere
+          seasonStart,
+          seasonEnd,
+          totalEpisodes
+        };
+      }
+    }
+
     // Weekly pattern criteria (more permissive and robust):
     // - Majority of intervals near 7 days (≥ 60%)
-    // - Allow a single same‑day double‑premiere at the start
     // - Standard deviation not excessive (≤ 3.5 days)
     if (
       episodes.length > 1 &&
-      (
-        nearWeeklyRatio >= 0.6 ||
-        // Premiere double-drop then weekly (first interval 0, rest weekly-like)
-        (sameDayDrops <= 1 && nearWeekly >= Math.max(1, intervals.length - 2))
-      ) &&
+      nearWeeklyRatio >= 0.6 &&
       stdDev <= 3.5
     ) {
       const confidence = Math.min(0.6 + 0.4 * nearWeeklyRatio, 0.95);
