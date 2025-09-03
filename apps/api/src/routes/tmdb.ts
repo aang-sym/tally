@@ -88,6 +88,24 @@ router.get('/show/:id/analyze', async (req, res, next) => {
   }
 });
 
+// Raw season debug (dev aid)
+router.get('/show/:id/season/:season/raw', async (req, res, next) => {
+  try {
+    const { id, season } = req.params;
+    const { country = 'US' } = req.query;
+    const showId = parseInt(id);
+    const seasonNumber = parseInt(season);
+    if (isNaN(showId) || isNaN(seasonNumber)) {
+      throw new ValidationError('Invalid show ID or season');
+    }
+    const raw = await tmdbService.getSeasonRaw(showId, seasonNumber, country as string);
+    res.json({ success: true, showId, season: seasonNumber, country, raw });
+  } catch (error) {
+    console.error('Error in raw season debug:', error);
+    next(error);
+  }
+});
+
 // Get watch providers for show
 router.get('/show/:id/providers', async (req, res, next) => {
   try {

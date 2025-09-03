@@ -24,20 +24,13 @@ const EpisodeProgressDisplay: React.FC<{
       if (!episodeName || episodeName.match(/^Episode \d+$/)) {
         setLoading(true);
         try {
-          const userId = UserManager.getCurrentUserId();
-          const response = await fetch(`http://localhost:3001/api/tmdb/show/${tmdbId}/analyze`, {
-            headers: { 'x-user-id': userId }
-          });
-          
+          const country = UserManager.getCountry();
+          const response = await fetch(`http://localhost:3001/api/tmdb/show/${tmdbId}/season/${seasonNumber}/raw?country=${country}`);
           if (response.ok) {
-            const analysis = await response.json();
-            const episode = analysis.analysis?.diagnostics?.episodeDetails?.find(
-              (ep: any) => ep.number === episodeNumber
-            );
-            
-            if (episode && episode.title) {
-              setActualEpisodeTitle(episode.title);
-            }
+            const data = await response.json();
+            const season = data.raw?.season || data.raw;
+            const ep = (season?.episodes || []).find((e: any) => e.episode_number === episodeNumber);
+            if (ep && ep.name) setActualEpisodeTitle(ep.name);
           }
         } catch (error) {
           console.error('Failed to fetch episode title:', error);
@@ -138,6 +131,7 @@ const MyShows: React.FC = () => {
   const [loadingAnalysis, setLoadingAnalysis] = useState<{[showId: string]: boolean}>({});
   const [showProviders, setShowProviders] = useState<{[showId: string]: StreamingProvider[]}>({});
   const [country, setCountry] = useState<string>(UserManager.getCountry());
+  const [posterOverrides, setPosterOverrides] = useState<{[tmdbId:number]: string | undefined}>({});
 
   // Fetch watchlist data
   useEffect(() => {
@@ -357,7 +351,7 @@ const MyShows: React.FC = () => {
         console.log(`Setting default season to ${latestSeason} for show ${tmdbId}`);
         setSelectedSeasons(prev => ({ ...prev, [tmdbId]: latestSeason }));
         
-        // Automatically fetch episodes for the default season
+        // Automatically fetch episodes for the default season from raw season endpoint
         fetchSeasonEpisodes(tmdbId, latestSeason);
       }
     } catch (err) {
@@ -373,16 +367,22 @@ const MyShows: React.FC = () => {
       const userId = UserManager.getCurrentUserId();
       console.log(`Fetching episodes for show ${tmdbId}, season ${seasonNumber}, user ${userId}`);
       
-      // Fetch episode details from TMDB
-      const tmdbUrl = `${API_BASE}/api/tmdb/show/${tmdbId}/analyze?season=${seasonNumber}`;
-      console.log(`Fetching from TMDB: ${tmdbUrl}`);
-      
-      const response = await fetch(tmdbUrl);
-      if (!response.ok) throw new Error(`Failed to fetch season episodes: ${response.status}`);
-      
+      // Fetch episode details from TMDB RAW season endpoint (source of truth for episodes)
+      const country = UserManager.getCountry();
+      const rawUrl = `${API_BASE}/api/tmdb/show/${tmdbId}/season/${seasonNumber}/raw?country=${country}`;
+      console.log(`Fetching from TMDB RAW: ${rawUrl}`);
+
+      const response = await fetch(rawUrl);
+      if (!response.ok) throw new Error(`Failed to fetch season episodes (raw): ${response.status}`);
+
       const data = await response.json();
-      const episodes = data.analysis?.diagnostics?.episodeDetails || [];
-      console.log(`Got ${episodes.length} episodes from TMDB for season ${seasonNumber}`);
+      const season = data.raw?.season || data.raw;
+      const episodes = (season?.episodes || []).map((ep: any) => ({
+        number: ep.episode_number,
+        airDate: ep.air_date ? new Date(ep.air_date).toISOString() : undefined,
+        title: ep.name || `Episode ${ep.episode_number}`
+      }));
+      console.log(`Got ${episodes.length} episodes from RAW for season ${seasonNumber}`);
       
       // Fetch stored progress for this show
       const progressUrl = `${API_BASE}/api/watchlist-v2/${tmdbId}/progress`;
@@ -733,9 +733,9 @@ const MyShows: React.FC = () => {
                         <div className="flex space-x-4">
                           {/* Poster */}
                           <div className="flex-shrink-0">
-                            {userShow.show.poster_path ? (
+                            {(userShow.show.poster_path || posterOverrides[userShow.show.tmdb_id]) ? (
                               <img
-                                src={userShow.show.poster_path}
+                                src={userShow.show.poster_path || posterOverrides[userShow.show.tmdb_id]!}
                                 alt={`${userShow.show.title} poster`}
                                 className="w-16 h-24 object-cover rounded"
                               />
@@ -767,7 +767,10 @@ const MyShows: React.FC = () => {
                               <div className="mb-3">
                                 <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
                                   <span>Progress</span>
-                                  <span>{userShow.progress.watchedEpisodes}/{userShow.progress.totalEpisodes} episodes</span>
+                                  <span>
+                                    {userShow.progress.watchedEpisodes}/
+                                    {(episodeData[userShow.show.tmdb_id]?.[selectedSeasons[userShow.show.tmdb_id] || 0]?.length) || userShow.progress.totalEpisodes} episodes
+                                  </span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-2">
                                   <div 

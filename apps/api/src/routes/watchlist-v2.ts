@@ -96,7 +96,17 @@ router.get('/', async (req: Request, res: Response) => {
 
     // Supabase path
     const watchlist = await watchlistService.getUserWatchlist(userId, status as any);
-    res.json({ success: true, data: { shows: watchlist, totalCount: watchlist.length, statusFilter: status || 'all' } });
+    // Normalize poster paths to full TMDB URLs for the web client
+    const normalized = (watchlist || []).map(item => {
+      const show: any = { ...item.show };
+      if (show && show.poster_path) {
+        if (typeof show.poster_path === 'string' && show.poster_path.startsWith('/')) {
+          show.poster_path = `https://image.tmdb.org/t/p/w500${show.poster_path}`;
+        }
+      }
+      return { ...item, show };
+    });
+    res.json({ success: true, data: { shows: normalized, totalCount: normalized.length, statusFilter: status || 'all' } });
   } catch (error) {
     console.error('Failed to get watchlist:', error);
     res.status(500).json({

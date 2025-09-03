@@ -137,25 +137,104 @@ const SearchShows: React.FC = () => {
     await analyzeShow(show.id);
   };
 
+  // Compute pattern from raw episode dates according to docs categories
+  const computePatternFromEpisodes = (dates: Date[]) => {
+    const result = { pattern: 'unknown', confidence: 0.5, intervals: [] as number[], avg: 0, std: 0, reasoning: '' };
+    if (dates.length < 2) { result.reasoning = 'Insufficient data'; return result; }
+    const sorted = dates.slice().sort((a,b)=>a.getTime()-b.getTime());
+    const intervals = [] as number[];
+    for (let i=1;i<sorted.length;i++) intervals.push(Math.round((sorted[i].getTime()-sorted[i-1].getTime())/(1000*60*60*24)));
+    const avg = intervals.reduce((s,d)=>s+d,0)/intervals.length;
+    const std = Math.sqrt(intervals.reduce((s,d)=>s+Math.pow(d-avg,2),0)/intervals.length);
+    const sameDayPairs = intervals.filter(d=>d===0).length;
+    const nearWeekly = intervals.filter(d=>Math.abs(d-7)<=1).length;
+    const nearWeeklyRatio = nearWeekly/intervals.length;
+    // Categories
+    if (intervals.every(d=>d<=1)) {
+      Object.assign(result,{pattern:'binge',confidence:0.95,avg,std,intervals,reasoning:'All episodes within ≤1 day'});
+      return result;
+    }
+    // premiere_weekly: at least 2 same‑day drops followed by weekly cadence
+    const looksPremiereWeekly = sameDayPairs>=1 && nearWeeklyRatio>=0.6;
+    if (looksPremiereWeekly && std<=2 && avg>=5 && avg<=8) {
+      Object.assign(result,{pattern:'premiere_weekly',confidence:0.9,avg,std,intervals,reasoning:'Double‑premiere then weekly cadence'});
+      return result;
+    }
+    // weekly
+    if (avg>=6 && avg<=8 && std<2) {
+      Object.assign(result,{pattern:'weekly',confidence:0.9,avg,std,intervals,reasoning:'Average 6–8 days with low variance'});
+      return result;
+    }
+    // multi_weekly: more than one episode per 7‑day window consistently (approx by many 0–3 day gaps and weekly anchors)
+    const shortGapsRatio = intervals.filter(d=>d<=3).length/intervals.length;
+    if (nearWeeklyRatio>=0.5 && shortGapsRatio>=0.5) {
+      Object.assign(result,{pattern:'multi_weekly',confidence:0.75,avg,std,intervals,reasoning:'Multiple episodes within a week consistently'});
+      return result;
+    }
+    // mixed
+    if (intervals.length>=2) {
+      Object.assign(result,{pattern:'mixed',confidence:0.6,avg,std,intervals,reasoning:'Premieres/gaps cause irregular cadence'});
+      return result;
+    }
+    return result;
+  };
+
   const analyzeShow = async (showId: number, seasonNumber?: number) => {
     try {
       setAnalysisLoading(true);
       setAnalysisError('');
       
-      const params = new URLSearchParams({ country });
-      if (seasonNumber) {
-        params.append('season', seasonNumber.toString());
-      }
-      
-      const response = await fetch(`${API_BASE}/api/tmdb/show/${showId}/analyze?${params}`);
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Analysis failed');
-      }
-      
-      setAnalysisData(data.analysis);
-      setSelectedSeason(seasonNumber);
+      // 1) Get show details + season list (minimal); keep using analyze for details only
+      const baseRes = await fetch(`${API_BASE}/api/tmdb/show/${showId}/analyze?country=${country}`);
+      const base = await baseRes.json();
+      if (!baseRes.ok) throw new Error(base.message || 'Failed to fetch show details');
+      const seasonInfo = base.analysis?.seasonInfo || [];
+      const showDetails = base.analysis?.showDetails || { id: showId, title: selectedShow?.title, poster: selectedShow?.poster };
+      // 2) Determine target season: explicit or latest
+      const targetSeason = seasonNumber ?? (seasonInfo.length>0 ? Math.max(...seasonInfo.map((s:any)=>s.seasonNumber)) : 1);
+      // 3) Fetch RAW episodes for that season
+      const rawRes = await fetch(`${API_BASE}/api/tmdb/show/${showId}/season/${targetSeason}/raw?country=${country}`);
+      const raw = await rawRes.json();
+      if (!rawRes.ok) throw new Error('Failed to fetch raw season');
+      const season = raw.raw?.season || raw.raw;
+      const episodes = (season?.episodes || []).filter((ep:any)=>!!ep.air_date).map((ep:any)=>({
+        number: ep.episode_number,
+        airDate: new Date(ep.air_date).toISOString(),
+        title: ep.name || `Episode ${ep.episode_number}`
+      }));
+      const dates = episodes.map((e:any)=>new Date(e.airDate));
+      const pat = computePatternFromEpisodes(dates);
+
+      // 4) Build analysis object compatible with PatternAnalysis
+      const analysis = {
+        showDetails: {
+          id: showId,
+          title: showDetails?.title || selectedShow?.title,
+          overview: base.analysis?.showDetails?.overview || '',
+          status: base.analysis?.showDetails?.status || '',
+          firstAirDate: base.analysis?.showDetails?.firstAirDate,
+          lastAirDate: base.analysis?.showDetails?.lastAirDate,
+          poster: selectedShow?.poster || showDetails?.poster
+        },
+        pattern: pat.pattern,
+        confidence: pat.confidence,
+        episodeCount: episodes.length,
+        seasonInfo,
+        reasoning: pat.reasoning,
+        diagnostics: {
+          intervals: pat.intervals,
+          avgInterval: pat.avg,
+          stdDev: pat.std,
+          reasoning: pat.reasoning,
+          episodeDetails: episodes
+        },
+        watchProviders: base.analysis?.watchProviders || [],
+        analyzedSeason: targetSeason,
+        country
+      };
+
+      setAnalysisData(analysis);
+      setSelectedSeason(targetSeason);
     } catch (err) {
       setAnalysisError(err instanceof Error ? err.message : 'Analysis failed');
       setAnalysisData(null);

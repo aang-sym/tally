@@ -28,7 +28,7 @@ import { config } from './config/index.js';
 import { quotaTracker } from './services/quota-tracker.js';
 
 const app = express();
- 
+
 // Security middleware
 app.use(helmet());
 app.use(cors({

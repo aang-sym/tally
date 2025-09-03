@@ -289,7 +289,17 @@ export class TMDBService {
           }
         }
       } catch (e) {
+        console.error(`[analyzeShow] getSeason failed for id=${showId} season=${seasonNumber ?? 'auto'}:`, e);
         episodes = [];
+      }
+
+      // Dev diagnostics
+      if (process.env.NODE_ENV !== 'production') {
+        const first = episodes[0];
+        console.log(
+          `[analyzeShow] id=${showId} country=${country} lang=${language} seasonParam=${seasonNumber ?? 'auto'} analyzedSeason=${targetSeason} eps=${episodes.length}` +
+          (first ? ` first=S${first.seasonNumber}E${first.episodeNumber}@${first.airDate}` : '')
+        );
       }
       if (!episodes.length) {
         // Graceful fallback: return show details without episodes so UI still has posters/overview.
@@ -401,6 +411,26 @@ export class TMDBService {
       console.error(`Error analyzing show ${showId}:`, error);
       return null;
     }
+  }
+
+  /**
+   * Debug helper: return raw TMDB season payload and quick counts
+   */
+  async getSeasonRaw(showId: number, seasonNumber: number, country: string = 'US') {
+    if (!this.client) return { error: 'TMDB client unavailable' } as any;
+    const languageMap: Record<string, string> = { US: 'en-US', GB: 'en-GB', AU: 'en-AU', CA: 'en-CA' };
+    const language = languageMap[(country || 'US').toUpperCase()] || 'en-US';
+    const season = await this.client.getSeason(showId, seasonNumber, language);
+    const episodes = season.episodes || [];
+    const dated = episodes.filter((ep: any) => !!ep.air_date);
+    return {
+      language,
+      seasonNumber,
+      episodeCount: episodes.length,
+      datedCount: dated.length,
+      sample: dated.slice(0, 2).map((ep: any) => ({ n: ep.episode_number, date: ep.air_date, title: ep.name })),
+      season
+    };
   }
 
   /**

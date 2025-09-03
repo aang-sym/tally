@@ -138,3 +138,81 @@ Bridging Plan Added (Sep 3)
 Follow‑ups
 - Optional: Mount Supabase `users` router under `/api/users-db` and update `UserSwitcher` to list both simple and Supabase users, enabling selection of a UUID user in the UI.
 - Once we commit to UUID users, remove simple fallbacks and update Search Shows to call `/api/watchlist-v2` directly.
+Episode Retrieval + Posters Hotfix Plan (Sep 3)
+
+Context
+- Reports: Search Shows analysis returns 0 episodes for currently airing shows; My Shows shows “No Image” and has empty episode lists. Console shows MyShows calls /api/tmdb/show/:id/analyze without a country param (defaulting to en-US). Manual curl against TMDB in en-AU returns a fully populated Season 2 for Peacemaker (110492).
+- Current server already supports language mapping and walks back seasons, but the client (My Shows) isn’t passing the locale and can therefore hit a sparse season in en-US.
+
+Hypotheses (ranked)
+1) My Shows does not include country=AU on analyze calls, so server queries TMDB in en-US and receives incomplete episodes → diagnostics.episodeDetails = [].
+2) For test users (in‑memory), the /api/watchlist-v2 fallback shape sometimes returns show.poster_path null because the analyzer returned details-only earlier; after fixing 1) it should populate. If we still see no poster for Supabase users, the Supabase path returns relative poster_path; the client expects a full URL.
+3) Season selection: when user selects S2, the server must fetch /tv/:id/season/2?language=en-AU regardless; only walk back if that season truly has no dated episodes.
+
+Plan
+1) Client: pass country for all analyze calls in My Shows
+   - apps/web/src/pages/MyShows.tsx
+   - Wherever we call /api/tmdb/show/${tmdbId}/analyze, append ?country=${UserManager.getCountry()} and preserve &season= when present.
+2) Server: ensure language mapping is applied consistently
+   - apps/api/src/services/tmdb.ts already maps AU→en-AU for getTVShow/getSeason/searchTV; verify that getLatestSeasonEpisodes and all season fetches use the same mapped language (done), and keep it.
+3) Season selection behavior
+   - For a user-selected seasonNumber, fetch that exact season first in the mapped language.
+   - Only if that season has zero dated episodes do we walk back to the latest season with dates (maintain current back-walk logic).
+   - diagnostics.episodeDetails should reflect the season actually analyzed (targetSeason in payload).
+4) Posters in My Shows
+   - In the /api/watchlist-v2 fallback (non-UUID users), ensure poster_path is set to analysis.showDetails.poster (full URL). This already exists; re-check the path for all branches.
+   - For Supabase (UUID users), watchlistService/showService returns shows.poster_path as a relative TMDB path. We will augment the API response to provide a full image URL for the web client (e.g., show.poster_path_full), or rewrite poster_path to a full URL on response.
+5) Verify Search Shows flow
+   - Confirm SearchShows.tsx already passes country; validate that clicking season pills appends &season= and keeps country.
+6) Regression guardrails
+   - Keep route-level fallback (details-only) for rare TMDB outages, but only hit this when all seasons are empty.
+   - Add minimal server debug log (level: info) indicating language, selectedSeason, analyzedSeason, episodesFound to speed future diagnostics (remove or guard by NODE_ENV).
+7) QA checklist (manual)
+   - Peacemaker (110492) AU: /api/tmdb/show/110492/analyze?country=AU → diagnostics.episodeDetails length = 8; analyzedSeason=2; showDetails.poster is non-null.
+   - Alien: Earth (157239) AU: populated S1 or current season depending on TMDB; weekly pattern appears.
+   - Dexter: Resurrection (259909) AU: populated.
+   - My Shows (Emma/test user): list shows with posters and episode counts > 0 after expanding details.
+   - My Shows (UUID user): same behavior; verify posters appear (using full URLs).
+
+Questions for you
+1) Locale source of truth: Should My Shows always use UserSwitcher country (UserManager.getCountry()) when analyzing, or do you want a per-show override to drive analyze calls as well? (UI already has a per-show country override; we can honor that.)
+2) For Supabase users, is it acceptable to return a full poster URL in show.poster_path (rewritten), or would you prefer we add a new field (poster_url) and leave poster_path untouched?
+3) Confirm that in My Shows, when you click a different season pill, we should analyze exactly that season (no back-walk) unless the season is truly empty — correct?
+
+Implementation summary (once approved)
+- Update MyShows.tsx analyze fetches to include country.
+- Server: keep language mapping; ensure the season fetch uses mapped language and respect selected season.
+- API: rewrite poster_path to full URL for Supabase path; re-verify fallback path sets it.
+- Add light debug logs and validate with the three TMDB ids.
+
+UPDATED Episode Retrieval + Posters Hotfix Plan (Sep 3 — Revised)
+
+Supersedes the hypotheses above. Country is not the root cause; season selection and fallback logic are.
+
+Clarifications from product
+- We only care about the currently airing season for cadence. Prior seasons (binge) are irrelevant.
+- When a user explicitly selects a season (e.g., Season 2), analyze exactly that season. Do not back‑walk even if partially populated. Include episodes that have air_date; compute intervals from those with valid dates.
+- Posters: normalize to a full TMDB URL in API responses for best UX; we can also expose poster_url later if needed.
+
+Revised Plan
+1) Server: analyze the selected (airing) season exactly
+   - apps/api/src/services/tmdb.ts: If seasonNumber is provided, fetch /tv/:id/season/:seasonNumber and build episodes directly from that payload. Set analyzedSeason=seasonNumber.
+   - Include all episodes in episodeDetails (number, title, raw air_date if present). Compute cadence intervals only from episodes with valid air_date.
+   - Do not back‑walk when a season is explicitly provided. Back‑walk is allowed only when no season is provided and the latest season has zero dated episodes.
+
+2) Posters: normalize to a full URL in API responses
+   - /api/watchlist-v2 (Supabase path): rewrite show.poster_path to https://image.tmdb.org/t/p/w500${poster_path} before returning to the web client (optionally also expose poster_url for clarity). DB remains unchanged.
+   - Simple (non‑UUID) path already maps to analysis.showDetails.poster; verify consistency.
+
+3) Client (My Shows)
+   - Ensure all analyze fetches include &season=<selectedSeason>. Country param is optional; episode availability must not rely on locale.
+
+4) Diagnostics & guardrails
+   - Add dev‑only logs: showId, selectedSeason, analyzedSeason, episodesFound, and first two episode numbers/dates to speed diagnosis.
+   - Keep the “details‑only” fallback only when the selected season returns zero episodes AND no season has dated episodes.
+
+5) QA checklist (manual)
+   - Peacemaker (110492): /api/tmdb/show/110492/analyze?season=2 → episodeDetails length = 8; analyzedSeason=2; poster non-null.
+   - Alien: Earth (157239): current season populated; weekly pattern appears.
+   - Dexter: Resurrection (259909): populated and patterned.
+   - My Shows (test + UUID): posters render and episode lists populate when expanded.
