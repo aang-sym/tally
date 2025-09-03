@@ -9,6 +9,7 @@ const Layout: React.FC = () => {
     { name: 'Dashboard', href: '/dashboard', icon: '🏠' },
     { name: 'My Shows', href: '/my-shows', icon: '📺' },
     { name: 'Search Shows', href: '/search', icon: '🔍' },
+    { name: 'TV Guide', href: '/tv-guide', icon: '📋' },
     { name: 'Calendar', href: '/calendar', icon: '📅' },
     { name: 'Recommendations', href: '/recommendations', icon: '💡' },
     { name: 'Settings', href: '/settings', icon: '⚙️' },

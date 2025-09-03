@@ -435,4 +435,38 @@ router.put('/:id/provider', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * PUT /api/watchlist-v2/:id/buffer
+ * Update per-show buffer days in simple storage
+ */
+router.put('/:id/buffer', async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+    const { bufferDays } = req.body as { bufferDays: number };
+    const updated = watchlistStorageService.updateBufferDays(userId, id, Number(bufferDays) || 0);
+    if (!updated) return res.status(404).json({ success: false, error: 'Show not found' });
+    res.json({ success: true, data: { bufferDays: updated.bufferDays || 0 } });
+  } catch (e) {
+    res.status(500).json({ success: false, error: 'Failed to update buffer days' });
+  }
+});
+
+/**
+ * PUT /api/watchlist-v2/:id/country
+ * Update per-show country override in simple storage
+ */
+router.put('/:id/country', async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+    const { countryCode } = req.body as { countryCode: string | null };
+    const updated = watchlistStorageService.updateCountry(userId, id, countryCode || null);
+    if (!updated) return res.status(404).json({ success: false, error: 'Show not found' });
+    res.json({ success: true, data: { countryCode: updated.country || null } });
+  } catch (e) {
+    res.status(500).json({ success: false, error: 'Failed to update show country' });
+  }
+});
+
 export default router;

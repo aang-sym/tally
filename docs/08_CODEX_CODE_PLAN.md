@@ -38,6 +38,9 @@ Primary reference: Image 2 (stacked logo bubbles), light theme only.
    - Wrap calendar in ErrorBoundary to avoid white-screen on runtime errors.
 8. Asset quality
    - Upgrade TMDB logo URLs to `/original` when detected; consider responsive `srcset` later.
+9. Caching
+   - LocalStorage cache for Overview calendar by user+month with 6h TTL; hash signature of user shows ensures invalidation when shows/providers change.
+   - Persist episode analysis cache per TMDB ID for faster rebuilds across reloads.
 
 ## Notes
 
@@ -65,6 +68,7 @@ Out of Scope / Removed
   - Grid/narrow mode: +N badge shown via container queries
 - [x] Dynamic pips count
   - Render a pip per active provider on the day (no hard cap)
+ - [x] Calendar caching (localStorage by user+month; 6h TTL) and persisted episode cache
 
 ## Known Issues / Follow-ups
 - Lock background scroll/content under the day-detail modal to avoid any underlying numbers peeking through on some screen sizes.

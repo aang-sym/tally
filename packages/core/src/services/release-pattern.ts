@@ -41,17 +41,30 @@ export class ReleasePatternService {
       intervals.length
     );
 
-    // Weekly pattern criteria:
-    // - Average interval close to 7 days
-    // - Low standard deviation
-    // - More than 1 episode
-    if (episodes.length > 1 && 
-        Math.abs(avgInterval - 7) <= 2 && 
-        stdDev <= 2) {
+    // Heuristic helpers
+    const nearWeekly = intervals.filter((d) => Math.abs(d - 7) <= 2).length; // within ±2 days of weekly
+    const sameDayDrops = intervals.filter((d) => d === 0).length;
+    const shortGaps = intervals.filter((d) => d <= 1).length;
+    const nearWeeklyRatio = intervals.length ? nearWeekly / intervals.length : 0;
+
+    // Weekly pattern criteria (more permissive and robust):
+    // - Majority of intervals near 7 days (≥ 60%)
+    // - Allow a single same‑day double‑premiere at the start
+    // - Standard deviation not excessive (≤ 3.5 days)
+    if (
+      episodes.length > 1 &&
+      (
+        nearWeeklyRatio >= 0.6 ||
+        // Premiere double-drop then weekly (first interval 0, rest weekly-like)
+        (sameDayDrops <= 1 && nearWeekly >= Math.max(1, intervals.length - 2))
+      ) &&
+      stdDev <= 3.5
+    ) {
+      const confidence = Math.min(0.6 + 0.4 * nearWeeklyRatio, 0.95);
       return {
         pattern: 'weekly',
-        confidence: 0.9,
-        episodeInterval: Math.round(avgInterval),
+        confidence,
+        episodeInterval: Math.round(avgInterval || 7),
         seasonStart,
         seasonEnd,
         totalEpisodes
@@ -61,7 +74,7 @@ export class ReleasePatternService {
     // Binge pattern criteria:
     // - Most episodes released on same day
     // - Or very short intervals between episodes
-    if (intervals.every(int => int <= 1) || 
+    if (shortGaps / Math.max(1, intervals.length) >= 0.7 ||
         new Set(episodes.map(ep => ep.airDate)).size === 1) {
       return {
         pattern: 'binge',

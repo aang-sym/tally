@@ -61,9 +61,33 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
   const [episodeDataCache, setEpisodeDataCache] = useState<EpisodeDataCache>({});
   const [selectedDate, setSelectedDate] = useState<string>('');
 
+  // Load persisted episode cache on mount
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem('episode_data_cache_v1');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === 'object') {
+          setEpisodeDataCache(parsed);
+        }
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetchCalendarData();
   }, [currentDate, useUserData, userSubscriptions, userShows]);
+
+  // Prevent background scrolling while modal is open
+  useEffect(() => {
+    if (selectedDay) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [selectedDay]);
 
   // Fetch episode data for a show
   const fetchEpisodeData = async (tmdbId: number): Promise<ShowEpisodeData | null> => {
@@ -106,11 +130,14 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
         lastAirDate
       };
 
-      // Cache the data
-      setEpisodeDataCache(prev => ({
-        ...prev,
-        [tmdbId]: episodeData
-      }));
+      // Cache the data (memory + localStorage)
+      setEpisodeDataCache(prev => {
+        const next = { ...prev, [tmdbId]: episodeData } as EpisodeDataCache;
+        try {
+          localStorage.setItem('episode_data_cache_v1', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
 
       return episodeData;
     } catch (error) {
@@ -119,10 +146,47 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
     }
   };
 
+  // Cache helpers for calendar view
+  const CAL_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+  const calendarCacheKey = (userId: string, year: number, month: number) => `overview_cal_${userId}_${year}_${month}_v1`;
+  const computeShowsSignature = () => {
+    try {
+      const compact = (userShows || []).map(s => ({
+        id: s.id,
+        t: s.show.tmdb_id,
+        st: s.status,
+        p: (s as any).streaming_provider?.name || null,
+        a: (s as any).added_at || null
+      }));
+      // Stable ordering
+      compact.sort((a, b) => (a.t - b.t) || a.id.localeCompare(b.id));
+      return JSON.stringify(compact);
+    } catch {
+      return `${(userShows || []).length}`;
+    }
+  };
+
   const fetchCalendarData = async () => {
     try {
       setLoading(true);
-      
+      const userId = UserManager.getCurrentUserId();
+      const cacheKey = calendarCacheKey(userId, currentDate.getFullYear(), currentDate.getMonth());
+      const signature = computeShowsSignature();
+
+      // Try cache first
+      try {
+        const raw = localStorage.getItem(cacheKey);
+        if (raw) {
+          const cached = JSON.parse(raw);
+          if (cached && cached.signature === signature && Date.now() - cached.createdAt < CAL_CACHE_TTL_MS) {
+            setCalendarData(cached.calendarData || []);
+            setUserProviders(cached.providersLegend || []);
+            setLoading(false);
+            return; // Fresh cache hit
+          }
+        }
+      } catch {}
+
       if ((userShows?.length || 0) === 0) {
         // No shows available, show empty state
         setCalendarData([]);
@@ -134,6 +198,17 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
       const { calendarData, providersLegend } = await generateUserBasedCalendarData();
       setCalendarData(calendarData);
       setUserProviders(providersLegend);
+
+      // Persist to cache
+      try {
+        const payload = {
+          createdAt: Date.now(),
+          signature,
+          calendarData,
+          providersLegend
+        };
+        localStorage.setItem(cacheKey, JSON.stringify(payload));
+      } catch {}
     } catch (error) {
       console.error('OverviewCalendar - Failed to generate calendar data:', error);
       setCalendarData([]);

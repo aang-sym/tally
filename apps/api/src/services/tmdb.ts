@@ -26,6 +26,47 @@ export class TMDBService {
   }
 
   /**
+   * Get basic show details + providers without episode analysis
+   */
+  async getBasicShow(showId: number, country: string = 'US'): Promise<any | null> {
+    if (!this.client) return null;
+    try {
+      const languageMap: Record<string, string> = { US: 'en-US', GB: 'en-GB', AU: 'en-AU', CA: 'en-CA' };
+      const language = languageMap[(country || 'US').toUpperCase()] || 'en-US';
+      const showDetails = await this.client.getTVShow(showId, language);
+      if (!showDetails) return null;
+      let providers: any[] = [];
+      try { providers = await this.getWatchProviders(showId, country); } catch { providers = []; }
+      return {
+        showDetails: {
+          id: showId,
+          title: showDetails.name,
+          overview: showDetails.overview,
+          status: showDetails.status,
+          firstAirDate: showDetails.first_air_date,
+          lastAirDate: showDetails.last_air_date,
+          poster: showDetails.poster_path ? `https://image.tmdb.org/t/p/w500${showDetails.poster_path}` : undefined
+        },
+        pattern: 'unknown',
+        confidence: 0.5,
+        episodeCount: 0,
+        seasonInfo: (showDetails.seasons || []).filter((s: any) => s.season_number >= 1).map((s: any) => ({
+          seasonNumber: s.season_number,
+          episodeCount: s.episode_count,
+          airDate: s.air_date
+        })),
+        reasoning: 'Basic show info (no episodes available)',
+        diagnostics: { intervals: [], avgInterval: 0, stdDev: 0, reasoning: 'No diagnostics', episodeDetails: [] },
+        watchProviders: this.normalizeWatchProviders(providers),
+        analyzedSeason: (showDetails.seasons || []).filter((s: any) => s.season_number >= 1).pop()?.season_number,
+        country
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
    * Check if TMDB integration is available
    */
   get isAvailable(): boolean {
@@ -175,7 +216,9 @@ export class TMDBService {
     }
 
     try {
-      const searchResults = await this.client.searchTV(query);
+      const languageMap: Record<string, string> = { US: 'en-US', GB: 'en-GB', AU: 'en-AU', CA: 'en-CA' };
+      const language = languageMap[(country || 'US').toUpperCase()] || 'en-US';
+      const searchResults = await this.client.searchTV(query, 1, language);
       
       // Convert to our format for web interface
       return searchResults.results.map((show: any) => ({
@@ -202,40 +245,116 @@ export class TMDBService {
     }
 
     try {
-      // Get show details
-      const showDetails = await this.client.getTVShow(showId);
+      // Get show details (use language mapped from country)
+      const languageMap: Record<string, string> = { US: 'en-US', GB: 'en-GB', AU: 'en-AU', CA: 'en-CA' };
+      const language = languageMap[(country || 'US').toUpperCase()] || 'en-US';
+      const showDetails = await this.client.getTVShow(showId, language);
       if (!showDetails) return null;
 
       // Determine which season to analyze
-      const realSeasons = showDetails.seasons?.filter((s: any) => s.season_number >= 1) || [];
+      let realSeasons = showDetails.seasons?.filter((s: any) => s.season_number >= 1) || [];
+      // Ensure seasons are sorted by season_number ascending
+      realSeasons.sort((a: any, b: any) => a.season_number - b.season_number);
       if (realSeasons.length === 0) return null;
 
-      const targetSeason = seasonNumber || realSeasons[realSeasons.length - 1]?.season_number;
+      let targetSeason = seasonNumber || realSeasons[realSeasons.length - 1]?.season_number;
       
-      // Get season episodes (use existing method that gets latest season, but we'll need to modify it)
-      let episodes;
-      if (seasonNumber) {
-        // For specific season, we need to get season data directly
-        const seasonData = await this.client.getSeason(showId, seasonNumber);
-        episodes = seasonData.episodes?.filter((ep: any) => ep.air_date)?.map((ep: any) => ({
-          id: `${showId}_s${seasonNumber}_e${ep.episode_number}`,
-          seasonNumber: seasonNumber,
-          episodeNumber: ep.episode_number,
-          airDate: new Date(ep.air_date).toISOString(),
-          title: ep.name || `Episode ${ep.episode_number}`
-        })) || [];
-      } else {
-        // Use existing method for latest season
-        episodes = await this.client.getLatestSeasonEpisodes(showId);
+      // Get season episodes (robust: search backwards to find a season with dated episodes)
+      let episodes: any[] = [];
+      const fetchSeasonEpisodes = async (sNum: number) => {
+        const seasonData = await this.client!.getSeason(showId, sNum, language);
+        return (seasonData.episodes || [])
+          .filter((ep: any) => !!ep.air_date)
+          .map((ep: any) => ({
+            id: `${showId}_s${sNum}_e${ep.episode_number}`,
+            seasonNumber: sNum,
+            episodeNumber: ep.episode_number,
+            airDate: new Date(ep.air_date).toISOString(),
+            title: ep.name || `Episode ${ep.episode_number}`
+          }));
+      };
+      try {
+        if (seasonNumber) {
+          episodes = await fetchSeasonEpisodes(seasonNumber);
+        } else {
+          // Try latest season, then walk back until we find dated episodes
+          for (let i = realSeasons.length - 1; i >= 0; i--) {
+            const sNum = realSeasons[i].season_number;
+            const eps = await fetchSeasonEpisodes(sNum);
+            if (eps.length > 0) {
+              episodes = eps;
+              targetSeason = sNum;
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        episodes = [];
       }
-      if (!episodes.length) return null;
+      if (!episodes.length) {
+        // Graceful fallback: return show details without episodes so UI still has posters/overview.
+        const providers = await this.getWatchProviders(showId, country);
+        const seasonInfo = realSeasons.map((season: any) => ({
+          seasonNumber: season.season_number,
+          episodeCount: season.episode_count,
+          airDate: season.air_date
+        }));
+        return {
+          showDetails: {
+            id: showId,
+            title: showDetails.name,
+            overview: showDetails.overview,
+            status: showDetails.status,
+            firstAirDate: showDetails.first_air_date,
+            lastAirDate: showDetails.last_air_date,
+            poster: showDetails.poster_path ? `https://image.tmdb.org/t/p/w500${showDetails.poster_path}` : undefined
+          },
+          pattern: 'unknown',
+          confidence: 0.5,
+          episodeCount: 0,
+          seasonInfo,
+          reasoning: 'No episode schedule available for analysis',
+          diagnostics: { intervals: [], avgInterval: 0, stdDev: 0, reasoning: 'No diagnostics', episodeDetails: [] },
+          watchProviders: this.normalizeWatchProviders(providers),
+          analyzedSeason: targetSeason,
+          country
+        };
+      }
 
-      // Analyze pattern
+      // Analyze pattern when we have dated episodes
       const { releasePatternService } = await import('@tally/core');
-      const patternAnalysis = releasePatternService.analyzeReleasePattern(episodes);
+      const patternAnalysis = episodes.length
+        ? releasePatternService.analyzeReleasePattern(episodes)
+        : { pattern: 'unknown', confidence: 0.5 } as any;
+
+      // Build diagnostics (intervals, stats) for UI timeline
+      const sortedEpisodes = [...episodes].sort((a, b) => new Date(a.airDate).getTime() - new Date(b.airDate).getTime());
+      const intervals: number[] = [];
+      for (let i = 1; i < sortedEpisodes.length; i++) {
+        const prev = new Date(sortedEpisodes[i - 1].airDate);
+        const curr = new Date(sortedEpisodes[i].airDate);
+        const diffDays = Math.round((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24));
+        intervals.push(diffDays);
+      }
+      const avgInterval = intervals.length ? intervals.reduce((s, d) => s + d, 0) / intervals.length : 0;
+      const stdDev = intervals.length
+        ? Math.sqrt(intervals.reduce((s, d) => s + Math.pow(d - avgInterval, 2), 0) / intervals.length)
+        : 0;
+      const reasoning = (
+        patternAnalysis.pattern === 'weekly'
+          ? `Detected weekly cadence (~${Math.round(avgInterval)} days)`
+          : patternAnalysis.pattern === 'binge'
+          ? 'Episodes released together or within 1 day'
+          : 'Insufficient signal for a clear pattern'
+      );
 
       // Get watch providers
-      const providers = await this.getWatchProviders(showId, country);
+      let providers: any[] = [];
+      try {
+        providers = await this.getWatchProviders(showId, country);
+      } catch {
+        providers = [];
+      }
 
       // Build season info
       const seasonInfo = realSeasons.map((season: any) => ({
@@ -243,8 +362,8 @@ export class TMDBService {
         episodeCount: season.episode_count,
         airDate: season.air_date,
         ...(season.season_number === targetSeason && {
-          pattern: patternAnalysis.pattern,
-          confidence: patternAnalysis.confidence
+          pattern: finalPattern,
+          confidence: finalConfidence
         })
       }));
 
@@ -258,17 +377,17 @@ export class TMDBService {
           lastAirDate: showDetails.last_air_date,
           poster: showDetails.poster_path ? `https://image.tmdb.org/t/p/w500${showDetails.poster_path}` : undefined
         },
-        pattern: patternAnalysis.pattern,
-        confidence: patternAnalysis.confidence,
+        pattern: finalPattern,
+        confidence: finalConfidence,
         episodeCount: episodes.length,
         seasonInfo,
-        reasoning: patternAnalysis.diagnostics?.reasoning || 'No reasoning available',
+        reasoning: reasoning,
         diagnostics: {
-          intervals: patternAnalysis.diagnostics?.intervals || [],
-          avgInterval: patternAnalysis.diagnostics?.avgInterval || 0,
-          stdDev: patternAnalysis.diagnostics?.stdDev || 0,
-          reasoning: patternAnalysis.diagnostics?.reasoning || 'No diagnostics',
-          episodeDetails: episodes.map(ep => ({
+          intervals,
+          avgInterval,
+          stdDev,
+          reasoning,
+          episodeDetails: sortedEpisodes.map(ep => ({
             number: ep.episodeNumber,
             airDate: ep.airDate,
             title: ep.title

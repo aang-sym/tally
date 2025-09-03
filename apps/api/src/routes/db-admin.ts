@@ -7,6 +7,8 @@
 
 import { Router, Request, Response } from 'express';
 import { supabase, getDatabaseHealth } from '../db/supabase.js';
+import { watchlistStorageService } from '../storage/simple-watchlist.js';
+import { showService } from '../services/ShowService.js';
 
 const router = Router();
 
@@ -289,3 +291,87 @@ router.get('/show-stats/:showId', async (req: Request, res: Response) => {
 });
 
 export default router;
+
+/**
+ * POST /api/admin/seed/memory-to-supabase
+ * Seed Supabase user_shows from in-memory user-1 watchlist for a target user (UUID)
+ * Body: { targetUserId: string }
+ */
+router.post('/seed/memory-to-supabase', async (req: Request, res: Response) => {
+  try {
+    const { targetUserId } = req.body as { targetUserId: string };
+    if (!targetUserId || !/^[0-9a-fA-F-]{36}$/.test(targetUserId)) {
+      return res.status(400).json({ success: false, error: 'targetUserId must be a UUID' });
+    }
+
+    const items = watchlistStorageService.getUserWatchlist('user-1');
+    const results: any[] = [];
+
+    for (const item of items) {
+      // Ensure show exists in Supabase
+      const show = await showService.getOrCreateShow(item.tmdbId);
+      if (!show) {
+        results.push({ tmdbId: item.tmdbId, status: 'skipped', reason: 'show_create_failed' });
+        continue;
+      }
+
+      // Ensure provider exists
+      let selected_service_id: string | null = null;
+      if (item.streamingProvider) {
+        const { data: svcById } = await supabase
+          .from('streaming_services')
+          .select('id')
+          .eq('tmdb_provider_id', item.streamingProvider.id)
+          .single();
+        if (svcById?.id) {
+          selected_service_id = svcById.id;
+        } else {
+          const { data: svcByName } = await supabase
+            .from('streaming_services')
+            .select('id')
+            .ilike('name', item.streamingProvider.name)
+            .single();
+          if (svcByName?.id) {
+            selected_service_id = svcByName.id;
+          } else {
+            const logoPath = (() => {
+              try { return new URL(item.streamingProvider!.logo_url).pathname; } catch { return null; }
+            })();
+            const { data: newSvc } = await supabase
+              .from('streaming_services')
+              .insert([{ tmdb_provider_id: item.streamingProvider.id, name: item.streamingProvider.name, logo_path: logoPath }])
+              .select('id')
+              .single();
+            if (newSvc?.id) selected_service_id = newSvc.id;
+          }
+        }
+      }
+
+      // Upsert user_shows
+      const { data: existing } = await supabase
+        .from('user_shows')
+        .select('id')
+        .eq('user_id', targetUserId)
+        .eq('show_id', show.id)
+        .single();
+
+      if (existing?.id) {
+        await supabase
+          .from('user_shows')
+          .update({ selected_service_id, buffer_days: item.bufferDays || 0 })
+          .eq('id', existing.id);
+        results.push({ tmdbId: item.tmdbId, status: 'updated' });
+      } else {
+        const { error: insertErr } = await supabase
+          .from('user_shows')
+          .insert([{ user_id: targetUserId, show_id: show.id, status: item.status, added_at: item.addedAt, selected_service_id, buffer_days: item.bufferDays || 0 }]);
+        results.push({ tmdbId: item.tmdbId, status: insertErr ? 'error' : 'inserted', error: insertErr?.message });
+      }
+    }
+
+    res.json({ success: true, data: { count: results.length, results } });
+  } catch (error) {
+    console.error('Seed failed:', error);
+    res.status(500).json({ success: false, error: 'Seed failed' });
+  }
+});

@@ -13,20 +13,22 @@ import { showsRouter } from './routes/shows.js';
 import { tmdbRouter } from './routes/tmdb.js';
 import { usageStatsRouter } from './routes/usage-stats.js';
 // New v4 routes
-import watchlistV2Router from './routes/watchlist-v2-simple.js';
+import watchlistV2Router from './routes/watchlist-v2.js';
 import progressRouter from './routes/progress.js';
 import ratingsRouter from './routes/ratings.js';
 import recommendationsRouter from './routes/recommendations.js';
 import dbAdminRouter from './routes/db-admin.js';
 import usersRouter from './routes/users-simple.js';
+import usersDbRouter from './routes/users.js';
 import streamingServicesRouter from './routes/streaming-services.js';
+import tvGuideRouter from './routes/tv-guide.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { trackAPIUsage } from './middleware/usage-tracker.js';
 import { config } from './config/index.js';
 import { quotaTracker } from './services/quota-tracker.js';
 
 const app = express();
-
+ 
 // Security middleware
 app.use(helmet());
 app.use(cors({
@@ -63,7 +65,9 @@ app.use('/api/ratings', ratingsRouter);
 app.use('/api/recommendations', recommendationsRouter);
 app.use('/api/admin', dbAdminRouter);
 app.use('/api/users', usersRouter);
+app.use('/api/users-db', usersDbRouter);
 app.use('/api/streaming-services', streamingServicesRouter);
+app.use('/api/tv-guide', tvGuideRouter);
 
 // 404 handler
 app.use('*', (req, res) => {

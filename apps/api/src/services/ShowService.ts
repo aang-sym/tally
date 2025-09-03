@@ -288,7 +288,15 @@ export class ShowService {
         status: analysis.showDetails.status,
         number_of_seasons: analysis.seasonInfo?.length || 0,
         number_of_episodes: analysis.episodeCount || 0,
-        release_pattern: analysis.pattern,
+        // Persist full analysis summary into DB JSONB field
+        release_pattern: {
+          pattern: analysis.pattern,
+          confidence: analysis.confidence,
+          avgInterval: analysis.diagnostics?.avgInterval ?? null,
+          stdDev: analysis.diagnostics?.stdDev ?? null,
+          intervals: analysis.diagnostics?.intervals ?? [],
+          analyzedSeason: analysis.analyzedSeason
+        },
         seasons: analysis.seasonInfo
       } : null;
     } catch (error) {

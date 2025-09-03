@@ -134,25 +134,26 @@ export class TMDBClient {
   /**
    * Search for TV shows by title
    */
-  async searchTV(query: string, page: number = 1): Promise<TMDBSearchResult> {
+  async searchTV(query: string, page: number = 1, language: string = 'en-US'): Promise<TMDBSearchResult> {
     return this.makeRequest<TMDBSearchResult>('/search/tv', {
       query,
       page: page.toString(),
+      language
     });
   }
 
   /**
    * Get detailed TV show information by ID
    */
-  async getTVShow(tvId: number): Promise<TMDBTVShow> {
-    return this.makeRequest<TMDBTVShow>(`/tv/${tvId}`);
+  async getTVShow(tvId: number, language: string = 'en-US'): Promise<TMDBTVShow> {
+    return this.makeRequest<TMDBTVShow>(`/tv/${tvId}`, { language });
   }
 
   /**
    * Get season details with episode information
    */
-  async getSeason(tvId: number, seasonNumber: number): Promise<TMDBSeason> {
-    return this.makeRequest<TMDBSeason>(`/tv/${tvId}/season/${seasonNumber}`);
+  async getSeason(tvId: number, seasonNumber: number, language: string = 'en-US'): Promise<TMDBSeason> {
+    return this.makeRequest<TMDBSeason>(`/tv/${tvId}/season/${seasonNumber}`, { language });
   }
 
   /**
@@ -180,13 +181,13 @@ export class TMDBClient {
   /**
    * Get the latest season's episodes for release pattern detection
    */
-  async getLatestSeasonEpisodes(tvId: number): Promise<import('../types.js').EpisodeMetadata[]> {
+  async getLatestSeasonEpisodes(tvId: number, language: string = 'en-US'): Promise<import('../types.js').EpisodeMetadata[]> {
     // Get TV show details first to find the latest season
-    const tvShow = await this.getTVShow(tvId);
+    const tvShow = await this.getTVShow(tvId, language);
     const latestSeasonNumber = tvShow.number_of_seasons;
     
     // Get the latest season's episodes
-    const season = await this.getSeason(tvId, latestSeasonNumber);
+    const season = await this.getSeason(tvId, latestSeasonNumber, language);
     
     return this.convertToEpisodeMetadata(season.episodes || []);
   }

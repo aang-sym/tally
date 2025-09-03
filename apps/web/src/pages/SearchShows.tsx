@@ -27,10 +27,11 @@ interface WatchlistAddRequest {
 }
 
 const API_BASE = 'http://localhost:3001';
+const isUUID = (id: string) => /^[0-9a-fA-F-]{36}$/.test(id);
 
 const SearchShows: React.FC = () => {
   const [selectedShow, setSelectedShow] = useState<TMDBShow | null>(null);
-  const [country, setCountry] = useState('US');
+  const [country, setCountry] = useState<string>(UserManager.getCountry());
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
@@ -170,8 +171,9 @@ const SearchShows: React.FC = () => {
     }
   };
 
-  // Auto-refresh when country changes
+  // Persist and auto-refresh when country changes
   useEffect(() => {
+    UserManager.setCountry(country);
     if (selectedShow) {
       analyzeShow(selectedShow.id, selectedSeason);
     }
@@ -185,19 +187,12 @@ const SearchShows: React.FC = () => {
       setSettingProgress(true);
       const userId = UserManager.getCurrentUserId();
 
-      // First, add show to watchlist as "watching"
-      const watchlistData: WatchlistAddRequest = {
-        tmdbId: selectedShow.id,
-        title: selectedShow.title,
-        status: 'watching'
-      };
-
-      const watchlistResponse = await fetch(`${API_BASE}/api/tmdb/watchlist`, {
+      // First, add show to watchlist as "watching" (Supabase for UUID users; simple otherwise)
+      const watchlistData: WatchlistAddRequest = { tmdbId: selectedShow.id, title: selectedShow.title, status: 'watching' };
+      const addUrl = isUUID(userId) ? `${API_BASE}/api/watchlist-v2` : `${API_BASE}/api/tmdb/watchlist`;
+      const watchlistResponse = await fetch(addUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId
-        },
+        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
         body: JSON.stringify(watchlistData)
       });
 
@@ -289,14 +284,8 @@ const SearchShows: React.FC = () => {
         status
       };
 
-      const response = await fetch(`${API_BASE}/api/tmdb/watchlist`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId
-        },
-        body: JSON.stringify(watchlistData)
-      });
+      const addUrl = isUUID(userId) ? `${API_BASE}/api/watchlist-v2` : `${API_BASE}/api/tmdb/watchlist`;
+      const response = await fetch(addUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-user-id': userId }, body: JSON.stringify(watchlistData) });
 
       if (!response.ok) {
         const errorData = await response.json();

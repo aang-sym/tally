@@ -137,12 +137,23 @@ const MyShows: React.FC = () => {
   const [episodeData, setEpisodeData] = useState<{[showId: string]: {[season: number]: Episode[]}}>({});
   const [loadingAnalysis, setLoadingAnalysis] = useState<{[showId: string]: boolean}>({});
   const [showProviders, setShowProviders] = useState<{[showId: string]: StreamingProvider[]}>({});
+  const [country, setCountry] = useState<string>(UserManager.getCountry());
 
   // Fetch watchlist data
   useEffect(() => {
     fetchWatchlist();
     fetchStats();
   }, [activeTab]);
+
+  // When country changes, persist and refresh provider lists
+  useEffect(() => {
+    UserManager.setCountry(country);
+    setShowProviders({});
+    // Re-fetch providers for current shows
+    if (shows.length > 0) {
+      shows.forEach((s) => fetchShowProviders(s.show.tmdb_id));
+    }
+  }, [country]);
 
   const fetchWatchlist = async () => {
     try {
@@ -515,7 +526,8 @@ const MyShows: React.FC = () => {
   // Fetch streaming providers for a show from TMDB
   const fetchShowProviders = async (tmdbId: number) => {
     try {
-      const response = await fetch(`${API_BASE}/api/tmdb/show/${tmdbId}/providers?country=US`);
+      const country = UserManager.getCountry();
+      const response = await fetch(`${API_BASE}/api/tmdb/show/${tmdbId}/providers?country=${country}`);
       if (!response.ok) {
         throw new Error('Failed to fetch providers');
       }
@@ -607,11 +619,25 @@ const MyShows: React.FC = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My Shows</h1>
-          <p className="text-gray-600 mt-2">
-            Track your favorite shows and manage your watching progress
-          </p>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">My Shows</h1>
+            <p className="text-gray-600 mt-2">
+              Track your favorite shows and manage your watching progress
+            </p>
+          </div>
+          <div className="shrink-0">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Country/Region</label>
+            <select
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+            >
+              {['US','GB','CA','AU','DE','FR','JP','KR','IN','BR'].map((code) => (
+                <option key={code} value={code}>{code}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -768,13 +794,13 @@ const MyShows: React.FC = () => {
                               />
                             </div>
 
-                            {/* Streaming Provider - Only show if show has multiple provider options */}
+                            {/* Streaming Provider - reflect country and provider availability */}
                             {(() => {
                               const availableProviders = showProviders[userShow.show.tmdb_id] || [];
+                              const hasProviders = availableProviders.length > 0;
                               const hasMultipleProviders = availableProviders.length > 1;
-                              
-                              // Only show provider selection if there are multiple providers available
-                              if (!hasMultipleProviders) return null;
+
+                              if (!hasProviders && !userShow.streaming_provider) return null;
 
                               return (
                                 <div className="mb-3 relative">
@@ -799,7 +825,7 @@ const MyShows: React.FC = () => {
                                           ×
                                         </button>
                                       </div>
-                                    ) : (
+                                    ) : hasMultipleProviders ? (
                                       <div className="relative">
                                         <select
                                           onClick={(e) => e.stopPropagation()}
@@ -814,7 +840,7 @@ const MyShows: React.FC = () => {
                                               });
                                             }
                                           }}
-                                          className="text-sm border border-gray-300 rounded px-2 py-1 bg-white min-w-[120px] relative z-10"
+                                          className="text-sm border border-gray-300 rounded px-2 py-1 bg-white min-w-[140px] relative z-10"
                                           defaultValue=""
                                         >
                                           <option value="">Select service...</option>
@@ -828,11 +854,67 @@ const MyShows: React.FC = () => {
                                           ))}
                                         </select>
                                       </div>
-                                    )}
+                                    ) : hasProviders ? (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const p = availableProviders[0];
+                                          updateStreamingProvider(userShow.id, p);
+                                        }}
+                                        className="inline-flex items-center space-x-2 px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                                        title="Set streaming provider"
+                                      >
+                                        <img src={availableProviders[0].logo_url} alt={availableProviders[0].name} className="w-5 h-5 rounded" />
+                                        <span>Use {availableProviders[0].name}</span>
+                                      </button>
+                                    ) : null}
                                   </div>
                                 </div>
                               );
                             })()}
+                            {/* TV Guide settings: Buffer days and per-show country override */}
+                            <div className="mt-3 flex items-end gap-6">
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">Buffer days</label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={30}
+                                  defaultValue={userShow.bufferDays || 0}
+                                  onBlur={(e) => {
+                                    e.stopPropagation();
+                                    const v = Number(e.currentTarget.value) || 0;
+                                    fetch(`${API_BASE}/api/watchlist-v2/${userShow.id}/buffer`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json', 'x-user-id': UserManager.getCurrentUserId() },
+                                      body: JSON.stringify({ bufferDays: v })
+                                    }).then(() => setShows(prev => prev.map(s => s.id === userShow.id ? { ...s, bufferDays: v } : s)));
+                                  }}
+                                  className="w-24 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">Show Country</label>
+                                <select
+                                  value={userShow.country_code || ''}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    const code = e.target.value || null;
+                                    fetch(`${API_BASE}/api/watchlist-v2/${userShow.id}/country`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json', 'x-user-id': UserManager.getCurrentUserId() },
+                                      body: JSON.stringify({ countryCode: code })
+                                    }).then(() => setShows(prev => prev.map(s => s.id === userShow.id ? { ...s, country_code: code || null } : s)));
+                                  }}
+                                  className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                >
+                                  <option value="">Default ({country})</option>
+                                  {['US','GB','CA','AU','DE','FR','JP','KR','IN','BR'].map((code) => (
+                                    <option key={code} value={code}>{code}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
