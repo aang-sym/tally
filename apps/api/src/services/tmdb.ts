@@ -334,7 +334,7 @@ export class TMDBService {
       // Analyze pattern when we have dated episodes
       const { releasePatternService } = await import('@tally/core');
       const patternAnalysis = episodes.length
-        ? releasePatternService.analyzeReleasePattern(episodes)
+        ? releasePatternService.analyzeEpisodes(episodes)
         : { pattern: 'unknown', confidence: 0.5 } as any;
 
       const finalPattern = patternAnalysis.pattern;

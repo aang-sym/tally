@@ -194,9 +194,16 @@ router.post('/', async (req: Request, res: Response) => {
     const userShow = await watchlistService.addToWatchlist(userId, tmdbId, status);
 
     if (!userShow) {
+      console.error('WatchlistService returned null for:', {
+        userId,
+        tmdbId,
+        status,
+        userToken: userToken ? `${userToken.substring(0, 20)}...` : 'none',
+        timestamp: new Date().toISOString()
+      });
       return res.status(400).json({
         success: false,
-        error: 'Failed to add show to watchlist'
+        error: 'Failed to add show to watchlist - service returned null'
       });
     }
 
@@ -216,10 +223,21 @@ router.post('/', async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Failed to add show to watchlist:', error);
+    console.error('Route-level watchlist error:', {
+      error,
+      userId,
+      tmdbId,
+      status,
+      errorType: typeof error,
+      errorMessage: error?.message,
+      errorCode: error?.code,
+      errorDetails: error?.details,
+      errorStack: error?.stack,
+      timestamp: new Date().toISOString()
+    });
     res.status(500).json({
       success: false,
-      error: 'Failed to add show to watchlist'
+      error: 'Failed to add show to watchlist - exception thrown'
     });
   }
 });

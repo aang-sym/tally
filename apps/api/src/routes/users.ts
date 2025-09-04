@@ -602,7 +602,7 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
         streaming_services:service_id (
           id,
           name,
-          logo_url,
+          logo_path,
           base_url,
           country_code
         )

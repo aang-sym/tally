@@ -91,7 +91,17 @@ export class WatchlistService {
         .select()
         .single();
 
-      if (createError) throw createError;
+      if (createError) {
+        console.error('Detailed user_shows insert error:', {
+          error: createError,
+          userData: userShowData,
+          userId,
+          showId: show.id,
+          tmdbId,
+          status
+        });
+        throw createError;
+      }
 
       // Mark show as popular if it's being actively tracked
       if (status === 'watching') {

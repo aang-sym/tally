@@ -232,15 +232,15 @@ export class TMDBClient {
       const episodes = await this.getLatestSeasonEpisodes(show.id);
       
       if (!episodes.length) {
-        return { pattern: 'unknown', tmdbId: show.id };
+        return { pattern: 'unknown' as const, tmdbId: show.id };
       }
       
       // Use existing release pattern service to analyze
       const { releasePatternService } = await import('../services/release-pattern.js');
-      const analysis = releasePatternService.analyzeReleasePattern(episodes);
+      const analysis = releasePatternService.analyzeEpisodes(episodes);
       
       return {
-        pattern: analysis.pattern,
+        pattern: analysis.pattern.pattern,
         tmdbId: show.id
       };
     } catch (error) {

@@ -214,7 +214,10 @@ const SearchShows: React.FC = () => {
           lastAirDate: base.analysis?.showDetails?.lastAirDate,
           poster: selectedShow?.poster || showDetails?.poster
         },
-        pattern: pat.pattern,
+        pattern: {
+          pattern: pat.pattern,
+          confidence: pat.confidence
+        },
         confidence: pat.confidence,
         episodeCount: episodes.length,
         seasonInfo,
@@ -584,7 +587,7 @@ const SearchShows: React.FC = () => {
                       <div>
                         <p className="text-sm font-medium text-gray-900">{selectedShow.title}</p>
                         <p className="text-xs text-gray-500">
-                          {analysisData ? `${analysisData.pattern} release pattern` : 'Ready to add to your list'}
+                          {analysisData ? `${analysisData.pattern.pattern} release pattern` : 'Ready to add to your list'}
                         </p>
                       </div>
                     </div>

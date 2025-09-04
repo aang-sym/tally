@@ -66,6 +66,18 @@ export const TMDBWatchProviderSchema = z.object({
   display_priority: z.number(),
 });
 
+// Release Pattern schemas
+export const ReleasePatternSchema = z.object({
+  pattern: z.enum(['weekly', 'binge', 'unknown']),
+  confidence: z.number().min(0).max(1),
+  avgInterval: z.number().optional(),
+  stdDev: z.number().optional(),
+  intervals: z.array(z.number()).optional(),
+  analyzedSeason: z.number().optional(),
+});
+
+export type ReleasePattern = z.infer<typeof ReleasePatternSchema>;
+
 // Watchlist schemas
 export const WatchlistItemSchema = z.object({
   id: z.string(),
