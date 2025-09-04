@@ -38,6 +38,10 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
       }
     }
   };  const switchUser = (userId: string) => {
+    const currentToken = localStorage.getItem('authToken');
+    console.log('[AUTH DEBUG] Switching to user:', userId);
+    console.log('[AUTH DEBUG] Current stored token:', currentToken ? `${currentToken.substring(0, 20)}...` : 'none');
+    
     UserManager.setCurrentUserId(userId);
     setCurrentUserId(userId);
     setIsOpen(false);
@@ -67,12 +71,15 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
         })
       });
 
-      if (data.token) { // Store the token if received
-        localStorage.setItem('authToken', data.token);
+      if (data.data && data.data.token) { // Store the token if received
+        localStorage.setItem('authToken', data.data.token);
+        console.log('[AUTH DEBUG] Stored JWT token:', `${data.data.token.substring(0, 20)}...`);
+      } else {
+        console.error('[AUTH DEBUG] No token received in signup response:', data);
       }
 
       await loadUsers();
-      switchUser(data.user.id); // Assuming user object is directly under data
+      switchUser(data.data.user.id); // User object is under data.data
       setShowCreateModal(false);
     } catch (error: any) {
       console.error('Failed to create user:', error);
