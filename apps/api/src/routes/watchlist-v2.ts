@@ -13,6 +13,10 @@ import { streamingService } from '../services/StreamingService.js';
 
 const router = Router();
 
+// Create a default watchlist service instance for routes that don't have user tokens
+// Individual routes may create their own instances with specific user tokens
+const watchlistService = new WatchlistService();
+
 // Note: Authentication is now handled by server-level middleware
 
 /**

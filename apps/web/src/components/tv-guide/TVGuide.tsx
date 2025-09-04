@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { format, addDays, startOfDay } from 'date-fns';
 import { DateChunk, TVGuideService, ViewportRange, ScrollState, TV_GUIDE_CONSTANTS } from './tv-guide.types';
-import { UserManager } from '../../services/UserManager';
+import { API_ENDPOINTS, apiRequest } from '../../config/api';
 import TVGuideHeader from './TVGuideHeader';
 import ServiceRow from './ServiceRow';
 
@@ -143,17 +143,12 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
   // Load TV Guide data from API
   const loadTVGuideData = async (startDate: Date, endDate: Date) => {
     try {
-      const userId = UserManager.getCurrentUserId();
-      const response = await fetch(
-        `http://localhost:3001/api/tv-guide?startDate=${format(startDate, 'yyyy-MM-dd')}&endDate=${format(endDate, 'yyyy-MM-dd')}`,
-        { headers: { 'x-user-id': userId } }
+      const token = localStorage.getItem('authToken') || undefined;
+      const result = await apiRequest(
+        `${API_ENDPOINTS.tvGuide}?startDate=${format(startDate, 'yyyy-MM-dd')}&endDate=${format(endDate, 'yyyy-MM-dd')}`,
+        {},
+        token
       );
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch TV guide data');
-      }
-      
-      const result = await response.json();
       return result.data;
     } catch (error) {
       console.error('Failed to load TV guide data:', error);

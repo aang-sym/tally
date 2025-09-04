@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserManager } from '../services/UserManager';
-import { API_ENDPOINTS, apiRequest } from '../config/api';
+import { API_ENDPOINTS, API_BASE_URL, apiRequest } from '../config/api';
 import TMDBSearch from '../components/TMDBSearch';
 import PatternAnalysis from '../components/PatternAnalysis';
 
@@ -27,7 +27,6 @@ interface WatchlistAddRequest {
   status: 'watchlist' | 'watching';
 }
 
-const isUUID = (id: string) => /^[0-9a-fA-F-]{36}$/.test(id);
 
 const SearchShows: React.FC = () => {
   const [selectedShow, setSelectedShow] = useState<TMDBShow | null>(null);
@@ -104,7 +103,6 @@ const SearchShows: React.FC = () => {
         }
         
         setWatchedEpisodes(watchedSet);
-      }
     } catch (error) {
       console.error('Failed to fetch episode progress:', error);
     }
@@ -185,7 +183,7 @@ const SearchShows: React.FC = () => {
       setAnalysisError('');
       
       // 1) Get show details + season list (minimal); keep using analyze for details only
-      const baseRes = await fetch(`${API_BASE}/api/tmdb/show/${showId}/analyze?country=${country}`);
+      const baseRes = await fetch(`${API_BASE_URL}/api/tmdb/show/${showId}/analyze?country=${country}`);
       const base = await baseRes.json();
       if (!baseRes.ok) throw new Error(base.message || 'Failed to fetch show details');
       const seasonInfo = base.analysis?.seasonInfo || [];
@@ -193,7 +191,7 @@ const SearchShows: React.FC = () => {
       // 2) Determine target season: explicit or latest
       const targetSeason = seasonNumber ?? (seasonInfo.length>0 ? Math.max(...seasonInfo.map((s:any)=>s.seasonNumber)) : 1);
       // 3) Fetch RAW episodes for that season
-      const rawRes = await fetch(`${API_BASE}/api/tmdb/show/${showId}/season/${targetSeason}/raw?country=${country}`);
+      const rawRes = await fetch(`${API_BASE_URL}/api/tmdb/show/${showId}/season/${targetSeason}/raw?country=${country}`);
       const raw = await rawRes.json();
       if (!rawRes.ok) throw new Error('Failed to fetch raw season');
       const season = raw.raw?.season || raw.raw;
@@ -264,7 +262,6 @@ const SearchShows: React.FC = () => {
     
     try {
       setSettingProgress(true);
-      const userId = UserManager.getCurrentUserId();
 
       // First, add show to watchlist as "watching" using the watchlist-v2 API
       const watchlistData: WatchlistAddRequest = { tmdbId: selectedShow.id, title: selectedShow.title, status: 'watching' };
@@ -283,7 +280,6 @@ const SearchShows: React.FC = () => {
       }
 
       // Then set the episode progress using the watchlist-v2 API
-      const token = localStorage.getItem('authToken') || undefined;
       const progressData = await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${selectedShow.id}/progress`, {
         method: 'PUT',
         headers: {
@@ -340,7 +336,6 @@ const SearchShows: React.FC = () => {
   const addToWatchlist = async (show: TMDBShow, status: 'watchlist' | 'watching' = 'watchlist') => {
     try {
       setAddingToWatchlist(show.id);
-      const userId = UserManager.getCurrentUserId();
 
       const watchlistData: WatchlistAddRequest = {
         tmdbId: show.id,
@@ -348,15 +343,12 @@ const SearchShows: React.FC = () => {
         status
       };
 
-      const addUrl = isUUID(userId) ? `${API_BASE}/api/watchlist-v2` : `${API_BASE}/api/tmdb/watchlist`;
-      const response = await fetch(addUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-user-id': userId }, body: JSON.stringify(watchlistData) });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to add to watchlist');
-      }
-
-      const result = await response.json();
+      const token = localStorage.getItem('authToken') || undefined;
+      const result = await apiRequest(API_ENDPOINTS.watchlist.v2, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(watchlistData)
+      }, token);
       
       // Update watchlist status after successful action
       setWatchlistStatus({
@@ -368,7 +360,7 @@ const SearchShows: React.FC = () => {
       // Show success message
       const toast = document.createElement('div');
       toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-      toast.textContent = result.message;
+      toast.textContent = result.message || `Added ${show.title} to ${status}`;
       document.body.appendChild(toast);
       
       setTimeout(() => {
@@ -389,52 +381,40 @@ const SearchShows: React.FC = () => {
   const removeFromWatchlist = async (show: TMDBShow) => {
     try {
       setWatchlistStatus(prev => ({ ...prev, loading: true }));
-      const userId = UserManager.getCurrentUserId();
 
       // First get the watchlist to find the item ID
-      const watchlistResponse = await fetch(`${API_BASE}/api/watchlist-v2`, {
-        headers: { 'x-user-id': userId }
-      });
+      const token = localStorage.getItem('authToken') || undefined;
+      const watchlistData = await apiRequest(API_ENDPOINTS.watchlist.v2, {}, token);
 
-      if (watchlistResponse.ok) {
-        const watchlistData = await watchlistResponse.json();
-        const userShow = watchlistData.data?.shows?.find((s: any) => s.show.tmdb_id === show.id);
+      const userShow = watchlistData.data?.shows?.find((s: any) => s.show.tmdb_id === show.id);
+      
+      if (userShow) {
+        // Remove the show using the user show ID
+        await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShow.id}`, {
+          method: 'DELETE'
+        }, token);
         
-        if (userShow) {
-          // Remove the show using the user show ID
-          const removeResponse = await fetch(`${API_BASE}/api/watchlist-v2/${userShow.id}`, {
-            method: 'DELETE',
-            headers: { 'x-user-id': userId }
-          });
+        // Update local state
+        setWatchlistStatus({
+          isInWatchlist: false,
+          isWatching: false,
+          loading: false
+        });
+        setWatchedEpisodes(new Set());
 
-          if (removeResponse.ok) {
-            // Update local state
-            setWatchlistStatus({
-              isInWatchlist: false,
-              isWatching: false,
-              loading: false
-            });
-            setWatchedEpisodes(new Set());
-
-            // Show success message
-            const toast = document.createElement('div');
-            toast.className = 'fixed top-4 right-4 bg-yellow-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-            toast.textContent = `Removed "${show.title}" from your watchlist`;
-            document.body.appendChild(toast);
-            
-            setTimeout(() => {
-              if (document.body.contains(toast)) {
-                document.body.removeChild(toast);
-              }
-            }, 4000);
-          } else {
-            throw new Error('Failed to remove from watchlist');
+        // Show success message
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-4 right-4 bg-yellow-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+        toast.textContent = `Removed "${show.title}" from your watchlist`;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+          if (document.body.contains(toast)) {
+            document.body.removeChild(toast);
           }
-        } else {
-          throw new Error('Show not found in watchlist');
-        }
+        }, 4000);
       } else {
-        throw new Error('Failed to fetch watchlist');
+        throw new Error('Show not found in watchlist');
       }
     } catch (err) {
       console.error('Failed to remove from watchlist:', err);

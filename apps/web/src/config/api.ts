@@ -103,6 +103,12 @@ export const apiRequest = async (
   options: RequestInit = {},
   token?: string
 ) => {
+  // Debug logging
+  const storedToken = localStorage.getItem('authToken');
+  console.log('[API DEBUG] Making request to:', url);
+  console.log('[API DEBUG] Token parameter:', token ? `${token.substring(0, 20)}...` : 'undefined');
+  console.log('[API DEBUG] Stored token:', storedToken ? `${storedToken.substring(0, 20)}...` : 'none');
+  
   const config: RequestInit = {
     ...options,
     headers: {
@@ -111,16 +117,28 @@ export const apiRequest = async (
     },
   };
 
+  // Log outgoing headers (masked for security)
+  const headers = config.headers as Record<string, string>;
+  console.log('[API DEBUG] Request headers:', {
+    ...headers,
+    Authorization: headers.Authorization ? `Bearer ${headers.Authorization.substring(7, 27)}...` : 'none'
+  });
+
   const response = await fetch(url, config);
+  
+  console.log('[API DEBUG] Response status:', response.status, response.statusText);
   
   if (!response.ok) {
     const error = await response.json().catch(() => ({ 
       error: `HTTP ${response.status}: ${response.statusText}` 
     }));
+    console.log('[API DEBUG] Error response:', error);
     throw new Error(error.error || error.message || 'API request failed');
   }
 
-  return response.json();
+  const result = await response.json();
+  console.log('[API DEBUG] Success response keys:', Object.keys(result));
+  return result;
 };
 
 export default {

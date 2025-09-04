@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import CalendarView, { CalendarDay } from './CalendarView';
 import { UserManager } from '../../services/UserManager';
+import { API_ENDPOINTS, apiRequest } from '../../config/api';
 
 interface UserSubscription {
   id: string;
@@ -46,7 +47,6 @@ interface EpisodeDataCache {
 }
 
 // API base URL
-const API_BASE = 'http://localhost:3001';
 
 const OverviewCalendar: React.FC<OverviewCalendarProps> = ({ 
   useUserData = false, 
@@ -108,18 +108,8 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/tmdb/show/${tmdbId}/analyze`, {
-        headers: {
-          'x-user-id': 'user-1' // TODO: Use actual user ID
-        }
-      });
-
-      if (!response.ok) {
-        console.warn(`Failed to fetch episode data for show ${tmdbId}`);
-        return null;
-      }
-
-      const data = await response.json();
+      const token = localStorage.getItem('authToken') || undefined;
+      const data = await apiRequest(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/analyze`, {}, token);
       const episodes = data.analysis?.diagnostics?.episodeDetails || [];
       
       if (episodes.length === 0) {

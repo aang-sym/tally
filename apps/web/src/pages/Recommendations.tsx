@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RecommendationCard } from '../components/RecommendationCard';
-
-// API base URL
-const API_BASE = 'http://localhost:3001';
-
-// Mock user ID (would come from authentication)
-const USER_ID = 'user-1';
+import { API_ENDPOINTS, apiRequest } from '../config/api';
 
 const Recommendations: React.FC = () => {
   const [cancellationRecommendations, setCancellationRecommendations] = useState<any[]>([]);
@@ -21,35 +16,30 @@ const Recommendations: React.FC = () => {
   const fetchRecommendations = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('authToken') || undefined;
       
       // Fetch all recommendation types
-      const [cancelResponse, subscribeResponse, optimizationResponse] = await Promise.allSettled([
-        fetch(`${API_BASE}/api/recommendations/cancel`, {
-          headers: { 'x-user-id': USER_ID }
-        }),
-        fetch(`${API_BASE}/api/recommendations/subscribe`, {
-          headers: { 'x-user-id': USER_ID }
-        }),
-        fetch(`${API_BASE}/api/recommendations/optimization`, {
-          headers: { 'x-user-id': USER_ID }
-        })
+      const [cancelResult, subscribeResult, optimizationResult] = await Promise.allSettled([
+        apiRequest(`${API_ENDPOINTS.recommendations}/cancel`, {}, token),
+        apiRequest(`${API_ENDPOINTS.recommendations}/subscribe`, {}, token),
+        apiRequest(`${API_ENDPOINTS.recommendations}/optimization`, {}, token)
       ]);
 
       // Handle cancellation recommendations
-      if (cancelResponse.status === 'fulfilled' && cancelResponse.value.ok) {
-        const cancelData = await cancelResponse.value.json();
+      if (cancelResult.status === 'fulfilled') {
+        const cancelData = cancelResult.value;
         setCancellationRecommendations(cancelData.data.recommendations || []);
       }
 
       // Handle subscription recommendations
-      if (subscribeResponse.status === 'fulfilled' && subscribeResponse.value.ok) {
-        const subscribeData = await subscribeResponse.value.json();
+      if (subscribeResult.status === 'fulfilled') {
+        const subscribeData = subscribeResult.value;
         setSubscriptionRecommendations(subscribeData.data.recommendations || []);
       }
 
       // Handle optimization recommendations
-      if (optimizationResponse.status === 'fulfilled' && optimizationResponse.value.ok) {
-        const optimizationData = await optimizationResponse.value.json();
+      if (optimizationResult.status === 'fulfilled') {
+        const optimizationData = optimizationResult.value;
         setOptimizationRecommendation(optimizationData.data);
       }
 
@@ -64,11 +54,11 @@ const Recommendations: React.FC = () => {
 
   const handleRecommendationFeedback = async (recommendationId: string, action: 'accepted' | 'rejected') => {
     try {
-      await fetch(`${API_BASE}/api/recommendations/feedback`, {
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.recommendations}/feedback`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': USER_ID
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           recommendationId,
