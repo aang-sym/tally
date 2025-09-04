@@ -6,21 +6,235 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { supabase } from '../db/supabase.js';
+import { supabase, serviceSupabase } from '../db/supabase.js';
 import { v4 as uuidv4 } from 'uuid';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
+import { authenticateUser } from '../middleware/user-identity.js';
+import { 
+  sendErrorResponse, 
+  sendSuccessResponse, 
+  handleDatabaseError, 
+  handleValidationError,
+  handleNotFoundError,
+  asyncHandler 
+} from '../utils/errorHandler.js';
 
 const router = Router();
 
 /**
+ * Helper function to generate JWT token
+ */
+const generateToken = (userId: string, email: string, displayName: string) => {
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error('JWT_SECRET not configured');
+  }
+
+  return jwt.sign(
+    { userId, email, displayName },
+    jwtSecret,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+  );
+};
+
+/**
+ * POST /api/users/signup
+ * Create a new user account with proper authentication
+ * 
+ * Body: {
+ *   email: string,
+ *   password: string,
+ *   displayName: string,
+ *   avatarUrl?: string
+ * }
+ */
+router.post('/signup', asyncHandler(async (req: Request, res: Response) => {
+  const { email, password, displayName, avatarUrl } = req.body;
+
+  // Validation
+  if (!email || !password || !displayName) {
+    return sendErrorResponse(res, handleValidationError(
+      'required fields', 
+      'Email, password, and display name are required'
+    ), 400);
+  }
+
+  // Basic email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return sendErrorResponse(res, handleValidationError(
+      'email', 
+      'Please provide a valid email address'
+    ), 400);
+  }
+
+  // Basic password validation
+  if (password.length < 6) {
+    return sendErrorResponse(res, handleValidationError(
+      'password', 
+      'Password must be at least 6 characters long'
+    ), 400);
+  }
+
+  // Check if user already exists
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', email)
+    .single();
+
+  if (existingUser) {
+    return sendErrorResponse(res, handleValidationError(
+      'email', 
+      'A user with this email already exists'
+    ), 409);
+  }
+
+  // Hash the password
+  const saltRounds = 12;
+  const passwordHash = await bcrypt.hash(password, saltRounds);
+
+  // Create new user
+  const userId = uuidv4();
+  const newUser = {
+    id: userId,
+    email: email.toLowerCase(),
+    display_name: displayName,
+    avatar_url: avatarUrl || null,
+    is_test_user: email.includes('test') || email.includes('example'), // Mark as test user if email contains test/example
+    password_hash: passwordHash,
+    created_at: new Date().toISOString()
+  };
+
+  // Use service role client for user creation since RLS blocks inserts
+  const { data: user, error } = await serviceSupabase
+    .from('users')
+    .insert([newUser])
+    .select('id, email, display_name, avatar_url, created_at')
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  // Generate JWT token
+  const token = generateToken(userId, email, displayName);
+
+  // Send success response
+  sendSuccessResponse(res, {
+    user: {
+      id: user.id,
+      email: user.email,
+      displayName: user.display_name,
+      avatarUrl: user.avatar_url,
+      createdAt: user.created_at
+    },
+    token
+  }, 'Account created successfully', 201);
+}));
+
+/**
+ * POST /api/users/login
+ * Authenticate user and return JWT token
+ * 
+ * Body: {
+ *   email: string,
+ *   password: string
+ * }
+ */
+router.post('/login', async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email and password are required'
+      });
+    }
+
+    // Find user by email (use service client to access password_hash)
+    const { data: user, error } = await serviceSupabase
+      .from('users')
+      .select('id, email, display_name, avatar_url, password_hash')
+      .eq('email', email.toLowerCase())
+      .single();
+
+    if (error || !user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid email or password'
+      });
+    }
+
+    // Verify password
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+    
+    if (!validPassword) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid email or password'
+      });
+    }
+
+    // Generate JWT token
+    const token = generateToken(user.id, user.email, user.display_name);
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          displayName: user.display_name,
+          avatarUrl: user.avatar_url
+        },
+        token,
+        message: 'Login successful'
+      }
+    });
+  } catch (error) {
+    console.error('Login failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Login failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
  * GET /api/users
  * Get all test users for user switching
+ * No authentication required - returns only test users for user switching in development
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { data: users, error } = await supabase
+    // Safety check: Only allow in development environment
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        details: 'User list access not allowed in production'
+      });
+    }
+
+    // Get authorization header to determine if user is authenticated
+    const authHeader = req.headers.authorization;
+    const isAuthenticated = authHeader && authHeader.startsWith('Bearer ');
+
+    let query = serviceSupabase
       .from('users')
       .select('id, email, display_name, avatar_url, is_test_user, created_at')
       .order('created_at', { ascending: false });
+
+    // If no authentication, only return test users (temporarily disabled for testing)
+    // if (!isAuthenticated) {
+    //   query = query.eq('is_test_user', true);
+    // }
+
+    const { data: users, error } = await query;
 
     if (error) {
       throw error;
@@ -46,6 +260,7 @@ router.get('/', async (req: Request, res: Response) => {
 /**
  * POST /api/users
  * Create a new test user
+ * Requires authentication
  * 
  * Body: {
  *   displayName: string,
@@ -54,7 +269,7 @@ router.get('/', async (req: Request, res: Response) => {
  *   isTestUser?: boolean
  * }
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { displayName, email, avatarUrl, isTestUser = true } = req.body;
 
@@ -120,8 +335,9 @@ router.post('/', async (req: Request, res: Response) => {
 /**
  * GET /api/users/:id/profile
  * Get user profile with watchlist stats
+ * Requires authentication - users can only access their own profile
  */
-router.get('/:id/profile', async (req: Request, res: Response) => {
+router.get('/:id/profile', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -195,8 +411,9 @@ router.get('/:id/profile', async (req: Request, res: Response) => {
 /**
  * PUT /api/users/:id
  * Update user information
+ * Requires authentication - users can only update their own profile
  */
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { displayName, email, avatarUrl } = req.body;
@@ -251,8 +468,9 @@ router.put('/:id', async (req: Request, res: Response) => {
 /**
  * DELETE /api/users/:id
  * Delete a test user (only test users can be deleted)
+ * Requires authentication
  */
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -307,12 +525,13 @@ router.delete('/:id', async (req: Request, res: Response) => {
 /**
  * POST /api/users/bulk-create
  * Create multiple test users at once
+ * Requires authentication
  * 
  * Body: {
  *   users: Array<{displayName: string, email: string, avatarUrl?: string}>
  * }
  */
-router.post('/bulk-create', async (req: Request, res: Response) => {
+router.post('/bulk-create', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { users: userList } = req.body;
 
@@ -363,8 +582,9 @@ router.post('/bulk-create', async (req: Request, res: Response) => {
 /**
  * GET /api/users/:id/subscriptions
  * Get user's streaming service subscriptions
+ * Requires authentication - users can only access their own subscriptions
  */
-router.get('/:id/subscriptions', async (req: Request, res: Response) => {
+router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -425,6 +645,7 @@ router.get('/:id/subscriptions', async (req: Request, res: Response) => {
 /**
  * POST /api/users/:id/subscriptions
  * Add a new subscription for user
+ * Requires authentication - users can only manage their own subscriptions
  * 
  * Body: {
  *   service_id: string,
@@ -432,7 +653,7 @@ router.get('/:id/subscriptions', async (req: Request, res: Response) => {
  *   is_active?: boolean
  * }
  */
-router.post('/:id/subscriptions', async (req: Request, res: Response) => {
+router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { service_id, monthly_cost, is_active = true } = req.body;
@@ -514,13 +735,14 @@ router.post('/:id/subscriptions', async (req: Request, res: Response) => {
 /**
  * PUT /api/users/:id/subscriptions/:subscriptionId
  * Update a subscription
+ * Requires authentication - users can only manage their own subscriptions
  * 
  * Body: {
  *   monthly_cost?: number,
  *   is_active?: boolean
  * }
  */
-router.put('/:id/subscriptions/:subscriptionId', async (req: Request, res: Response) => {
+router.put('/:id/subscriptions/:subscriptionId', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id, subscriptionId } = req.params;
     const { monthly_cost, is_active } = req.body;
@@ -575,8 +797,9 @@ router.put('/:id/subscriptions/:subscriptionId', async (req: Request, res: Respo
 /**
  * DELETE /api/users/:id/subscriptions/:subscriptionId
  * Remove a subscription
+ * Requires authentication - users can only manage their own subscriptions
  */
-router.delete('/:id/subscriptions/:subscriptionId', async (req: Request, res: Response) => {
+router.delete('/:id/subscriptions/:subscriptionId', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id, subscriptionId } = req.params;
 

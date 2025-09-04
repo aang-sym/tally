@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import CalendarView, { CalendarDay } from './CalendarView';
-import { UserManager } from '../UserSwitcher';
+import { UserManager } from '../../services/UserManager';
 
 interface UserSubscription {
   id: string;

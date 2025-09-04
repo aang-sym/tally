@@ -1,12 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { RecommendationCard } from '../components/RecommendationCard';
-
-// API base URL
-const API_BASE = 'http://localhost:3001';
-
-// Mock user ID (would come from authentication)
-const USER_ID = 'user-1';
+import { API_ENDPOINTS, apiRequest } from '../config/api';
 
 interface DashboardStats {
   watchlistStats: {
@@ -40,14 +35,13 @@ const Dashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      // Fetch all dashboard data in parallel
+      // Get auth token from localStorage
+      const token = localStorage.getItem('authToken');
+      
+      // Fetch all dashboard data in parallel using apiRequest with JWT authentication
       const [watchlistResponse, optimizationResponse] = await Promise.allSettled([
-        fetch(`${API_BASE}/api/watchlist-v2/stats`, {
-          headers: { 'x-user-id': USER_ID }
-        }),
-        fetch(`${API_BASE}/api/recommendations/optimization`, {
-          headers: { 'x-user-id': USER_ID }
-        })
+        apiRequest(`${API_ENDPOINTS.watchlist.v2}/stats`, {}, token),
+        apiRequest(`${API_ENDPOINTS.recommendations}/optimization`, {}, token)
       ]);
 
       const dashboardStats: DashboardStats = {
@@ -65,15 +59,13 @@ const Dashboard: React.FC = () => {
       };
 
       // Handle watchlist stats
-      if (watchlistResponse.status === 'fulfilled' && watchlistResponse.value.ok) {
-        const watchlistData = await watchlistResponse.value.json();
-        dashboardStats.watchlistStats = watchlistData.data;
+      if (watchlistResponse.status === 'fulfilled') {
+        dashboardStats.watchlistStats = watchlistResponse.value.data;
       }
 
       // Handle optimization stats
-      if (optimizationResponse.status === 'fulfilled' && optimizationResponse.value.ok) {
-        const optimizationData = await optimizationResponse.value.json();
-        const optimization = optimizationData.data;
+      if (optimizationResponse.status === 'fulfilled') {
+        const optimization = optimizationResponse.value.data;
         
         dashboardStats.savingsStats = {
           potentialMonthlySavings: optimization.currentSituation.monthlyCost - optimization.optimizedPlan.estimatedMonthlyCost,

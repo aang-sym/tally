@@ -1,0 +1,27 @@
+# TypeScript build artifacts
+*.js
+*.d.ts
+*.d.ts.map
+*.js.map
+
+# Keep configuration files
+!*.config.js
+!jest.config.js
+!vite.config.js
+
+# Keep source files explicitly
+src/**/*.js
+!src/**/*.d.ts
+!src/**/*.d.ts.map
+!src/**/*.js.map
+
+# Node modules
+node_modules/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

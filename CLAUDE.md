@@ -80,6 +80,10 @@ npm run format
 **Planning**:
 - `POST /api/plan/generate` - Get mock activation windows and savings
 
+## Notifications
+When tasks complete, you need my attention, or when usage limit wait time is over, notify me using:
+powershell.exe -c "[System.Media.SystemSounds]::Question.Play()"
+
 ## What's Mocked vs Real
 
 **Real**:

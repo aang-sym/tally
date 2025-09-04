@@ -538,7 +538,7 @@ export class StreamingService {
       const serviceData = {
         tmdb_provider_id: tmdbProviderId,
         name: providerName,
-        logo_path: logoPath || null,
+        logo_path: logoPath && logoPath.includes('/') ? logoPath.substring(logoPath.lastIndexOf('/')) : logoPath,
         homepage: null
       };
 

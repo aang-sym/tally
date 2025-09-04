@@ -6,7 +6,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { UserManager } from '../components/UserSwitcher';
+import { UserManager } from '../services/UserManager';
+import { API_ENDPOINTS, apiRequest } from '../config/api';
 
 interface User {
   id: string;
@@ -22,8 +23,6 @@ interface UserStats {
   activeSubscriptions: number;
   monthlySpend: number;
 }
-
-const API_BASE = 'http://localhost:3001';
 
 const Admin: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -55,45 +54,36 @@ const Admin: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_BASE}/api/users`);
-      if (response.ok) {
-        const data = await response.json();
-        const usersList = data.data.users || [];
-        setUsers(usersList);
+      const token = localStorage.getItem('authToken') || undefined;
+      const data = await apiRequest(API_ENDPOINTS.users.base, {}, token);
+      const usersList = data.data.users || [];
+      setUsers(usersList);
 
-        // Load stats for each user
-        const statsPromises = usersList.map(async (user: User) => {
-          try {
-            const statsResponse = await fetch(`${API_BASE}/api/users/${user.id}/profile`, {
-              headers: { 'x-user-id': user.id }
-            });
-            if (statsResponse.ok) {
-              const statsData = await statsResponse.json();
-              return {
-                userId: user.id,
-                stats: {
-                  totalShows: statsData.data.stats.totalShows || 0,
-                  activeSubscriptions: statsData.data.stats.activeSubscriptions || 0,
-                  monthlySpend: statsData.data.stats.monthlySpend || 0
-                }
-              };
+      // Load stats for each user
+      const statsPromises = usersList.map(async (user: User) => {
+        try {
+          const statsData = await apiRequest(API_ENDPOINTS.users.profile(user.id), {}, token);
+          return {
+            userId: user.id,
+            stats: {
+              totalShows: statsData.data.stats.totalShows || 0,
+              activeSubscriptions: statsData.data.stats.activeSubscriptions || 0,
+              monthlySpend: statsData.data.stats.monthlySpend || 0
             }
-          } catch (err) {
-            console.warn(`Failed to load stats for user ${user.id}:`, err);
-          }
+          };
+        } catch (err) {
+          console.warn(`Failed to load stats for user ${user.id}:`, err);
           return { userId: user.id, stats: { totalShows: 0, activeSubscriptions: 0, monthlySpend: 0 } };
-        });
+        }
+      });
 
-        const statsResults = await Promise.all(statsPromises);
-        const statsMap = statsResults.reduce((acc, { userId, stats }) => {
-          acc[userId] = stats;
-          return acc;
-        }, {} as Record<string, UserStats>);
+      const statsResults = await Promise.all(statsPromises);
+      const statsMap = statsResults.reduce((acc, { userId, stats }) => {
+        acc[userId] = stats;
+        return acc;
+      }, {} as Record<string, UserStats>);
 
-        setUserStats(statsMap);
-      } else {
-        throw new Error('Failed to load users');
-      }
+      setUserStats(statsMap);
     } catch (err) {
       console.error('Failed to load users:', err);
       setError('Failed to load user data');
@@ -114,22 +104,18 @@ const Admin: React.FC = () => {
 
     try {
       setCreating(true);
-      const response = await fetch(`${API_BASE}/api/users`, {
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(API_ENDPOINTS.users.base, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
-      });
+      }, token);
 
-      if (response.ok) {
-        form.reset();
-        await loadUsers();
-      } else {
-        const errorData = await response.json();
-        alert(errorData.error || 'Failed to create user');
-      }
-    } catch (err) {
+      form.reset();
+      await loadUsers();
+    } catch (err: any) {
       console.error('Failed to create user:', err);
-      alert('Failed to create user');
+      alert(err.message || 'Failed to create user');
     } finally {
       setCreating(false);
     }
@@ -141,20 +127,15 @@ const Admin: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/users/${userId}`, {
-        method: 'DELETE',
-        headers: { 'x-user-id': UserManager.getCurrentUserId() }
-      });
-
-      if (response.ok) {
-        await loadUsers();
-      } else {
-        const errorData = await response.json();
-        alert(errorData.error || 'Failed to delete user');
-      }
-    } catch (err) {
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.users.base}/${userId}`, {
+        method: 'DELETE'
+      }, token);
+      
+      await loadUsers();
+    } catch (err: any) {
       console.error('Failed to delete user:', err);
-      alert('Failed to delete user');
+      alert(err.message || 'Failed to delete user');
     }
   };
 
@@ -169,21 +150,17 @@ const Admin: React.FC = () => {
 
     try {
       setBulkCreating(true);
-      const response = await fetch(`${API_BASE}/api/users/bulk-create`, {
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.users.base}/bulk-create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ users: sampleUsers })
-      });
+      }, token);
 
-      if (response.ok) {
-        await loadUsers();
-      } else {
-        const errorData = await response.json();
-        alert(errorData.error || 'Failed to create bulk users');
-      }
-    } catch (err) {
+      await loadUsers();
+    } catch (err: any) {
       console.error('Failed to create bulk users:', err);
-      alert('Failed to create bulk users');
+      alert(err.message || 'Failed to create bulk users');
     } finally {
       setBulkCreating(false);
     }

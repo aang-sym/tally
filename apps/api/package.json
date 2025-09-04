@@ -16,10 +16,12 @@
     "@supabase/supabase-js": "^2.39.7",
     "@tally/core": "file:../../packages/core",
     "@tally/types": "file:../../packages/types",
+    "@types/jsonwebtoken": "^9.0.10",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^4.18.2",
     "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "uuid": "^9.0.1"
   },

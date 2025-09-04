@@ -1,49 +1,27 @@
+Please analyze the entire codebase and identify:
 
-i need you to make a plan in docs/11_CLAUDE_CODE_PLAN.md
+1. **Redundant/Unnecessary Code**
+   - Functions, modules, or utilities that are never called or imported.
+   - Dead code paths or commented-out blocks that serve no purpose.
+   - Duplicated logic that could be consolidated.
 
-to do the following:
+2. **Refactoring Opportunities**
+   - Overly complex or deeply nested functions that can be simplified.
+   - Repeated patterns that should be abstracted into shared helpers.
+   - Inefficient implementations that could be rewritten more cleanly.
+   - Areas where TypeScript types, Python typing, or better error handling would improve reliability.
 
-1. search
-a. pattern detection
-- patterns for shows that have multiple episode premieres, and then weekly cadence afterwards, aren't being recognised (img 1) for alien earth, ep 1 and 2 released on 12/08/2025. every episode after released a week later. this should resolve as a premiere_weekly pattern as per "/home/angus_symons/projects/tally/apps/web/src/components/PatternAnalysis.tsx"
-- pattern detection for seasons that aren't the latest season, can be marked as 'binge'. this is because the entire season is already out, so its cadence is not relevant to our use case (img 2)
+3. **Maintainability Concerns**
+   - Files that are too large or doing too many things.
+   - Inconsistent naming or structure that makes the code harder to follow.
+   - Any technical debt that should be prioritised.
 
-2. my shows
-a. posters
-posters are not being attached to the shows (img 3). the posters can be retrieved from http://localhost:3001/api/tmdb/show/110492/season/2/raw?country=AU json response.raw.poster_path
-b. episode counter
-the episode counter (2/x episodes) is not working. x should be the total episodes in the season (img 4) in a future iteration, a user should be able to click this text to make it switch between episodes per season completed, vs episodes per show completed, where (s1 watched + s2 watched)/(s1 total + s2 total)
+When you’ve finished your review, generate a Markdown file (`docs/13_CLAUDE_CODE_REVIEW.md`) that Claude can use to take action. The file should contain:
 
-3. tv guide
-not working at all, it's broken somewhere and is not being filled out based on the user's shows in myshows
+- A high-level summary of the overall code health.
+- A **"Redundant Code"** section listing exact files/functions with suggestions.
+- A **"Refactoring Needed"** section with specific recommendations.
+- A **"Maintainability Improvements"** section.
+- Clear actionable tasks for each item.
 
-4. calendar
-not working at all either, getting the following error:
-OverviewCalendar - Failed to generate calendar data: TypeError: endDate.toDateString is not a function
-    generateUserBasedCalendarData OverviewCalendar.tsx:345
-    fetchCalendarData OverviewCalendar.tsx:198
-    OverviewCalendar OverviewCalendar.tsx:78
-    React 8
-    workLoop scheduler.development.js:266
-    flushWork scheduler.development.js:239
-    performWorkUntilDeadline scheduler.development.js:533
-    js scheduler.development.js:571
-    js scheduler.development.js:633
-    __require chunk-5WRI5ZAA.js:8
-    js index.js:6
-    __require chunk-5WRI5ZAA.js:8
-    React 2
-    __require chunk-5WRI5ZAA.js:8
-    js React
-    __require chunk-5WRI5ZAA.js:8
-    js React
-    __require chunk-5WRI5ZAA.js:8
-    <anonymous> react-dom_client.js:38
-OverviewCalendar.tsx:213:15
-
-5. database
-once the above issues are fixed, we can work on some database fixes. i want to be able to create a user in supabase, acccess that user through the web server, then add shows to that user that get saved to that user in the database, with their episode progress, country preference, etc
-
-let's put this into a the plan .md that i mentioned at the start of this message, and let's keep track of whether it's completed or not
-
-once you make the plan, i'll switch on full agent mode and you can implement the 11_*.md plan 
+Format the output in clean, developer-friendly Markdown so Claude can read it directly and start working on fixes/refactors.

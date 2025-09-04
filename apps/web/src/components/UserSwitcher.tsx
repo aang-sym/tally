@@ -1,56 +1,11 @@
-import React, { useState, useEffect } from 'react';
-
-interface User {
-  id: string;
-  email: string;
-  display_name: string;
-  avatar_url?: string;
-  is_test_user: boolean;
-  created_at: string;
-}
+import * as React from 'react';
+import { useState, useEffect } from 'react';
+import { API_ENDPOINTS, apiRequest } from '../config/api';
+import { UserManager, User } from '../services/UserManager';
 
 interface UserSwitcherProps {
   onUserChange?: (userId: string) => void;
 }
-
-// API base URL
-const API_BASE = 'http://localhost:3001';
-
-// User management utilities
-export const UserManager = {
-  getCurrentUserId: (): string => {
-    return localStorage.getItem('current_user_id') || 'user-1';
-  },
-
-  setCurrentUserId: (userId: string): void => {
-    localStorage.setItem('current_user_id', userId);
-  },
-
-  getCurrentUser: async (): Promise<User | null> => {
-    try {
-      const userId = UserManager.getCurrentUserId();
-      // Always use Supabase endpoint - /api/users/{id}/profile
-      const response = await fetch(`${API_BASE}/api/users/${userId}/profile`);
-      if (response.ok) {
-        const data = await response.json();
-        return (data.data && (data.data.user || data.data)) as User;
-      }
-      return null;
-    } catch (error) {
-      console.error('Failed to get current user:', error);
-      return null;
-    }
-  },
-
-  // Country preference management
-  getCountry: (): string => {
-    return localStorage.getItem('user_country') || 'US';
-  },
-
-  setCountry: (code: string): void => {
-    localStorage.setItem('user_country', code);
-  }
-};
 
 const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
   const [users, setUsers] = useState<User[]>([]); // All users from Supabase
@@ -66,18 +21,23 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
 
   const loadUsers = async () => {
     try {
-      // Only load Supabase users - /api/users already uses Supabase
-      const response = await fetch(`${API_BASE}/api/users`);
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.data.users || []);
+      const token = localStorage.getItem('authToken') || undefined;
+      // Use apiRequest for consistency with authentication
+      const data = await apiRequest(API_ENDPOINTS.users.base, {}, token);
+      setUsers(data.data.users || []);
+      
+      // If no users and no token, this means user needs to create an account
+      if (!token && (!data.data.users || data.data.users.length === 0)) {
+        console.log('No users found and no auth token. User should create an account.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load users:', error);
+      // If we get an auth error and have no token, that's expected
+      if (error.message?.includes('Authorization token required')) {
+        console.log('Authorization required - user needs to create an account first');
+      }
     }
-  };
-
-  const switchUser = (userId: string) => {
+  };  const switchUser = (userId: string) => {
     UserManager.setCurrentUserId(userId);
     setCurrentUserId(userId);
     setIsOpen(false);
@@ -91,29 +51,32 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
     return users.find(user => user.id === currentUserId);
   };
 
-  const handleCreateUser = async (userData: { displayName: string; email: string }) => {
+  const handleCreateUser = async (userData: { displayName: string; email: string; password: string }) => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/api/users`, {
+      // Use the correct auth endpoint for registration
+      const data = await apiRequest(`${API_ENDPOINTS.users.base}/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(userData)
+        body: JSON.stringify({
+          email: userData.email,
+          password: userData.password,
+          displayName: userData.displayName
+        })
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        await loadUsers();
-        switchUser(data.data.user.id);
-        setShowCreateModal(false);
-      } else {
-        const errorData = await response.json();
-        alert(errorData.error || 'Failed to create user');
+      if (data.token) { // Store the token if received
+        localStorage.setItem('authToken', data.token);
       }
-    } catch (error) {
+
+      await loadUsers();
+      switchUser(data.user.id); // Assuming user object is directly under data
+      setShowCreateModal(false);
+    } catch (error: any) {
       console.error('Failed to create user:', error);
-      alert('Failed to create user');
+      alert(error.message || 'Failed to create user');
     } finally {
       setLoading(false);
     }
@@ -206,7 +169,8 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
               const formData = new FormData(e.target as HTMLFormElement);
               handleCreateUser({
                 displayName: formData.get('displayName') as string,
-                email: formData.get('email') as string
+                email: formData.get('email') as string,
+                password: formData.get('password') as string
               });
             }}>
               <div className="space-y-4">
@@ -235,6 +199,21 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
                     required
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     placeholder="john.doe@example.com"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    required
+                    minLength={8}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Password (min 8 characters)"
                   />
                 </div>
               </div>

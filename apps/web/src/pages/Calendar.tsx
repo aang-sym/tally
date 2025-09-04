@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import OverviewCalendar from '../components/calendar/OverviewCalendar';
 import SavingsCalendar from '../components/calendar/SavingsCalendar';
-import { UserManager } from '../components/UserSwitcher';
+import { UserManager } from '../services/UserManager';
+import { API_ENDPOINTS, apiRequest } from '../config/api';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 type CalendarView = 'overview' | 'savings' | 'provider' | 'personal';
@@ -33,8 +34,6 @@ interface UserShow {
   };
 }
 
-const API_BASE = 'http://localhost:3001';
-
 const Calendar: React.FC = () => {
   const [currentView, setCurrentView] = useState<CalendarView>('overview');
   const [userSubscriptions, setUserSubscriptions] = useState<UserSubscription[]>([]);
@@ -51,24 +50,15 @@ const Calendar: React.FC = () => {
       setLoading(true);
       setError(null);
       const userId = UserManager.getCurrentUserId();
+      const token = localStorage.getItem('authToken') || undefined;
 
       // Load user subscriptions
-      const subscriptionsResponse = await fetch(`${API_BASE}/api/users/${userId}/subscriptions`, {
-        headers: { 'x-user-id': userId }
-      });
-      if (subscriptionsResponse.ok) {
-        const subscriptionsData = await subscriptionsResponse.json();
-        setUserSubscriptions(subscriptionsData.data.subscriptions || []);
-      }
+      const subscriptionsData = await apiRequest(API_ENDPOINTS.users.subscriptions(userId), {}, token);
+      setUserSubscriptions(subscriptionsData.data.subscriptions || []);
 
       // Load user shows
-      const showsResponse = await fetch(`${API_BASE}/api/watchlist-v2`, {
-        headers: { 'x-user-id': userId }
-      });
-      if (showsResponse.ok) {
-        const showsData = await showsResponse.json();
-        setUserShows(showsData.data.shows || []);
-      }
+      const showsData = await apiRequest(API_ENDPOINTS.watchlist.v2, {}, token);
+      setUserShows(showsData.data.shows || []);
 
     } catch (err) {
       console.error('Failed to load user data:', err);

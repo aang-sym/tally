@@ -6,22 +6,25 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { watchlistService } from '../services/WatchlistService.js';
+import { WatchlistService } from '../services/WatchlistService.js';
 import { showService } from '../services/ShowService.js';
 import { streamingService } from '../services/StreamingService.js';
-import { watchlistStorageService } from '../storage/simple-watchlist.js';
+// Removed old storage layer import - using Supabase services only
 
 const router = Router();
 
-// Middleware to extract userId (stub implementation)
-const authenticateUser = (req: Request, res: Response, next: any) => {
-  // TODO: Replace with proper JWT authentication
-  const userId = req.headers['x-user-id'] as string || 'user-1';
-  (req as any).userId = userId;
-  next();
-};
+// Note: Authentication is now handled by server-level middleware
 
-router.use(authenticateUser);
+/**
+ * Helper function to extract JWT token from request
+ */
+function getUserToken(req: Request): string | undefined {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7); // Remove 'Bearer ' prefix
+  }
+  return undefined;
+}
 
 /**
  * GET /api/watchlist-v2
@@ -29,7 +32,14 @@ router.use(authenticateUser);
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const status = req.query.status as string;
     const isUUID = /^[0-9a-fA-F-]{36}$/.test(userId);
 
@@ -124,7 +134,14 @@ router.get('/', async (req: Request, res: Response) => {
  */
 router.get('/stats', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const isUUID = /^[0-9a-fA-F-]{36}$/.test(userId);
     if (!isUUID) {
       const stats = watchlistStorageService.getStats(userId);
@@ -149,7 +166,14 @@ router.get('/stats', async (req: Request, res: Response) => {
  */
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { tmdbId, status = 'watchlist' } = req.body;
 
     if (!tmdbId) {
@@ -159,6 +183,10 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
+    // Create authenticated watchlist service with user's JWT token
+    const userToken = getUserToken(req);
+    const watchlistService = new WatchlistService(userToken);
+    
     const userShow = await watchlistService.addToWatchlist(userId, tmdbId, status);
 
     if (!userShow) {
@@ -200,7 +228,14 @@ router.post('/', async (req: Request, res: Response) => {
  */
 router.put('/:id/status', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { id } = req.params;
     const { status } = req.body;
     if (!['watchlist', 'watching', 'completed', 'dropped'].includes(status)) {
@@ -232,7 +267,14 @@ router.put('/:id/status', async (req: Request, res: Response) => {
  */
 router.put('/:id/rating', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { id } = req.params;
     const { rating } = req.body;
 
@@ -263,7 +305,14 @@ router.put('/:id/rating', async (req: Request, res: Response) => {
  */
 router.put('/:id/notes', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { id } = req.params;
     const { notes } = req.body;
 
@@ -305,7 +354,14 @@ router.put('/:id/notes', async (req: Request, res: Response) => {
  */
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { id } = req.params;
     const isUUID = /^[0-9a-fA-F-]{36}$/.test(userId);
     if (!isUUID) {
@@ -331,7 +387,14 @@ router.delete('/:id', async (req: Request, res: Response) => {
  */
 router.get('/watching', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const isUUID = /^[0-9a-fA-F-]{36}$/.test(userId);
     if (!isUUID) {
       const shows = watchlistStorageService.getUserWatchlist(userId).filter(i => i.status === 'watching');
@@ -354,7 +417,14 @@ router.get('/watching', async (req: Request, res: Response) => {
  */
 router.get('/watching/:showId', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { showId } = req.params;
 
     const progress = await watchlistService.getShowProgress(userId, showId);
@@ -397,7 +467,14 @@ router.get('/watching/:showId', async (req: Request, res: Response) => {
  */
 router.post('/search-and-add', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { query, tmdbId, status = 'watchlist' } = req.body;
 
     let showId = tmdbId;
@@ -461,7 +538,14 @@ export default router;
  */
 router.put('/:tmdbId/progress', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { tmdbId } = req.params;
     const { seasonNumber, episodeNumber, status = 'watched' } = req.body as {
       seasonNumber: number;
@@ -506,7 +590,14 @@ router.put('/:tmdbId/progress', async (req: Request, res: Response) => {
  */
 router.get('/:tmdbId/progress', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { tmdbId } = req.params;
     const tmdbIdNum = parseInt(tmdbId);
     if (isNaN(tmdbIdNum)) return res.status(400).json({ success: false, error: 'Invalid TMDB ID' });
@@ -545,7 +636,14 @@ router.get('/:tmdbId/progress', async (req: Request, res: Response) => {
  */
 router.put('/:id/provider', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { id } = req.params;
     const { provider } = req.body as { provider: { id: number; name: string; logo_url: string } | null };
     const isUUID = /^[0-9a-fA-F-]{36}$/.test(userId);
@@ -614,7 +712,14 @@ router.put('/:id/provider', async (req: Request, res: Response) => {
  */
 router.put('/:id/buffer', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { id } = req.params;
     const { bufferDays } = req.body as { bufferDays: number };
     const isUUID = /^[0-9a-fA-F-]{36}$/.test(userId);
@@ -643,7 +748,14 @@ router.put('/:id/buffer', async (req: Request, res: Response) => {
  */
 router.put('/country', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { countryCode } = req.body as { countryCode: string };
     if (!countryCode || countryCode.length !== 2) return res.status(400).json({ success: false, error: 'Invalid country code' });
     const isUUID = /^[0-9a-fA-F-]{36}$/.test(userId);
@@ -669,7 +781,14 @@ router.put('/country', async (req: Request, res: Response) => {
  */
 router.put('/:id/country', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { id } = req.params;
     const { countryCode } = req.body as { countryCode: string | null };
     if (countryCode && countryCode.length !== 2) return res.status(400).json({ success: false, error: 'Invalid country code' });

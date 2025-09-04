@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { authRouter } from './routes/auth.js';
 import { waitlistRouter } from './routes/waitlist.js';
-import { watchlistRouter } from './routes/watchlist.js';
+// Removed old watchlist router - using v2 instead
 import { planRouter } from './routes/plan.js';
 import { healthRouter } from './routes/health.js';
 import { streamingQuotaRouter } from './routes/streaming-quota.js';
@@ -46,29 +46,37 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Identify user from x-user-id header and upsert to DB
-import { identifyUser } from './middleware/user-identity.js';
-app.use(identifyUser);
+// Import authentication middleware
+import { authenticateUser, optionalAuth } from './middleware/user-identity.js';
 
-// Routes
-app.use('/api/auth', authRouter);
+// Routes that don't require authentication
+app.use('/api/auth', authRouter); // Already handles auth internally
 app.use('/api/waitlist', waitlistRouter);
-app.use('/api/watchlist', watchlistRouter);
-app.use('/api/plan', planRouter);
 app.use('/api/health', healthRouter);
-app.use('/api/streaming-quota', streamingQuotaRouter);
-app.use('/api/shows', showsRouter);
-app.use('/api/tmdb', trackAPIUsage('tmdb'), tmdbRouter);
-app.use('/api/usage-stats', usageStatsRouter);
 
-// New v4 API routes
-app.use('/api/watchlist-v2', watchlistV2Router);
-app.use('/api/progress', progressRouter);
-app.use('/api/ratings', ratingsRouter);
-app.use('/api/recommendations', recommendationsRouter);
-app.use('/api/users', usersDbRouter);
-app.use('/api/streaming-services', streamingServicesRouter);
-app.use('/api/tv-guide', tvGuideRouter);
+// Public routes (don't require auth but can use it if provided)
+app.use('/api/shows', optionalAuth, showsRouter);
+app.use('/api/tmdb', optionalAuth, trackAPIUsage('tmdb'), tmdbRouter);
+app.use('/api/streaming-services', optionalAuth, streamingServicesRouter);
+app.use('/api/tv-guide', optionalAuth, tvGuideRouter);
+
+// Protected routes (require authentication)
+// Old watchlist route removed - use /api/watchlist-v2 instead
+app.use('/api/plan', authenticateUser, planRouter);
+app.use('/api/streaming-quota', authenticateUser, streamingQuotaRouter);
+app.use('/api/usage-stats', authenticateUser, usageStatsRouter);
+
+// New v4 protected API routes
+app.use('/api/watchlist-v2', authenticateUser, watchlistV2Router);
+app.use('/api/progress', authenticateUser, progressRouter);
+app.use('/api/ratings', authenticateUser, ratingsRouter);
+app.use('/api/recommendations', authenticateUser, recommendationsRouter);
+
+// Users route - mix of public (signup/login) and protected endpoints
+app.use('/api/users', usersDbRouter); // Handles auth internally per endpoint
+
+// Admin routes (require authentication)
+app.use('/api/admin', authenticateUser, dbAdminRouter);
 
 // 404 handler
 app.use('*', (req, res) => {

@@ -27,7 +27,14 @@ router.use(authenticateUser);
  */
 router.get('/:showId', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { showId } = req.params;
     const includeLiveStats = req.query.liveStats !== 'false';
 
@@ -104,7 +111,14 @@ router.get('/:showId', async (req: Request, res: Response) => {
  */
 router.post('/episode/:episodeId/watching', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { episodeId } = req.params;
 
     const progress = await episodeProgressService.markEpisodeWatching(userId, episodeId);
@@ -142,7 +156,14 @@ router.post('/episode/:episodeId/watching', async (req: Request, res: Response) 
  */
 router.post('/episode/:episodeId/watched', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { episodeId } = req.params;
 
     const progress = await episodeProgressService.markEpisodeWatched(userId, episodeId);
@@ -185,7 +206,14 @@ router.post('/episode/:episodeId/watched', async (req: Request, res: Response) =
  */
 router.post('/bulk-update', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { episodeIds, status } = req.body;
 
     if (!Array.isArray(episodeIds) || episodeIds.length === 0) {
@@ -234,7 +262,14 @@ router.post('/bulk-update', async (req: Request, res: Response) => {
  */
 router.put('/episode/:episodeId/rating', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { episodeId } = req.params;
     const { rating } = req.body;
 
@@ -280,7 +315,14 @@ router.put('/episode/:episodeId/rating', async (req: Request, res: Response) => 
  */
 router.get('/user/stats', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
 
     const stats = await episodeProgressService.getUserWatchStats(userId);
 
@@ -330,7 +372,14 @@ router.get('/episode/:episodeId/stats', async (req: Request, res: Response) => {
  */
 router.post('/season/:seasonId/mark-watched', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { seasonId } = req.params;
 
     // Get all episodes in the season
@@ -359,7 +408,14 @@ router.post('/season/:seasonId/mark-watched', async (req: Request, res: Response
  */
 router.get('/episodes/currently-watching', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
 
     // This would require a more complex query across multiple tables
     // For now, return a placeholder response

@@ -5,8 +5,9 @@
  * watching progress, and status transitions between different states.
  */
 
-import { supabase } from '../db/supabase.js';
+import { supabase, createUserClient } from '../db/supabase.js';
 import { showService, Show } from './ShowService.js';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface UserShow {
   id: string;
@@ -35,6 +36,13 @@ export interface UserShowWithDetails extends UserShow {
 }
 
 export class WatchlistService {
+  private client: SupabaseClient;
+
+  constructor(userToken?: string) {
+    // Use authenticated client if token provided, otherwise use anonymous client
+    this.client = userToken ? createUserClient(userToken) : supabase;
+  }
+
   /**
    * Add a show to user's watchlist
    */
@@ -47,7 +55,7 @@ export class WatchlistService {
       }
 
       // Check if show is already in user's list
-      const { data: existing, error: checkError } = await supabase
+      const { data: existing, error: checkError } = await this.client
         .from('user_shows')
         .select('*')
         .eq('user_id', userId)
@@ -77,7 +85,7 @@ export class WatchlistService {
         })
       };
 
-      const { data: userShow, error: createError } = await supabase
+      const { data: userShow, error: createError } = await this.client
         .from('user_shows')
         .insert([userShowData])
         .select()
@@ -116,7 +124,7 @@ export class WatchlistService {
         updateData.completed_at = new Date().toISOString();
       }
 
-      const { data: updatedShow, error } = await supabase
+      const { data: updatedShow, error } = await this.client
         .from('user_shows')
         .update(updateData)
         .eq('id', userShowId)
@@ -143,7 +151,7 @@ export class WatchlistService {
    */
   async removeFromWatchlist(userId: string, userShowId: string): Promise<boolean> {
     try {
-      const { error } = await supabase
+      const { error } = await this.client
         .from('user_shows')
         .delete()
         .eq('id', userShowId)
@@ -211,7 +219,7 @@ export class WatchlistService {
   }> {
     try {
       // Get all episodes for the show
-      const { data: episodes, error: episodesError } = await supabase
+      const { data: episodes, error: episodesError } = await this.client
         .from('episodes')
         .select(`
           *,
@@ -228,7 +236,7 @@ export class WatchlistService {
 
       // Get user's watched episodes
       const episodeIds = episodes?.map(ep => ep.id) || [];
-      const { data: watchedProgress, error: progressError } = await supabase
+      const { data: watchedProgress, error: progressError } = await this.client
         .from('user_episode_progress')
         .select('episode_id, status')
         .eq('user_id', userId)
@@ -296,7 +304,7 @@ export class WatchlistService {
         throw new Error('Rating must be between 0 and 10');
       }
 
-      const { error } = await supabase
+      const { error } = await this.client
         .from('user_shows')
         .update({
           show_rating: rating,
@@ -319,7 +327,7 @@ export class WatchlistService {
    */
   async updateShowNotes(userId: string, userShowId: string, notes: string): Promise<boolean> {
     try {
-      const { error } = await supabase
+      const { error } = await this.client
         .from('user_shows')
         .update({
           notes,
@@ -347,7 +355,7 @@ export class WatchlistService {
     averageRating: number;
   }> {
     try {
-      const { data: userShows, error } = await supabase
+      const { data: userShows, error } = await this.client
         .from('user_shows')
         .select('status, show_rating')
         .eq('user_id', userId);
@@ -397,7 +405,7 @@ export class WatchlistService {
    */
   private async hasStartedWatching(userShowId: string): Promise<boolean> {
     try {
-      const { data: userShow, error } = await supabase
+      const { data: userShow, error } = await this.client
         .from('user_shows')
         .select('started_watching_at')
         .eq('id', userShowId)
@@ -412,5 +420,4 @@ export class WatchlistService {
   }
 }
 
-// Export singleton instance
-export const watchlistService = new WatchlistService();
+// Removed singleton export - services should be instantiated with user authentication

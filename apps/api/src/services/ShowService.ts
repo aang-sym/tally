@@ -5,7 +5,7 @@
  * Optimizes API calls by caching show data and refreshing based on show status and popularity.
  */
 
-import { supabase } from '../db/supabase.js';
+import { supabase, serviceSupabase } from '../db/supabase.js';
 import { tmdbService } from './tmdb.js';
 
 export interface Show {
@@ -100,8 +100,8 @@ export class ShowService {
       };
 
       if (existingShow) {
-        // Update existing show
-        const { data: updatedShow, error: updateError } = await supabase
+        // Update existing show - use service role for system operations
+        const { data: updatedShow, error: updateError } = await serviceSupabase
           .from('shows')
           .update(showData)
           .eq('id', existingShow.id)
@@ -115,8 +115,8 @@ export class ShowService {
 
         return updatedShow;
       } else {
-        // Create new show
-        const { data: newShow, error: createError } = await supabase
+        // Create new show - use service role for system operations
+        const { data: newShow, error: createError } = await serviceSupabase
           .from('shows')
           .insert([showData])
           .select()
@@ -331,8 +331,8 @@ export class ShowService {
       }
 
       for (const tmdbSeason of tmdbShow.seasons) {
-        // Create season
-        const { data: season, error: seasonError } = await supabase
+        // Create season - use service role for system operations
+        const { data: season, error: seasonError } = await serviceSupabase
           .from('seasons')
           .insert([{
             show_id: showId,
@@ -359,7 +359,7 @@ export class ShowService {
             name: `Episode ${i + 1}`
           }));
 
-          await supabase
+          await serviceSupabase
             .from('episodes')
             .insert(episodeStubs);
         }

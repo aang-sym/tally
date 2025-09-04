@@ -6,7 +6,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { UserManager } from '../components/UserSwitcher';
+import { UserManager } from '../services/UserManager';
+import { API_ENDPOINTS, apiRequest } from '../config/api';
 
 interface StreamingService {
   id: string;
@@ -35,8 +36,6 @@ interface UserProfile {
   created_at: string;
 }
 
-const API_BASE = 'http://localhost:3001';
-
 const Settings: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [availableServices, setAvailableServices] = useState<StreamingService[]>([]);
@@ -63,11 +62,9 @@ const Settings: React.FC = () => {
 
   const loadAvailableServices = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/streaming-services`);
-      if (response.ok) {
-        const data = await response.json();
-        setAvailableServices(data.data.services || []);
-      }
+      const token = localStorage.getItem('authToken') || undefined;
+      const data = await apiRequest(API_ENDPOINTS.streamingServices, {}, token);
+      setAvailableServices(data.data.services || []);
     } catch (err) {
       console.error('Failed to load streaming services:', err);
     }
@@ -77,16 +74,9 @@ const Settings: React.FC = () => {
     try {
       setLoading(true);
       const userId = UserManager.getCurrentUserId();
-      const response = await fetch(`${API_BASE}/api/users/${userId}/subscriptions`, {
-        headers: {
-          'x-user-id': userId
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUserSubscriptions(data.data.subscriptions || []);
-      }
+      const token = localStorage.getItem('authToken') || undefined;
+      const data = await apiRequest(API_ENDPOINTS.users.subscriptions(userId), {}, token);
+      setUserSubscriptions(data.data.subscriptions || []);
       setError(null);
     } catch (err) {
       console.error('Failed to load user subscriptions:', err);
@@ -100,39 +90,28 @@ const Settings: React.FC = () => {
     try {
       setSavingSubscription(service.id);
       const userId = UserManager.getCurrentUserId();
+      const token = localStorage.getItem('authToken') || undefined;
 
       if (isActive) {
         // Add subscription
-        const response = await fetch(`${API_BASE}/api/users/${userId}/subscriptions`, {
+        await apiRequest(API_ENDPOINTS.users.subscriptions(userId), {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'x-user-id': userId
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             service_id: service.id,
             monthly_cost: getDefaultMonthlyCost(service.name),
             is_active: true
           })
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to add subscription');
-        }
+        }, token);
       } else {
         // Remove subscription
         const subscription = userSubscriptions.find(sub => sub.service_id === service.id);
         if (subscription) {
-          const response = await fetch(`${API_BASE}/api/users/${userId}/subscriptions/${subscription.id}`, {
-            method: 'DELETE',
-            headers: {
-              'x-user-id': userId
-            }
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to remove subscription');
-          }
+          await apiRequest(`${API_ENDPOINTS.users.subscriptions(userId)}/${subscription.id}`, {
+            method: 'DELETE'
+          }, token);
         }
       }
 
@@ -148,20 +127,16 @@ const Settings: React.FC = () => {
   const updateMonthlyCost = async (subscriptionId: string, newCost: number) => {
     try {
       const userId = UserManager.getCurrentUserId();
-      const response = await fetch(`${API_BASE}/api/users/${userId}/subscriptions/${subscriptionId}`, {
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.users.subscriptions(userId)}/${subscriptionId}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           monthly_cost: newCost
         })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update cost');
-      }
+      }, token);
 
       await loadUserSubscriptions();
     } catch (err) {

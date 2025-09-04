@@ -14,7 +14,9 @@ export class UserService {
       return { error: new Error('User ID cannot be empty.') };
     }
 
-    const { error } = await supabase.rpc('upsert_user', { p_user_id: userId });
+    const { error } = await supabase
+      .from('users')
+      .upsert({ id: userId, last_seen_at: new Date().toISOString() }, { onConflict: 'id' });
 
     if (error) {
       console.error(`[UserService] Failed to upsert user ${userId}:`, error);

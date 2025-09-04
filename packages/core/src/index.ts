@@ -7,6 +7,16 @@ export {
   type StreamingAvailability,
   type StreamingService as StreamingAPIService,
   type StreamingOption as StreamingAPIOption,
+  type SearchResult
+} from './external/streaming-availability.js';
+
+// Re-export streaming availability client and types
+export { 
+  StreamingAvailabilityClient, 
+  StreamingAvailabilityError,
+  type StreamingAvailability,
+  type StreamingService as StreamingAPIService,
+  type StreamingOption as StreamingAPIOption,
   type SearchResult,
   type Episode
 } from './external/streaming-availability.js';
@@ -125,7 +135,32 @@ export function getStreamingService(serviceId: string) {
 export async function detectReleasePatternFromTMDB(
   showTitle: string, 
   tmdbApiKey: string
-): Promise<{ pattern: 'weekly' | 'binge' | 'unknown' | 'premiere_weekly'; tmdbId?: number } | null> {
+): Promise<{ pattern: 'weekly' | 'binge' | 'unknown'; tmdbId?: number } | null> {
+  const { TMDBClient } = await import('./external/tmdb.js');
+  const tmdbClient = new TMDBClient(tmdbApiKey);
+  return tmdbClient.detectReleasePatternFromTitle(showTitle);
+}
+
+/**
+ * Get watch providers for a TV show using TMDB API
+ */
+export async function getWatchProvidersFromTMDB(
+  showId: number,
+  tmdbApiKey: string,
+  country: string = 'US'
+): Promise<import('./external/tmdb.js').TMDBWatchProvider[]> {
+  const { TMDBClient } = await import('./external/tmdb.js');
+  const tmdbClient = new TMDBClient(tmdbApiKey);
+  return tmdbClient.getWatchProvidersForCountry(showId, country);
+}
+
+/**
+ * Detect release pattern for a TV show using TMDB API
+ */
+export async function detectReleasePatternFromTMDB(
+  showTitle: string, 
+  tmdbApiKey: string
+): Promise<{ pattern: 'weekly' | 'binge' | 'unknown'; tmdbId?: number } | null> {
   const { TMDBClient } = await import('./external/tmdb.js');
   const tmdbClient = new TMDBClient(tmdbApiKey);
   return tmdbClient.detectReleasePatternFromTitle(showTitle);

@@ -6,7 +6,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { UserManager } from '../components/UserSwitcher';
+import { UserManager } from '../services/UserManager';
+import { API_ENDPOINTS, apiRequest } from '../config/api';
 
 // Episode Progress Display Component
 const EpisodeProgressDisplay: React.FC<{
@@ -25,7 +26,7 @@ const EpisodeProgressDisplay: React.FC<{
         setLoading(true);
         try {
           const country = UserManager.getCountry();
-          const response = await fetch(`http://localhost:3001/api/tmdb/show/${tmdbId}/season/${seasonNumber}/raw?country=${country}`);
+          const response = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/season/${seasonNumber}/raw?country=${country}`);
           if (response.ok) {
             const data = await response.json();
             const season = data.raw?.season || data.raw;
@@ -107,7 +108,7 @@ interface WatchlistStats {
 }
 
 // API base URL
-const API_BASE = 'http://localhost:3001';
+// API_BASE removed - using centralized API_ENDPOINTS
 
 const MyShows: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'watchlist' | 'watching' | 'completed'>('all');
@@ -145,19 +146,10 @@ const MyShows: React.FC = () => {
   const fetchWatchlist = async () => {
     try {
       setLoading(true);
-      const userId = UserManager.getCurrentUserId();
       const statusParam = activeTab !== 'all' ? `?status=${activeTab}` : '';
-      const response = await fetch(`${API_BASE}/api/watchlist-v2${statusParam}`, {
-        headers: {
-          'x-user-id': userId
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch watchlist');
-      }
-
-      const data = await response.json();
+      const token = localStorage.getItem('authToken') || undefined;
+      const data = await apiRequest(`${API_ENDPOINTS.watchlist.v2}${statusParam}`, {}, token);
+      
       setShows(data.data.shows);
       setError(null);
 
@@ -181,17 +173,9 @@ const MyShows: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const userId = UserManager.getCurrentUserId();
-      const response = await fetch(`${API_BASE}/api/watchlist-v2/stats`, {
-        headers: {
-          'x-user-id': userId
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.data);
-      }
+      const token = localStorage.getItem('authToken') || undefined;
+      const data = await apiRequest(`${API_ENDPOINTS.watchlist.v2}/stats`, {}, token);
+      setStats(data.data);
     } catch (err) {
       console.warn('Failed to fetch stats:', err);
     }
@@ -200,19 +184,14 @@ const MyShows: React.FC = () => {
   // Update show status
   const updateShowStatus = async (userShowId: string, newStatus: UserShow['status']) => {
     try {
-      const userId = UserManager.getCurrentUserId();
-      const response = await fetch(`${API_BASE}/api/watchlist-v2/${userShowId}/status`, {
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShowId}/status`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ status: newStatus })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update status');
-      }
+      }, token);
 
       // Refresh the list
       fetchWatchlist();
@@ -226,19 +205,14 @@ const MyShows: React.FC = () => {
   // Rate a show
   const rateShow = async (userShowId: string, rating: number) => {
     try {
-      const userId = UserManager.getCurrentUserId();
-      const response = await fetch(`${API_BASE}/api/watchlist-v2/${userShowId}/rating`, {
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShowId}/rating`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ rating })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to rate show');
-      }
+      }, token);
 
       // Update local state
       setShows(prevShows => 
@@ -259,20 +233,14 @@ const MyShows: React.FC = () => {
   // Update streaming provider for a show
   const updateStreamingProvider = async (userShowId: string, provider: StreamingProvider | null) => {
     try {
-      const userId = UserManager.getCurrentUserId();
-      const response = await fetch(`${API_BASE}/api/watchlist-v2/${userShowId}/provider`, {
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShowId}/provider`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ provider })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update streaming provider');
-      }
+      }, token);
 
       // Update local state immediately without full refresh
       setShows(prevShows => 
@@ -300,17 +268,10 @@ const MyShows: React.FC = () => {
     }
 
     try {
-      const userId = UserManager.getCurrentUserId();
-      const response = await fetch(`${API_BASE}/api/watchlist-v2/${userShowId}`, {
-        method: 'DELETE',
-        headers: {
-          'x-user-id': userId
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to remove show');
-      }
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShowId}`, {
+        method: 'DELETE'
+      }, token);
 
       // Remove from local state
       setShows(prevShows => prevShows.filter(show => show.id !== userShowId));
@@ -336,7 +297,7 @@ const MyShows: React.FC = () => {
     try {
       setLoadingAnalysis(prev => ({ ...prev, [tmdbId]: true }));
       
-      const response = await fetch(`${API_BASE}/api/tmdb/show/${tmdbId}/analyze`);
+      const response = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/analyze`);
       if (!response.ok) throw new Error('Failed to fetch analysis');
       
       const data = await response.json();
@@ -366,7 +327,7 @@ const MyShows: React.FC = () => {
       
       // Fetch episode details from TMDB RAW season endpoint (source of truth for episodes)
       const country = UserManager.getCountry();
-      const rawUrl = `${API_BASE}/api/tmdb/show/${tmdbId}/season/${seasonNumber}/raw?country=${country}`;
+      const rawUrl = `${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/season/${seasonNumber}/raw?country=${country}`;
       console.log(`Fetching from TMDB RAW: ${rawUrl}`);
 
       const response = await fetch(rawUrl);
@@ -382,11 +343,12 @@ const MyShows: React.FC = () => {
       console.log(`Got ${episodes.length} episodes from RAW for season ${seasonNumber}`);
       
       // Fetch stored progress for this show
-      const progressUrl = `${API_BASE}/api/watchlist-v2/${tmdbId}/progress`;
+      const progressUrl = `${API_ENDPOINTS.watchlist.v2}/${tmdbId}/progress`;
       console.log(`Fetching progress from: ${progressUrl}`);
       
+      const token = localStorage.getItem('authToken') || undefined;
       const progressResponse = await fetch(progressUrl, {
-        headers: { 'x-user-id': userId }
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       
       let storedProgress: any[] = [];
@@ -448,24 +410,18 @@ const MyShows: React.FC = () => {
       const newStatus = isCurrentlyWatched ? 'unwatched' : 'watched';
       
       // Make API call to persist the progress
-      const response = await fetch(`${API_BASE}/api/watchlist-v2/${tmdbId}/progress`, {
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${tmdbId}/progress`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           seasonNumber,
           episodeNumber,
           status: newStatus
         })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update episode progress');
-      }
-
-      await response.json();
+      }, token);
       
       // Update local UI state to reflect the change
       setEpisodeData(prev => ({
@@ -525,7 +481,7 @@ const MyShows: React.FC = () => {
     try {
       const country = UserManager.getCountry();
       // Try to get poster from the show details API first
-      const response = await fetch(`${API_BASE}/api/tmdb/show/${tmdbId}/analyze?country=${country}`);
+      const response = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/analyze?country=${country}`);
       if (!response.ok) {
         console.warn(`Failed to fetch show analysis for poster: ${response.status}`);
         return null;
@@ -544,7 +500,7 @@ const MyShows: React.FC = () => {
       
       // Fallback: try the raw season endpoint as mentioned in the issue
       const latestSeasonNumber = data.analysis?.seasonInfo?.[data.analysis.seasonInfo.length - 1]?.seasonNumber || 1;
-      const seasonResponse = await fetch(`${API_BASE}/api/tmdb/show/${tmdbId}/season/${latestSeasonNumber}/raw?country=${country}`);
+      const seasonResponse = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/season/${latestSeasonNumber}/raw?country=${country}`);
       if (seasonResponse.ok) {
         const seasonData = await seasonResponse.json();
         const seasonPosterPath = seasonData.raw?.poster_path;
@@ -569,7 +525,7 @@ const MyShows: React.FC = () => {
   const fetchShowProviders = async (tmdbId: number) => {
     try {
       const country = UserManager.getCountry();
-      const response = await fetch(`${API_BASE}/api/tmdb/show/${tmdbId}/providers?country=${country}`);
+      const response = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/providers?country=${country}`);
       if (!response.ok) {
         throw new Error('Failed to fetch providers');
       }
@@ -940,11 +896,11 @@ const MyShows: React.FC = () => {
                                   onBlur={(e) => {
                                     e.stopPropagation();
                                     const v = Number(e.currentTarget.value) || 0;
-                                    fetch(`${API_BASE}/api/watchlist-v2/${userShow.id}/buffer`, {
+                                    apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShow.id}/buffer`, {
                                       method: 'PUT',
-                                      headers: { 'Content-Type': 'application/json', 'x-user-id': UserManager.getCurrentUserId() },
+                                      headers: { 'Content-Type': 'application/json' },
                                       body: JSON.stringify({ bufferDays: v })
-                                    }).then(() => setShows(prev => prev.map(s => s.id === userShow.id ? { ...s, bufferDays: v } : s)));
+                                    }, localStorage.getItem('authToken') || undefined).then(() => setShows(prev => prev.map(s => s.id === userShow.id ? { ...s, bufferDays: v } : s)));
                                   }}
                                   className="w-24 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                                 />
@@ -956,11 +912,11 @@ const MyShows: React.FC = () => {
                                   onChange={(e) => {
                                     e.stopPropagation();
                                     const code = e.target.value || null;
-                                    fetch(`${API_BASE}/api/watchlist-v2/${userShow.id}/country`, {
+                                    apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShow.id}/country`, {
                                       method: 'PUT',
-                                      headers: { 'Content-Type': 'application/json', 'x-user-id': UserManager.getCurrentUserId() },
+                                      headers: { 'Content-Type': 'application/json' },
                                       body: JSON.stringify({ countryCode: code })
-                                    }).then(() => setShows(prev => prev.map(s => s.id === userShow.id ? { ...s, country_code: code || null } : s)));
+                                    }, localStorage.getItem('authToken') || undefined).then(() => setShows(prev => prev.map(s => s.id === userShow.id ? { ...s, country_code: code || null } : s)));
                                   }}
                                   className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                                 >

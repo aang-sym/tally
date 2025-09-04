@@ -6,7 +6,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { UserManager } from '../components/UserSwitcher';
+import { UserManager } from '../services/UserManager';
+import { API_ENDPOINTS, apiRequest } from '../config/api';
 import TMDBSearch from '../components/TMDBSearch';
 import PatternAnalysis from '../components/PatternAnalysis';
 
@@ -26,7 +27,6 @@ interface WatchlistAddRequest {
   status: 'watchlist' | 'watching';
 }
 
-const API_BASE = 'http://localhost:3001';
 const isUUID = (id: string) => /^[0-9a-fA-F-]{36}$/.test(id);
 
 const SearchShows: React.FC = () => {
@@ -62,30 +62,21 @@ const SearchShows: React.FC = () => {
   const checkWatchlistStatus = async (tmdbId: number) => {
     try {
       setWatchlistStatus(prev => ({ ...prev, loading: true }));
-      const userId = UserManager.getCurrentUserId();
+      const token = localStorage.getItem('authToken') || undefined;
       
-      const response = await fetch(`${API_BASE}/api/watchlist-v2`, {
-        headers: { 'x-user-id': userId }
+      const data = await apiRequest(API_ENDPOINTS.watchlist.v2, {}, token);
+      const userShow = data.data?.shows?.find((show: any) => show.show.tmdb_id === tmdbId);
+      
+      setWatchlistStatus({
+        isInWatchlist: !!userShow,
+        isWatching: userShow?.status === 'watching',
+        loading: false
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        const userShow = data.data?.shows?.find((show: any) => show.show.tmdb_id === tmdbId);
-        
-        setWatchlistStatus({
-          isInWatchlist: !!userShow,
-          isWatching: userShow?.status === 'watching',
-          loading: false
-        });
 
-        // If show is in watchlist, get episode progress
-        if (userShow) {
-          await fetchEpisodeProgress(tmdbId);
-        } else {
-          setWatchedEpisodes(new Set());
-        }
+      // If show is in watchlist, get episode progress
+      if (userShow) {
+        await fetchEpisodeProgress(tmdbId);
       } else {
-        setWatchlistStatus({ isInWatchlist: false, isWatching: false, loading: false });
         setWatchedEpisodes(new Set());
       }
     } catch (error) {
@@ -98,13 +89,8 @@ const SearchShows: React.FC = () => {
   // Fetch episode progress for a show
   const fetchEpisodeProgress = async (tmdbId: number) => {
     try {
-      const userId = UserManager.getCurrentUserId();
-      const response = await fetch(`${API_BASE}/api/watchlist-v2/${tmdbId}/progress`, {
-        headers: { 'x-user-id': userId }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      const token = localStorage.getItem('authToken') || undefined;
+      const data = await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${tmdbId}/progress`, {}, token);
         const watchedSet = new Set<string>();
         
         // Create episode keys for all watched episodes
@@ -280,21 +266,14 @@ const SearchShows: React.FC = () => {
       setSettingProgress(true);
       const userId = UserManager.getCurrentUserId();
 
-      // First, add show to watchlist as "watching" (Supabase for UUID users; simple otherwise)
+      // First, add show to watchlist as "watching" using the watchlist-v2 API
       const watchlistData: WatchlistAddRequest = { tmdbId: selectedShow.id, title: selectedShow.title, status: 'watching' };
-      const addUrl = isUUID(userId) ? `${API_BASE}/api/watchlist-v2` : `${API_BASE}/api/tmdb/watchlist`;
-      const watchlistResponse = await fetch(addUrl, {
+      const token = localStorage.getItem('authToken') || undefined;
+      const watchlistResult = await apiRequest(API_ENDPOINTS.watchlist.v2, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(watchlistData)
-      });
-
-      if (!watchlistResponse.ok) {
-        const errorData = await watchlistResponse.json();
-        throw new Error(errorData.error || 'Failed to add to watchlist');
-      }
-
-      const watchlistResult = await watchlistResponse.json();
+      }, token);
       // The API returns the item ID directly, not nested in data.userShow
       const userShowId = watchlistResult.item?.id;
 
@@ -304,29 +283,21 @@ const SearchShows: React.FC = () => {
       }
 
       // Then set the episode progress using the watchlist-v2 API
-      const progressResponse = await fetch(`${API_BASE}/api/watchlist-v2/${selectedShow.id}/progress`, {
+      const token = localStorage.getItem('authToken') || undefined;
+      const progressData = await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${selectedShow.id}/progress`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           seasonNumber: episode.seasonNumber,
           episodeNumber: episode.number,
           status: 'watched' // Mark this episode and all previous as watched
         })
-      });
+      }, token);
 
-      let progressSet = false;
-      if (!progressResponse.ok) {
-        const errorData = await progressResponse.json();
-        console.warn('Failed to set progress:', errorData);
-        throw new Error(errorData.error || 'Failed to set episode progress');
-      } else {
-        const progressData = await progressResponse.json();
-        console.log('Progress set successfully:', progressData);
-        progressSet = true;
-      }
+      console.log('Progress set successfully:', progressData);
+      const progressSet = true;
 
       // Update watchlist status after successful action
       setWatchlistStatus({

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { format, addDays, startOfDay } from 'date-fns';
 import { DateChunk, TVGuideService, ViewportRange, ScrollState, TV_GUIDE_CONSTANTS } from './tv-guide.types';
-import { UserManager } from '../UserSwitcher';
+import { UserManager } from '../../services/UserManager';
 import TVGuideHeader from './TVGuideHeader';
 import ServiceRow from './ServiceRow';
 
