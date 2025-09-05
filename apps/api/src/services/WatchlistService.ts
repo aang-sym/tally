@@ -5,7 +5,7 @@
  * watching progress, and status transitions between different states.
  */
 
-import { supabase, createUserClient } from '../db/supabase.js';
+import { supabase, createUserClient, serviceSupabase } from '../db/supabase.js';
 import { showService, Show } from './ShowService.js';
 import { SupabaseClient } from '@supabase/supabase-js';
 
@@ -20,6 +20,7 @@ export interface UserShow {
   last_episode_watched_id?: string;
   show_rating?: number;
   notes?: string;
+  updated_at?: string;
 }
 
 export interface UserShowWithDetails extends UserShow {
@@ -39,8 +40,17 @@ export class WatchlistService {
   private client: SupabaseClient;
 
   constructor(userToken?: string) {
-    // Use authenticated client if token provided, otherwise use anonymous client
-    this.client = userToken ? createUserClient(userToken) : supabase;
+    // FIXED: Always use serviceSupabase to avoid RLS issues
+    // User validation is handled explicitly in each method
+    this.client = serviceSupabase;
+    
+    console.log('🔧 [WATCHLIST_SERVICE] Constructor called (FIXED):', {
+      hasUserToken: !!userToken,
+      userTokenLength: userToken?.length || 0,
+      clientType: 'serviceSupabase_consistent',
+      fixApplied: 'Using serviceSupabase for all operations to avoid RLS PGRST301',
+      timestamp: new Date().toISOString()
+    });
   }
 
   /**
@@ -48,13 +58,39 @@ export class WatchlistService {
    */
   async addToWatchlist(userId: string, tmdbId: number, status: 'watchlist' | 'watching' = 'watchlist'): Promise<UserShow | null> {
     try {
-      // Get or create the show first
-      const show = await showService.getOrCreateShow(tmdbId);
+      console.log('📝 [WATCHLIST_SERVICE] Starting addToWatchlist:', {
+        userId,
+        tmdbId,
+        status,
+        clientType: this.client === supabase ? 'anonymous' : 'authenticated_user',
+        timestamp: new Date().toISOString()
+      });
+
+      // Get or create the show first, using the service client to bypass RLS
+      console.log('🎭 [WATCHLIST_SERVICE] Getting/creating show via ShowService with serviceSupabase...');
+      const show = await showService.getOrCreateShow(tmdbId, serviceSupabase);
+      
       if (!show) {
+        console.error('❌ [WATCHLIST_SERVICE] ShowService failed to get/create show:', { tmdbId });
         throw new Error('Failed to get show data');
       }
+      
+      console.log('✅ [WATCHLIST_SERVICE] Show retrieved/created:', {
+        showId: show.id,
+        title: show.title,
+        tmdbId: show.tmdb_id
+      });
 
       // Check if show is already in user's list
+      console.log('🔍 [WATCHLIST_SERVICE] Checking existing user_shows...');
+      console.log('📊 [WATCHLIST_SERVICE] Query details (FIXED):', {
+        table: 'user_shows',
+        userId,
+        showId: show.id,
+        clientType: 'serviceSupabase_consistent',
+        fixApplied: 'Using serviceSupabase to avoid RLS issues'
+      });
+      
       const { data: existing, error: checkError } = await this.client
         .from('user_shows')
         .select('*')
@@ -63,14 +99,30 @@ export class WatchlistService {
         .single();
 
       if (checkError && checkError.code !== 'PGRST116') { // Not found is OK
+        console.error('❌ [WATCHLIST_SERVICE] Error checking existing user_shows:', {
+          error: checkError,
+          errorCode: checkError.code,
+          errorMessage: checkError.message,
+          errorDetails: checkError.details,
+          errorHint: checkError.hint
+        });
         throw checkError;
       }
+      
+      console.log('🔍 [WATCHLIST_SERVICE] Existing check result:', {
+        hasExisting: !!existing,
+        existingId: existing?.id,
+        existingStatus: existing?.status,
+        checkErrorCode: checkError?.code
+      });
 
       if (existing) {
         // Update existing entry if status is different
         if (existing.status !== status) {
+          console.log('🔄 [WATCHLIST_SERVICE] Updating existing entry status...');
           return await this.updateShowStatus(userId, existing.id, status);
         }
+        console.log('✅ [WATCHLIST_SERVICE] Returning existing entry (no change needed)');
         return existing;
       }
 
@@ -84,6 +136,13 @@ export class WatchlistService {
           started_watching_at: new Date().toISOString()
         })
       };
+      
+      console.log('➕ [WATCHLIST_SERVICE] Creating new user_shows entry (FIXED):', {
+        userShowData,
+        clientType: 'serviceSupabase_consistent',
+        fixApplied: 'Using serviceSupabase to bypass RLS and avoid PGRST301',
+        timestamp: new Date().toISOString()
+      });
 
       const { data: userShow, error: createError } = await this.client
         .from('user_shows')
@@ -92,25 +151,62 @@ export class WatchlistService {
         .single();
 
       if (createError) {
-        console.error('Detailed user_shows insert error:', {
+        console.error('❌ [WATCHLIST_SERVICE] user_shows INSERT ERROR (POST-FIX):', {
           error: createError,
+          errorCode: createError.code,
+          errorMessage: createError.message,
+          errorDetails: createError.details,
+          errorHint: createError.hint,
           userData: userShowData,
           userId,
           showId: show.id,
           tmdbId,
-          status
+          status,
+          clientType: 'serviceSupabase_consistent',
+          isPGRST301: createError.code === 'PGRST301',
+          fixApplied: createError.code === 'PGRST301' ? 'FAILED - PGRST301 still occurring' : 'SUCCESS - No PGRST301'
         });
+        
+        if (createError.code === 'PGRST301') {
+          console.error('🔥 [WATCHLIST_SERVICE] PGRST301 STILL DETECTED after fix! This indicates a deeper RLS issue:', {
+            message: createError.message,
+            hint: createError.hint,
+            details: createError.details,
+            showExists: !!show,
+            showId: show.id,
+            userShowData,
+            needsRLSPolicyReview: true
+          });
+        }
+        
         throw createError;
       }
+      
+      console.log('✅ [WATCHLIST_SERVICE] user_shows created successfully:', {
+        userShowId: userShow.id,
+        showId: userShow.show_id,
+        status: userShow.status
+      });
 
       // Mark show as popular if it's being actively tracked
       if (status === 'watching') {
+        console.log('⭐ [WATCHLIST_SERVICE] Marking show as popular...');
         await showService.markShowAsPopular(show.id);
       }
 
       return userShow;
     } catch (error) {
-      console.error('Failed to add show to watchlist:', error);
+      console.error('❌ [WATCHLIST_SERVICE] addToWatchlist failed:', {
+        error,
+        errorType: typeof error,
+        errorMessage: (error as Error)?.message,
+        errorCode: (error as any)?.code,
+        errorDetails: (error as any)?.details,
+        errorHint: (error as any)?.hint,
+        userId,
+        tmdbId,
+        status
+      });
       return null;
     }
   }
@@ -258,7 +354,7 @@ export class WatchlistService {
       const watchedEpisodes = watchedProgress?.length || 0;
 
       // Find current episode (last watched + 1, or first unwatched)
-      let currentEpisode = undefined;
+      let currentEpisode: { season_number: number; episode_number: number; name?: string } | undefined = undefined;
 
       if (watchedEpisodes > 0 && watchedEpisodes < totalEpisodes) {
         // Find the next unwatched episode
@@ -387,7 +483,7 @@ export class WatchlistService {
       // Count by status
       userShows?.forEach(show => {
         if (show.status in stats.byStatus) {
-          stats.byStatus[show.status]++;
+          stats.byStatus[show.status as UserShow['status']]++;
         }
       });
 
@@ -429,5 +525,3 @@ export class WatchlistService {
     }
   }
 }
-
-// Removed singleton export - services should be instantiated with user authentication

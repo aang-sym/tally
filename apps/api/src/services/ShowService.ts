@@ -7,6 +7,7 @@
 
 import { supabase, serviceSupabase } from '../db/supabase.js';
 import { tmdbService } from './tmdb.js';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface Show {
   id: string;
@@ -53,21 +54,46 @@ export class ShowService {
   /**
    * Get or create a show from TMDB data with caching
    */
-  async getOrCreateShow(tmdbId: number): Promise<Show | null> {
+  async getOrCreateShow(tmdbId: number, client: SupabaseClient = supabase): Promise<Show | null> {
     try {
+      const clientType = client === serviceSupabase ? 'serviceSupabase' :
+                        client === supabase ? 'regularSupabase' : 'userClient';
+      
+      console.log('🎭 [SHOW_SERVICE] getOrCreateShow called:', {
+        tmdbId,
+        clientType,
+        timestamp: new Date().toISOString()
+      });
+
       // First, try to get existing show
-      const { data: existingShow, error: fetchError } = await supabase
+      console.log('🔍 [SHOW_SERVICE] Checking for existing show...');
+      const { data: existingShow, error: fetchError } = await client
         .from('shows')
         .select('*')
         .eq('tmdb_id', tmdbId)
         .single();
 
       if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = not found
+        console.error('❌ [SHOW_SERVICE] Error fetching existing show:', {
+          error: fetchError,
+          errorCode: fetchError.code,
+          clientType,
+          tmdbId
+        });
         throw fetchError;
       }
+      
+      console.log('🔍 [SHOW_SERVICE] Existing show check result:', {
+        showExists: !!existingShow,
+        showId: existingShow?.id,
+        title: existingShow?.title,
+        needsRefresh: existingShow ? this.shouldRefreshShow(existingShow) : false,
+        fetchErrorCode: fetchError?.code
+      });
 
       // If show exists and doesn't need refresh, return it
       if (existingShow && !this.shouldRefreshShow(existingShow)) {
+        console.log('✅ [SHOW_SERVICE] Returning cached show (no refresh needed)');
         return existingShow;
       }
 
@@ -92,7 +118,7 @@ export class ShowService {
       });
 
       // Create or update the show
-      const showData = {
+      const showData: Omit<Show, 'id' | 'created_at' | 'updated_at'> = {
         tmdb_id: tmdbId,
         title: tmdbShow.name,
         overview: tmdbShow.overview,
@@ -105,7 +131,6 @@ export class ShowService {
         release_pattern: tmdbShow.release_pattern || null,
         tmdb_last_updated: new Date().toISOString(),
         is_popular: existingShow?.is_popular || false,
-        updated_at: new Date().toISOString()
       };
 
       if (existingShow) {
@@ -125,14 +150,19 @@ export class ShowService {
         return updatedShow;
       } else {
         // Create new show - use service role for system operations
-        console.log(`Creating new show for TMDB ID ${tmdbId} with data:`, {
-          ...showData,
-          // Mask potentially long fields for cleaner logging
-          overview: showData.overview ? `${showData.overview.substring(0, 100)}...` : null,
-          release_pattern: 'object'
+        console.log('➕ [SHOW_SERVICE] Creating new show for TMDB ID:', {
+          tmdbId,
+          showDataPreview: {
+            title: showData.title,
+            status: showData.status,
+            totalSeasons: showData.total_seasons,
+            totalEpisodes: showData.total_episodes,
+            overview: showData.overview ? `${showData.overview.substring(0, 100)}...` : null
+          },
+          usingServiceSupabase: true
         });
 
-        console.log('Using serviceSupabase client for show creation...');
+        console.log('🔑 [SHOW_SERVICE] Using serviceSupabase client for show creation (bypasses RLS)');
 
         const { data: newShow, error: createError } = await serviceSupabase
           .from('shows')
@@ -141,25 +171,37 @@ export class ShowService {
           .single();
 
         if (createError) {
-          console.error(`CRITICAL: Failed to create show ${tmdbId}:`, {
+          console.error('❌ [SHOW_SERVICE] FAILED to create show:', {
             error: createError,
             errorMessage: createError.message,
             errorCode: createError.code,
             errorDetails: createError.details,
             errorHint: createError.hint,
-            showData: {
-              ...showData,
-              overview: showData.overview ? `${showData.overview.substring(0, 50)}...` : null,
-              release_pattern: 'object'
+            tmdbId,
+            showDataPreview: {
+              title: showData.title,
+              status: showData.status,
+              tmdbId: showData.tmdb_id
             },
-            serviceSupabaseInfo: 'Using service role client to bypass RLS'
+            usingServiceSupabase: true,
+            isPGRST301: createError.code === 'PGRST301'
           });
+          
+          if (createError.code === 'PGRST301') {
+            console.error('🔥 [SHOW_SERVICE] PGRST301 in show creation - this should NOT happen with serviceSupabase!');
+          }
+          
           throw createError;
         }
 
-        console.log(`Successfully created show ${newShow.id} for TMDB ID ${tmdbId}`);
+        console.log('✅ [SHOW_SERVICE] Successfully created show:', {
+          showId: newShow.id,
+          title: newShow.title,
+          tmdbId: newShow.tmdb_id
+        });
 
         // Create seasons and episodes
+        console.log('📺 [SHOW_SERVICE] Creating seasons and episodes...');
         await this.createSeasonsAndEpisodes(newShow.id, tmdbShow);
 
         return newShow;
@@ -167,9 +209,9 @@ export class ShowService {
     } catch (error) {
       console.error(`Failed to get or create show ${tmdbId}:`, {
         error,
-        errorMessage: error?.message,
-        errorCode: error?.code,
-        errorDetails: error?.details,
+        errorMessage: (error as Error).message,
+        errorCode: (error as any).code,
+        errorDetails: (error as any).details,
         tmdbId
       });
       return null;
@@ -368,7 +410,7 @@ export class ShowService {
     } catch (error) {
       console.error(`Failed to fetch TMDB data for show ${tmdbId}:`, {
         error,
-        errorMessage: error?.message,
+        errorMessage: (error as Error).message,
         tmdbId
       });
       return null;
@@ -399,7 +441,7 @@ export class ShowService {
       console.log(`Creating seasons and episodes for show ${showId}:`, {
         seasonsAvailable: !!tmdbShow.seasons,
         seasonsLength: tmdbShow.seasons?.length || 0,
-        seasonsData: tmdbShow.seasons ? tmdbShow.seasons.map(s => ({
+        seasonsData: tmdbShow.seasons ? tmdbShow.seasons.map((s: any) => ({
           seasonNumber: s.seasonNumber,
           episodeCount: s.episodeCount
         })) : 'no seasons'
@@ -471,8 +513,8 @@ export class ShowService {
     } catch (error) {
       console.error('Failed to create seasons and episodes:', {
         error,
-        errorMessage: error?.message,
-        errorCode: error?.code,
+        errorMessage: (error as Error).message,
+        errorCode: (error as any).code,
         showId,
         tmdbShowStructure: {
           hasSeasons: !!tmdbShow.seasons,

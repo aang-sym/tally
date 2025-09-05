@@ -9,6 +9,15 @@
 import { serviceSupabase } from '../db/supabase.js';
 
 const SQL_COMMANDS = [
+  `CREATE OR REPLACE FUNCTION exec_sql(sql TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  EXECUTE sql;
+  RETURN '{"status": "success"}'::JSONB;
+END;
+$$;`,
   `DROP POLICY IF EXISTS "Public can read shows" ON shows;`,
   `DROP POLICY IF EXISTS "Authenticated can delete shows" ON shows;`,
   `DROP POLICY IF EXISTS "Authenticated can update shows" ON shows;`,
@@ -24,8 +33,22 @@ async function executeRLSFixDirect() {
   console.log('🔧 Executing RLS Fix Direct...\n');
   
   try {
+    // First, create the exec_sql function directly.
+    const createFunctionSQL = SQL_COMMANDS.shift(); // Removes the first element
+    if (createFunctionSQL) {
+        console.log(`[1/${SQL_COMMANDS.length + 1}] Creating exec_sql function...`);
+        const { error: createError } = await serviceSupabase.rpc('exec', { sql: createFunctionSQL });
+        if (createError) {
+            console.log(`   ❌ Failed to create function: ${createError.message}`);
+            // If function creation fails, we probably can't continue.
+            return;
+        } else {
+            console.log('   ✅ Success');
+        }
+    }
+
     for (const [index, sql] of SQL_COMMANDS.entries()) {
-      console.log(`[${index + 1}/${SQL_COMMANDS.length}] ${sql.substring(0, 50)}...`);
+      console.log(`[${index + 2}/${SQL_COMMANDS.length + 1}] ${sql.substring(0, 50)}...`);
       
       const { data, error } = await serviceSupabase.rpc('exec_sql', { sql });
       
