@@ -199,16 +199,26 @@ DROP POLICY IF EXISTS "Allow public update to shows" ON shows;
 -- Drop policies to be created to ensure idempotency
 DROP POLICY IF EXISTS "Public can read shows" ON shows;
 DROP POLICY IF EXISTS "Authenticated can manage shows" ON shows;
+DROP POLICY IF EXISTS "Authenticated can update shows" ON shows;
+DROP POLICY IF EXISTS "Authenticated can delete shows" ON shows;
 
 CREATE POLICY "Public can read shows" ON shows
   FOR SELECT 
   USING (true);
 
--- Only authenticated users can add/update show data
+-- Only authenticated users can add/update show data (separate from SELECT)
 CREATE POLICY "Authenticated can manage shows" ON shows
-  FOR ALL 
+  FOR INSERT 
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Authenticated can update shows" ON shows
+  FOR UPDATE 
   USING (auth.uid() IS NOT NULL)
   WITH CHECK (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Authenticated can delete shows" ON shows
+  FOR DELETE 
+  USING (auth.uid() IS NOT NULL);
 
 -- Seasons table - allow read-only public access, authenticated insert
 DROP POLICY IF EXISTS "Allow public insert to seasons" ON seasons;
