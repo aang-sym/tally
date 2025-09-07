@@ -9,9 +9,12 @@ import jwt from 'jsonwebtoken';
 const JWT_SECRET = 'tally_super_secret_jwt_key_2025_production_ready_secure_token_12345';
 
 const payload = {
+  sub: 'b3686973-ba60-4405-8525-f8d6b3dcb7fc',
   userId: 'b3686973-ba60-4405-8525-f8d6b3dcb7fc',
   email: 'test@test.com',
-  displayName: 'Test User'
+  displayName: 'Test User',
+  aud: 'authenticated',
+  role: 'authenticated'
 };
 
 const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' });

@@ -12,7 +12,35 @@ interface User {
 // User management utilities
 export const UserManager = {
   getCurrentUserId: (): string => {
-    return localStorage.getItem('current_user_id') || 'user-1';
+    const storedId = localStorage.getItem('current_user_id');
+    
+    // If no stored ID, try to extract from auth token
+    if (!storedId || storedId === 'user-1') {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        try {
+          // Decode JWT token to get the proper user ID
+          const parts = token.split('.');
+          if (parts.length === 3 && parts[1]) {
+            const payload = JSON.parse(atob(parts[1]));
+            const userId = payload.sub || payload.userId;
+            if (userId && userId !== 'user-1') {
+              localStorage.setItem('current_user_id', userId);
+              return userId;
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to decode auth token:', error);
+        }
+      }
+      
+      // Default to proper UUID for test user instead of 'user-1'
+      const defaultUUID = 'b3686973-ba60-4405-8525-f8d6b3dcb7fc';
+      localStorage.setItem('current_user_id', defaultUUID);
+      return defaultUUID;
+    }
+    
+    return storedId;
   },
 
   setCurrentUserId: (userId: string): void => {

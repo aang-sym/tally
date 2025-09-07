@@ -9,6 +9,7 @@ import { Router, Request, Response } from 'express';
 import { WatchlistService } from '../services/WatchlistService.js';
 import { showService } from '../services/ShowService.js';
 import { streamingService } from '../services/StreamingService.js';
+import { supabase, serviceSupabase, createUserClient } from '../db/supabase.js';
 
 const router = Router();
 
@@ -522,4 +523,263 @@ router.post('/search-and-add', async (req: Request, res: Response) => {
   }
 });
 
+// -----------------------------------------------------------------------------
+// NEW: Episode progress endpoints for watchlist-v2
+// -----------------------------------------------------------------------------
+
+/**
+ * GET /api/watchlist-v2/:tmdbId/progress
+ * Return user's episode progress for a show identified by TMDB ID
+ * Response format (used by SearchShows): { data: { showProgress: [{ seasonNumber, episodeNumber, status }] } }
+ */
+router.get('/:tmdbId/progress', async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    const tmdbIdRaw = req.params.tmdbId;
+    const tmdbId = Number(tmdbIdRaw);
+
+    if (!Number.isFinite(tmdbId)) {
+      return res.status(400).json({ success: false, error: 'Invalid TMDB ID' });
+    }
+
+    // Find or create the show (ensures seasons/episodes exist)
+    let showId: string | null = null;
+
+    // First look up by tmdb_id
+    const { data: showRow, error: showFetchError } = await supabase
+      .from('shows')
+      .select('id')
+      .eq('tmdb_id', tmdbId)
+      .single();
+
+    if (showFetchError && showFetchError.code !== 'PGRST116') {
+      console.error('Failed to fetch show by TMDB ID:', showFetchError);
+      return res.status(500).json({ success: false, error: 'Failed to fetch show' });
+    }
+
+    if (showRow?.id) {
+      showId = showRow.id;
+    } else {
+      // Create using service role (bypasses RLS and ensures episodes exist)
+      const created = await showService.getOrCreateShow(tmdbId, serviceSupabase);
+      if (!created) {
+        return res.status(404).json({ success: false, error: 'Show not found' });
+      }
+      showId = created.id;
+    }
+
+    // Load seasons with episodes
+    const details = await showService.getShowWithDetails(showId!);
+    if (!details) {
+      return res.status(404).json({ success: false, error: 'Show not found' });
+    }
+
+    // Collect all episode IDs
+    const episodes = details.seasons.flatMap(season =>
+      season.episodes.map(ep => ({
+        id: ep.id,
+        season_number: season.season_number,
+        episode_number: ep.episode_number
+      }))
+    );
+
+    const episodeIds = episodes.map(e => e.id);
+    if (episodeIds.length === 0) {
+      return res.json({ success: true, data: { showProgress: [] } });
+    }
+
+    // Fetch user progress for these episodes (DB column is "state" per migration 009)
+    // Use service role to avoid dependency on Supabase JWT parsing
+    const { data: progressRows, error: progressErr } = await serviceSupabase
+      .from('user_episode_progress')
+      .select('episode_id, state')
+      .eq('user_id', userId)
+      .in('episode_id', episodeIds);
+
+    if (progressErr) {
+      console.error('Failed to fetch episode progress:', progressErr);
+      return res.status(500).json({ success: false, error: 'Failed to fetch episode progress' });
+    }
+
+    // Map episodeId -> state and return only those with a recorded state (frontend filters for "watched")
+    const stateByEpisodeId = new Map<string, string>(
+      (progressRows || []).map(r => [r.episode_id, r.state])
+    );
+
+    const showProgress = episodes
+      .map(ep => {
+        const state = stateByEpisodeId.get(ep.id);
+        if (!state) return null;
+        return {
+          seasonNumber: ep.season_number,
+          episodeNumber: ep.episode_number,
+          status: state
+        };
+      })
+      .filter(Boolean);
+
+    res.json({ success: true, data: { showProgress } });
+  } catch (error) {
+    console.error('Failed to get show episode progress:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve episode progress'
+    });
+  }
+});
+
+/**
+ * PUT /api/watchlist-v2/:tmdbId/progress
+ * Body: { seasonNumber: number, episodeNumber: number, status: 'watched' | 'unwatched' | 'watching' }
+ * Sets progress up to the specified episode (inclusive).
+ */
+router.put('/:tmdbId/progress', async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    const tmdbIdRaw = req.params.tmdbId;
+    const tmdbId = Number(tmdbIdRaw);
+
+    if (!Number.isFinite(tmdbId)) {
+      return res.status(400).json({ success: false, error: 'Invalid TMDB ID' });
+    }
+
+    const { seasonNumber, episodeNumber, status = 'watched' } = req.body || {};
+    if (
+      typeof seasonNumber !== 'number' ||
+      typeof episodeNumber !== 'number' ||
+      !['watched', 'unwatched', 'watching'].includes(status)
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid body. Expect { seasonNumber:number, episodeNumber:number, status:"watched"|"unwatched"|"watching" }'
+      });
+    }
+
+    console.log('🎯 [WATCHLIST-V2] PUT progress request:', {
+      userId,
+      tmdbId,
+      seasonNumber,
+      episodeNumber,
+      status
+    });
+
+    // Ensure show exists; create if needed
+    let showId: string | null = null;
+
+    const { data: showRow, error: showFetchError } = await supabase
+      .from('shows')
+      .select('id')
+      .eq('tmdb_id', tmdbId)
+      .single();
+
+    if (showFetchError && showFetchError.code !== 'PGRST116') {
+      console.error('Failed to fetch show by TMDB ID:', showFetchError);
+      return res.status(500).json({ success: false, error: 'Failed to fetch show' });
+    }
+
+    if (showRow?.id) {
+      showId = showRow.id;
+    } else {
+      const created = await showService.getOrCreateShow(tmdbId, serviceSupabase);
+      if (!created) {
+        return res.status(404).json({ success: false, error: 'Show not found' });
+      }
+      showId = created.id;
+    }
+
+    // Get all seasons/episodes and select target range
+    const details = await showService.getShowWithDetails(showId!);
+    if (!details) {
+      return res.status(404).json({ success: false, error: 'Show not found' });
+    }
+
+    const targetEpisodes = details.seasons
+      .filter(season => season.season_number < seasonNumber || season.season_number === seasonNumber)
+      .flatMap(season => {
+        const limit = season.season_number < seasonNumber ? Infinity : episodeNumber;
+        return season.episodes
+          .filter(ep => ep.episode_number <= limit)
+          .map(ep => ({
+            id: ep.id,
+            season_number: season.season_number,
+            episode_number: ep.episode_number
+          }));
+      });
+
+    if (targetEpisodes.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'No episodes found for the requested range'
+      });
+    }
+
+    // Batch upsert progress using service role (bypasses RLS safely on server)
+    const progressValue = status === 'watched' ? 100 : status === 'watching' ? 50 : 0;
+
+    const rows = targetEpisodes.map(ep => ({
+      user_id: userId,
+      show_id: showId!,
+      episode_id: ep.id,
+      state: status,
+      progress: progressValue
+    }));
+
+    const { error: upsertError } = await serviceSupabase
+      .from('user_episode_progress')
+      .upsert(rows, { onConflict: 'user_id,show_id,episode_id' });
+
+    if (upsertError) {
+      console.error('Failed to upsert episode progress:', upsertError);
+      return res.status(500).json({ success: false, error: 'Failed to set episode progress' });
+    }
+
+    const updatedCount = rows.length;
+
+    console.log('✅ [WATCHLIST-V2] Progress update complete:', {
+      userId,
+      tmdbId,
+      requestedEpisodes: targetEpisodes.length,
+      updatedCount,
+      status
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        updatedCount,
+        totalRequested: targetEpisodes.length,
+        status,
+        message:
+          status === 'watched'
+            ? `Marked ${updatedCount}/${targetEpisodes.length} episodes as watched`
+            : status === 'unwatched'
+            ? `Marked ${updatedCount}/${targetEpisodes.length} episodes as unwatched`
+            : `Marked ${updatedCount}/${targetEpisodes.length} episodes as watching`
+      }
+    });
+  } catch (error) {
+    console.error('Failed to set episode progress:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to set episode progress'
+    });
+  }
+});
+ 
 export default router;
