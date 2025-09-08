@@ -19,7 +19,23 @@ const router = Router();
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const country = (req.query.country as string) || 'US';
+    // Prefer explicit query param; otherwise try the authenticated user's stored country; fallback to US
+    let country = (req.query.country as string) || '';
+
+    if (!country) {
+      const authedUserId = (req as any).user?.id; // set by auth middleware if present
+      if (authedUserId) {
+        const { data: userRow } = await supabase
+          .from('users')
+          .select('country_code')
+          .eq('id', authedUserId)
+          .single();
+        if (userRow?.country_code) country = String(userRow.country_code);
+      }
+    }
+
+    if (!country) country = 'US';
+    country = country.toUpperCase();
 
     const { data: services, error } = await supabase
       .rpc('get_streaming_services_with_price', { country_code: country });

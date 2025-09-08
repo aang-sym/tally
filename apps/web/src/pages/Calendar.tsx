@@ -61,8 +61,9 @@ const Calendar: React.FC = () => {
       const userId = UserManager.getCurrentUserId();
       const token = localStorage.getItem('authToken') || undefined;
 
+      const country = UserManager.getCountry?.() || 'US';
       const [subsRes, showsRes] = await Promise.allSettled([
-        apiRequest(API_ENDPOINTS.users.subscriptions(userId), {}, token),
+        apiRequest(`${API_ENDPOINTS.users.subscriptions(userId)}?country=${country}`, {}, token),
         apiRequest(API_ENDPOINTS.watchlist.v2, {}, token),
       ]);
 
@@ -176,27 +177,43 @@ const Calendar: React.FC = () => {
                 View your subscription calendar and optimize your streaming costs
               </p>
             </div>
-            
-            {/* View Tabs */}
-            <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-              {views.map((view) => (
-                <button
-                  key={view.id}
-                  type="button"
-                  onClick={() => setCurrentView(view.id)}
-                  aria-pressed={currentView === view.id}
-                  aria-label={`${view.name} view`}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    currentView === view.id
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                  title={view.description}
+
+            {/* Right side: Country pill + View Tabs */}
+            <div className="flex flex-col items-end space-y-2">
+              <div className="mt-1">
+                <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700">
+                  Country/Region: <span className="ml-1 font-medium">{UserManager.getCountry?.() || 'US'}</span>
+                </span>
+                <a
+                  href="/my-shows"
+                  className="ml-3 text-sm text-blue-600 hover:text-blue-700"
+                  title="Change country in My Shows"
                 >
-                  <span className="mr-2">{view.icon}</span>
-                  {view.name}
-                </button>
-              ))}
+                  Change
+                </a>
+              </div>
+
+              {/* View Tabs */}
+              <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+                {views.map((view) => (
+                  <button
+                    key={view.id}
+                    type="button"
+                    onClick={() => setCurrentView(view.id)}
+                    aria-pressed={currentView === view.id}
+                    aria-label={`${view.name} view`}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      currentView === view.id
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                    title={view.description}
+                  >
+                    <span className="mr-2">{view.icon}</span>
+                    {view.name}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           
