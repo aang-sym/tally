@@ -69,6 +69,28 @@ interface WatchlistStats {
   averageRating: number;
 }
 
+// Derive stats on the client as a reliable fallback (and to keep counts live)
+const deriveStats = (items: UserShow[]): WatchlistStats => {
+  const byStatus = { watchlist: 0, watching: 0, completed: 0, dropped: 0 } as WatchlistStats['byStatus'];
+  let ratingSum = 0;
+  let ratingCount = 0;
+  for (const s of items) {
+    if (s.status in byStatus) {
+      // @ts-expect-error runtime guard
+      byStatus[s.status as keyof typeof byStatus] += 1;
+    }
+    if (typeof s.show_rating === 'number') {
+      ratingSum += s.show_rating;
+      ratingCount += 1;
+    }
+  }
+  return {
+    totalShows: items.length,
+    byStatus,
+    averageRating: ratingCount > 0 ? ratingSum / ratingCount : 0,
+  };
+};
+
 // API base URL
 // API_BASE removed - using centralized API_ENDPOINTS
 
@@ -109,6 +131,16 @@ const MyShows: React.FC = () => {
     }
   }, [country]);
 
+  // Keep dashboard counts in sync with the list without waiting for server stats
+  useEffect(() => {
+    if (shows) {
+      const computed = deriveStats(shows);
+      setStats(computed);
+      setLoadingStats(false);
+      setStatsError(null);
+    }
+  }, [shows]);
+
   const fetchWatchlist = async () => {
     try {
       setLoading(true);
@@ -117,6 +149,9 @@ const MyShows: React.FC = () => {
       const data = await apiRequest(`${API_ENDPOINTS.watchlist.v2}${statusParam}`, {}, token);
 
       setShows(data.data.shows);
+      setStats(deriveStats(data.data.shows));
+      setLoadingStats(false);
+      setStatsError(null);
 
       // Prefetch overall progress so header bars are populated on initial load
       if (data.data.shows && data.data.shows.length > 0) {
@@ -158,7 +193,14 @@ const MyShows: React.FC = () => {
     try {
       const token = localStorage.getItem('authToken') || undefined;
       const data = await apiRequest(`${API_ENDPOINTS.watchlist.v2}/stats`, {}, token);
-      setStats(data.data);
+      const serverStats: WatchlistStats | undefined = data?.data;
+      const fallback = deriveStats(shows);
+      // Prefer server stats if they look populated; otherwise derive from current shows
+      if (serverStats && (serverStats.totalShows > 0 || Object.values(serverStats.byStatus).some(v => v > 0))) {
+        setStats(serverStats);
+      } else {
+        setStats(fallback);
+      }
     } catch (err) {
       console.error('Failed to fetch stats:', err); // Change warn to error
       setStatsError('Failed to load show statistics.'); // Set error message
