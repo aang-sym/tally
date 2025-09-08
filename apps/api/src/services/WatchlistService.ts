@@ -282,7 +282,14 @@ export class WatchlistService {
    */
   async getUserWatchlist(userId: string, status?: UserShow['status']): Promise<UserShowWithDetails[]> {
     try {
-      let query = this.client
+      console.log('🔎 [WATCHLIST_SERVICE] getUserWatchlist called:', {
+        userId,
+        status: status || 'all',
+        clientType: this.client === supabase ? 'anonymous' : 'authenticated_user',
+        timestamp: new Date().toISOString()
+      });
+
+      let query = serviceSupabase
         .from('user_shows')
         .select(`
           *,
@@ -296,7 +303,22 @@ export class WatchlistService {
 
       const { data: userShows, error } = await query.order('added_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [WATCHLIST_SERVICE] getUserWatchlist query failed:', {
+          code: (error as any)?.code,
+          message: (error as any)?.message,
+          details: (error as any)?.details,
+          hint: (error as any)?.hint
+        });
+        throw error;
+      }
+
+      console.log('📦 [WATCHLIST_SERVICE] getUserWatchlist query result:', {
+        rowCount: userShows?.length || 0,
+        firstItemKeys: userShows && userShows[0] ? Object.keys(userShows[0]) : [],
+        hasShowKey: userShows && userShows[0] ? 'show' in userShows[0] : false,
+        hasShowsKey: userShows && userShows[0] ? 'shows' in userShows[0] : false
+      });
 
       // Enhance with progress information
       const showsWithProgress = await Promise.all(
@@ -308,6 +330,10 @@ export class WatchlistService {
           };
         })
       );
+
+      console.log('✅ [WATCHLIST_SERVICE] getUserWatchlist returning:', {
+        count: showsWithProgress.length
+      });
 
       return showsWithProgress;
     } catch (error) {

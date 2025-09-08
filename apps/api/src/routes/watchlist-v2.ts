@@ -33,6 +33,16 @@ function getUserToken(req: Request): string | undefined {
 router.get('/', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
+// Diagnostic logging for GET /
+const token = getUserToken(req);
+console.log('🧪 [WATCHLIST-V2][GET /] Auth diagnostics:', {
+  hasAuthHeader: !!req.headers.authorization,
+  tokenPresent: !!token,
+  tokenStart: token ? token.substring(0, 20) + '...' : 'none',
+  userId: req.userId,
+  status: req.query.status || 'all',
+  timestamp: new Date().toISOString()
+});
     
     if (!userId) {
       return res.status(401).json({
@@ -45,11 +55,18 @@ router.get('/', async (req: Request, res: Response) => {
     // Supabase path
     const watchlistService = new WatchlistService(getUserToken(req));
     const watchlist = await watchlistService.getUserWatchlist(userId, status as any);
+console.log('🧪 [WATCHLIST-V2][GET /] Data shape diagnostics:', {
+  itemCount: (watchlist || []).length,
+  sampleKeys: watchlist && watchlist[0] ? Object.keys(watchlist[0]) : [],
+  hasShowKey: watchlist && watchlist[0] ? 'show' in watchlist[0] : false,
+  hasShowsKey: watchlist && watchlist[0] ? 'shows' in watchlist[0] : false,
+  showKeys: watchlist && watchlist[0] && (watchlist[0] as any).show ? Object.keys((watchlist[0] as any).show) : [],
+});
 
     // Normalize poster paths to full TMDB URLs for the web client
     const normalized = (watchlist || []).map(item => {
       // Fix: Supabase returns show data under 'show' key, which is correct.
-      const show: any = { ...item.show };
+      const show: any = { ...(item as any).shows };
       if (show && show.poster_path) {
         if (typeof show.poster_path === 'string' && show.poster_path.startsWith('/')) {
           show.poster_path = `https://image.tmdb.org/t/p/w500${show.poster_path}`;
