@@ -783,12 +783,14 @@ router.get('/:tmdbId/progress', async (req: Request, res: Response) => {
       })
       .filter(Boolean);
 
-    const seasonsGrouped: { [seasonNumber: number]: Array<{ episodeNumber: number, status: string }> } = {};
+    const seasonsGrouped: { [seasonNumber: number]: Array<{ episodeNumber: number; status: string }> } = {};
+
     (showProgress as Array<NonNullable<typeof showProgress[number]>>).forEach(ep => {
+      if (!ep) return;
       if (!seasonsGrouped[ep.seasonNumber]) {
         seasonsGrouped[ep.seasonNumber] = [];
       }
-      seasonsGrouped[ep.seasonNumber].push({
+      seasonsGrouped[ep.seasonNumber]!.push({
         episodeNumber: ep.episodeNumber,
         status: ep.status
       });

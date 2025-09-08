@@ -463,6 +463,8 @@ const MyShows: React.FC = () => {
 
       // Toggle status: if watched, mark as unwatched; if unwatched, mark as watched
       const newStatus = isCurrentlyWatched ? 'unwatched' : 'watched';
+      const actionVerb = newStatus === 'watched' ? 'marking' : 'unmarking';
+      console.log(`User ${userId} ${actionVerb} episode ${episodeNumber} of season ${seasonNumber} for show ${tmdbId}`);
 
       // Make API call to persist the progress
       const token = localStorage.getItem('authToken') || undefined;
