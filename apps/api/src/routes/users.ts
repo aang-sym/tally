@@ -587,6 +587,7 @@ router.post('/bulk-create', authenticateUser, async (req: Request, res: Response
 router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const country = (req.query.country as string) || 'US';
 
     if (req.userId !== id) {
       return res.status(403).json({ success: false, error: 'Forbidden: You can only access your own subscriptions.' });
@@ -604,15 +605,27 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
         ended_date,
         created_at,
         updated_at,
+        tier,
         streaming_services:service_id (
           id,
           tmdb_provider_id,
           name,
           logo_path,
-          homepage
+          homepage,
+          streaming_service_prices:streaming_service_prices!inner (
+            tier,
+            monthly_cost,
+            currency,
+            billing_frequency,
+            notes,
+            active,
+            provider_name,
+            country_code
+          )
         )
       `)
       .eq('user_id', id)
+      .eq('streaming_services.streaming_service_prices.country_code', country.toUpperCase())
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -637,11 +650,42 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
           : `https://image.tmdb.org/t/p/w45${svc.logo_path}`)
         : null;
 
+      // --- Normalize prices and default_price ---
+      const svcPricesSrc = Array.isArray(svc?.streaming_service_prices)
+        ? svc.streaming_service_prices
+        : [];
+
+      const prices = svcPricesSrc
+        .filter((p: any) => p && (p.active ?? true))
+        .map((p: any) => ({
+          tier: p.tier,
+          amount: p.monthly_cost,
+          currency: p.currency,
+          billing_frequency: p.billing_frequency ?? 'monthly',
+          active: p.active ?? true,
+          notes: p.notes ?? null,
+          provider_name: p.provider_name ?? svc?.name ?? null,
+        }));
+
+      const rank = (t: string) => {
+        const s = (t || '').toLowerCase();
+        if (s.startsWith('standard')) return 1;
+        if (s.includes('no ads')) return 2;
+        if (s.includes('ads')) return 3;
+        if (s.includes('premium')) return 4;
+        return 9;
+      };
+      const default_price = prices.length
+        ? prices.slice().sort((a, b) => rank(a.tier) - rank(b.tier))[0]
+        : null;
+      // --- END normalize prices and default_price ---
+
       return {
         id: sub.id,
         service_id: sub.service_id,
         monthly_cost: sub.monthly_cost,
         is_active: sub.is_active,
+        tier: sub.tier,
         started_date: sub.started_date,
         ended_date: sub.ended_date,
         service: svc
@@ -651,6 +695,8 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
             name: svc.name,
             logo_url,
             homepage: svc.homepage || null,
+            prices,
+            default_price,
           }
           : null,
       };
@@ -687,7 +733,7 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
 router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { service_id, monthly_cost, is_active = true } = req.body;
+    const { service_id, monthly_cost, tier = null, is_active = true } = req.body;
 
     if (!service_id || typeof monthly_cost !== 'number') {
       return res.status(400).json({
@@ -711,6 +757,7 @@ router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Re
         .update({
           monthly_cost,
           is_active,
+          tier,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', id)
@@ -736,6 +783,7 @@ router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Re
         user_id: id,
         service_id,
         monthly_cost,
+        tier,
         is_active,
         started_date: new Date().toISOString().split('T')[0]
       })
@@ -776,11 +824,12 @@ router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Re
 router.put('/:id/subscriptions/:subscriptionId', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id, subscriptionId } = req.params;
-    const { monthly_cost, is_active } = req.body;
+    const { monthly_cost, is_active, tier } = req.body;
 
     const updateData: any = { updated_at: new Date().toISOString() };
     if (typeof monthly_cost === 'number') updateData.monthly_cost = monthly_cost;
     if (typeof is_active === 'boolean') updateData.is_active = is_active;
+    if (typeof tier === 'string') updateData.tier = tier;
 
     // If deactivating, set end date
     if (is_active === false) {

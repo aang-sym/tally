@@ -13,13 +13,16 @@ const router = Router();
 /**
  * GET /api/streaming-services
  * Get all available streaming services
+ * 
+ * Supports optional query param ?country=XX to filter prices by country.
+ * Requires the Postgres function get_streaming_services_with_price(country_code text).
  */
 router.get('/', async (req: Request, res: Response) => {
   try {
+    const country = (req.query.country as string) || 'US';
+
     const { data: services, error } = await supabase
-      .from('streaming_services')
-      .select('id, name, logo_path, homepage')
-      .order('name');
+      .rpc('get_streaming_services_with_price', { country_code: country });
 
     if (error) {
       throw error;
