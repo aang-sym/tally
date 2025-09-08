@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import OverviewCalendar from '../components/calendar/OverviewCalendar';
 import SavingsCalendar from '../components/calendar/SavingsCalendar';
 import { UserManager } from '../services/UserManager';
@@ -41,35 +41,57 @@ const Calendar: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const activeSubscriptionsCount = useMemo(
+    () => userSubscriptions.reduce((n, s) => n + (s.is_active ? 1 : 0), 0),
+    [userSubscriptions]
+  );
+
   useEffect(() => {
-    loadUserData();
+    let alive = true;
+    (async () => {
+      await loadUserData(alive);
+    })();
+    return () => { alive = false; };
   }, []);
 
-  const loadUserData = async () => {
+  const loadUserData = async (aliveFlag?: boolean) => {
     try {
       setLoading(true);
       setError(null);
       const userId = UserManager.getCurrentUserId();
       const token = localStorage.getItem('authToken') || undefined;
 
-      // Load user subscriptions
-      const subscriptionsData = await apiRequest(API_ENDPOINTS.users.subscriptions(userId), {}, token);
-      setUserSubscriptions(subscriptionsData.data.subscriptions || []);
+      const [subsRes, showsRes] = await Promise.allSettled([
+        apiRequest(API_ENDPOINTS.users.subscriptions(userId), {}, token),
+        apiRequest(API_ENDPOINTS.watchlist.v2, {}, token),
+      ]);
 
-      // Load user shows
-      const showsData = await apiRequest(API_ENDPOINTS.watchlist.v2, {}, token);
-      setUserShows(showsData.data.shows || []);
+      if (aliveFlag === false) return; // bail if unmounted
 
+      if (subsRes.status === 'fulfilled') {
+        setUserSubscriptions(subsRes.value.data.subscriptions || []);
+      } else {
+        console.warn('subscriptions load failed:', subsRes.reason);
+        setUserSubscriptions([]);
+      }
+
+      if (showsRes.status === 'fulfilled') {
+        setUserShows(showsRes.value.data.shows || []);
+      } else {
+        console.error('shows load failed:', showsRes.reason);
+        setUserShows([]);
+      }
+
+      if (subsRes.status === 'rejected' && showsRes.status === 'rejected') {
+        setError('Failed to load your data. Please check your connection.');
+      }
     } catch (err) {
       console.error('Failed to load user data:', err);
       setError('Failed to load your data. Please check your connection.');
     } finally {
+      if (aliveFlag === false) return;
       setLoading(false);
     }
-  };
-
-  const hasUserData = () => {
-    return userSubscriptions.length > 0 || userShows.length > 0;
   };
 
   const views = [
@@ -79,13 +101,13 @@ const Calendar: React.FC = () => {
     { id: 'personal' as const, name: 'Personal', icon: '👤', description: 'Your shows timeline' }
   ];
 
-  const renderCurrentView = () => {
-    const viewProps = {
-      useUserData: hasUserData(),
-      userSubscriptions: userSubscriptions,
-      userShows: userShows
-    };
+  const viewProps = useMemo(() => ({
+    useUserData: userSubscriptions.length > 0 || userShows.length > 0,
+    userSubscriptions,
+    userShows,
+  }), [userSubscriptions, userShows]);
 
+  const renderCurrentView = () => {
     switch (currentView) {
       case 'overview':
         return <OverviewCalendar {...viewProps} />;
@@ -160,7 +182,10 @@ const Calendar: React.FC = () => {
               {views.map((view) => (
                 <button
                   key={view.id}
+                  type="button"
                   onClick={() => setCurrentView(view.id)}
+                  aria-pressed={currentView === view.id}
+                  aria-label={`${view.name} view`}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     currentView === view.id
                       ? 'bg-white text-blue-600 shadow-sm'
@@ -179,7 +204,7 @@ const Calendar: React.FC = () => {
           <div className="flex items-center justify-end">
             <div className="text-sm">
               <div className="flex items-center space-x-4 text-gray-600">
-                <span>{userSubscriptions.filter(s => s.is_active).length} active subscriptions</span>
+                <span>{activeSubscriptionsCount} active subscriptions</span>
                 <span>{userShows.length} shows</span>
                 {loading && <span className="ml-2">⏳ Loading...</span>}
               </div>
@@ -190,7 +215,7 @@ const Calendar: React.FC = () => {
         {/* Error Message */}
         {error && (
           <div className="mt-4">
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4" role="alert" aria-live="polite">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <span className="text-yellow-400 text-xl">⚠️</span>
@@ -217,6 +242,7 @@ const Calendar: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
             onClick={() => window.location.href = '/recommendations'}
+            aria-label="Get Recommendations – optimization suggestions"
             className="flex items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
           >
             <span className="text-2xl mr-3">💡</span>
@@ -228,6 +254,7 @@ const Calendar: React.FC = () => {
           
           <button
             onClick={() => window.location.href = '/my-shows'}
+            aria-label="Manage Shows – update your watchlist"
             className="flex items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
           >
             <span className="text-2xl mr-3">📺</span>
@@ -238,6 +265,7 @@ const Calendar: React.FC = () => {
           </button>
           
           <button
+            aria-label="Export Calendar – add to your calendar app"
             className="flex items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
           >
             <span className="text-2xl mr-3">📱</span>
