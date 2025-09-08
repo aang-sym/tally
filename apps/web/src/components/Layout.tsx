@@ -1,14 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import UserSwitcher from './UserSwitcher';
+import LoginModal from './Auth/LoginModal';
 
 const Layout: React.FC = () => {
   const location = useLocation();
+  const { isAuthenticated, user, login, logout } = useAuth();
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  const handleLoginSuccess = (token: string, user: { id: string; email: string }) => {
+    login(token, user);
+    setIsLoginModalOpen(false);
+  };
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: '🏠' },
     { name: 'My Shows', href: '/my-shows', icon: '📺' },
     { name: 'Search Shows', href: '/search', icon: '🔍' },
+    { name: 'TV Guide', href: '/tv-guide', icon: '📋' },
     { name: 'Calendar', href: '/calendar', icon: '📅' },
     { name: 'Recommendations', href: '/recommendations', icon: '💡' },
     { name: 'Settings', href: '/settings', icon: '⚙️' },
@@ -64,8 +74,32 @@ const Layout: React.FC = () => {
                 </Link>
               )}
               
-              {/* User Switcher */}
-              <UserSwitcher />
+              {/* User Switcher (only in development) */}
+              {process.env.NODE_ENV === 'development' && (
+                <UserSwitcher />
+              )}
+              
+              {/* Authentication Controls */}
+              {isAuthenticated ? (
+                <div className="flex items-center space-x-3">
+                  <span className="text-sm text-gray-600">
+                    {user?.email}
+                  </span>
+                  <button
+                    onClick={logout}
+                    className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setIsLoginModalOpen(true)}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                >
+                  Login
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -113,6 +147,13 @@ const Layout: React.FC = () => {
       <main>
         <Outlet />
       </main>
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
     </div>
   );
 };

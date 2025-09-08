@@ -5,8 +5,9 @@
  * Optimizes API calls by caching show data and refreshing based on show status and popularity.
  */
 
-import { supabase } from '../db/supabase.js';
+import { supabase, serviceSupabase } from '../db/supabase.js';
 import { tmdbService } from './tmdb.js';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface Show {
   id: string;
@@ -53,21 +54,46 @@ export class ShowService {
   /**
    * Get or create a show from TMDB data with caching
    */
-  async getOrCreateShow(tmdbId: number): Promise<Show | null> {
+  async getOrCreateShow(tmdbId: number, client: SupabaseClient = supabase): Promise<Show | null> {
     try {
+      const clientType = client === serviceSupabase ? 'serviceSupabase' :
+                        client === supabase ? 'regularSupabase' : 'userClient';
+      
+      console.log('🎭 [SHOW_SERVICE] getOrCreateShow called:', {
+        tmdbId,
+        clientType,
+        timestamp: new Date().toISOString()
+      });
+
       // First, try to get existing show
-      const { data: existingShow, error: fetchError } = await supabase
+      console.log('🔍 [SHOW_SERVICE] Checking for existing show...');
+      const { data: existingShow, error: fetchError } = await client
         .from('shows')
         .select('*')
         .eq('tmdb_id', tmdbId)
         .single();
 
       if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = not found
+        console.error('❌ [SHOW_SERVICE] Error fetching existing show:', {
+          error: fetchError,
+          errorCode: fetchError.code,
+          clientType,
+          tmdbId
+        });
         throw fetchError;
       }
+      
+      console.log('🔍 [SHOW_SERVICE] Existing show check result:', {
+        showExists: !!existingShow,
+        showId: existingShow?.id,
+        title: existingShow?.title,
+        needsRefresh: existingShow ? this.shouldRefreshShow(existingShow) : false,
+        fetchErrorCode: fetchError?.code
+      });
 
       // If show exists and doesn't need refresh, return it
       if (existingShow && !this.shouldRefreshShow(existingShow)) {
+        console.log('✅ [SHOW_SERVICE] Returning cached show (no refresh needed)');
         return existingShow;
       }
 
@@ -77,13 +103,22 @@ export class ShowService {
         return existingShow || null;
       }
 
+      console.log(`Fetching TMDB data for show ${tmdbId}...`);
       const tmdbShow = await this.fetchTMDBShowData(tmdbId);
+      
       if (!tmdbShow) {
+        console.error(`CRITICAL: fetchTMDBShowData returned null for TMDB ID ${tmdbId}`);
         return existingShow || null;
       }
 
+      console.log(`Successfully fetched TMDB data for show ${tmdbId}:`, {
+        title: tmdbShow.name,
+        seasons: tmdbShow.seasons?.length || 0,
+        status: tmdbShow.status
+      });
+
       // Create or update the show
-      const showData = {
+      const showData: Omit<Show, 'id' | 'created_at' | 'updated_at'> = {
         tmdb_id: tmdbId,
         title: tmdbShow.name,
         overview: tmdbShow.overview,
@@ -96,12 +131,11 @@ export class ShowService {
         release_pattern: tmdbShow.release_pattern || null,
         tmdb_last_updated: new Date().toISOString(),
         is_popular: existingShow?.is_popular || false,
-        updated_at: new Date().toISOString()
       };
 
       if (existingShow) {
-        // Update existing show
-        const { data: updatedShow, error: updateError } = await supabase
+        // Update existing show - use service role for system operations
+        const { data: updatedShow, error: updateError } = await serviceSupabase
           .from('shows')
           .update(showData)
           .eq('id', existingShow.id)
@@ -115,22 +149,71 @@ export class ShowService {
 
         return updatedShow;
       } else {
-        // Create new show
-        const { data: newShow, error: createError } = await supabase
+        // Create new show - use service role for system operations
+        console.log('➕ [SHOW_SERVICE] Creating new show for TMDB ID:', {
+          tmdbId,
+          showDataPreview: {
+            title: showData.title,
+            status: showData.status,
+            totalSeasons: showData.total_seasons,
+            totalEpisodes: showData.total_episodes,
+            overview: showData.overview ? `${showData.overview.substring(0, 100)}...` : null
+          },
+          usingServiceSupabase: true
+        });
+
+        console.log('🔑 [SHOW_SERVICE] Using serviceSupabase client for show creation (bypasses RLS)');
+
+        const { data: newShow, error: createError } = await serviceSupabase
           .from('shows')
           .insert([showData])
           .select()
           .single();
 
-        if (createError) throw createError;
+        if (createError) {
+          console.error('❌ [SHOW_SERVICE] FAILED to create show:', {
+            error: createError,
+            errorMessage: createError.message,
+            errorCode: createError.code,
+            errorDetails: createError.details,
+            errorHint: createError.hint,
+            tmdbId,
+            showDataPreview: {
+              title: showData.title,
+              status: showData.status,
+              tmdbId: showData.tmdb_id
+            },
+            usingServiceSupabase: true,
+            isPGRST301: createError.code === 'PGRST301'
+          });
+          
+          if (createError.code === 'PGRST301') {
+            console.error('🔥 [SHOW_SERVICE] PGRST301 in show creation - this should NOT happen with serviceSupabase!');
+          }
+          
+          throw createError;
+        }
+
+        console.log('✅ [SHOW_SERVICE] Successfully created show:', {
+          showId: newShow.id,
+          title: newShow.title,
+          tmdbId: newShow.tmdb_id
+        });
 
         // Create seasons and episodes
+        console.log('📺 [SHOW_SERVICE] Creating seasons and episodes...');
         await this.createSeasonsAndEpisodes(newShow.id, tmdbShow);
 
         return newShow;
       }
     } catch (error) {
-      console.error(`Failed to get or create show ${tmdbId}:`, error);
+      console.error(`Failed to get or create show ${tmdbId}:`, {
+        error,
+        errorMessage: (error as Error).message,
+        errorCode: (error as any).code,
+        errorDetails: (error as any).details,
+        tmdbId
+      });
       return null;
     }
   }
@@ -274,12 +357,28 @@ export class ShowService {
    */
   private async fetchTMDBShowData(tmdbId: number): Promise<any> {
     try {
-      // Use the existing tmdbService to get show details
-      // This is a simplified version - you may want to enhance this
-      // to get more detailed data like seasons and episodes
+      console.log(`Calling tmdbService.analyzeShow for TMDB ID ${tmdbId}...`);
       
       const analysis = await tmdbService.analyzeShow(tmdbId);
-      return analysis?.showDetails ? {
+      
+      if (!analysis) {
+        console.error(`tmdbService.analyzeShow returned null for TMDB ID ${tmdbId}`);
+        return null;
+      }
+
+      if (!analysis.showDetails) {
+        console.error(`tmdbService.analyzeShow returned analysis without showDetails for TMDB ID ${tmdbId}:`, analysis);
+        return null;
+      }
+
+      console.log(`tmdbService.analyzeShow successful for TMDB ID ${tmdbId}:`, {
+        title: analysis.showDetails.title,
+        seasonInfoLength: analysis.seasonInfo?.length || 0,
+        episodeCount: analysis.episodeCount || 0,
+        status: analysis.showDetails.status
+      });
+
+      const result = {
         name: analysis.showDetails.title,
         overview: analysis.showDetails.overview,
         poster_path: analysis.showDetails.poster,
@@ -288,11 +387,32 @@ export class ShowService {
         status: analysis.showDetails.status,
         number_of_seasons: analysis.seasonInfo?.length || 0,
         number_of_episodes: analysis.episodeCount || 0,
-        release_pattern: analysis.pattern,
-        seasons: analysis.seasonInfo
-      } : null;
+        // Persist full analysis summary into DB JSONB field
+        release_pattern: {
+          pattern: analysis.pattern,
+          confidence: analysis.confidence,
+          avgInterval: analysis.diagnostics?.avgInterval ?? null,
+          stdDev: analysis.diagnostics?.stdDev ?? null,
+          intervals: analysis.diagnostics?.intervals ?? [],
+          analyzedSeason: analysis.analyzedSeason
+        },
+        // Fix: Make sure seasons are in the expected format for createSeasonsAndEpisodes
+        seasons: analysis.seasonInfo || []
+      };
+
+      console.log(`Processed TMDB data structure for ${tmdbId}:`, {
+        name: result.name,
+        seasonsCount: result.seasons.length,
+        episodesTotal: result.number_of_episodes
+      });
+
+      return result;
     } catch (error) {
-      console.error(`Failed to fetch TMDB data for show ${tmdbId}:`, error);
+      console.error(`Failed to fetch TMDB data for show ${tmdbId}:`, {
+        error,
+        errorMessage: (error as Error).message,
+        tmdbId
+      });
       return null;
     }
   }
@@ -318,28 +438,49 @@ export class ShowService {
    */
   private async createSeasonsAndEpisodes(showId: string, tmdbShow: any): Promise<void> {
     try {
+      console.log(`Creating seasons and episodes for show ${showId}:`, {
+        seasonsAvailable: !!tmdbShow.seasons,
+        seasonsLength: tmdbShow.seasons?.length || 0,
+        seasonsData: tmdbShow.seasons ? tmdbShow.seasons.map((s: any) => ({
+          seasonNumber: s.seasonNumber,
+          episodeCount: s.episodeCount
+        })) : 'no seasons'
+      });
+
       if (!tmdbShow.seasons || tmdbShow.seasons.length === 0) {
+        console.log(`No seasons to create for show ${showId}`);
         return;
       }
 
       for (const tmdbSeason of tmdbShow.seasons) {
-        // Create season
-        const { data: season, error: seasonError } = await supabase
+        // Create season - use service role for system operations
+        const seasonData = {
+          show_id: showId,
+          tmdb_season_id: tmdbSeason.seasonNumber || 0,
+          season_number: tmdbSeason.seasonNumber,
+          name: `Season ${tmdbSeason.seasonNumber}`,
+          episode_count: tmdbSeason.episodeCount
+        };
+
+        console.log(`Creating season ${tmdbSeason.seasonNumber} for show ${showId}:`, seasonData);
+
+        const { data: season, error: seasonError } = await serviceSupabase
           .from('seasons')
-          .insert([{
-            show_id: showId,
-            tmdb_season_id: tmdbSeason.seasonNumber || 0,
-            season_number: tmdbSeason.seasonNumber,
-            name: `Season ${tmdbSeason.seasonNumber}`,
-            episode_count: tmdbSeason.episodeCount
-          }])
+          .insert([seasonData])
           .select()
           .single();
 
         if (seasonError) {
-          console.error('Failed to create season:', seasonError);
+          console.error('Failed to create season:', {
+            error: seasonError,
+            seasonData,
+            showId,
+            tmdbSeasonData: tmdbSeason
+          });
           continue;
         }
+
+        console.log(`Successfully created season ${season.id} for show ${showId}`);
 
         // For now, we'll create episode stubs - episodes would be populated 
         // when we need detailed episode data
@@ -351,13 +492,36 @@ export class ShowService {
             name: `Episode ${i + 1}`
           }));
 
-          await supabase
+          console.log(`Creating ${episodeStubs.length} episode stubs for season ${season.id}`);
+
+          const { error: episodeError } = await serviceSupabase
             .from('episodes')
             .insert(episodeStubs);
+
+          if (episodeError) {
+            console.error('Failed to create episode stubs:', {
+              error: episodeError,
+              seasonId: season.id,
+              showId,
+              episodeCount: episodeStubs.length
+            });
+          } else {
+            console.log(`Successfully created ${episodeStubs.length} episodes for season ${season.id}`);
+          }
         }
       }
     } catch (error) {
-      console.error('Failed to create seasons and episodes:', error);
+      console.error('Failed to create seasons and episodes:', {
+        error,
+        errorMessage: (error as Error).message,
+        errorCode: (error as any).code,
+        showId,
+        tmdbShowStructure: {
+          hasSeasons: !!tmdbShow.seasons,
+          seasonsLength: tmdbShow.seasons?.length,
+          seasonsKeys: tmdbShow.seasons ? Object.keys(tmdbShow.seasons[0] || {}) : 'no seasons'
+        }
+      });
     }
   }
 

@@ -11,14 +11,20 @@ interface PatternAnalysisProps {
       lastAirDate: string;
       poster?: string;
     };
-    pattern: string;
+    pattern: {
+      pattern: string;
+      confidence: number;
+    };
     confidence: number;
     episodeCount: number;
     seasonInfo: Array<{
       seasonNumber: number;
       episodeCount: number;
       airDate: string;
-      pattern?: string;
+      pattern?: {
+        pattern: string;
+        confidence: number;
+      };
       confidence?: number;
     }>;
     reasoning: string;
@@ -224,11 +230,11 @@ const PatternAnalysis: React.FC<PatternAnalysisProps> = ({
         <h3 className="font-medium text-gray-900 mb-3">Pattern Detection</h3>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-3">
-            <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPatternColor(analysis.pattern)}`}>
-              {analysis.pattern.replace('_', ' ').toUpperCase()}
+            <span className={`px-3 py-1 rounded-full text-sm font-medium border ${getPatternColor(analysis.pattern.pattern)}`}>
+              {analysis.pattern.pattern.replace('_', ' ').toUpperCase()}
             </span>
-            <span className={`font-medium ${getConfidenceColor(analysis.confidence)}`}>
-              {Math.round(analysis.confidence * 100)}% confidence
+            <span className={`font-medium ${getConfidenceColor(analysis.pattern.confidence)}`}>
+              {Math.round(analysis.pattern.confidence * 100)}% confidence
             </span>
           </div>
         </div>
@@ -351,12 +357,12 @@ const PatternAnalysis: React.FC<PatternAnalysisProps> = ({
                 </div>
                 {season.pattern && (
                   <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${getPatternColor(season.pattern)}`}>
-                      {season.pattern}
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getPatternColor(season.pattern.pattern)}`}>
+                      {season.pattern.pattern}
                     </span>
-                    {season.confidence && (
-                      <span className={`text-xs ${getConfidenceColor(season.confidence)}`}>
-                        {Math.round(season.confidence * 100)}%
+                    {season.pattern.confidence && (
+                      <span className={`text-xs ${getConfidenceColor(season.pattern.confidence)}`}>
+                        {Math.round(season.pattern.confidence * 100)}%
                       </span>
                     )}
                   </div>

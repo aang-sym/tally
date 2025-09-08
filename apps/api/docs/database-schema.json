@@ -1,0 +1,1578 @@
+{
+  "generated_at": "2025-09-08T09:36:42.616Z",
+  "source": "supabase_csv_export",
+  "tables": {
+    "episodes": {
+      "name": "episodes",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "season_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "tmdb_episode_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null,
+          "precision": "32",
+          "position": null,
+          "tsType": "number"
+        },
+        {
+          "name": "episode_number",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null,
+          "precision": "32",
+          "position": null,
+          "tsType": "number"
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "500",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "overview",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "air_date",
+          "type": "date",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "runtime",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": "32",
+          "position": null,
+          "tsType": "number"
+        }
+      ],
+      "primaryKeys": [
+        null
+      ],
+      "foreignKeys": [
+        {
+          "column": "season_id",
+          "referencedTable": "seasons",
+          "referencedColumn": "id"
+        }
+      ],
+      "uniqueConstraints": [
+        {
+          "name": "episodes_season_id_episode_number_key",
+          "columns": [
+            null,
+            null
+          ]
+        }
+      ],
+      "indexes": []
+    },
+    "seasons": {
+      "name": "seasons",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "show_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "tmdb_season_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null,
+          "precision": "32",
+          "position": null,
+          "tsType": "number"
+        },
+        {
+          "name": "season_number",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null,
+          "precision": "32",
+          "position": null,
+          "tsType": "number"
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "500",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "overview",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "air_date",
+          "type": "date",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "episode_count",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": "32",
+          "position": null,
+          "tsType": "number"
+        },
+        {
+          "name": "poster_path",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "500",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        }
+      ],
+      "primaryKeys": [
+        null
+      ],
+      "foreignKeys": [
+        {
+          "column": "show_id",
+          "referencedTable": "shows",
+          "referencedColumn": "id"
+        }
+      ],
+      "uniqueConstraints": [
+        {
+          "name": "seasons_show_id_season_number_key",
+          "columns": [
+            null,
+            null
+          ]
+        }
+      ],
+      "indexes": []
+    },
+    "show_availability": {
+      "name": "show_availability",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "show_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "service_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "country_code",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": "2",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "availability_type",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": "20",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "price_amount",
+          "type": "numeric",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": "10",
+          "position": null,
+          "tsType": "number"
+        },
+        {
+          "name": "price_currency",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "3",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "deep_link",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "now()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        }
+      ],
+      "primaryKeys": [
+        null
+      ],
+      "foreignKeys": [
+        {
+          "column": "show_id",
+          "referencedTable": "shows",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "service_id",
+          "referencedTable": "streaming_services",
+          "referencedColumn": "id"
+        }
+      ],
+      "uniqueConstraints": [
+        {
+          "name": "show_availability_show_id_service_id_country_code_availabil_key",
+          "columns": [
+            null,
+            null,
+            null,
+            null
+          ]
+        }
+      ],
+      "indexes": []
+    },
+    "shows": {
+      "name": "shows",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "tmdb_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null,
+          "precision": "32",
+          "position": null,
+          "tsType": "number"
+        },
+        {
+          "name": "title",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": "500",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "overview",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "poster_path",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "500",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "first_air_date",
+          "type": "date",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "last_air_date",
+          "type": "date",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "status",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "50",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "total_seasons",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": "32",
+          "position": null,
+          "tsType": "number"
+        },
+        {
+          "name": "total_episodes",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": "32",
+          "position": null,
+          "tsType": "number"
+        },
+        {
+          "name": "release_pattern",
+          "type": "jsonb",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "any"
+        },
+        {
+          "name": "tmdb_last_updated",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "now()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "is_popular",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "now()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "now()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        }
+      ],
+      "primaryKeys": [
+        null
+      ],
+      "foreignKeys": [],
+      "uniqueConstraints": [
+        {
+          "name": "shows_tmdb_id_key",
+          "columns": [
+            null
+          ]
+        }
+      ],
+      "indexes": []
+    },
+    "streaming_services": {
+      "name": "streaming_services",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "tmdb_provider_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null,
+          "precision": "32",
+          "position": null,
+          "tsType": "number"
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": "100",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "logo_path",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "500",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "homepage",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "500",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        }
+      ],
+      "primaryKeys": [
+        null
+      ],
+      "foreignKeys": [],
+      "uniqueConstraints": [
+        {
+          "name": "streaming_services_tmdb_provider_id_key",
+          "columns": [
+            null
+          ]
+        }
+      ],
+      "indexes": []
+    },
+    "user_episode_progress": {
+      "name": "user_episode_progress",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "episode_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "state",
+          "type": "character varying",
+          "nullable": false,
+          "default": "'unwatched'::character varying",
+          "maxLength": "20",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "started_watching_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "watched_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "episode_rating",
+          "type": "numeric",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": "3",
+          "position": null,
+          "tsType": "number"
+        },
+        {
+          "name": "show_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "progress",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": "32",
+          "position": null,
+          "tsType": "number"
+        }
+      ],
+      "primaryKeys": [
+        null
+      ],
+      "foreignKeys": [
+        {
+          "column": "user_id",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "episode_id",
+          "referencedTable": "episodes",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "show_id",
+          "referencedTable": "shows",
+          "referencedColumn": "id"
+        }
+      ],
+      "uniqueConstraints": [
+        {
+          "name": "user_episode_progress_user_id_episode_id_key",
+          "columns": [
+            null,
+            null
+          ]
+        },
+        {
+          "name": "user_episode_progress_user_show_episode_key",
+          "columns": [
+            null,
+            null,
+            null
+          ]
+        }
+      ],
+      "indexes": []
+    },
+    "user_season_ratings": {
+      "name": "user_season_ratings",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "season_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "rating",
+          "type": "numeric",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": "3",
+          "position": null,
+          "tsType": "number"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "now()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        }
+      ],
+      "primaryKeys": [
+        null
+      ],
+      "foreignKeys": [
+        {
+          "column": "user_id",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "season_id",
+          "referencedTable": "seasons",
+          "referencedColumn": "id"
+        }
+      ],
+      "uniqueConstraints": [
+        {
+          "name": "user_season_ratings_user_id_season_id_key",
+          "columns": [
+            null,
+            null
+          ]
+        }
+      ],
+      "indexes": []
+    },
+    "user_shows": {
+      "name": "user_shows",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "show_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "status",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": "20",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "added_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "now()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "started_watching_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "last_episode_watched_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "show_rating",
+          "type": "numeric",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": "3",
+          "position": null,
+          "tsType": "number"
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "buffer_days",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "maxLength": null,
+          "precision": "32",
+          "position": null,
+          "tsType": "number"
+        },
+        {
+          "name": "selected_service_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "country_code",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "2",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        }
+      ],
+      "primaryKeys": [
+        null
+      ],
+      "foreignKeys": [
+        {
+          "column": "user_id",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "show_id",
+          "referencedTable": "shows",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "last_episode_watched_id",
+          "referencedTable": "episodes",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "selected_service_id",
+          "referencedTable": "streaming_services",
+          "referencedColumn": "id"
+        }
+      ],
+      "uniqueConstraints": [
+        {
+          "name": "user_shows_user_show_unique",
+          "columns": [
+            null,
+            null
+          ]
+        },
+        {
+          "name": "user_shows_user_id_show_id_key",
+          "columns": [
+            null,
+            null
+          ]
+        }
+      ],
+      "indexes": []
+    },
+    "user_streaming_subscriptions": {
+      "name": "user_streaming_subscriptions",
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "service_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "monthly_cost",
+          "type": "numeric",
+          "nullable": false,
+          "default": null,
+          "maxLength": null,
+          "precision": "6",
+          "position": null,
+          "tsType": "number"
+        },
+        {
+          "name": "is_active",
+          "type": "boolean",
+          "nullable": true,
+          "default": "true",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "boolean"
+        },
+        {
+          "name": "started_date",
+          "type": "date",
+          "nullable": true,
+          "default": "CURRENT_DATE",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "ended_date",
+          "type": "date",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "now()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "now()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        }
+      ],
+      "primaryKeys": [
+        null
+      ],
+      "foreignKeys": [
+        {
+          "column": "user_id",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "column": "service_id",
+          "referencedTable": "streaming_services",
+          "referencedColumn": "id"
+        }
+      ],
+      "uniqueConstraints": [
+        {
+          "name": "user_streaming_subscriptions_user_id_service_id_key",
+          "columns": [
+            null,
+            null
+          ]
+        }
+      ],
+      "indexes": []
+    },
+    "users": {
+      "name": "users",
+      "columns": [
+        {
+          "name": "instance_id",
+          "type": "uuid",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": "gen_random_uuid()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "email",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": "255",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "aud",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "255",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "password_hash",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": "255",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "country_code",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'US'::character varying",
+          "maxLength": "2",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "role",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "255",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "timezone",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'UTC'::character varying",
+          "maxLength": "50",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "email",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "255",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "now()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "encrypted_password",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "255",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "now()",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "email_confirmed_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "display_name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "100",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "invited_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "avatar_url",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "500",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "confirmation_token",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "255",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "confirmation_sent_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "is_test_user",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "boolean"
+        },
+        {
+          "name": "created_by",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'system'::character varying",
+          "maxLength": "50",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "recovery_token",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "255",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "recovery_sent_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "email_change_token_new",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "255",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "email_change",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": "255",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "email_change_sent_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "last_sign_in_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "raw_app_meta_data",
+          "type": "jsonb",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "any"
+        },
+        {
+          "name": "raw_user_meta_data",
+          "type": "jsonb",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "any"
+        },
+        {
+          "name": "is_super_admin",
+          "type": "boolean",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "boolean"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "nullable": true,
+          "default": "NULL::character varying",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "phone_confirmed_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "phone_change",
+          "type": "text",
+          "nullable": true,
+          "default": "''::character varying",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "phone_change_token",
+          "type": "character varying",
+          "nullable": true,
+          "default": "''::character varying",
+          "maxLength": "255",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "phone_change_sent_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "confirmed_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "email_change_token_current",
+          "type": "character varying",
+          "nullable": true,
+          "default": "''::character varying",
+          "maxLength": "255",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "email_change_confirm_status",
+          "type": "smallint",
+          "nullable": true,
+          "default": "0",
+          "maxLength": null,
+          "precision": "16",
+          "position": null,
+          "tsType": "any"
+        },
+        {
+          "name": "banned_until",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "reauthentication_token",
+          "type": "character varying",
+          "nullable": true,
+          "default": "''::character varying",
+          "maxLength": "255",
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "reauthentication_sent_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "is_sso_user",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "boolean"
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "string"
+        },
+        {
+          "name": "is_anonymous",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "maxLength": null,
+          "precision": null,
+          "position": null,
+          "tsType": "boolean"
+        }
+      ],
+      "primaryKeys": [
+        null
+      ],
+      "foreignKeys": [],
+      "uniqueConstraints": [
+        {
+          "name": "users_email_key",
+          "columns": [
+            null
+          ]
+        }
+      ],
+      "indexes": []
+    }
+  },
+  "summary": {
+    "tableCount": 10,
+    "totalColumns": 128,
+    "totalForeignKeys": 15,
+    "totalConstraints": 50
+  }
+}

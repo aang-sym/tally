@@ -1,0 +1,129 @@
+table_name,column_name,data_type,is_nullable,column_default,character_maximum_length,numeric_precision,ordinal_position
+episodes,id,uuid,NO,gen_random_uuid(),null,null,1
+episodes,season_id,uuid,YES,null,null,null,2
+episodes,tmdb_episode_id,integer,NO,null,null,32,3
+episodes,episode_number,integer,NO,null,null,32,4
+episodes,name,character varying,YES,null,500,null,5
+episodes,overview,text,YES,null,null,null,6
+episodes,air_date,date,YES,null,null,null,7
+episodes,runtime,integer,YES,null,null,32,8
+seasons,id,uuid,NO,gen_random_uuid(),null,null,1
+seasons,show_id,uuid,YES,null,null,null,2
+seasons,tmdb_season_id,integer,NO,null,null,32,3
+seasons,season_number,integer,NO,null,null,32,4
+seasons,name,character varying,YES,null,500,null,5
+seasons,overview,text,YES,null,null,null,6
+seasons,air_date,date,YES,null,null,null,7
+seasons,episode_count,integer,YES,null,null,32,8
+seasons,poster_path,character varying,YES,null,500,null,9
+show_availability,id,uuid,NO,gen_random_uuid(),null,null,1
+show_availability,show_id,uuid,YES,null,null,null,2
+show_availability,service_id,uuid,YES,null,null,null,3
+show_availability,country_code,character varying,NO,null,2,null,4
+show_availability,availability_type,character varying,NO,null,20,null,5
+show_availability,price_amount,numeric,YES,null,null,10,6
+show_availability,price_currency,character varying,YES,null,3,null,7
+show_availability,deep_link,text,YES,null,null,null,8
+show_availability,updated_at,timestamp without time zone,YES,now(),null,null,9
+shows,id,uuid,NO,gen_random_uuid(),null,null,1
+shows,tmdb_id,integer,NO,null,null,32,2
+shows,title,character varying,NO,null,500,null,3
+shows,overview,text,YES,null,null,null,4
+shows,poster_path,character varying,YES,null,500,null,5
+shows,first_air_date,date,YES,null,null,null,6
+shows,last_air_date,date,YES,null,null,null,7
+shows,status,character varying,YES,null,50,null,8
+shows,total_seasons,integer,YES,null,null,32,9
+shows,total_episodes,integer,YES,null,null,32,10
+shows,release_pattern,jsonb,YES,null,null,null,11
+shows,tmdb_last_updated,timestamp without time zone,YES,now(),null,null,12
+shows,is_popular,boolean,YES,false,null,null,13
+shows,created_at,timestamp without time zone,YES,now(),null,null,14
+shows,updated_at,timestamp without time zone,YES,now(),null,null,15
+streaming_services,id,uuid,NO,gen_random_uuid(),null,null,1
+streaming_services,tmdb_provider_id,integer,NO,null,null,32,2
+streaming_services,name,character varying,NO,null,100,null,3
+streaming_services,logo_path,character varying,YES,null,500,null,4
+streaming_services,homepage,character varying,YES,null,500,null,5
+user_episode_progress,id,uuid,NO,gen_random_uuid(),null,null,1
+user_episode_progress,user_id,uuid,YES,null,null,null,2
+user_episode_progress,episode_id,uuid,YES,null,null,null,3
+user_episode_progress,state,character varying,NO,'unwatched'::character varying,20,null,4
+user_episode_progress,started_watching_at,timestamp without time zone,YES,null,null,null,5
+user_episode_progress,watched_at,timestamp without time zone,YES,null,null,null,6
+user_episode_progress,episode_rating,numeric,YES,null,null,3,7
+user_episode_progress,show_id,uuid,YES,null,null,null,8
+user_episode_progress,progress,integer,YES,null,null,32,9
+user_season_ratings,id,uuid,NO,gen_random_uuid(),null,null,1
+user_season_ratings,user_id,uuid,YES,null,null,null,2
+user_season_ratings,season_id,uuid,YES,null,null,null,3
+user_season_ratings,rating,numeric,YES,null,null,3,4
+user_season_ratings,created_at,timestamp without time zone,YES,now(),null,null,5
+user_shows,id,uuid,NO,gen_random_uuid(),null,null,1
+user_shows,user_id,uuid,YES,null,null,null,2
+user_shows,show_id,uuid,YES,null,null,null,3
+user_shows,status,character varying,NO,null,20,null,4
+user_shows,added_at,timestamp without time zone,YES,now(),null,null,5
+user_shows,started_watching_at,timestamp without time zone,YES,null,null,null,6
+user_shows,completed_at,timestamp without time zone,YES,null,null,null,7
+user_shows,last_episode_watched_id,uuid,YES,null,null,null,8
+user_shows,show_rating,numeric,YES,null,null,3,9
+user_shows,notes,text,YES,null,null,null,10
+user_shows,buffer_days,integer,NO,0,null,32,11
+user_shows,selected_service_id,uuid,YES,null,null,null,12
+user_shows,country_code,character varying,YES,null,2,null,13
+user_streaming_subscriptions,id,uuid,NO,gen_random_uuid(),null,null,1
+user_streaming_subscriptions,user_id,uuid,YES,null,null,null,2
+user_streaming_subscriptions,service_id,uuid,YES,null,null,null,3
+user_streaming_subscriptions,monthly_cost,numeric,NO,null,null,6,4
+user_streaming_subscriptions,is_active,boolean,YES,true,null,null,5
+user_streaming_subscriptions,started_date,date,YES,CURRENT_DATE,null,null,6
+user_streaming_subscriptions,ended_date,date,YES,null,null,null,7
+user_streaming_subscriptions,created_at,timestamp without time zone,YES,now(),null,null,8
+user_streaming_subscriptions,updated_at,timestamp without time zone,YES,now(),null,null,9
+users,instance_id,uuid,YES,null,null,null,1
+users,id,uuid,NO,gen_random_uuid(),null,null,1
+users,id,uuid,NO,null,null,null,2
+users,email,character varying,NO,null,255,null,2
+users,aud,character varying,YES,null,255,null,3
+users,password_hash,character varying,NO,null,255,null,3
+users,country_code,character varying,YES,'US'::character varying,2,null,4
+users,role,character varying,YES,null,255,null,4
+users,timezone,character varying,YES,'UTC'::character varying,50,null,5
+users,email,character varying,YES,null,255,null,5
+users,created_at,timestamp without time zone,YES,now(),null,null,6
+users,encrypted_password,character varying,YES,null,255,null,6
+users,updated_at,timestamp without time zone,YES,now(),null,null,7
+users,email_confirmed_at,timestamp with time zone,YES,null,null,null,7
+users,display_name,character varying,YES,null,100,null,8
+users,invited_at,timestamp with time zone,YES,null,null,null,8
+users,avatar_url,character varying,YES,null,500,null,9
+users,confirmation_token,character varying,YES,null,255,null,9
+users,confirmation_sent_at,timestamp with time zone,YES,null,null,null,10
+users,is_test_user,boolean,YES,false,null,null,10
+users,created_by,character varying,YES,'system'::character varying,50,null,11
+users,recovery_token,character varying,YES,null,255,null,11
+users,recovery_sent_at,timestamp with time zone,YES,null,null,null,12
+users,email_change_token_new,character varying,YES,null,255,null,13
+users,email_change,character varying,YES,null,255,null,14
+users,email_change_sent_at,timestamp with time zone,YES,null,null,null,15
+users,last_sign_in_at,timestamp with time zone,YES,null,null,null,16
+users,raw_app_meta_data,jsonb,YES,null,null,null,17
+users,raw_user_meta_data,jsonb,YES,null,null,null,18
+users,is_super_admin,boolean,YES,null,null,null,19
+users,created_at,timestamp with time zone,YES,null,null,null,20
+users,updated_at,timestamp with time zone,YES,null,null,null,21
+users,phone,text,YES,NULL::character varying,null,null,22
+users,phone_confirmed_at,timestamp with time zone,YES,null,null,null,23
+users,phone_change,text,YES,''::character varying,null,null,24
+users,phone_change_token,character varying,YES,''::character varying,255,null,25
+users,phone_change_sent_at,timestamp with time zone,YES,null,null,null,26
+users,confirmed_at,timestamp with time zone,YES,null,null,null,27
+users,email_change_token_current,character varying,YES,''::character varying,255,null,28
+users,email_change_confirm_status,smallint,YES,0,null,16,29
+users,banned_until,timestamp with time zone,YES,null,null,null,30
+users,reauthentication_token,character varying,YES,''::character varying,255,null,31
+users,reauthentication_sent_at,timestamp with time zone,YES,null,null,null,32
+users,is_sso_user,boolean,NO,false,null,null,33
+users,deleted_at,timestamp with time zone,YES,null,null,null,34
+users,is_anonymous,boolean,NO,false,null,null,35

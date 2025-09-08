@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import CalendarView, { CalendarDay } from './CalendarView';
-import { UserManager } from '../UserSwitcher';
+import { UserManager } from '../../services/UserManager';
+import { API_ENDPOINTS, apiRequest } from '../../config/api';
 
 interface UserSubscription {
   id: string;
@@ -31,7 +32,6 @@ interface SavingsCalendarProps {
 }
 
 // API base URL
-const API_BASE = 'http://localhost:3001';
 
 const SavingsCalendar: React.FC<SavingsCalendarProps> = ({ 
   useUserData = false, 
@@ -59,7 +59,6 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
       }
       
       // Get user ID for API calls
-      const userId = UserManager.getCurrentUserId();
       
       // Create abort controller for timeout
       const controller = new AbortController();
@@ -67,15 +66,14 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
       
       try {
         // Fetch savings simulation data
-        const response = await fetch(`${API_BASE}/api/recommendations/savings-simulator`, {
-          headers: { 'x-user-id': userId },
-          signal: controller.signal
-        });
+        const token = localStorage.getItem('authToken') || undefined;
+        const data = await apiRequest(
+          `${API_ENDPOINTS.recommendations}/savings-simulator`, 
+          { signal: controller.signal }, 
+          token
+        );
         
         clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const data = await response.json();
         const strategies = data.data.strategies;
         const selectedStrategyData = strategies.find((s: any) => 
           s.name.toLowerCase().includes(selectedStrategy)
@@ -84,11 +82,6 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
         // Generate calendar data based on selected strategy
         const transformedData = generateSavingsCalendarData(selectedStrategyData);
         setCalendarData(transformedData);
-        } else {
-          // API returned error status
-          console.warn('SavingsCalendar - API returned non-OK status:', response.status, response.statusText);
-          setCalendarData(generateMockSavingsData());
-        }
       } catch (fetchError) {
         clearTimeout(timeoutId);
         console.error('SavingsCalendar - Fetch error:', fetchError);
@@ -103,7 +96,7 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
     } catch (error) {
       const currentUserId = UserManager.getCurrentUserId();
       console.error('SavingsCalendar - Failed to fetch savings data:', error);
-      console.error('SavingsCalendar - API URL was:', `${API_BASE}/api/recommendations/savings-simulator`);
+      console.error('SavingsCalendar - API URL was:', `${API_ENDPOINTS.recommendations}/savings-simulator`);
       console.error('SavingsCalendar - User ID was:', currentUserId);
       console.error('SavingsCalendar - useUserData:', useUserData, 'hasUserData:', (userSubscriptions?.length || 0) > 0);
       

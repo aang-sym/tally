@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import OverviewCalendar from '../components/calendar/OverviewCalendar';
 import SavingsCalendar from '../components/calendar/SavingsCalendar';
-import { UserManager } from '../components/UserSwitcher';
+import { UserManager } from '../services/UserManager';
+import { API_ENDPOINTS, apiRequest } from '../config/api';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 type CalendarView = 'overview' | 'savings' | 'provider' | 'personal';
@@ -33,8 +34,6 @@ interface UserShow {
   };
 }
 
-const API_BASE = 'http://localhost:3001';
-
 const Calendar: React.FC = () => {
   const [currentView, setCurrentView] = useState<CalendarView>('overview');
   const [userSubscriptions, setUserSubscriptions] = useState<UserSubscription[]>([]);
@@ -42,44 +41,58 @@ const Calendar: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const activeSubscriptionsCount = useMemo(
+    () => userSubscriptions.reduce((n, s) => n + (s.is_active ? 1 : 0), 0),
+    [userSubscriptions]
+  );
+
   useEffect(() => {
-    loadUserData();
+    let alive = true;
+    (async () => {
+      await loadUserData(alive);
+    })();
+    return () => { alive = false; };
   }, []);
 
-  const loadUserData = async () => {
+  const loadUserData = async (aliveFlag?: boolean) => {
     try {
       setLoading(true);
       setError(null);
       const userId = UserManager.getCurrentUserId();
+      const token = localStorage.getItem('authToken') || undefined;
 
-      // Load user subscriptions
-      const subscriptionsResponse = await fetch(`${API_BASE}/api/users/${userId}/subscriptions`, {
-        headers: { 'x-user-id': userId }
-      });
-      if (subscriptionsResponse.ok) {
-        const subscriptionsData = await subscriptionsResponse.json();
-        setUserSubscriptions(subscriptionsData.data.subscriptions || []);
+      const country = UserManager.getCountry?.() || 'US';
+      const [subsRes, showsRes] = await Promise.allSettled([
+        apiRequest(`${API_ENDPOINTS.users.subscriptions(userId)}?country=${country}`, {}, token),
+        apiRequest(API_ENDPOINTS.watchlist.v2, {}, token),
+      ]);
+
+      if (aliveFlag === false) return; // bail if unmounted
+
+      if (subsRes.status === 'fulfilled') {
+        setUserSubscriptions(subsRes.value.data.subscriptions || []);
+      } else {
+        console.warn('subscriptions load failed:', subsRes.reason);
+        setUserSubscriptions([]);
       }
 
-      // Load user shows
-      const showsResponse = await fetch(`${API_BASE}/api/watchlist-v2`, {
-        headers: { 'x-user-id': userId }
-      });
-      if (showsResponse.ok) {
-        const showsData = await showsResponse.json();
-        setUserShows(showsData.data.shows || []);
+      if (showsRes.status === 'fulfilled') {
+        setUserShows(showsRes.value.data.shows || []);
+      } else {
+        console.error('shows load failed:', showsRes.reason);
+        setUserShows([]);
       }
 
+      if (subsRes.status === 'rejected' && showsRes.status === 'rejected') {
+        setError('Failed to load your data. Please check your connection.');
+      }
     } catch (err) {
       console.error('Failed to load user data:', err);
       setError('Failed to load your data. Please check your connection.');
     } finally {
+      if (aliveFlag === false) return;
       setLoading(false);
     }
-  };
-
-  const hasUserData = () => {
-    return userSubscriptions.length > 0 || userShows.length > 0;
   };
 
   const views = [
@@ -89,13 +102,13 @@ const Calendar: React.FC = () => {
     { id: 'personal' as const, name: 'Personal', icon: '👤', description: 'Your shows timeline' }
   ];
 
-  const renderCurrentView = () => {
-    const viewProps = {
-      useUserData: hasUserData(),
-      userSubscriptions: userSubscriptions,
-      userShows: userShows
-    };
+  const viewProps = useMemo(() => ({
+    useUserData: userSubscriptions.length > 0 || userShows.length > 0,
+    userSubscriptions,
+    userShows,
+  }), [userSubscriptions, userShows]);
 
+  const renderCurrentView = () => {
     switch (currentView) {
       case 'overview':
         return <OverviewCalendar {...viewProps} />;
@@ -164,24 +177,43 @@ const Calendar: React.FC = () => {
                 View your subscription calendar and optimize your streaming costs
               </p>
             </div>
-            
-            {/* View Tabs */}
-            <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
-              {views.map((view) => (
-                <button
-                  key={view.id}
-                  onClick={() => setCurrentView(view.id)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    currentView === view.id
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                  title={view.description}
+
+            {/* Right side: Country pill + View Tabs */}
+            <div className="flex flex-col items-end space-y-2">
+              <div className="mt-1">
+                <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700">
+                  Country/Region: <span className="ml-1 font-medium">{UserManager.getCountry?.() || 'US'}</span>
+                </span>
+                <a
+                  href="/my-shows"
+                  className="ml-3 text-sm text-blue-600 hover:text-blue-700"
+                  title="Change country in My Shows"
                 >
-                  <span className="mr-2">{view.icon}</span>
-                  {view.name}
-                </button>
-              ))}
+                  Change
+                </a>
+              </div>
+
+              {/* View Tabs */}
+              <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+                {views.map((view) => (
+                  <button
+                    key={view.id}
+                    type="button"
+                    onClick={() => setCurrentView(view.id)}
+                    aria-pressed={currentView === view.id}
+                    aria-label={`${view.name} view`}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      currentView === view.id
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                    title={view.description}
+                  >
+                    <span className="mr-2">{view.icon}</span>
+                    {view.name}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           
@@ -189,7 +221,7 @@ const Calendar: React.FC = () => {
           <div className="flex items-center justify-end">
             <div className="text-sm">
               <div className="flex items-center space-x-4 text-gray-600">
-                <span>{userSubscriptions.filter(s => s.is_active).length} active subscriptions</span>
+                <span>{activeSubscriptionsCount} active subscriptions</span>
                 <span>{userShows.length} shows</span>
                 {loading && <span className="ml-2">⏳ Loading...</span>}
               </div>
@@ -200,7 +232,7 @@ const Calendar: React.FC = () => {
         {/* Error Message */}
         {error && (
           <div className="mt-4">
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4" role="alert" aria-live="polite">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <span className="text-yellow-400 text-xl">⚠️</span>
@@ -227,6 +259,7 @@ const Calendar: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
             onClick={() => window.location.href = '/recommendations'}
+            aria-label="Get Recommendations – optimization suggestions"
             className="flex items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
           >
             <span className="text-2xl mr-3">💡</span>
@@ -238,6 +271,7 @@ const Calendar: React.FC = () => {
           
           <button
             onClick={() => window.location.href = '/my-shows'}
+            aria-label="Manage Shows – update your watchlist"
             className="flex items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
           >
             <span className="text-2xl mr-3">📺</span>
@@ -248,6 +282,7 @@ const Calendar: React.FC = () => {
           </button>
           
           <button
+            aria-label="Export Calendar – add to your calendar app"
             className="flex items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
           >
             <span className="text-2xl mr-3">📱</span>

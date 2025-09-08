@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import CalendarView, { CalendarDay } from './CalendarView';
-import { UserManager } from '../UserSwitcher';
+import { UserManager } from '../../services/UserManager';
+import { API_ENDPOINTS, apiRequest } from '../../config/api';
 
 interface UserSubscription {
   id: string;
@@ -46,7 +47,6 @@ interface EpisodeDataCache {
 }
 
 // API base URL
-const API_BASE = 'http://localhost:3001';
 
 const OverviewCalendar: React.FC<OverviewCalendarProps> = ({ 
   useUserData = false, 
@@ -61,9 +61,44 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
   const [episodeDataCache, setEpisodeDataCache] = useState<EpisodeDataCache>({});
   const [selectedDate, setSelectedDate] = useState<string>('');
 
+  // Load persisted episode cache on mount
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem('episode_data_cache_v1');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed === 'object') {
+          // Convert string dates back to Date objects
+          const processedCache: EpisodeDataCache = {};
+          Object.keys(parsed).forEach(tmdbId => {
+            const data = parsed[tmdbId];
+            if (data && data.lastAirDate) {
+              processedCache[parseInt(tmdbId)] = {
+                ...data,
+                lastAirDate: new Date(data.lastAirDate)
+              };
+            }
+          });
+          setEpisodeDataCache(processedCache);
+        }
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetchCalendarData();
   }, [currentDate, useUserData, userSubscriptions, userShows]);
+
+  // Prevent background scrolling while modal is open
+  useEffect(() => {
+    if (selectedDay) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [selectedDay]);
 
   // Fetch episode data for a show
   const fetchEpisodeData = async (tmdbId: number): Promise<ShowEpisodeData | null> => {
@@ -73,18 +108,8 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/tmdb/show/${tmdbId}/analyze`, {
-        headers: {
-          'x-user-id': 'user-1' // TODO: Use actual user ID
-        }
-      });
-
-      if (!response.ok) {
-        console.warn(`Failed to fetch episode data for show ${tmdbId}`);
-        return null;
-      }
-
-      const data = await response.json();
+      const token = localStorage.getItem('authToken') || undefined;
+      const data = await apiRequest(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/analyze`, {}, token);
       const episodes = data.analysis?.diagnostics?.episodeDetails || [];
       
       if (episodes.length === 0) {
@@ -106,11 +131,14 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
         lastAirDate
       };
 
-      // Cache the data
-      setEpisodeDataCache(prev => ({
-        ...prev,
-        [tmdbId]: episodeData
-      }));
+      // Cache the data (memory + localStorage)
+      setEpisodeDataCache(prev => {
+        const next = { ...prev, [tmdbId]: episodeData } as EpisodeDataCache;
+        try {
+          localStorage.setItem('episode_data_cache_v1', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
 
       return episodeData;
     } catch (error) {
@@ -119,10 +147,47 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
     }
   };
 
+  // Cache helpers for calendar view
+  const CAL_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+  const calendarCacheKey = (userId: string, year: number, month: number) => `overview_cal_${userId}_${year}_${month}_v1`;
+  const computeShowsSignature = () => {
+    try {
+      const compact = (userShows || []).map(s => ({
+        id: s.id,
+        t: s.show.tmdb_id,
+        st: s.status,
+        p: (s as any).streaming_provider?.name || null,
+        a: (s as any).added_at || null
+      }));
+      // Stable ordering
+      compact.sort((a, b) => (a.t - b.t) || a.id.localeCompare(b.id));
+      return JSON.stringify(compact);
+    } catch {
+      return `${(userShows || []).length}`;
+    }
+  };
+
   const fetchCalendarData = async () => {
     try {
       setLoading(true);
-      
+      const userId = UserManager.getCurrentUserId();
+      const cacheKey = calendarCacheKey(userId, currentDate.getFullYear(), currentDate.getMonth());
+      const signature = computeShowsSignature();
+
+      // Try cache first
+      try {
+        const raw = localStorage.getItem(cacheKey);
+        if (raw) {
+          const cached = JSON.parse(raw);
+          if (cached && cached.signature === signature && Date.now() - cached.createdAt < CAL_CACHE_TTL_MS) {
+            setCalendarData(cached.calendarData || []);
+            setUserProviders(cached.providersLegend || []);
+            setLoading(false);
+            return; // Fresh cache hit
+          }
+        }
+      } catch {}
+
       if ((userShows?.length || 0) === 0) {
         // No shows available, show empty state
         setCalendarData([]);
@@ -134,6 +199,17 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
       const { calendarData, providersLegend } = await generateUserBasedCalendarData();
       setCalendarData(calendarData);
       setUserProviders(providersLegend);
+
+      // Persist to cache
+      try {
+        const payload = {
+          createdAt: Date.now(),
+          signature,
+          calendarData,
+          providersLegend
+        };
+        localStorage.setItem(cacheKey, JSON.stringify(payload));
+      } catch {}
     } catch (error) {
       console.error('OverviewCalendar - Failed to generate calendar data:', error);
       setCalendarData([]);
@@ -392,7 +468,15 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
     const episodeData = await fetchEpisodeData(tmdbId);
     
     if (episodeData && episodeData.lastAirDate) {
-      return episodeData.lastAirDate;
+      // Ensure lastAirDate is a Date object (it might be a string from cache)
+      const endDate = episodeData.lastAirDate instanceof Date 
+        ? episodeData.lastAirDate 
+        : new Date(episodeData.lastAirDate);
+      
+      // Validate the date is valid
+      if (!isNaN(endDate.getTime())) {
+        return endDate;
+      }
     }
     
     // Fallback: assume show runs for 6 months from today (for shows without known end dates)

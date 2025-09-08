@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { authRouter } from './routes/auth.js';
 import { waitlistRouter } from './routes/waitlist.js';
-import { watchlistRouter } from './routes/watchlist.js';
+// Removed old watchlist router - using v2 instead
 import { planRouter } from './routes/plan.js';
 import { healthRouter } from './routes/health.js';
 import { streamingQuotaRouter } from './routes/streaming-quota.js';
@@ -13,13 +13,14 @@ import { showsRouter } from './routes/shows.js';
 import { tmdbRouter } from './routes/tmdb.js';
 import { usageStatsRouter } from './routes/usage-stats.js';
 // New v4 routes
-import watchlistV2Router from './routes/watchlist-v2-simple.js';
+import watchlistV2Router from './routes/watchlist-v2.js';
 import progressRouter from './routes/progress.js';
 import ratingsRouter from './routes/ratings.js';
 import recommendationsRouter from './routes/recommendations.js';
 import dbAdminRouter from './routes/db-admin.js';
-import usersRouter from './routes/users-simple.js';
+import usersDbRouter from './routes/users.js';
 import streamingServicesRouter from './routes/streaming-services.js';
+import tvGuideRouter from './routes/tv-guide.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { trackAPIUsage } from './middleware/usage-tracker.js';
 import { config } from './config/index.js';
@@ -33,7 +34,9 @@ app.use(cors({
   origin: [
     config.frontendUrl, 
     'http://localhost:3000',
-    'http://127.0.0.1:3000'
+    'http://127.0.0.1:3000',
+    'http://localhost:3002',
+    'http://127.0.0.1:3002'
   ],
   credentials: true,
 }));
@@ -45,25 +48,37 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
-app.use('/api/auth', authRouter);
-app.use('/api/waitlist', waitlistRouter);
-app.use('/api/watchlist', watchlistRouter);
-app.use('/api/plan', planRouter);
-app.use('/api/health', healthRouter);
-app.use('/api/streaming-quota', streamingQuotaRouter);
-app.use('/api/shows', showsRouter);
-app.use('/api/tmdb', trackAPIUsage('tmdb'), tmdbRouter);
-app.use('/api/usage-stats', usageStatsRouter);
+// Import authentication middleware
+import { authenticateUser, optionalAuth } from './middleware/user-identity.js';
 
-// New v4 API routes
-app.use('/api/watchlist-v2', watchlistV2Router);
-app.use('/api/progress', progressRouter);
-app.use('/api/ratings', ratingsRouter);
-app.use('/api/recommendations', recommendationsRouter);
-app.use('/api/admin', dbAdminRouter);
-app.use('/api/users', usersRouter);
-app.use('/api/streaming-services', streamingServicesRouter);
+// Routes that don't require authentication
+app.use('/api/auth', authRouter); // Already handles auth internally
+app.use('/api/waitlist', waitlistRouter);
+app.use('/api/health', healthRouter);
+
+// Public routes (don't require auth but can use it if provided)
+app.use('/api/shows', optionalAuth, showsRouter);
+app.use('/api/tmdb', optionalAuth, trackAPIUsage('tmdb'), tmdbRouter);
+app.use('/api/streaming-services', optionalAuth, streamingServicesRouter);
+app.use('/api/tv-guide', optionalAuth, tvGuideRouter);
+
+// Protected routes (require authentication)
+// Old watchlist route removed - use /api/watchlist-v2 instead
+app.use('/api/plan', authenticateUser, planRouter);
+app.use('/api/streaming-quota', authenticateUser, streamingQuotaRouter);
+app.use('/api/usage-stats', authenticateUser, usageStatsRouter);
+
+// New v4 protected API routes
+app.use('/api/watchlist-v2', authenticateUser, watchlistV2Router);
+app.use('/api/progress', authenticateUser, progressRouter);
+app.use('/api/ratings', authenticateUser, ratingsRouter);
+app.use('/api/recommendations', authenticateUser, recommendationsRouter);
+
+// Users route - mix of public (signup/login) and protected endpoints
+app.use('/api/users', usersDbRouter); // Handles auth internally per endpoint
+
+// Admin routes (require authentication)
+app.use('/api/admin', authenticateUser, dbAdminRouter);
 
 // 404 handler
 app.use('*', (req, res) => {

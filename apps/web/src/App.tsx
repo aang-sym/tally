@@ -1,5 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
+// Context Providers
+import { AuthProvider } from './context/AuthContext';
+
 // Layout Components
 import Layout from './components/Layout';
 
@@ -12,11 +15,13 @@ import Recommendations from './pages/Recommendations';
 import SearchShows from './pages/SearchShows';
 import Settings from './pages/Settings';
 import Admin from './pages/Admin';
+import TVGuide from './pages/TVGuide';
 
 function App() {
   return (
-    <Router>
-      <Routes>
+    <AuthProvider>
+      <Router>
+        <Routes>
         {/* Landing Page (public) */}
         <Route path="/" element={<LandingPage />} />
         
@@ -25,6 +30,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/my-shows" element={<MyShows />} />
           <Route path="/calendar" element={<Calendar />} />
+          <Route path="/tv-guide" element={<TVGuide />} />
           <Route path="/recommendations" element={<Recommendations />} />
           <Route path="/search" element={<SearchShows />} />
           <Route path="/settings" element={<Settings />} />
@@ -40,8 +46,9 @@ function App() {
 
         {/* Catch all route - redirect to landing */}
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 

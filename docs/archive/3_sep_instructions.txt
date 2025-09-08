@@ -1,0 +1,27 @@
+Please analyze the entire codebase and identify:
+
+1. **Redundant/Unnecessary Code**
+   - Functions, modules, or utilities that are never called or imported.
+   - Dead code paths or commented-out blocks that serve no purpose.
+   - Duplicated logic that could be consolidated.
+
+2. **Refactoring Opportunities**
+   - Overly complex or deeply nested functions that can be simplified.
+   - Repeated patterns that should be abstracted into shared helpers.
+   - Inefficient implementations that could be rewritten more cleanly.
+   - Areas where TypeScript types, Python typing, or better error handling would improve reliability.
+
+3. **Maintainability Concerns**
+   - Files that are too large or doing too many things.
+   - Inconsistent naming or structure that makes the code harder to follow.
+   - Any technical debt that should be prioritised.
+
+When you’ve finished your review, generate a Markdown file (`docs/13_CLAUDE_CODE_REVIEW.md`) that Claude can use to take action. The file should contain:
+
+- A high-level summary of the overall code health.
+- A **"Redundant Code"** section listing exact files/functions with suggestions.
+- A **"Refactoring Needed"** section with specific recommendations.
+- A **"Maintainability Improvements"** section.
+- Clear actionable tasks for each item.
+
+Format the output in clean, developer-friendly Markdown so Claude can read it directly and start working on fixes/refactors.

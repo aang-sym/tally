@@ -8,6 +8,7 @@
 import { supabase } from '../db/supabase.js';
 import { tmdbService } from './tmdb.js';
 import { providerNormalizer } from './provider-normalizer.js';
+import { TMDBProviderListItem } from '@tally/core';
 
 export interface StreamingService {
   id: string;
@@ -116,8 +117,26 @@ export class StreamingService {
       const availabilityData = [];
 
       for (const provider of providers) {
-        const service = services.find(s => s.tmdb_provider_id === provider.provider_id);
-        if (!service) continue;
+        let service = services.find(s => s.tmdb_provider_id === provider.provider_id);
+        
+        if (!service) {
+          // Try to auto-discover the missing provider
+          console.log(`🔍 Auto-discovering missing provider during availability lookup: ${provider.provider_name} (TMDB ID: ${provider.provider_id})`);
+          
+          service = await this.autoDiscoverProvider(
+            provider.provider_id,
+            provider.provider_name,
+            provider.logo_path
+          );
+          
+          if (!service) {
+            console.warn(`⚠️ Failed to auto-discover provider ${provider.provider_name} (${provider.provider_id})`);
+            continue;
+          }
+          
+          // Add the discovered service to our services array for other providers in this loop
+          services.push(service);
+        }
 
         // TMDB doesn't provide detailed pricing, so we'll use subscription as default
         availabilityData.push({
@@ -413,6 +432,139 @@ export class StreamingService {
       }
     } catch (error) {
       console.error('Failed to refresh stale availability:', error);
+    }
+  }
+
+  /**
+   * Backfill streaming services from TMDB provider list
+   */
+  async backfillStreamingServices(regions: string[] = ['US']): Promise<{
+    totalFetched: number;
+    newProviders: number;
+    updatedProviders: number;
+    providers: StreamingService[];
+    errors: string[];
+  }> {
+    const result = {
+      totalFetched: 0,
+      newProviders: 0,
+      updatedProviders: 0,
+      providers: [] as StreamingService[],
+      errors: [] as string[]
+    };
+
+    try {
+      if (!tmdbService.isAvailable) {
+        result.errors.push('TMDB service is not available');
+        return result;
+      }
+
+      // Get all providers from TMDB for specified regions
+      const allProvidersData = await tmdbService.getAllProviders(regions);
+      result.totalFetched = allProvidersData.total;
+
+      if (allProvidersData.providers.length === 0) {
+        result.errors.push('No providers found from TMDB');
+        return result;
+      }
+
+      console.log(`📺 Found ${allProvidersData.total} providers from TMDB across regions: ${regions.join(', ')}`);
+
+      // Convert TMDB providers to our format and sync with database
+      const tmdbProviders = allProvidersData.providers.map((provider: TMDBProviderListItem) => ({
+        provider_id: provider.provider_id,
+        provider_name: provider.provider_name,
+        logo_path: provider.logo_path,
+        homepage: null // Will be populated when we encounter the provider in show data
+      }));
+
+      // Use existing sync method to create/update providers
+      const syncedServices = await this.syncStreamingServices(tmdbProviders);
+      result.providers = syncedServices;
+
+      // Count new vs updated
+      for (const service of syncedServices) {
+        const { data: existing, error } = await supabase
+          .from('streaming_services')
+          .select('created_at, updated_at')
+          .eq('id', service.id)
+          .single();
+
+        if (!error && existing) {
+          // Consider it new if created recently (within last minute)
+          const createdAt = new Date(existing.created_at);
+          const isNew = (Date.now() - createdAt.getTime()) < 60000;
+          
+          if (isNew) {
+            result.newProviders++;
+          } else {
+            result.updatedProviders++;
+          }
+        }
+      }
+
+      console.log(`✅ Backfill complete: ${result.newProviders} new, ${result.updatedProviders} updated, ${result.totalFetched} total providers`);
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      result.errors.push(`Failed to backfill streaming services: ${errorMessage}`);
+      console.error('Backfill streaming services failed:', error);
+    }
+
+    return result;
+  }
+
+  /**
+   * Auto-discover and create missing providers during regular operations
+   */
+  async autoDiscoverProvider(tmdbProviderId: number, providerName: string, logoPath?: string): Promise<StreamingService | null> {
+    try {
+      // Check if provider already exists
+      const { data: existingService, error: fetchError } = await supabase
+        .from('streaming_services')
+        .select('*')
+        .eq('tmdb_provider_id', tmdbProviderId)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
+
+      if (existingService) {
+        return existingService;
+      }
+
+      // Create new service
+      const serviceData = {
+        tmdb_provider_id: tmdbProviderId,
+        name: providerName,
+        logo_path: logoPath && logoPath.includes('/') ? logoPath.substring(logoPath.lastIndexOf('/')) : logoPath,
+        homepage: null
+      };
+
+      const { data: newServices, error: createError } = await supabase
+        .from('streaming_services')
+        .insert([serviceData])
+        .select();
+
+      if (createError) {
+        console.error('Failed to auto-discover streaming service:', createError);
+        return null;
+      }
+
+      const newService = newServices ? newServices[0] : null;
+
+      if (!newService) {
+        console.error('Failed to retrieve newly created service during auto-discovery.');
+        return null;
+      }
+
+      console.log(`🔍 Auto-discovered new streaming provider: ${providerName} (TMDB ID: ${tmdbProviderId})`);
+      return newService;
+
+    } catch (error) {
+      console.error(`Failed to auto-discover provider ${providerName} (${tmdbProviderId}):`, error);
+      return null;
     }
   }
 }

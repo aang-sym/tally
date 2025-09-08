@@ -28,7 +28,14 @@ router.use(authenticateUser);
  */
 router.post('/show/:userShowId', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { userShowId } = req.params;
     const { rating } = req.body;
 
@@ -72,7 +79,14 @@ router.post('/show/:userShowId', async (req: Request, res: Response) => {
  */
 router.post('/season/:seasonId', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { seasonId } = req.params;
     const { rating } = req.body;
 
@@ -120,7 +134,14 @@ router.post('/season/:seasonId', async (req: Request, res: Response) => {
  */
 router.post('/episode/:episodeId', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { episodeId } = req.params;
     const { rating } = req.body;
 
@@ -247,7 +268,14 @@ router.get('/episode/:episodeId/aggregate', async (req: Request, res: Response) 
  */
 router.get('/user/stats', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
 
     const stats = await ratingService.getUserRatingStats(userId);
 
@@ -270,7 +298,14 @@ router.get('/user/stats', async (req: Request, res: Response) => {
  */
 router.get('/user/preferences', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
 
     const preferences = await ratingService.getUserRatingPreferences(userId);
 
@@ -328,7 +363,14 @@ router.get('/top-rated', async (req: Request, res: Response) => {
  */
 router.post('/batch', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
     const { ratings } = req.body;
 
     if (!Array.isArray(ratings) || ratings.length === 0) {

@@ -1,19 +1,38 @@
 /**
- * User Settings Page
- * 
- * Allows users to manage their streaming service subscriptions and preferences.
- * This helps the system provide personalized recommendations and calendar data.
+ * Subscriptions Page
+ *
+ * Manage streaming service subscriptions and preferences.
+ * Powers recommendation relevance and the calendar view.
  */
 
 import React, { useState, useEffect } from 'react';
-import { UserManager } from '../components/UserSwitcher';
+import { UserManager } from '../services/UserManager';
+import { API_ENDPOINTS, apiRequest } from '../config/api';
+
+/** Price tier returned by the RPC (/api/streaming-services?country=XX) */
+interface PriceTier {
+  tier: string;
+  amount: number | null;
+  currency: string | null;
+  billing_frequency?: string | null;
+  active?: boolean | null;
+  notes?: string | null;
+  provider_name?: string | null;
+}
 
 interface StreamingService {
   id: string;
   name: string;
   logo_url?: string;
-  base_url: string;
-  country_code: string;
+  homepage?: string;
+  country_code?: string;
+  tmdb_provider_id?: number;
+  /** Legacy single-price shape (kept for backward-compat) */
+  price?: { amount: number; currency: string } | null;
+  /** From RPC (optional): preferred/default tier for the country */
+  default_price?: PriceTier | null;
+  /** From RPC (optional): all tiers for the country */
+  prices?: PriceTier[];
 }
 
 interface UserSubscription {
@@ -23,6 +42,7 @@ interface UserSubscription {
   is_active: boolean;
   started_date: string;
   ended_date?: string;
+  tier?: string | null; // <-- store user's chosen tier
   service: StreamingService;
 }
 
@@ -35,8 +55,6 @@ interface UserProfile {
   created_at: string;
 }
 
-const API_BASE = 'http://localhost:3001';
-
 const Settings: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [availableServices, setAvailableServices] = useState<StreamingService[]>([]);
@@ -44,11 +62,19 @@ const Settings: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingSubscription, setSavingSubscription] = useState<string | null>(null);
+  const [suggestedServiceIds, setSuggestedServiceIds] = useState<Set<string>>(new Set());
+  const [addingAll, setAddingAll] = useState(false);
+
+  // Per-service selected tier (when adding a new subscription)
+  const [selectedTierByService, setSelectedTierByService] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    loadUserData();
-    loadAvailableServices();
-    loadUserSubscriptions();
+    (async () => {
+      await loadUserData();
+      await loadAvailableServices();
+      await loadUserSubscriptions();
+      await computeSuggestions();
+    })();
   }, []);
 
   const loadUserData = async () => {
@@ -63,11 +89,23 @@ const Settings: React.FC = () => {
 
   const loadAvailableServices = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/streaming-services`);
-      if (response.ok) {
-        const data = await response.json();
-        setAvailableServices(data.data.services || []);
+      const token = localStorage.getItem('authToken') || undefined;
+      const country = UserManager.getCountry?.() || 'US';
+      const data = await apiRequest(`${API_ENDPOINTS.streamingServices}?country=${country}`, {}, token);
+      const services: StreamingService[] = data.data.services || [];
+      setAvailableServices(services);
+
+      // Default the selected tier for each service using the RPC's default_price if present
+      const defaults: Record<string, string> = {};
+      for (const svc of services) {
+        if (svc.default_price?.tier) {
+          defaults[svc.id] = svc.default_price.tier;
+        }
       }
+      if (Object.keys(defaults).length) setSelectedTierByService(defaults);
+
+      // If subscriptions already loaded, compute suggestions now
+      try { await computeSuggestions(services); } catch { }
     } catch (err) {
       console.error('Failed to load streaming services:', err);
     }
@@ -77,16 +115,10 @@ const Settings: React.FC = () => {
     try {
       setLoading(true);
       const userId = UserManager.getCurrentUserId();
-      const response = await fetch(`${API_BASE}/api/users/${userId}/subscriptions`, {
-        headers: {
-          'x-user-id': userId
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUserSubscriptions(data.data.subscriptions || []);
-      }
+      const token = localStorage.getItem('authToken') || undefined;
+      const country = UserManager.getCountry?.() || 'US';
+      const data = await apiRequest(`${API_ENDPOINTS.users.subscriptions(userId)}?country=${country}`, {}, token);
+      setUserSubscriptions(data.data.subscriptions || []);
       setError(null);
     } catch (err) {
       console.error('Failed to load user subscriptions:', err);
@@ -96,43 +128,74 @@ const Settings: React.FC = () => {
     }
   };
 
+  const computeSuggestions = async (servicesArg?: StreamingService[]) => {
+    const services = servicesArg || availableServices;
+    if (!services || services.length === 0) return;
+
+    try {
+      const token = localStorage.getItem('authToken') || undefined;
+      const wl = await apiRequest(API_ENDPOINTS.watchlist.v2, {}, token);
+      const shows: any[] = wl?.data?.shows || wl?.data?.data?.shows || [];
+
+      // collect TMDB provider ids referenced by the user's shows
+      const tmdbIds = new Set<number>();
+      for (const s of shows) {
+        const p = s.streaming_provider || s.provider || null;
+        if (p && typeof p.id === 'number') tmdbIds.add(p.id);
+      }
+
+      // map TMDB provider ids to our service ids (if tmdb_provider_id is provided by API)
+      const idMap = new Set<string>();
+      for (const svc of services) {
+        if (svc.tmdb_provider_id && tmdbIds.has(svc.tmdb_provider_id)) {
+          idMap.add(svc.id);
+        }
+      }
+
+      // exclude ones already subscribed
+      for (const sub of userSubscriptions) {
+        if (sub.is_active) idMap.delete(sub.service_id);
+      }
+
+      setSuggestedServiceIds(idMap);
+    } catch (e) {
+      console.warn('Failed to compute suggestions from watchlist', e);
+      setSuggestedServiceIds(new Set());
+    }
+  };
+
   const toggleSubscription = async (service: StreamingService, isActive: boolean) => {
     try {
       setSavingSubscription(service.id);
       const userId = UserManager.getCurrentUserId();
+      const token = localStorage.getItem('authToken') || undefined;
 
       if (isActive) {
-        // Add subscription
-        const response = await fetch(`${API_BASE}/api/users/${userId}/subscriptions`, {
+        // Add subscription (use selected tier if available)
+        await apiRequest(API_ENDPOINTS.users.subscriptions(userId), {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            'x-user-id': userId
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
             service_id: service.id,
-            monthly_cost: getDefaultMonthlyCost(service.name),
+            monthly_cost: (() => {
+              const chosenTier = selectedTierByService[service.id] || service.default_price?.tier || null;
+              const tierPrice = (service.prices || []).find(p => p.tier === chosenTier);
+              const amount = tierPrice?.amount ?? service.default_price?.amount ?? service.price?.amount;
+              return amount ?? getDefaultMonthlyCost(service.name);
+            })(),
+            tier: selectedTierByService[service.id] || service.default_price?.tier || null,
             is_active: true
           })
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to add subscription');
-        }
+        }, token);
       } else {
         // Remove subscription
         const subscription = userSubscriptions.find(sub => sub.service_id === service.id);
         if (subscription) {
-          const response = await fetch(`${API_BASE}/api/users/${userId}/subscriptions/${subscription.id}`, {
-            method: 'DELETE',
-            headers: {
-              'x-user-id': userId
-            }
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to remove subscription');
-          }
+          await apiRequest(`${API_ENDPOINTS.users.subscriptions(userId)}/${subscription.id}`, {
+            method: 'DELETE'
+          }, token);
         }
       }
 
@@ -145,23 +208,35 @@ const Settings: React.FC = () => {
     }
   };
 
+  const updateSubscriptionTier = async (subscriptionId: string, newTier: string) => {
+    try {
+      const userId = UserManager.getCurrentUserId();
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.users.subscriptions(userId)}/${subscriptionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier: newTier })
+      }, token);
+      await loadUserSubscriptions();
+    } catch (err) {
+      console.error('Failed to update tier:', err);
+      alert('Failed to update tier');
+    }
+  };
+
   const updateMonthlyCost = async (subscriptionId: string, newCost: number) => {
     try {
       const userId = UserManager.getCurrentUserId();
-      const response = await fetch(`${API_BASE}/api/users/${userId}/subscriptions/${subscriptionId}`, {
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.users.subscriptions(userId)}/${subscriptionId}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           monthly_cost: newCost
         })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update cost');
-      }
+      }, token);
 
       await loadUserSubscriptions();
     } catch (err) {
@@ -203,16 +278,16 @@ const Settings: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Subscriptions</h1>
           <p className="text-gray-600 mt-2">
-            Manage your streaming subscriptions and preferences
+            Manage the streaming services you pay for and keep your costs up to date
           </p>
         </div>
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
             <p className="text-red-800">{error}</p>
-            <button 
+            <button
               onClick={() => {
                 loadUserData();
                 loadUserSubscriptions();
@@ -275,10 +350,35 @@ const Settings: React.FC = () => {
           {/* Streaming Services */}
           <div className="bg-white rounded-lg shadow">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Streaming Services</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Your Streaming Services</h2>
               <p className="text-gray-600 mt-1">
                 Select the streaming services you're subscribed to. This helps us show you relevant content and calculate your savings.
               </p>
+              {suggestedServiceIds.size > 0 && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    disabled={addingAll}
+                    onClick={async () => {
+                      try {
+                        setAddingAll(true);
+                        for (const id of Array.from(suggestedServiceIds)) {
+                          const svc = availableServices.find(s => s.id === id);
+                          if (!svc) continue;
+                          if (!isSubscribed(svc.id)) {
+                            await toggleSubscription(svc, true);
+                          }
+                        }
+                      } finally {
+                        setAddingAll(false);
+                      }
+                    }}
+                    className="px-3 py-1.5 text-sm font-medium rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {addingAll ? 'Adding…' : `Add ${suggestedServiceIds.size} suggested`}
+                  </button>
+                </div>
+              )}
             </div>
 
             {loading ? (
@@ -295,14 +395,19 @@ const Settings: React.FC = () => {
                     const subscribed = isSubscribed(service.id);
                     const subscription = getSubscription(service.id);
 
+                    // Compute a chosen tier (for display) and price
+                    const chosenTier = selectedTierByService[service.id] || service.default_price?.tier || null;
+                    const tierPrice = (service.prices || []).find(p => p.tier === chosenTier);
+                    const displayAmount = tierPrice?.amount ?? service.default_price?.amount ?? service.price?.amount;
+                    const displayCurrency = tierPrice?.currency ?? service.default_price?.currency ?? service.price?.currency;
+
                     return (
                       <div
                         key={service.id}
-                        className={`p-4 border-2 rounded-lg transition-all ${
-                          subscribed 
-                            ? 'border-green-200 bg-green-50' 
+                        className={`p-4 border-2 rounded-lg transition-all ${subscribed
+                            ? 'border-green-200 bg-green-50'
                             : 'border-gray-200 hover:border-gray-300'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center space-x-3">
@@ -320,32 +425,96 @@ const Settings: React.FC = () => {
                               </div>
                             )}
                             <h3 className="font-medium text-gray-900">{service.name}</h3>
-                          </div>
-                          
-                          <button
-                            onClick={() => toggleSubscription(service, !subscribed)}
-                            disabled={savingSubscription === service.id}
-                            className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
-                              subscribed
-                                ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                : 'bg-green-100 text-green-700 hover:bg-green-200'
-                            } disabled:opacity-50 disabled:cursor-not-allowed`}
-                          >
-                            {savingSubscription === service.id ? (
-                              <span className="flex items-center">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                                Saving...
+
+                            {/* Suggested badge */}
+                            {suggestedServiceIds.has(service.id) && !subscribed && (
+                              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                Suggested
                               </span>
-                            ) : subscribed ? (
-                              'Remove'
-                            ) : (
-                              'Add'
                             )}
-                          </button>
+
+                            {/* Subscribed tier badge */}
+                            {subscribed && subscription?.tier && (
+                              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                                {subscription.tier}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center">
+                            {/* Tier-aware price display */}
+                            {displayAmount != null && (
+                              <div className="mr-3 text-sm text-gray-600">
+                                {displayCurrency || '$'}{displayAmount.toFixed(2)}/mo
+                              </div>
+                            )}
+
+                            <button
+                              onClick={() => toggleSubscription(service, !subscribed)}
+                              disabled={savingSubscription === service.id}
+                              className={`px-4 py-2 text-sm font-medium rounded transition-colors ${subscribed
+                                  ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                  : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                            >
+                              {savingSubscription === service.id ? (
+                                <span className="flex items-center">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                                  Saving...
+                                </span>
+                              ) : subscribed ? (
+                                'Remove'
+                              ) : (
+                                'Add'
+                              )}
+                            </button>
+                          </div>
                         </div>
+
+                        {/* Tier selector when NOT subscribed and tiers are available */}
+                        {!subscribed && (service.prices?.length ? (
+                          <div className="mb-3">
+                            <label className="block text-xs text-gray-500 mb-1">Tier</label>
+                            <select
+                              className="border rounded px-2 py-1 text-sm"
+                              value={selectedTierByService[service.id] || service.default_price?.tier || ''}
+                              onChange={(e) =>
+                                setSelectedTierByService(prev => ({ ...prev, [service.id]: e.target.value }))
+                              }
+                            >
+                              {(service.prices || [])
+                                .filter(t => t.active !== false)
+                                .map(t => (
+                                  <option key={t.tier} value={t.tier}>
+                                    {t.tier}
+                                    {t.amount != null ? ` — ${t.currency ?? ''}${t.amount.toFixed(2)}/mo` : ''}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                        ) : null)}
 
                         {subscribed && subscription && (
                           <div className="mt-3">
+                            {(service.prices && service.prices.length > 0) && (
+                              <div className="mb-3">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tier</label>
+                                <select
+                                  className="border rounded px-2 py-1 text-sm"
+                                  value={subscription.tier || service.default_price?.tier || ''}
+                                  onChange={(e) => updateSubscriptionTier(subscription.id, e.target.value)}
+                                >
+                                  {service.prices
+                                    .filter(t => t.active !== false)
+                                    .map(t => (
+                                      <option key={t.tier} value={t.tier}>
+                                        {t.tier}{t.amount != null ? ` — ${t.currency ?? ''}${t.amount.toFixed(2)}/mo` : ''}
+                                      </option>
+                                    ))}
+                                </select>
+                              </div>
+                            )}
+
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               Monthly Cost
                             </label>
@@ -354,14 +523,14 @@ const Settings: React.FC = () => {
                               <input
                                 type="number"
                                 min="0"
-                                max="100"
+                                max="1000"
                                 step="0.01"
                                 value={subscription.monthly_cost}
                                 onChange={(e) => {
                                   const newCost = parseFloat(e.target.value) || 0;
                                   updateMonthlyCost(subscription.id, newCost);
                                 }}
-                                className="block w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                                className="block w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
                               />
                               <span className="text-sm text-gray-500">per month</span>
                             </div>

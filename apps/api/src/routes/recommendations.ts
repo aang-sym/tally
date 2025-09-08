@@ -7,7 +7,7 @@
 
 import { Router, Request, Response } from 'express';
 import { streamingService } from '../services/StreamingService.js';
-import { watchlistService } from '../services/WatchlistService.js';
+import { WatchlistService } from '../services/WatchlistService.js';
 import { ratingService } from '../services/RatingService.js';
 
 const router = Router();
@@ -15,12 +15,19 @@ const router = Router();
 // Middleware to extract userId (stub implementation)
 const authenticateUser = (req: Request, res: Response, next: any) => {
   // TODO: Replace with proper JWT authentication
-  const userId = req.headers['x-user-id'] as string || 'user-1';
+  const userId = (req.headers['x-user-id'] as string) || 'user-1';
   (req as any).userId = userId;
   next();
 };
 
 router.use(authenticateUser);
+
+// helper to create a per-request WatchlistService (supports bearer auth later)
+const makeWatchlistService = (req: Request) => {
+  const auth = req.header('authorization') ?? '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : undefined;
+  return new WatchlistService(token);
+};
 
 /**
  * GET /api/recommendations/cancel
@@ -40,9 +47,11 @@ router.get('/cancel', async (req: Request, res: Response) => {
         // - No currently watching shows
         // - No watchlist shows
         // - Only completed shows
-        return service.watchingCount === 0 && 
-               service.watchlistCount === 0 &&
-               service.completedCount > 0;
+        return (
+          service.watchingCount === 0 &&
+          service.watchlistCount === 0 &&
+          service.completedCount > 0
+        );
       })
       .map(service => ({
         serviceId: service.service.id,
@@ -62,9 +71,11 @@ router.get('/cancel', async (req: Request, res: Response) => {
     // Add pause recommendations for services with only watchlist content
     const pauseRecommendations = analysis.services
       .filter(service => {
-        return service.watchingCount === 0 && 
-               service.watchlistCount > 0 &&
-               service.watchlistCount <= 2; // Few watchlist shows
+        return (
+          service.watchingCount === 0 &&
+          service.watchlistCount > 0 &&
+          service.watchlistCount <= 2 // Few watchlist shows
+        );
       })
       .map(service => ({
         serviceId: service.service.id,
@@ -77,8 +88,8 @@ router.get('/cancel', async (req: Request, res: Response) => {
         },
         confidence: 0.7,
         showsInWatchlist: service.watchlistCount,
-        recommendation: 'Consider pausing until you\'re ready to watch',
-        resumeWhen: 'When you start watching your watchlist shows'
+        recommendation: "Consider pausing until you're ready to watch",
+        resumeWhen: "When you start watching your watchlist shows"
       }));
 
     const allRecommendations = [...recommendations, ...pauseRecommendations];
@@ -87,8 +98,9 @@ router.get('/cancel', async (req: Request, res: Response) => {
       success: true,
       data: {
         recommendations: allRecommendations,
-        totalPotentialSavings: allRecommendations.reduce((sum, rec) => 
-          sum + (rec.potentialSavings?.monthly || 0), 0
+        totalPotentialSavings: allRecommendations.reduce(
+          (sum, rec) => sum + (rec.potentialSavings?.monthly || 0),
+          0
         ),
         servicesAnalyzed: analysis.totalServices,
         timestamp: new Date().toISOString()
@@ -112,19 +124,25 @@ router.get('/subscribe', async (req: Request, res: Response) => {
     const userId = (req as any).userId;
 
     // Get user's watchlist to see what they want to watch
-    const watchlist = await watchlistService.getUserWatchlist(userId, 'watchlist');
+    const watchlist = await makeWatchlistService(req).getUserWatchlist(
+      userId,
+      'watchlist'
+    );
 
     // Get user's rating preferences
     const preferences = await ratingService.getUserRatingPreferences(userId);
 
     // Analyze which services have the most content the user wants
-    const serviceRecommendations = new Map<string, {
-      serviceName: string;
-      showCount: number;
-      highRatedShows: number;
-      totalCost: number;
-      shows: string[];
-    }>();
+    const serviceRecommendations = new Map<
+      string,
+      {
+        serviceName: string;
+        showCount: number;
+        highRatedShows: number;
+        totalCost: number;
+        shows: string[];
+      }
+    >();
 
     // This would analyze user's watchlist and determine which services
     // have the most content they want to watch
@@ -147,7 +165,9 @@ router.get('/subscribe', async (req: Request, res: Response) => {
         reason: 'High-rated shows matching your preferences',
         monthlyPrice: 14.99,
         shows: ['House of the Dragon', 'The Last of Us'],
-        startDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        startDate: new Date(
+          Date.now() + 30 * 24 * 60 * 60 * 1000
+        ).toISOString(),
         estimatedValue: 7.8,
         confidence: 0.72
       }
@@ -186,14 +206,17 @@ router.get('/optimization', async (req: Request, res: Response) => {
     const userId = (req as any).userId;
 
     // Get user's current subscriptions analysis
-    const currentAnalysis = await streamingService.getUserSubscriptionAnalysis(userId);
-    
+    const currentAnalysis = await streamingService.getUserSubscriptionAnalysis(
+      userId
+    );
+
     // Get watchlist stats
-    const watchlistStats = await watchlistService.getUserWatchlistStats(userId);
+    const watchlistStats =
+      await makeWatchlistService(req).getUserWatchlistStats(userId);
 
     // Generate optimization plan
     const currentMonthlyCost = currentAnalysis.services.length * 15.99; // Simplified
-    
+
     const optimizationPlan = {
       currentSituation: {
         activeServices: currentAnalysis.services.length,
@@ -208,16 +231,19 @@ router.get('/optimization', async (req: Request, res: Response) => {
       optimizedPlan: {
         recommendedServices: Math.max(1, currentAnalysis.services.length - 1),
         estimatedMonthlyCost: Math.max(15.99, currentMonthlyCost - 15.99),
-        estimatedAnnualSavings: Math.min(191.88, (currentMonthlyCost - 15.99) * 12),
+        estimatedAnnualSavings: Math.min(
+          191.88,
+          (currentMonthlyCost - 15.99) * 12
+        ),
         actions: [
           ...currentAnalysis.recommendedCancellations.map(service => ({
-            action: 'cancel',
+            action: 'cancel' as const,
             service,
             timing: 'immediate',
             reason: 'No active content'
           })),
           {
-            action: 'rotate',
+            action: 'rotate' as const,
             explanation: 'Subscribe to services only when needed',
             estimatedSavings: 47.97
           }
@@ -234,13 +260,14 @@ router.get('/optimization', async (req: Request, res: Response) => {
           month: 2,
           action: 'Continue with reduced services',
           savings: 15.99,
-          reasoning: 'Focus on shows you\'re actively watching'
+          reasoning: "Focus on shows you're actively watching"
         },
         {
           month: 3,
           action: 'Evaluate and rotate if needed',
           savings: 0,
-          reasoning: 'Assess if new content requires additional services'
+          reasoning:
+            'Assess if new content requires additional services'
         }
       ]
     };
@@ -268,24 +295,51 @@ router.get('/calendar', async (req: Request, res: Response) => {
     const months = parseInt(req.query.months as string) || 6;
 
     // Generate calendar recommendations for the next N months
-    const calendarRecommendations = [];
+    const calendarRecommendations: Array<{
+      month: string;
+      monthName: string;
+      recommendations: Array<{
+        action: 'keep' | 'subscribe' | 'pause';
+        service: string;
+        reason: string;
+        shows: string[];
+        cost: number;
+      }>;
+      totalMonthlyCost: number;
+      savings: number;
+    }> = [];
 
     const currentDate = new Date();
     for (let i = 0; i < months; i++) {
-      const month = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
-      
+      const month = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + i,
+        1
+      );
+
       // This would analyze premieres, user's watchlist timing, etc.
       calendarRecommendations.push({
         month: month.toISOString(),
-        monthName: month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        monthName: month.toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric'
+        }),
         recommendations: [
           {
-            action: i === 0 ? 'keep' : (i % 2 === 0 ? 'subscribe' : 'pause'),
+            action: i === 0 ? 'keep' : i % 2 === 0 ? 'subscribe' : 'pause',
             service: 'Netflix',
-            reason: i === 0 ? 'Currently watching shows' : 
-                   (i % 2 === 0 ? 'New season premieres' : 'No new content'),
-            shows: i === 0 ? ['Ongoing shows'] : 
-                  (i % 2 === 0 ? ['New season starts'] : []),
+            reason:
+              i === 0
+                ? 'Currently watching shows'
+                : i % 2 === 0
+                ? 'New season premieres'
+                : 'No new content',
+            shows:
+              i === 0
+                ? ['Ongoing shows']
+                : i % 2 === 0
+                ? ['New season starts']
+                : [],
             cost: i % 2 === 0 ? 15.99 : 0
           }
         ],
@@ -294,7 +348,10 @@ router.get('/calendar', async (req: Request, res: Response) => {
       });
     }
 
-    const totalSavings = calendarRecommendations.reduce((sum, month) => sum + month.savings, 0);
+    const totalSavings = calendarRecommendations.reduce(
+      (sum, month) => sum + month.savings,
+      0
+    );
 
     res.json({
       success: true,
@@ -303,8 +360,11 @@ router.get('/calendar', async (req: Request, res: Response) => {
         summary: {
           totalMonths: months,
           estimatedSavings: totalSavings,
-          averageMonthlyCost: calendarRecommendations.reduce((sum, month) => 
-            sum + month.totalMonthlyCost, 0) / months
+          averageMonthlyCost:
+            calendarRecommendations.reduce(
+              (sum, month) => sum + month.totalMonthlyCost,
+              0
+            ) / months
         },
         timestamp: new Date().toISOString()
       }
@@ -333,10 +393,14 @@ router.post('/feedback', async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     const { recommendationId, action, feedback } = req.body;
 
-    if (!recommendationId || !['accepted', 'rejected', 'modified'].includes(action)) {
+    if (
+      !recommendationId ||
+      !['accepted', 'rejected', 'modified'].includes(action)
+    ) {
       return res.status(400).json({
         success: false,
-        error: 'Valid recommendationId and action (accepted/rejected/modified) required'
+        error:
+          'Valid recommendationId and action (accepted/rejected/modified) required'
       });
     }
 

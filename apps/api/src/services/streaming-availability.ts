@@ -5,191 +5,280 @@
  * with caching, rate limiting, and error handling specific to our API.
  */
 
-import { 
-  StreamingAvailabilityClient, 
-  StreamingAvailabilityError,
-  type StreamingAvailability,
-  type SearchResult,
-  releasePatternService
-} from '@tally/core';
-import type { ReleasePatternAnalysis } from '@tally/types';
+import { StreamingAvailabilityClient, StreamingAvailabilityError, type StreamingAvailability } from '@tally/core';
 import { config } from '../config/index.js';
 import { quotaTracker } from './quota-tracker.js';
 
-export class StreamingAvailabilityService {
-  private client: StreamingAvailabilityClient;
+interface CacheEntry {
+  data: any;
+  expiresAt: number;
+}
+
+class StreamingAvailabilityService {
+  private client: StreamingAvailabilityClient | null = null;
+  private cache = new Map<string, CacheEntry>();
+  private lastRequestTime = 0;
+  private rateLimitDelay = 1000; // 1 second between requests
 
   constructor() {
-    this.client = new StreamingAvailabilityClient(config.streamingAvailabilityApiKey);
+    // Only initialize client if we have an API key and not in dev mode
+    if (config.streamingAvailabilityApiKey && 
+        config.streamingAvailabilityApiKey !== 'dev-key-placeholder' &&
+        !config.streamingApiDevMode) {
+      this.client = new StreamingAvailabilityClient(config.streamingAvailabilityApiKey);
+    }
   }
 
-  /**
-   * Get show details with release pattern analysis
-   */
-  async getShowDetails(id: string, country = 'US'): Promise<StreamingAvailability & { releasePattern?: ReleasePatternAnalysis }> {
+  private isEnabled(): boolean {
+    return this.client !== null;
+  }
+
+  private getCacheKey(method: string, params: Record<string, any>): string {
+    return `${method}:${JSON.stringify(params)}`;
+  }
+
+  private getFromCache<T>(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry || Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      return null;
+    }
+    return entry.data as T;
+  }
+
+  private setCache<T>(key: string, data: T, ttlMinutes: number = 1440): void { // Default 24 hours
+    const expiresAt = Date.now() + (ttlMinutes * 60 * 1000);
+    this.cache.set(key, { data, expiresAt });
+  }
+
+  private async withRateLimit<T>(
+    operation: () => Promise<T>, 
+    endpoint: string
+  ): Promise<T> {
+    if (!this.isEnabled()) {
+      throw new Error('Streaming Availability service is not configured. Please set STREAMING_AVAILABILITY_API_KEY environment variable.');
+    }
+
+    // Check quota before making the call
+    const canMakeCall = await quotaTracker.canMakeCall();
+    if (!canMakeCall) {
+      const stats = await quotaTracker.getUsageStats();
+      throw new Error(`Monthly API quota exhausted. Used ${stats.callsUsed}/${stats.limit} calls this month.`);
+    }
+
+    // Check if quota is running low and warn
+    const shouldWarn = await quotaTracker.shouldWarnLowQuota();
+    if (shouldWarn && endpoint !== 'quota-check') { // Avoid infinite loops
+      const stats = await quotaTracker.getUsageStats();
+      console.warn(`⚠️  API quota running low: ${stats.callsRemaining}/${stats.limit} calls remaining. Consider enabling dev mode.`);
+    }
+
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    
+    if (timeSinceLastRequest < this.rateLimitDelay) {
+      const delay = this.rateLimitDelay - timeSinceLastRequest;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
+    let success = false;
     try {
-      // Record API call first
-      quotaTracker.recordCall('getShow', true);
-
-      // Get show details with episodes for series
-      const show = await this.client.getShow(id, country, true);
-
-      // For series, get episodes and analyze release pattern
-      if (show.type === 'series') {
-        try {
-          // Get episode metadata and analyze pattern
-          const episodes = await this.client.getShowEpisodes(id, country);
-          if (episodes.length > 0) {
-            const episodeMetadata = this.client.convertToEpisodeMetadata(episodes);
-            const pattern = releasePatternService.analyzeReleasePattern(episodeMetadata);
-            return { ...show, releasePattern: pattern };
-          }
-        } catch (episodeError) {
-          console.error(`Failed to get episodes for show ${id}:`, episodeError);
-          // Continue without release pattern data
-        }
-      }
-
-      return show;
+      const result = await operation();
+      success = true;
+      this.lastRequestTime = Date.now();
+      
+      return result;
     } catch (error) {
-      quotaTracker.recordCall('getShow', false);
-      if (error instanceof StreamingAvailabilityError) {
-        throw error;
+      this.lastRequestTime = Date.now();
+      
+      if (error instanceof StreamingAvailabilityError && error.statusCode === 429) {
+        // If we hit rate limit, wait before the next request
+        const resetDelay = error.rateLimitReset || this.rateLimitDelay * 2;
+        this.rateLimitDelay = Math.min(resetDelay, 30000); // Max 30 seconds
       }
-      throw new Error('Failed to fetch show details');
+      
+      throw error;
     }
   }
 
   /**
-   * Search for shows with optional release pattern analysis
-   */
-  async search(title: string, country = 'US'): Promise<SearchResult & { shows: Array<StreamingAvailability & { releasePattern?: ReleasePatternAnalysis }> }> {
-    try {
-      quotaTracker.recordCall('search', true);
-      const result = await this.client.search(title, country, 'series');
-
-      // Get episodes and analyze patterns for all series
-      const showsWithPatterns = await Promise.all(
-        result.shows.map(async (show) => {
-          if (show.type === 'series') {
-            try {
-              // Get episodes for this series
-              const episodes = await this.client.getShowEpisodes(show.id, country);
-              quotaTracker.recordCall('getShow', true);
-              
-              if (episodes.length > 0) {
-                const episodeMetadata = this.client.convertToEpisodeMetadata(episodes);
-                const pattern = releasePatternService.analyzeReleasePattern(episodeMetadata);
-                return { ...show, releasePattern: pattern };
-              }
-            } catch (error) {
-              console.error(`Failed to get episodes for ${show.id}:`, error);
-              quotaTracker.recordCall('getShow', false);
-            }
-          }
-          return show;
-        })
-      );
-
-      return { ...result, shows: showsWithPatterns };
-    } catch (error) {
-      quotaTracker.recordCall('search', false);
-      if (error instanceof StreamingAvailabilityError) {
-        throw error;
-      }
-      throw new Error('Failed to search shows');
-    }
-  }
-
-  /**
-   * Alias for search method to match expected interface
+   * Search for shows/movies by title with caching
    */
   async searchShows(
     title: string,
-    country = 'US',
-    type?: 'movie' | 'series'
+    country: string = 'us',
+    showType?: 'movie' | 'series'
   ): Promise<StreamingAvailability[]> {
-    const result = await this.search(title, country);
-    return result.shows.filter(show => !type || show.type === type);
+    const cacheKey = this.getCacheKey('search', { title, country, showType });
+    const cached = this.getFromCache<StreamingAvailability[]>(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+
+    const result = await this.withRateLimit(() =>
+      this.client!.search(title, country, showType, 10), 
+      'search'
+    );
+    await quotaTracker.recordCall('search', true);
+
+    console.log(`🔍 Search results for "${title}":`, JSON.stringify(result, null, 2));
+    this.setCache(cacheKey, result.shows, 1440); // Cache for 24 hours
+    return result.shows;
   }
 
   /**
-   * Get content availability for a specific service
+   * Get detailed show information with caching
+   */
+  async getShowDetails(
+    id: string,
+    country: string = 'us'
+  ): Promise<StreamingAvailability | null> {
+    const cacheKey = this.getCacheKey('getShow', { id, country });
+    const cached = this.getFromCache<StreamingAvailability>(cacheKey);
+    
+    if (cached) {
+      console.log(`♻️ Using cached details for ID "${id}"`);
+      return cached;
+    }
+
+    try {
+      const result = await this.withRateLimit(() =>
+        this.client!.getShow(id, country),
+        'getShow'
+      );
+      
+      // Only record successful API calls
+      await quotaTracker.recordCall('getShow', true);
+
+      console.log(`📺 Show details for ID "${id}":`, JSON.stringify(result, null, 2));
+      this.setCache(cacheKey, result, 1440);
+      return result;
+    } catch (error) {
+      console.log(`❌ Failed to get show details for ID "${id}":`, error instanceof StreamingAvailabilityError ? error.message : error);
+      if (error instanceof StreamingAvailabilityError && error.statusCode === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Get shows leaving streaming services soon
+   */
+  async getShowsLeavingSoon(
+    country: string = 'us',
+    service?: string
+  ): Promise<StreamingAvailability[]> {
+    const cacheKey = this.getCacheKey('leavingSoon', { country, service });
+    const cached = this.getFromCache<StreamingAvailability[]>(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+
+    const result = await this.withRateLimit(() =>
+      this.client!.getLeavingSoon(country, service, 50),
+      'getLeavingSoon'
+    );
+
+    this.setCache(cacheKey, result, 360); // Cache for 6 hours
+    return result;
+  }
+
+  /**
+   * Get newly added shows
+   */
+  async getNewlyAddedShows(
+    country: string = 'us',
+    service?: string
+  ): Promise<StreamingAvailability[]> {
+    const cacheKey = this.getCacheKey('newlyAdded', { country, service });
+    const cached = this.getFromCache<StreamingAvailability[]>(cacheKey);
+    
+    if (cached) {
+      return cached;
+    }
+
+    const result = await this.withRateLimit(() =>
+      this.client!.getNewlyAdded(country, service, 50),
+      'getNewlyAdded'
+    );
+
+    this.setCache(cacheKey, result, 720); // Cache for 12 hours
+    return result;
+  }
+
+  /**
+   * Check if content is available and get expiration info
    */
   async getContentAvailability(
     showId: string,
     serviceId: string,
-    country = 'US'
-  ): Promise<{ available: boolean; expiresOn?: string; leavingSoon: boolean; streamingOptions?: any[] }> {
-    try {
-      const show = await this.getShowDetails(showId, country);
-      const countryOptions = show.streamingOptions[country.toLowerCase()] || [];
-      const serviceOption = countryOptions.find(option => option.service.id === serviceId);
-
-      if (serviceOption) {
-        const result: { available: boolean; expiresOn?: string; leavingSoon: boolean; streamingOptions?: any[] } = {
-          available: true,
-          leavingSoon: serviceOption.expiresSoon,
-          streamingOptions: [serviceOption],
-        };
-        
-        if (serviceOption.expiresOn) {
-          result.expiresOn = new Date(serviceOption.expiresOn * 1000).toISOString();
-        }
-        
-        return result;
-      }
-
-      return {
-        available: false,
-        leavingSoon: false,
-      };
-    } catch (error) {
-      console.error(`Failed to get availability for ${showId} on ${serviceId}:`, error);
-      return {
-        available: false,
-        leavingSoon: false,
-      };
+    country: string = 'us'
+  ): Promise<{ available: boolean; expiresOn?: string; leavingSoon: boolean }> {
+    const show = await this.getShowDetails(showId, country);
+    
+    if (!show) {
+      return { available: false, leavingSoon: false };
     }
+
+    const option = this.client!.isAvailableOnService(show, serviceId, country);
+    
+    if (!option) {
+      return { available: false, leavingSoon: false };
+    }
+
+    const expiresOn = this.client!.getExpirationDate(show, serviceId, country);
+    const leavingSoon = this.client!.isLeavingSoon(show, serviceId, 30, country);
+
+    return {
+      available: true,
+      ...(expiresOn && { expiresOn: expiresOn.toISOString() }),
+      leavingSoon,
+    };
   }
 
   /**
-   * Get quota status for API usage tracking
+   * Get quota status without making API calls
    */
-  async getQuotaStatus() {
-    const stats = await quotaTracker.getUsageStats();
+  async getQuotaStatus(): Promise<{
+    canMakeCall: boolean;
+    isLowQuota: boolean;
+    remaining: number;
+    devMode: boolean;
+  }> {
     const canMakeCall = await quotaTracker.canMakeCall();
     const isLowQuota = await quotaTracker.shouldWarnLowQuota();
+    const remaining = await quotaTracker.getRemainingCalls();
     
     return {
-      ...stats,
       canMakeCall,
       isLowQuota,
-      remaining: stats.callsRemaining,
+      remaining,
+      devMode: config.streamingApiDevMode,
     };
   }
 
   /**
-   * Get cache statistics (placeholder for interface compatibility)
+   * Clear the cache (useful for testing or manual refresh)
    */
-  getCacheStats() {
+  clearCache(): void {
+    this.cache.clear();
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats(): { size: number; entries: string[] } {
     return {
-      size: 0,
-      hits: 0,
-      misses: 0,
+      size: this.cache.size,
+      entries: Array.from(this.cache.keys()),
     };
-  }
-
-  /**
-   * Clear cache (placeholder for interface compatibility)
-   */
-  clearCache() {
-    // No-op for now
-    return Promise.resolve();
   }
 }
 
-// Export singleton instance
+// Singleton instance
 export const streamingAvailabilityService = new StreamingAvailabilityService();
 
 export default streamingAvailabilityService;

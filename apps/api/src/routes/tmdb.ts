@@ -59,17 +59,21 @@ router.get('/show/:id/analyze', async (req, res, next) => {
 
     console.log(`📊 Analyzing TMDB show ${showId} for ${country}${season ? ` (season ${season})` : ''}`);
     
-    const analysis = await tmdbService.analyzeShow(
+    let analysis = await tmdbService.analyzeShow(
       showId, 
       country as string, 
       season ? parseInt(season as string) : undefined
     );
 
+    // Fallback: basic show info if analysis failed (e.g., TMDB missing episode dates)
     if (!analysis) {
-      return res.status(404).json({
-        error: 'SHOW_NOT_FOUND',
-        message: `Could not analyze show with ID ${showId}`
-      });
+      analysis = await tmdbService.getBasicShow(showId, country as string);
+      if (!analysis) {
+        return res.status(404).json({
+          error: 'SHOW_NOT_FOUND',
+          message: `Could not analyze show with ID ${showId}`
+        });
+      }
     }
 
     res.json({
@@ -80,6 +84,24 @@ router.get('/show/:id/analyze', async (req, res, next) => {
     });
   } catch (error) {
     console.error(`Error analyzing show ${req.params.id}:`, error);
+    next(error);
+  }
+});
+
+// Raw season debug (dev aid)
+router.get('/show/:id/season/:season/raw', async (req, res, next) => {
+  try {
+    const { id, season } = req.params;
+    const { country = 'US' } = req.query;
+    const showId = parseInt(id);
+    const seasonNumber = parseInt(season);
+    if (isNaN(showId) || isNaN(seasonNumber)) {
+      throw new ValidationError('Invalid show ID or season');
+    }
+    const raw = await tmdbService.getSeasonRaw(showId, seasonNumber, country as string);
+    res.json({ success: true, showId, season: seasonNumber, country, raw });
+  } catch (error) {
+    console.error('Error in raw season debug:', error);
     next(error);
   }
 });

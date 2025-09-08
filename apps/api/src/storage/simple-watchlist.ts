@@ -14,6 +14,8 @@ export interface WatchlistItem {
     name: string;
     logo_url: string;
   };
+  bufferDays?: number; // optional per-show buffer extension (UI hint)
+  country?: string;    // user's selected country for this show (e.g., 'US','AU')
 }
 
 export interface EpisodeProgress {
@@ -271,6 +273,28 @@ export const watchlistStorageService = {
       watchlistStorage.set(userId, userWatchlist);
     }
     
+    return item || null;
+  },
+
+  // Update per-show buffer days
+  updateBufferDays(userId: string, itemId: string, bufferDays: number): WatchlistItem | null {
+    const userWatchlist = this.getUserWatchlist(userId);
+    const item = userWatchlist.find(item => item.id === itemId);
+    if (item) {
+      item.bufferDays = Math.max(0, Math.min(30, Math.floor(bufferDays)));
+      watchlistStorage.set(userId, userWatchlist);
+    }
+    return item || null;
+  },
+
+  // Update per-show country override
+  updateCountry(userId: string, itemId: string, countryCode: string | null): WatchlistItem | null {
+    const userWatchlist = this.getUserWatchlist(userId);
+    const item = userWatchlist.find(item => item.id === itemId);
+    if (item) {
+      item.country = countryCode || undefined;
+      watchlistStorage.set(userId, userWatchlist);
+    }
     return item || null;
   }
 };

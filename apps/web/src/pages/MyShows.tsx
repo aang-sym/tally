@@ -6,13 +6,58 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { UserManager } from '../components/UserSwitcher';
+import { UserManager } from '../services/UserManager';
+import { API_ENDPOINTS, apiRequest } from '../config/api';
+import { UserShow, StreamingProvider, StoredEpisodeProgress } from '../types/api';
+
+// Shared, accessible progress bar component
+const ProgressBar: React.FC<{
+  value: number;
+  total: number;
+  label?: string;
+  size?: 'sm' | 'md';
+  className?: string;
+}> = ({ value, total, label, size = 'md', className }) => {
+  const denom = Math.max(0, total);
+  const numer = Math.min(Math.max(0, value), denom);
+  const pct = denom ? Math.round((numer / denom) * 100) : 0;
+  return (
+    <div className={className}>
+      {label && (
+        <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
+          <span>{label}</span>
+          <span>{numer}/{denom} episodes</span>
+        </div>
+      )}
+      <div
+        className={size === 'sm' ? 'w-full bg-gray-200 rounded-full h-1.5' : 'w-full bg-gray-200 rounded-full h-2'}
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={label || 'progress'}
+      >
+        <div
+          className="bg-blue-600 h-full rounded-full transition-all duration-300"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+};
 
 // Episode Progress Display Component
+interface DisplayEpisode {
+  number: number;
+  airDate: string;
+  title: string;
+  watched?: boolean;
+}
+
 const EpisodeProgressDisplay: React.FC<{
   seasonNumber: number;
   episodeNumber: number;
-  episodeName?: string;
+  episodeName?: string | undefined; // Explicitly allow undefined
   tmdbId: number;
 }> = ({ seasonNumber, episodeNumber, episodeName, tmdbId }) => {
   const [actualEpisodeTitle, setActualEpisodeTitle] = useState<string | null>(null);
@@ -24,20 +69,13 @@ const EpisodeProgressDisplay: React.FC<{
       if (!episodeName || episodeName.match(/^Episode \d+$/)) {
         setLoading(true);
         try {
-          const userId = UserManager.getCurrentUserId();
-          const response = await fetch(`http://localhost:3001/api/tmdb/show/${tmdbId}/analyze`, {
-            headers: { 'x-user-id': userId }
-          });
-          
+          const country = UserManager.getCountry();
+          const response = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/season/${seasonNumber}/raw?country=${country}`);
           if (response.ok) {
-            const analysis = await response.json();
-            const episode = analysis.analysis?.diagnostics?.episodeDetails?.find(
-              (ep: any) => ep.number === episodeNumber
-            );
-            
-            if (episode && episode.title) {
-              setActualEpisodeTitle(episode.title);
-            }
+            const data = await response.json();
+            const season = data.raw?.season || data.raw;
+            const ep = (season?.episodes || []).find((e: any) => e.episode_number === episodeNumber);
+            if (ep && ep.name) setActualEpisodeTitle(ep.name);
           }
         } catch (error) {
           console.error('Failed to fetch episode title:', error);
@@ -61,67 +99,36 @@ const EpisodeProgressDisplay: React.FC<{
   );
 };
 
-// Types
-interface Show {
-  id: string;
-  tmdb_id: number;
-  title: string;
-  overview?: string;
-  poster_path?: string;
-  status: string;
-  total_episodes?: number;
-}
-
-interface StreamingProvider {
-  id: number;
-  name: string;
-  logo_url: string;
-}
-
-interface UserShow {
-  id: string;
-  user_id: string;
-  show_id: string;
-  status: 'watchlist' | 'watching' | 'completed' | 'dropped';
-  added_at: string;
-  show_rating?: number;
-  notes?: string;
-  streaming_provider?: StreamingProvider | null;
-  show: Show;
-  progress?: {
-    totalEpisodes: number;
-    watchedEpisodes: number;
-    currentEpisode?: {
-      season_number: number;
-      episode_number: number;
-      name?: string;
-    };
-  };
-}
-
-interface Season {
-  seasonNumber: number;
-  episodeCount: number;
-  airDate?: string;
-  pattern?: string;
-  confidence?: number;
-}
-
-interface Episode {
-  number: number;
-  airDate: string;
-  title: string;
-  watched?: boolean;
-}
-
 interface WatchlistStats {
   totalShows: number;
   byStatus: Record<'watchlist' | 'watching' | 'completed' | 'dropped', number>;
   averageRating: number;
 }
 
+// Derive stats on the client as a reliable fallback (and to keep counts live)
+const deriveStats = (items: UserShow[]): WatchlistStats => {
+  const byStatus = { watchlist: 0, watching: 0, completed: 0, dropped: 0 } as WatchlistStats['byStatus'];
+  let ratingSum = 0;
+  let ratingCount = 0;
+  for (const s of items) {
+    const key = s.status as keyof typeof byStatus;
+    if (key in byStatus) {
+      byStatus[key] += 1;
+    }
+    if (typeof s.show_rating === 'number') {
+      ratingSum += s.show_rating;
+      ratingCount += 1;
+    }
+  }
+  return {
+    totalShows: items.length,
+    byStatus,
+    averageRating: ratingCount > 0 ? ratingSum / ratingCount : 0,
+  };
+};
+
 // API base URL
-const API_BASE = 'http://localhost:3001';
+// API_BASE removed - using centralized API_ENDPOINTS
 
 const MyShows: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'watchlist' | 'watching' | 'completed'>('all');
@@ -129,14 +136,35 @@ const MyShows: React.FC = () => {
   const [stats, setStats] = useState<WatchlistStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+  const [loadingStats, setLoadingStats] = useState(true); // New loading state for stats
+  const [statsError, setStatsError] = useState<string | null>(null); // New error state for stats
+  // Series-wide progress prefetch (keyed by tmdbId)
+  const [seriesProgress, setSeriesProgress] = useState<{ [tmdbId: number]: { total: number; watched: number } }>({});
+
   // Expandable show details state
   const [expandedShow, setExpandedShow] = useState<string | null>(null);
-  const [showAnalysis, setShowAnalysis] = useState<{[showId: string]: any}>({});
-  const [selectedSeasons, setSelectedSeasons] = useState<{[showId: string]: number}>({});
-  const [episodeData, setEpisodeData] = useState<{[showId: string]: {[season: number]: Episode[]}}>({});
-  const [loadingAnalysis, setLoadingAnalysis] = useState<{[showId: string]: boolean}>({});
-  const [showProviders, setShowProviders] = useState<{[showId: string]: StreamingProvider[]}>({});
+  const [showAnalysis, setShowAnalysis] = useState<{ [showId: string]: any }>({});
+  const [selectedSeasons, setSelectedSeasons] = useState<{ [showId: string]: number }>({});
+  const [episodeData, setEpisodeData] = useState<{ [showId: string]: { [season: number]: DisplayEpisode[] } }>({});
+  const [loadingAnalysis, setLoadingAnalysis] = useState<{ [showId: string]: boolean }>({});
+  const [showProviders, setShowProviders] = useState<{ [showId: string]: StreamingProvider[] }>({});
+  const [country, setCountry] = useState<string>(UserManager.getCountry());
+  const [posterOverrides, setPosterOverrides] = useState<{ [tmdbId: number]: string | undefined }>({});
+
+  // Persist user's country to profile so API routes can fall back to users.country_code
+  const persistUserCountry = async (code: string) => {
+    try {
+      const userId = UserManager.getCurrentUserId();
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.users.base}/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ countryCode: code })
+      }, token);
+    } catch (e) {
+      console.warn('Failed to persist user country; keeping local override only', e);
+    }
+  };
 
   // Fetch watchlist data
   useEffect(() => {
@@ -144,29 +172,63 @@ const MyShows: React.FC = () => {
     fetchStats();
   }, [activeTab]);
 
+  // When country changes, persist and refresh provider lists
+  useEffect(() => {
+    UserManager.setCountry(country);
+    persistUserCountry(country);
+    setShowProviders({});
+    // Re-fetch providers for current shows
+    if (shows.length > 0) {
+      shows.forEach((s) => fetchShowProviders(s.show.tmdb_id));
+    }
+  }, [country]);
+
+  // Keep dashboard counts in sync with the list without waiting for server stats
+  useEffect(() => {
+    if (shows) {
+      const computed = deriveStats(shows);
+      setStats(computed);
+      setLoadingStats(false);
+      setStatsError(null);
+    }
+  }, [shows]);
+
   const fetchWatchlist = async () => {
     try {
       setLoading(true);
-      const userId = UserManager.getCurrentUserId();
       const statusParam = activeTab !== 'all' ? `?status=${activeTab}` : '';
-      const response = await fetch(`${API_BASE}/api/watchlist-v2${statusParam}`, {
-        headers: {
-          'x-user-id': userId
-        }
-      });
+      const token = localStorage.getItem('authToken') || undefined;
+      const data = await apiRequest(`${API_ENDPOINTS.watchlist.v2}${statusParam}`, {}, token);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch watchlist');
+      setShows(data.data.shows);
+      setStats(deriveStats(data.data.shows));
+      setLoadingStats(false);
+      setStatsError(null);
+
+      // Prefetch overall progress so header bars are populated on initial load
+      if (data.data.shows && data.data.shows.length > 0) {
+        const items: UserShow[] = data.data.shows;
+        items.forEach(async (it: UserShow) => {
+          const prog = await fetchShowProgress(it.show.tmdb_id);
+          if (prog) {
+            setSeriesProgress(prev => ({
+              ...prev,
+              [it.show.tmdb_id]: { total: prog.total, watched: prog.watched }
+            }));
+          }
+        });
       }
 
-      const data = await response.json();
-      setShows(data.data.shows);
       setError(null);
 
-      // Fetch providers for all shows
+      // Fetch providers and posters for all shows
       if (data.data.shows && data.data.shows.length > 0) {
         data.data.shows.forEach((show: UserShow) => {
           fetchShowProviders(show.show.tmdb_id);
+          // Only fetch poster if not already present
+          if (!show.show.poster_path && !posterOverrides[show.show.tmdb_id]) {
+            fetchShowPoster(show.show.tmdb_id);
+          }
         });
       }
     } catch (err) {
@@ -178,39 +240,38 @@ const MyShows: React.FC = () => {
   };
 
   const fetchStats = async () => {
+    setLoadingStats(true); // Set loading true before fetch
+    setStatsError(null); // Clear previous errors
     try {
-      const userId = UserManager.getCurrentUserId();
-      const response = await fetch(`${API_BASE}/api/watchlist-v2/stats`, {
-        headers: {
-          'x-user-id': userId
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.data);
+      const token = localStorage.getItem('authToken') || undefined;
+      const data = await apiRequest(`${API_ENDPOINTS.watchlist.v2}/stats`, {}, token);
+      const serverStats: WatchlistStats | undefined = data?.data;
+      const fallback = deriveStats(shows);
+      // Prefer server stats if they look populated; otherwise derive from current shows
+      if (serverStats && (serverStats.totalShows > 0 || Object.values(serverStats.byStatus).some(v => v > 0))) {
+        setStats(serverStats);
+      } else {
+        setStats(fallback);
       }
     } catch (err) {
-      console.warn('Failed to fetch stats:', err);
+      console.error('Failed to fetch stats:', err); // Change warn to error
+      setStatsError('Failed to load show statistics.'); // Set error message
+    } finally {
+      setLoadingStats(false); // Set loading false after fetch
     }
   };
 
   // Update show status
   const updateShowStatus = async (userShowId: string, newStatus: UserShow['status']) => {
     try {
-      const userId = UserManager.getCurrentUserId();
-      const response = await fetch(`${API_BASE}/api/watchlist-v2/${userShowId}/status`, {
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShowId}/status`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ status: newStatus })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update status');
-      }
+      }, token);
 
       // Refresh the list
       fetchWatchlist();
@@ -224,24 +285,19 @@ const MyShows: React.FC = () => {
   // Rate a show
   const rateShow = async (userShowId: string, rating: number) => {
     try {
-      const userId = UserManager.getCurrentUserId();
-      const response = await fetch(`${API_BASE}/api/watchlist-v2/${userShowId}/rating`, {
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShowId}/rating`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ rating })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to rate show');
-      }
+      }, token);
 
       // Update local state
-      setShows(prevShows => 
-        prevShows.map(show => 
-          show.id === userShowId 
+      setShows(prevShows =>
+        prevShows.map(show =>
+          show.id === userShowId
             ? { ...show, show_rating: rating }
             : show
         )
@@ -257,25 +313,19 @@ const MyShows: React.FC = () => {
   // Update streaming provider for a show
   const updateStreamingProvider = async (userShowId: string, provider: StreamingProvider | null) => {
     try {
-      const userId = UserManager.getCurrentUserId();
-      const response = await fetch(`${API_BASE}/api/watchlist-v2/${userShowId}/provider`, {
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShowId}/provider`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ provider })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update streaming provider');
-      }
+      }, token);
 
       // Update local state immediately without full refresh
-      setShows(prevShows => 
-        prevShows.map(show => 
-          show.id === userShowId 
+      setShows(prevShows =>
+        prevShows.map(show =>
+          show.id === userShowId
             ? { ...show, streaming_provider: provider }
             : show
         )
@@ -284,7 +334,7 @@ const MyShows: React.FC = () => {
       // Show success message
       const providerName = provider ? provider.name : 'None';
       console.log(`Streaming provider updated to: ${providerName}`);
-      
+
     } catch (err) {
       console.error('Failed to update streaming provider:', err);
       alert('Failed to update streaming provider');
@@ -298,17 +348,10 @@ const MyShows: React.FC = () => {
     }
 
     try {
-      const userId = UserManager.getCurrentUserId();
-      const response = await fetch(`${API_BASE}/api/watchlist-v2/${userShowId}`, {
-        method: 'DELETE',
-        headers: {
-          'x-user-id': userId
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to remove show');
-      }
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShowId}`, {
+        method: 'DELETE'
+      }, token);
 
       // Remove from local state
       setShows(prevShows => prevShows.filter(show => show.id !== userShowId));
@@ -322,7 +365,7 @@ const MyShows: React.FC = () => {
   // Handle show expansion
   const toggleShowExpansion = async (userShow: UserShow) => {
     const isExpanding = expandedShow !== userShow.id;
-    setExpandedShow(isExpanding ? userShow.id : null);
+    setExpandedShow(isExpanding ? userShow.id || null : null); // Handle userShow.id being undefined
 
     if (isExpanding && !showAnalysis[userShow.show.tmdb_id]) {
       await fetchShowAnalysis(userShow.show.tmdb_id);
@@ -333,20 +376,37 @@ const MyShows: React.FC = () => {
   const fetchShowAnalysis = async (tmdbId: number) => {
     try {
       setLoadingAnalysis(prev => ({ ...prev, [tmdbId]: true }));
-      
-      const response = await fetch(`${API_BASE}/api/tmdb/show/${tmdbId}/analyze`);
+
+      const country = UserManager.getCountry();
+      const response = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/analyze?country=${country}`);
       if (!response.ok) throw new Error('Failed to fetch analysis');
-      
+
       const data = await response.json();
       setShowAnalysis(prev => ({ ...prev, [tmdbId]: data.analysis }));
-      
+
+      // Seed series-wide total from analysis (includes future episodes)
+      try {
+        const totalFromAnalysis =
+          (data.analysis?.seasonInfo || [])
+            .reduce((sum: number, s: any) => sum + (s.episodeCount || 0), 0);
+        if (totalFromAnalysis > 0) {
+          setSeriesProgress(prev => ({
+            ...prev,
+            [tmdbId]: {
+              total: Math.max(prev[tmdbId]?.total || 0, totalFromAnalysis),
+              watched: prev[tmdbId]?.watched || 0,
+            },
+          }));
+        }
+      } catch { }
+
       // Set default selected season to latest
       if (data.analysis?.seasonInfo?.length > 0) {
         const latestSeason = Math.max(...data.analysis.seasonInfo.map((s: any) => s.seasonNumber));
         console.log(`Setting default season to ${latestSeason} for show ${tmdbId}`);
         setSelectedSeasons(prev => ({ ...prev, [tmdbId]: latestSeason }));
-        
-        // Automatically fetch episodes for the default season
+
+        // Automatically fetch episodes for the default season from raw season endpoint
         fetchSeasonEpisodes(tmdbId, latestSeason);
       }
     } catch (err) {
@@ -361,38 +421,50 @@ const MyShows: React.FC = () => {
     try {
       const userId = UserManager.getCurrentUserId();
       console.log(`Fetching episodes for show ${tmdbId}, season ${seasonNumber}, user ${userId}`);
-      
-      // Fetch episode details from TMDB
-      const tmdbUrl = `${API_BASE}/api/tmdb/show/${tmdbId}/analyze?season=${seasonNumber}`;
-      console.log(`Fetching from TMDB: ${tmdbUrl}`);
-      
-      const response = await fetch(tmdbUrl);
-      if (!response.ok) throw new Error(`Failed to fetch season episodes: ${response.status}`);
-      
+
+      // Fetch episode details from TMDB RAW season endpoint (source of truth for episodes)
+      const country = UserManager.getCountry();
+      const rawUrl = `${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/season/${seasonNumber}/raw?country=${country}`;
+      console.log(`Fetching from TMDB RAW: ${rawUrl}`);
+
+      const response = await fetch(rawUrl);
+      if (!response.ok) throw new Error(`Failed to fetch season episodes (raw): ${response.status}`);
+
       const data = await response.json();
-      const episodes = data.analysis?.diagnostics?.episodeDetails || [];
-      console.log(`Got ${episodes.length} episodes from TMDB for season ${seasonNumber}`);
-      
+      const season = data.raw?.season || data.raw;
+      const episodes = (season?.episodes || []).map((ep: any) => ({
+        number: ep.episode_number,
+        airDate: ep.air_date ? new Date(ep.air_date).toISOString() : undefined,
+        title: ep.name || `Episode ${ep.episode_number}`
+      }));
+      console.log(`Got ${episodes.length} episodes from RAW for season ${seasonNumber}`);
+
       // Fetch stored progress for this show
-      const progressUrl = `${API_BASE}/api/watchlist-v2/${tmdbId}/progress`;
+      const progressUrl = `${API_ENDPOINTS.watchlist.v2}/${tmdbId}/progress`;
       console.log(`Fetching progress from: ${progressUrl}`);
-      
+
+      const token = localStorage.getItem('authToken') || undefined;
       const progressResponse = await fetch(progressUrl, {
-        headers: { 'x-user-id': userId }
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
-      
+
       let storedProgress: any[] = [];
       if (progressResponse.ok) {
         const progressData = await progressResponse.json();
-        storedProgress = progressData.data.seasons[seasonNumber] || [];
-        console.log(`Got ${storedProgress.length} stored progress entries for season ${seasonNumber}`);
+        // Add type guards for progressData.data.seasons
+        if (progressData && progressData.data && progressData.data.seasons) {
+          storedProgress = progressData.data.seasons[seasonNumber] || [];
+          console.log(`Got ${storedProgress.length} stored progress entries for season ${seasonNumber}`);
+        } else {
+          console.log('Progress data or seasons not found in response.');
+        }
       } else {
         console.log(`No stored progress found (${progressResponse.status})`);
       }
-      
+
       // Combine TMDB episode data with stored progress
-      const combinedEpisodes = episodes.map((ep: any) => {
-        const storedEp = storedProgress.find(progress => progress.episodeNumber === ep.number);
+      const combinedEpisodes = episodes.map((ep: DisplayEpisode) => { // Explicitly type ep
+        const storedEp = storedProgress.find((progress: StoredEpisodeProgress) => progress.episodeNumber === ep.number); // Explicitly type progress
         return {
           number: ep.number,
           airDate: ep.airDate,
@@ -400,9 +472,9 @@ const MyShows: React.FC = () => {
           watched: storedEp?.status === 'watched' || false
         };
       });
-      
+
       console.log(`Combined episodes for season ${seasonNumber}:`, combinedEpisodes);
-      
+
       setEpisodeData(prev => ({
         ...prev,
         [tmdbId]: {
@@ -410,10 +482,59 @@ const MyShows: React.FC = () => {
           [seasonNumber]: combinedEpisodes
         }
       }));
-      
+
       console.log(`Episode data updated for show ${tmdbId}, season ${seasonNumber}`);
     } catch (err) {
       console.error('Failed to fetch season episodes:', err);
+    }
+  };
+
+  // Fetch overall progress for a show (series-wide) so header has progress on initial load
+  const fetchShowProgress = async (tmdbId: number) => {
+    try {
+      const token = localStorage.getItem('authToken') || undefined;
+
+      // 1) Get total planned episodes across all seasons from analyze (country filter)
+      let total = 0;
+      try {
+        const ctry = UserManager.getCountry();
+        const analyzeResp = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/analyze?country=${ctry}`);
+        if (analyzeResp.ok) {
+          const analyze = await analyzeResp.json();
+          const seasonInfo = analyze?.analysis?.seasonInfo || [];
+          total = seasonInfo.reduce((sum: number, s: any) => sum + (s.episodeCount || 0), 0);
+        }
+      } catch (e) {
+        console.warn('analyze fetch failed for total episodes; will fall back if needed', e);
+      }
+
+      // 2) Get watched count from stored progress
+      let watched = 0;
+      try {
+        const progressResp = await fetch(`${API_ENDPOINTS.watchlist.v2}/${tmdbId}/progress`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (progressResp.ok) {
+          const json = await progressResp.json();
+          const seasons = json?.data?.seasons || {};
+          for (const key of Object.keys(seasons)) {
+            const eps = seasons[key] || [];
+            watched += eps.filter((e: StoredEpisodeProgress) => e.status === 'watched').length;
+          }
+        }
+      } catch (e) {
+        console.warn('progress fetch failed for watched episodes; defaulting to 0', e);
+      }
+
+      // 3) Fallback: derive total from analysis cache if API gave none
+      if (total === 0 && showAnalysis[tmdbId]?.seasonInfo) {
+        total = showAnalysis[tmdbId].seasonInfo.reduce((sum: number, s: any) => sum + (s.episodeCount || 0), 0);
+      }
+
+      return { total, watched };
+    } catch (e) {
+      console.warn('fetchShowProgress failed for', tmdbId, e);
+      return null;
     }
   };
 
@@ -421,7 +542,7 @@ const MyShows: React.FC = () => {
   const handleSeasonChange = (tmdbId: number, seasonNumber: number) => {
     console.log(`Season changed to ${seasonNumber} for show ${tmdbId}`);
     setSelectedSeasons(prev => ({ ...prev, [tmdbId]: seasonNumber }));
-    
+
     // Always fetch episodes for this season to ensure we have fresh data
     fetchSeasonEpisodes(tmdbId, seasonNumber);
   };
@@ -430,43 +551,39 @@ const MyShows: React.FC = () => {
   const markEpisodeWatched = async (tmdbId: number, seasonNumber: number, episodeNumber: number) => {
     try {
       const userId = UserManager.getCurrentUserId();
-      
+
       // Check current episode status to determine toggle action
       const currentEpisodes = episodeData[tmdbId]?.[seasonNumber] || [];
       const currentEpisode = currentEpisodes.find(ep => ep.number === episodeNumber);
       const isCurrentlyWatched = currentEpisode?.watched || false;
-      
+
       // Toggle status: if watched, mark as unwatched; if unwatched, mark as watched
       const newStatus = isCurrentlyWatched ? 'unwatched' : 'watched';
-      
+      const actionVerb = newStatus === 'watched' ? 'marking' : 'unmarking';
+      console.log(`User ${userId} ${actionVerb} episode ${episodeNumber} of season ${seasonNumber} for show ${tmdbId}`);
+
       // Make API call to persist the progress
-      const response = await fetch(`${API_BASE}/api/watchlist-v2/${tmdbId}/progress`, {
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${tmdbId}/progress`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           seasonNumber,
           episodeNumber,
           status: newStatus
         })
-      });
+      }, token);
 
-      if (!response.ok) {
-        throw new Error('Failed to update episode progress');
-      }
-
-      const result = await response.json();
-      
       // Update local UI state to reflect the change
       setEpisodeData(prev => ({
         ...prev,
         [tmdbId]: {
           ...prev[tmdbId],
-          [seasonNumber]: prev[tmdbId][seasonNumber].map(ep => ({
+          [seasonNumber]: (prev[tmdbId]?.[seasonNumber] || []).map((ep: DisplayEpisode) => ({
             ...ep,
-            watched: newStatus === 'watched' 
+            watched: newStatus === 'watched'
               ? ep.number <= episodeNumber ? true : ep.watched  // Mark this and previous episodes as watched
               : ep.number === episodeNumber ? false : ep.watched  // Only unmark this specific episode
           }))
@@ -478,21 +595,21 @@ const MyShows: React.FC = () => {
         prevShows.map(show => {
           if (show.show.tmdb_id === tmdbId) {
             const currentProgress = show.progress || { totalEpisodes: 0, watchedEpisodes: 0 };
-            
+
             // Count the actual watched episodes from the episode data
             const allSeasonData = episodeData[tmdbId] || {};
             let totalWatchedEpisodes = 0;
             Object.values(allSeasonData).forEach((seasonEpisodes: any[]) => {
               totalWatchedEpisodes += seasonEpisodes.filter(ep => ep.watched).length;
             });
-            
+
             // Adjust count based on the current toggle action
             if (newStatus === 'watched' && !isCurrentlyWatched) {
               totalWatchedEpisodes += episodeNumber; // Add episodes 1 through episodeNumber
             } else if (newStatus === 'unwatched' && isCurrentlyWatched) {
               totalWatchedEpisodes -= 1; // Remove just this episode
             }
-            
+
             return {
               ...show,
               progress: {
@@ -504,7 +621,7 @@ const MyShows: React.FC = () => {
           return show;
         })
       );
-      
+
       console.log(`Successfully ${newStatus === 'watched' ? 'marked' : 'unmarked'} episode ${episodeNumber} of season ${seasonNumber} for show ${tmdbId}`);
     } catch (error) {
       console.error('Failed to save episode progress:', error);
@@ -512,36 +629,77 @@ const MyShows: React.FC = () => {
     }
   };
 
+  // Fetch poster from TMDB API
+  const fetchShowPoster = async (tmdbId: number) => {
+    try {
+      const country = UserManager.getCountry();
+      // Try to get poster from the show details API first
+      const response = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/analyze?country=${country}`);
+      if (!response.ok) {
+        console.warn(`Failed to fetch show analysis for poster: ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      const posterPath = data.analysis?.showDetails?.poster;
+
+      if (posterPath) {
+        setPosterOverrides(prev => ({
+          ...prev,
+          [tmdbId]: posterPath
+        }));
+        return posterPath;
+      }
+
+      // Fallback: try the raw season endpoint as mentioned in the issue
+      const latestSeasonNumber = data.analysis?.seasonInfo?.[data.analysis.seasonInfo.length - 1]?.seasonNumber || 1;
+      const seasonResponse = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/season/${latestSeasonNumber}/raw?country=${country}`);
+      if (seasonResponse.ok) {
+        const seasonData = await seasonResponse.json();
+        const seasonPosterPath = seasonData.raw?.poster_path;
+        if (seasonPosterPath) {
+          const fullPosterUrl = `https://image.tmdb.org/t/p/w500${seasonPosterPath}`;
+          setPosterOverrides(prev => ({
+            ...prev,
+            [tmdbId]: fullPosterUrl
+          }));
+          return fullPosterUrl;
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`Failed to fetch poster for show ${tmdbId}:`, error);
+      return null;
+    }
+  };
+
   // Fetch streaming providers for a show from TMDB
   const fetchShowProviders = async (tmdbId: number) => {
     try {
-      const response = await fetch(`${API_BASE}/api/tmdb/show/${tmdbId}/providers?country=US`);
+      const country = UserManager.getCountry();
+      const response = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/providers?country=${country}`);
       if (!response.ok) {
         throw new Error('Failed to fetch providers');
       }
-      
+
       const data = await response.json();
       const providers = data.providers.map((provider: any) => ({
         id: provider.provider_id,
         name: provider.provider_name,
         logo_url: `https://image.tmdb.org/t/p/w45${provider.logo_path}`
       }));
-      
+
       setShowProviders(prev => ({
         ...prev,
         [tmdbId]: providers
       }));
-      
+
       return providers;
     } catch (error) {
       console.error(`Failed to fetch providers for show ${tmdbId}:`, error);
       return [];
     }
-  };
-
-  const getProgressPercentage = (show: UserShow): number => {
-    if (!show.progress || show.progress.totalEpisodes === 0) return 0;
-    return Math.round((show.progress.watchedEpisodes / show.progress.totalEpisodes) * 100);
   };
 
   const getStatusBadgeColor = (status: UserShow['status']): string => {
@@ -555,14 +713,14 @@ const MyShows: React.FC = () => {
   };
 
   const tabs = [
-    { key: 'all' as const, label: 'All Shows', count: stats?.totalShows || 0 },
-    { key: 'watchlist' as const, label: 'Watchlist', count: stats?.byStatus.watchlist || 0 },
-    { key: 'watching' as const, label: 'Watching', count: stats?.byStatus.watching || 0 },
-    { key: 'completed' as const, label: 'Completed', count: stats?.byStatus.completed || 0 },
+    { key: 'all' as const, label: 'All Shows', count: stats?.totalShows ?? (loadingStats ? '...' : 0) },
+    { key: 'watchlist' as const, label: 'Watchlist', count: stats?.byStatus.watchlist ?? (loadingStats ? '...' : 0) },
+    { key: 'watching' as const, label: 'Watching', count: stats?.byStatus.watching ?? (loadingStats ? '...' : 0) },
+    { key: 'completed' as const, label: 'Completed', count: stats?.byStatus.completed ?? (loadingStats ? '...' : 0) },
   ];
 
-  const StarRating: React.FC<{ 
-    rating?: number | undefined; 
+  const StarRating: React.FC<{
+    rating?: number | undefined;
     onRating?: (rating: number) => void;
     readonly?: boolean;
   }> = ({ rating, onRating, readonly = false }) => {
@@ -578,13 +736,11 @@ const MyShows: React.FC = () => {
             <button
               key={i}
               type="button"
-              className={`text-sm ${
-                readonly 
-                  ? 'cursor-default' 
-                  : 'cursor-pointer hover:scale-110 transition-transform'
-              } ${
-                isActive ? 'text-yellow-400' : 'text-gray-300'
-              }`}
+              className={`text-sm ${readonly
+                ? 'cursor-default'
+                : 'cursor-pointer hover:scale-110 transition-transform'
+                } ${isActive ? 'text-yellow-400' : 'text-gray-300'
+                }`}
               onClick={() => !readonly && onRating?.(starRating)}
               onMouseEnter={() => !readonly && setHoveredRating(starRating)}
               onMouseLeave={() => !readonly && setHoveredRating(null)}
@@ -607,15 +763,41 @@ const MyShows: React.FC = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My Shows</h1>
-          <p className="text-gray-600 mt-2">
-            Track your favorite shows and manage your watching progress
-          </p>
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">My Shows</h1>
+            <p className="text-gray-600 mt-2">
+              Track your favorite shows and manage your watching progress
+            </p>
+          </div>
+          <div className="shrink-0">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Country/Region</label>
+            <select
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+            >
+              {['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'JP', 'KR', 'IN', 'BR'].map((code) => (
+                <option key={code} value={code}>{code}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Stats Cards */}
-        {stats && (
+        {loadingStats ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-lg shadow p-6 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+              <span className="ml-3 text-gray-600">Loading stats...</span>
+            </div>
+          </div>
+        ) : statsError ? (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-8" role="alert">
+            <strong className="font-bold">Error!</strong>
+            <span className="block sm:inline"> {statsError}</span>
+          </div>
+        ) : stats && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-sm font-medium text-gray-500">Total Shows</h3>
@@ -646,18 +828,16 @@ const MyShows: React.FC = () => {
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-                    activeTab === tab.key
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === tab.key
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
                 >
                   {tab.label}
-                  <span className={`ml-2 py-1 px-2 rounded-full text-xs ${
-                    activeTab === tab.key
-                      ? 'bg-blue-100 text-blue-600'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}>
+                  <span className={`ml-2 py-1 px-2 rounded-full text-xs ${activeTab === tab.key
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'bg-gray-100 text-gray-600'
+                    }`}>
                     {tab.count}
                   </span>
                 </button>
@@ -675,7 +855,7 @@ const MyShows: React.FC = () => {
             ) : error ? (
               <div className="text-center py-12">
                 <p className="text-red-600">{error}</p>
-                <button 
+                <button
                   onClick={() => fetchWatchlist()}
                   className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
@@ -695,21 +875,21 @@ const MyShows: React.FC = () => {
                   const isExpanded = expandedShow === userShow.id;
                   const analysis = showAnalysis[userShow.show.tmdb_id];
                   const selectedSeason = selectedSeasons[userShow.show.tmdb_id];
-                  const episodes = episodeData[userShow.show.tmdb_id]?.[selectedSeason];
+                  const episodes = selectedSeason !== undefined ? episodeData[userShow.show.tmdb_id]?.[selectedSeason] : undefined;
 
                   return (
                     <div key={userShow.id} className={`bg-gray-50 rounded-lg p-4 hover:shadow-md transition-all relative ${isExpanded ? 'lg:col-span-2 xl:col-span-3' : ''}`}>
                       {/* Main show info - clickable */}
-                      <div 
+                      <div
                         className="cursor-pointer"
                         onClick={() => toggleShowExpansion(userShow)}
                       >
                         <div className="flex space-x-4">
                           {/* Poster */}
                           <div className="flex-shrink-0">
-                            {userShow.show.poster_path ? (
+                            {(userShow.show.poster_path || posterOverrides[userShow.show.tmdb_id]) ? (
                               <img
-                                src={userShow.show.poster_path}
+                                src={userShow.show.poster_path || posterOverrides[userShow.show.tmdb_id]!}
                                 alt={`${userShow.show.title} poster`}
                                 className="w-16 h-24 object-cover rounded"
                               />
@@ -737,44 +917,51 @@ const MyShows: React.FC = () => {
                             </div>
 
                             {/* Progress */}
-                            {userShow.progress && (
-                              <div className="mb-3">
-                                <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
-                                  <span>Progress</span>
-                                  <span>{userShow.progress.watchedEpisodes}/{userShow.progress.totalEpisodes} episodes</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div 
-                                    className="bg-blue-600 h-2 rounded-full"
-                                    style={{ width: `${getProgressPercentage(userShow)}%` }}
-                                  ></div>
-                                </div>
-                                {userShow.progress.currentEpisode && (
-                                  <EpisodeProgressDisplay
-                                    seasonNumber={userShow.progress.currentEpisode.season_number}
-                                    episodeNumber={userShow.progress.currentEpisode.episode_number}
-                                    episodeName={userShow.progress.currentEpisode.name}
-                                    tmdbId={userShow.show.tmdb_id}
-                                  />
-                                )}
-                              </div>
-                            )}
+                            <div className="mb-3">
+                              {(() => {
+                                const tmdbId = userShow.show.tmdb_id;
+                                const seasonNumber = selectedSeasons[tmdbId];
+                                const seasonEpisodes = seasonNumber !== undefined
+                                  ? episodeData[tmdbId]?.[seasonNumber]
+                                  : undefined;
+
+                                const overall = seriesProgress[tmdbId]; // { total, watched } from prefetch
+                                const denom = seasonEpisodes ? seasonEpisodes.length : (overall?.total || 0);
+                                const numer = seasonEpisodes
+                                  ? seasonEpisodes.filter((ep) => ep.watched).length
+                                  : (overall?.watched || 0);
+
+                                return (
+                                  <>
+                                    <ProgressBar value={numer} total={denom} label="Progress" size="md" />
+                                    {userShow.progress?.currentEpisode && (
+                                      <EpisodeProgressDisplay
+                                        seasonNumber={userShow.progress.currentEpisode.season_number}
+                                        episodeNumber={userShow.progress.currentEpisode.episode_number}
+                                        episodeName={userShow.progress.currentEpisode.name || undefined}
+                                        tmdbId={tmdbId}
+                                      />
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
 
                             {/* Rating */}
                             <div className="mb-3">
                               <StarRating
                                 rating={userShow.show_rating}
-                                onRating={(rating) => rateShow(userShow.id, rating)}
+                                onRating={(rating) => userShow.id && rateShow(userShow.id, rating)}
                               />
                             </div>
 
-                            {/* Streaming Provider - Only show if show has multiple provider options */}
+                            {/* Streaming Provider - reflect country and provider availability */}
                             {(() => {
                               const availableProviders = showProviders[userShow.show.tmdb_id] || [];
+                              const hasProviders = availableProviders.length > 0;
                               const hasMultipleProviders = availableProviders.length > 1;
-                              
-                              // Only show provider selection if there are multiple providers available
-                              if (!hasMultipleProviders) return null;
+
+                              if (!hasProviders && !userShow.streaming_provider) return null;
 
                               return (
                                 <div className="mb-3 relative">
@@ -791,7 +978,7 @@ const MyShows: React.FC = () => {
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            updateStreamingProvider(userShow.id, null);
+                                            userShow.id && updateStreamingProvider(userShow.id, null);
                                           }}
                                           className="text-gray-400 hover:text-red-600 text-xs"
                                           title="Remove streaming provider"
@@ -799,28 +986,33 @@ const MyShows: React.FC = () => {
                                           ×
                                         </button>
                                       </div>
-                                    ) : (
+                                    ) : hasMultipleProviders ? (
                                       <div className="relative">
                                         <select
                                           onClick={(e) => e.stopPropagation()}
                                           onChange={(e) => {
                                             const value = e.target.value;
                                             if (value) {
-                                              const [id, name, logo_url] = value.split('|');
-                                              updateStreamingProvider(userShow.id, {
-                                                id: parseInt(id),
-                                                name,
-                                                logo_url
-                                              });
+                                              const [idStr, name, logo_url] = value.split('|');
+                                              if (userShow.id && idStr && name && logo_url) { // Ensure idStr is defined
+                                                const id = parseInt(idStr);
+                                                if (!isNaN(id)) {
+                                                  updateStreamingProvider(userShow.id, {
+                                                    id,
+                                                    name,
+                                                    logo_url
+                                                  });
+                                                }
+                                              }
                                             }
                                           }}
-                                          className="text-sm border border-gray-300 rounded px-2 py-1 bg-white min-w-[120px] relative z-10"
+                                          className="text-sm border border-gray-300 rounded px-2 py-1 bg-white min-w-[140px] relative z-10"
                                           defaultValue=""
                                         >
                                           <option value="">Select service...</option>
                                           {availableProviders.map((provider) => (
-                                            <option 
-                                              key={provider.id} 
+                                            <option
+                                              key={provider.id}
                                               value={`${provider.id}|${provider.name}|${provider.logo_url}`}
                                             >
                                               {provider.name}
@@ -828,11 +1020,73 @@ const MyShows: React.FC = () => {
                                           ))}
                                         </select>
                                       </div>
-                                    )}
+                                    ) : hasProviders ? (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const p = availableProviders[0];
+                                          if (userShow.id && p) {
+                                            updateStreamingProvider(userShow.id, p);
+                                          }
+                                        }}
+                                        className="inline-flex items-center space-x-2 px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                                        title="Set streaming provider"
+                                      >
+                                        {availableProviders[0] && (
+                                          <>
+                                            <img src={availableProviders[0].logo_url} alt={availableProviders[0].name} className="w-5 h-5 rounded" />
+                                            <span>Use {availableProviders[0].name}</span>
+                                          </>
+                                        )}
+                                      </button>
+                                    ) : null}
                                   </div>
                                 </div>
                               );
                             })()}
+                            {/* TV Guide settings: Buffer days and per-show country override */}
+                            <div className="mt-3 flex items-end gap-6">
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">Buffer days</label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={30}
+                                  defaultValue={userShow.buffer_days || 0}
+                                  onBlur={(e) => {
+                                    e.stopPropagation();
+                                    const v = Number(e.currentTarget.value) || 0;
+                                    userShow.id && apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShow.id}/buffer`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ bufferDays: v })
+                                    }, localStorage.getItem('authToken') || undefined).then(() => setShows(prev => prev.map(s => s.id === userShow.id ? { ...s, buffer_days: v } : s)));
+                                  }}
+                                  className="w-24 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">Show Country</label>
+                                <select
+                                  value={userShow.country_code || ''}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    const code = e.target.value || null;
+                                    apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShow.id}/country`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ countryCode: code })
+                                    }, localStorage.getItem('authToken') || undefined).then(() => setShows(prev => prev.map(s => s.id === userShow.id ? { ...s, country_code: code || null } : s)));
+                                  }}
+                                  className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                >
+                                  <option value="">Default ({country})</option>
+                                  {['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'JP', 'KR', 'IN', 'BR'].map((code) => (
+                                    <option key={code} value={code}>{code}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -870,30 +1124,29 @@ const MyShows: React.FC = () => {
                                     Season {selectedSeason} Episodes: ({episodes.length} episodes)
                                   </h4>
                                   <div className="max-h-64 overflow-y-auto space-y-1">
-                                    {episodes.map((episode, index) => {
+                                    {episodes.map((episode: DisplayEpisode) => {
                                       const airDate = new Date(episode.airDate);
                                       const today = new Date();
                                       const isFutureEpisode = airDate > today;
-                                      
+
                                       // Find the next unaired episode (first future episode that hasn't aired yet)
-                                      const futureEpisodes = episodes.filter(ep => new Date(ep.airDate) > today);
-                                      const nextUnaired = futureEpisodes.sort((a, b) => new Date(a.airDate).getTime() - new Date(b.airDate).getTime())[0];
+                                      const futureEpisodes = episodes.filter((ep: DisplayEpisode) => new Date(ep.airDate) > today);
+                                      const nextUnaired = futureEpisodes.sort((a: DisplayEpisode, b: DisplayEpisode) => new Date(a.airDate).getTime() - new Date(b.airDate).getTime())[0];
                                       const isAiringNext = isFutureEpisode && episode.number === nextUnaired?.number;
-                                      
+
                                       return (
                                         <button
                                           key={episode.number}
                                           onClick={() => !isFutureEpisode && markEpisodeWatched(userShow.show.tmdb_id, selectedSeason, episode.number)}
                                           disabled={isFutureEpisode}
-                                          className={`w-full text-left p-2 rounded text-sm transition-colors ${
-                                            isAiringNext 
-                                              ? 'bg-blue-50 text-blue-700 cursor-not-allowed' 
-                                              : isFutureEpisode
-                                                ? 'bg-gray-50 text-gray-500 cursor-not-allowed'
-                                              : episode.watched 
-                                                ? 'bg-green-100 text-green-800' 
+                                          className={`w-full text-left p-2 rounded text-sm transition-colors ${isAiringNext
+                                            ? 'bg-blue-50 text-blue-700 cursor-not-allowed'
+                                            : isFutureEpisode
+                                              ? 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                                              : episode.watched
+                                                ? 'bg-green-100 text-green-800'
                                                 : 'bg-white hover:bg-gray-100'
-                                          }`}
+                                            }`}
                                         >
                                           <div className="flex items-center justify-between">
                                             <span className="font-medium">
@@ -908,27 +1161,39 @@ const MyShows: React.FC = () => {
                                       );
                                     })}
                                   </div>
-                                  
+
                                   {/* Season progress */}
                                   <div className="space-y-2">
                                     <div className="text-sm text-gray-600">
-                                      {episodes.filter(ep => ep.watched).length}/{episodes.length} episodes watched in season {selectedSeason}
+                                      {episodes.filter((ep: DisplayEpisode) => ep.watched).length}/{episodes.length} episodes watched in season {selectedSeason}
                                     </div>
-                                    
+
                                     {/* Full show progress bar - simplified version */}
                                     <div className="space-y-1">
-                                      <div className="text-xs text-gray-500">Overall series progress</div>
-                                      <div className="w-full bg-gray-200 rounded-full h-2">
-                                        <div 
-                                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                          style={{ width: `${getProgressPercentage(userShow)}%` }}
-                                        ></div>
-                                      </div>
-                                      <div className="flex justify-between text-xs text-gray-500">
-                                        <span>0 episodes</span>
-                                        <span>{userShow.progress.watchedEpisodes}/{userShow.progress.totalEpisodes} total episodes</span>
-                                        <span>{userShow.progress.totalEpisodes} episodes</span>
-                                      </div>
+                                      {(() => {
+                                        const tmdbId = userShow.show.tmdb_id;
+                                        // Prefer API-provided overall progress if present; otherwise derive.
+                                        const prefetch = seriesProgress[tmdbId];
+                                        const overallTotal = (prefetch?.total && prefetch.total > 0)
+                                          ? prefetch.total
+                                          : (analysis?.seasonInfo?.reduce((sum: number, s: any) => sum + (s.episodeCount || 0), 0) || 0);
+
+                                        const allSeasonData = episodeData[tmdbId] || {};
+                                        const watchedDerived = Object.values(allSeasonData).reduce((acc: number, seasonEps: any) => {
+                                          const arr = (seasonEps as any[]) || [];
+                                          return acc + arr.filter((ep: any) => ep.watched).length;
+                                        }, 0);
+                                        const overallWatched = Math.max(prefetch?.watched ?? 0, watchedDerived);
+
+                                        return (
+                                          <ProgressBar
+                                            value={overallWatched}
+                                            total={overallTotal}
+                                            label="Overall series progress"
+                                            size="sm"
+                                          />
+                                        );
+                                      })()}
                                     </div>
                                   </div>
                                 </div>
@@ -953,30 +1218,32 @@ const MyShows: React.FC = () => {
 
                       {/* Actions - always visible */}
                       <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
-                        {userShow.status === 'watchlist' && (
+                        {userShow.status === 'watchlist' && userShow.id && (
                           <button
-                            onClick={() => updateShowStatus(userShow.id, 'watching')}
+                            onClick={() => updateShowStatus(userShow.id!, 'watching')}
                             className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
                           >
                             Start Watching
                           </button>
                         )}
 
-                        {userShow.status === 'watching' && (
+                        {userShow.status === 'watching' && userShow.id && (
                           <button
-                            onClick={() => updateShowStatus(userShow.id, 'completed')}
+                            onClick={() => updateShowStatus(userShow.id!, 'completed')}
                             className="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700"
                           >
                             Mark Completed
                           </button>
                         )}
 
-                        <button
-                          onClick={() => removeShow(userShow.id)}
-                          className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                        >
-                          Remove
-                        </button>
+                        {userShow.id && (
+                          <button
+                            onClick={() => removeShow(userShow.id!)}
+                            className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                          >
+                            Remove
+                          </button>
+                        )}
                       </div>
 
                       {/* Notes */}

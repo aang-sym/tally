@@ -1,26 +1,26 @@
-export interface Episode {
-  id: string;
-  title: string;
-  seasonNumber: number;
-  episodeNumber: number;
-  airDate: string;
-}
-
 export interface EpisodeMetadata {
-  id: string;
   seasonNumber: number;
   episodeNumber: number;
   airDate: string;
-  title: string;
+  name?: string;
+  runtime?: number;
 }
 
-export type ReleasePattern = 'weekly' | 'binge' | 'unknown';
+export interface ReleasePattern {
+  pattern: 'weekly' | 'binge' | 'unknown';
+  confidence: number;
+  avgInterval?: number;
+  stdDev?: number;
+  intervals?: number[];
+  analyzedSeason?: number;
+}
 
 export interface ReleasePatternAnalysis {
   pattern: ReleasePattern;
-  confidence: number;
-  episodeInterval?: number;
-  seasonStart?: string;
-  seasonEnd?: string;
-  totalEpisodes?: number;
+  episodes: EpisodeMetadata[];
+  diagnostics?: {
+    avgInterval: number;
+    stdDev: number;
+    intervals: number[];
+  };
 }

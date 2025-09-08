@@ -6,24 +6,64 @@
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load environment variables from .env file
+dotenv.config({ path: path.resolve(process.cwd(), 'apps/api/.env') });
 
 const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseApiKey = process.env.SUPABASE_API_KEY!;
+const supabaseAnonKey = process.env.SUPABASE_API_KEY!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!;
 
 if (!supabaseUrl) {
   throw new Error('Missing SUPABASE_URL environment variable');
 }
 
-if (!supabaseApiKey) {
+if (!supabaseAnonKey) {
   throw new Error('Missing SUPABASE_API_KEY environment variable');
 }
 
-// Create the Supabase client
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseApiKey, {
+if (!supabaseServiceKey) {
+  throw new Error('Missing SUPABASE_SERVICE_KEY environment variable');
+}
+
+// Create the default Supabase client using anon key (respects RLS)
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: false // API doesn't need session persistence
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
   }
 });
+
+// Create a service role client (bypasses RLS for admin operations like user creation)
+export const serviceSupabase: SupabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
+  }
+});
+
+/**
+ * Create a Supabase client with a specific JWT token for RLS enforcement
+ * This should be used in routes where user authentication is required
+ */
+export const createUserClient = (userJwtToken: string): SupabaseClient => {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${userJwtToken}`
+      }
+    }
+  });
+};
 
 /**
  * Test the Supabase connection
@@ -63,7 +103,7 @@ export async function getDatabaseHealth(): Promise<{
       return {
         connected: false,
         tables: {},
-        error: connectionTest.error
+        error: connectionTest.error || 'Connection failed'
       };
     }
 
@@ -84,10 +124,12 @@ export async function getDatabaseHealth(): Promise<{
 
     tableQueries.forEach((result, index) => {
       const tableName = tableNames[index];
-      if (result.status === 'fulfilled' && result.value.count !== null) {
-        tables[tableName] = result.value.count;
-      } else {
-        tables[tableName] = -1; // Error indicator
+      if (tableName) {
+        if (result.status === 'fulfilled' && result.value.count !== null) {
+          tables[tableName] = result.value.count;
+        } else {
+          tables[tableName] = -1; // Error indicator
+        }
       }
     });
 

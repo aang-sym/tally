@@ -156,15 +156,15 @@ ALTER TABLE user_season_ratings ENABLE ROW LEVEL SECURITY;
 
 -- Policy for user_shows: users can only access their own data
 CREATE POLICY "Users can access their own shows" ON user_shows
-  FOR ALL USING (user_id = auth.uid()::text OR user_id = current_user);
+  FOR ALL USING (user_id::text = auth.uid()::text OR user_id::text = current_user);
 
 -- Policy for user_episode_progress: users can only access their own data
 CREATE POLICY "Users can access their own episode progress" ON user_episode_progress
-  FOR ALL USING (user_id = auth.uid()::text OR user_id = current_user);
+  FOR ALL USING (user_id::text = auth.uid()::text OR user_id::text = current_user);
 
 -- Policy for user_season_ratings: users can only access their own data
 CREATE POLICY "Users can access their own season ratings" ON user_season_ratings
-  FOR ALL USING (user_id = auth.uid()::text OR user_id = current_user);
+  FOR ALL USING (user_id::text = auth.uid()::text OR user_id::text = current_user);
 
 -- Allow public read access to shows, streaming_services, etc.
 ALTER TABLE shows ENABLE ROW LEVEL SECURITY;
