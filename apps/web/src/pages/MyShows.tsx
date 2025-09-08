@@ -10,6 +10,42 @@ import { UserManager } from '../services/UserManager';
 import { API_ENDPOINTS, apiRequest } from '../config/api';
 import { UserShow, StreamingProvider, StoredEpisodeProgress } from '../types/api';
 
+// Shared, accessible progress bar component
+const ProgressBar: React.FC<{
+  value: number;
+  total: number;
+  label?: string;
+  size?: 'sm' | 'md';
+  className?: string;
+}> = ({ value, total, label, size = 'md', className }) => {
+  const denom = Math.max(0, total);
+  const numer = Math.min(Math.max(0, value), denom);
+  const pct = denom ? Math.round((numer / denom) * 100) : 0;
+  return (
+    <div className={className}>
+      {label && (
+        <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
+          <span>{label}</span>
+          <span>{numer}/{denom} episodes</span>
+        </div>
+      )}
+      <div
+        className={size === 'sm' ? 'w-full bg-gray-200 rounded-full h-1.5' : 'w-full bg-gray-200 rounded-full h-2'}
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={label || 'progress'}
+      >
+        <div
+          className="bg-blue-600 h-full rounded-full transition-all duration-300"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+};
+
 // Episode Progress Display Component
 interface DisplayEpisode {
   number: number;
@@ -75,9 +111,9 @@ const deriveStats = (items: UserShow[]): WatchlistStats => {
   let ratingSum = 0;
   let ratingCount = 0;
   for (const s of items) {
-    if (s.status in byStatus) {
-      // @ts-expect-error runtime guard
-      byStatus[s.status as keyof typeof byStatus] += 1;
+    const key = s.status as keyof typeof byStatus;
+    if (key in byStatus) {
+      byStatus[key] += 1;
     }
     if (typeof s.show_rating === 'number') {
       ratingSum += s.show_rating;
@@ -863,48 +899,35 @@ const MyShows: React.FC = () => {
                             </div>
 
                             {/* Progress */}
-                            {userShow.progress && (
-                              <div className="mb-3">
-                                {(() => {
-                                  const tmdbId = userShow.show.tmdb_id;
-                                  const seasonNumber = selectedSeasons[tmdbId];
-                                  const seasonEpisodes = seasonNumber !== undefined
-                                    ? episodeData[tmdbId]?.[seasonNumber]
-                                    : undefined;
+                            <div className="mb-3">
+                              {(() => {
+                                const tmdbId = userShow.show.tmdb_id;
+                                const seasonNumber = selectedSeasons[tmdbId];
+                                const seasonEpisodes = seasonNumber !== undefined
+                                  ? episodeData[tmdbId]?.[seasonNumber]
+                                  : undefined;
 
-                                  // If we have per-season episode data loaded, compute per-season progress
-                                  const overall = seriesProgress[tmdbId];
-                                  const denom = seasonEpisodes ? seasonEpisodes.length : (overall?.total || 0);
-                                  const numer = seasonEpisodes
-                                    ? seasonEpisodes.filter((ep) => ep.watched).length
-                                    : (overall?.watched || 0);
-                                  const pct = denom > 0 ? Math.round((numer / denom) * 100) : 0;
+                                const overall = seriesProgress[tmdbId]; // { total, watched } from prefetch
+                                const denom = seasonEpisodes ? seasonEpisodes.length : (overall?.total || 0);
+                                const numer = seasonEpisodes
+                                  ? seasonEpisodes.filter((ep) => ep.watched).length
+                                  : (overall?.watched || 0);
 
-                                  return (
-                                    <>
-                                      <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
-                                        <span>Progress</span>
-                                        <span>{numer}/{denom} episodes</span>
-                                      </div>
-                                      <div className="w-full bg-gray-200 rounded-full h-2">
-                                        <div
-                                          className="bg-blue-600 h-2 rounded-full"
-                                          style={{ width: `${pct}%` }}
-                                        ></div>
-                                      </div>
-                                      {userShow.progress?.currentEpisode && (
-                                        <EpisodeProgressDisplay
-                                          seasonNumber={userShow.progress.currentEpisode.season_number}
-                                          episodeNumber={userShow.progress.currentEpisode.episode_number}
-                                          episodeName={userShow.progress.currentEpisode.name || undefined}
-                                          tmdbId={tmdbId}
-                                        />
-                                      )}
-                                    </>
-                                  );
-                                })()}
-                              </div>
-                            )}
+                                return (
+                                  <>
+                                    <ProgressBar value={numer} total={denom} label="Progress" size="md" />
+                                    {userShow.progress?.currentEpisode && (
+                                      <EpisodeProgressDisplay
+                                        seasonNumber={userShow.progress.currentEpisode.season_number}
+                                        episodeNumber={userShow.progress.currentEpisode.episode_number}
+                                        episodeName={userShow.progress.currentEpisode.name || undefined}
+                                        tmdbId={tmdbId}
+                                      />
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
 
                             {/* Rating */}
                             <div className="mb-3">
@@ -1144,23 +1167,13 @@ const MyShows: React.FC = () => {
                                         }, 0);
                                         const overallWatched = Math.max(prefetch?.watched ?? 0, watchedDerived);
 
-                                        const pct = overallTotal > 0 ? Math.round((overallWatched / overallTotal) * 100) : 0;
-
                                         return (
-                                          <>
-                                            <div className="text-xs text-gray-500">Overall series progress</div>
-                                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                              <div
-                                                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                                style={{ width: `${pct}%` }}
-                                              ></div>
-                                            </div>
-                                            <div className="flex justify-between text-xs text-gray-500">
-                                              <span>0 episodes</span>
-                                              <span>{overallWatched}/{overallTotal} total episodes</span>
-                                              <span>{overallTotal} episodes</span>
-                                            </div>
-                                          </>
+                                          <ProgressBar
+                                            value={overallWatched}
+                                            total={overallTotal}
+                                            label="Overall series progress"
+                                            size="sm"
+                                          />
                                         );
                                       })()}
                                     </div>
