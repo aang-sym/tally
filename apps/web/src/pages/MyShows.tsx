@@ -80,16 +80,16 @@ const MyShows: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(true); // New loading state for stats
   const [statsError, setStatsError] = useState<string | null>(null); // New error state for stats
-  
+
   // Expandable show details state
   const [expandedShow, setExpandedShow] = useState<string | null>(null);
-  const [showAnalysis, setShowAnalysis] = useState<{[showId: string]: any}>({});
-  const [selectedSeasons, setSelectedSeasons] = useState<{[showId: string]: number}>({});
-  const [episodeData, setEpisodeData] = useState<{[showId: string]: {[season: number]: DisplayEpisode[]}}>({});
-  const [loadingAnalysis, setLoadingAnalysis] = useState<{[showId: string]: boolean}>({});
-  const [showProviders, setShowProviders] = useState<{[showId: string]: StreamingProvider[]}>({});
+  const [showAnalysis, setShowAnalysis] = useState<{ [showId: string]: any }>({});
+  const [selectedSeasons, setSelectedSeasons] = useState<{ [showId: string]: number }>({});
+  const [episodeData, setEpisodeData] = useState<{ [showId: string]: { [season: number]: DisplayEpisode[] } }>({});
+  const [loadingAnalysis, setLoadingAnalysis] = useState<{ [showId: string]: boolean }>({});
+  const [showProviders, setShowProviders] = useState<{ [showId: string]: StreamingProvider[] }>({});
   const [country, setCountry] = useState<string>(UserManager.getCountry());
-  const [posterOverrides, setPosterOverrides] = useState<{[tmdbId:number]: string | undefined}>({});
+  const [posterOverrides, setPosterOverrides] = useState<{ [tmdbId: number]: string | undefined }>({});
 
   // Fetch watchlist data
   useEffect(() => {
@@ -113,7 +113,7 @@ const MyShows: React.FC = () => {
       const statusParam = activeTab !== 'all' ? `?status=${activeTab}` : '';
       const token = localStorage.getItem('authToken') || undefined;
       const data = await apiRequest(`${API_ENDPOINTS.watchlist.v2}${statusParam}`, {}, token);
-      
+
       setShows(data.data.shows);
       setError(null);
 
@@ -184,9 +184,9 @@ const MyShows: React.FC = () => {
       }, token);
 
       // Update local state
-      setShows(prevShows => 
-        prevShows.map(show => 
-          show.id === userShowId 
+      setShows(prevShows =>
+        prevShows.map(show =>
+          show.id === userShowId
             ? { ...show, show_rating: rating }
             : show
         )
@@ -212,9 +212,9 @@ const MyShows: React.FC = () => {
       }, token);
 
       // Update local state immediately without full refresh
-      setShows(prevShows => 
-        prevShows.map(show => 
-          show.id === userShowId 
+      setShows(prevShows =>
+        prevShows.map(show =>
+          show.id === userShowId
             ? { ...show, streaming_provider: provider }
             : show
         )
@@ -223,7 +223,7 @@ const MyShows: React.FC = () => {
       // Show success message
       const providerName = provider ? provider.name : 'None';
       console.log(`Streaming provider updated to: ${providerName}`);
-      
+
     } catch (err) {
       console.error('Failed to update streaming provider:', err);
       alert('Failed to update streaming provider');
@@ -265,19 +265,19 @@ const MyShows: React.FC = () => {
   const fetchShowAnalysis = async (tmdbId: number) => {
     try {
       setLoadingAnalysis(prev => ({ ...prev, [tmdbId]: true }));
-      
+
       const response = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/analyze`);
       if (!response.ok) throw new Error('Failed to fetch analysis');
-      
+
       const data = await response.json();
       setShowAnalysis(prev => ({ ...prev, [tmdbId]: data.analysis }));
-      
+
       // Set default selected season to latest
       if (data.analysis?.seasonInfo?.length > 0) {
         const latestSeason = Math.max(...data.analysis.seasonInfo.map((s: any) => s.seasonNumber));
         console.log(`Setting default season to ${latestSeason} for show ${tmdbId}`);
         setSelectedSeasons(prev => ({ ...prev, [tmdbId]: latestSeason }));
-        
+
         // Automatically fetch episodes for the default season from raw season endpoint
         fetchSeasonEpisodes(tmdbId, latestSeason);
       }
@@ -293,7 +293,7 @@ const MyShows: React.FC = () => {
     try {
       const userId = UserManager.getCurrentUserId();
       console.log(`Fetching episodes for show ${tmdbId}, season ${seasonNumber}, user ${userId}`);
-      
+
       // Fetch episode details from TMDB RAW season endpoint (source of truth for episodes)
       const country = UserManager.getCountry();
       const rawUrl = `${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/season/${seasonNumber}/raw?country=${country}`;
@@ -310,16 +310,16 @@ const MyShows: React.FC = () => {
         title: ep.name || `Episode ${ep.episode_number}`
       }));
       console.log(`Got ${episodes.length} episodes from RAW for season ${seasonNumber}`);
-      
+
       // Fetch stored progress for this show
       const progressUrl = `${API_ENDPOINTS.watchlist.v2}/${tmdbId}/progress`;
       console.log(`Fetching progress from: ${progressUrl}`);
-      
+
       const token = localStorage.getItem('authToken') || undefined;
       const progressResponse = await fetch(progressUrl, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
-      
+
       let storedProgress: any[] = [];
       if (progressResponse.ok) {
         const progressData = await progressResponse.json();
@@ -333,7 +333,7 @@ const MyShows: React.FC = () => {
       } else {
         console.log(`No stored progress found (${progressResponse.status})`);
       }
-      
+
       // Combine TMDB episode data with stored progress
       const combinedEpisodes = episodes.map((ep: DisplayEpisode) => { // Explicitly type ep
         const storedEp = storedProgress.find((progress: StoredEpisodeProgress) => progress.episodeNumber === ep.number); // Explicitly type progress
@@ -344,9 +344,9 @@ const MyShows: React.FC = () => {
           watched: storedEp?.status === 'watched' || false
         };
       });
-      
+
       console.log(`Combined episodes for season ${seasonNumber}:`, combinedEpisodes);
-      
+
       setEpisodeData(prev => ({
         ...prev,
         [tmdbId]: {
@@ -354,7 +354,7 @@ const MyShows: React.FC = () => {
           [seasonNumber]: combinedEpisodes
         }
       }));
-      
+
       console.log(`Episode data updated for show ${tmdbId}, season ${seasonNumber}`);
     } catch (err) {
       console.error('Failed to fetch season episodes:', err);
@@ -365,7 +365,7 @@ const MyShows: React.FC = () => {
   const handleSeasonChange = (tmdbId: number, seasonNumber: number) => {
     console.log(`Season changed to ${seasonNumber} for show ${tmdbId}`);
     setSelectedSeasons(prev => ({ ...prev, [tmdbId]: seasonNumber }));
-    
+
     // Always fetch episodes for this season to ensure we have fresh data
     fetchSeasonEpisodes(tmdbId, seasonNumber);
   };
@@ -374,15 +374,15 @@ const MyShows: React.FC = () => {
   const markEpisodeWatched = async (tmdbId: number, seasonNumber: number, episodeNumber: number) => {
     try {
       const userId = UserManager.getCurrentUserId();
-      
+
       // Check current episode status to determine toggle action
       const currentEpisodes = episodeData[tmdbId]?.[seasonNumber] || [];
       const currentEpisode = currentEpisodes.find(ep => ep.number === episodeNumber);
       const isCurrentlyWatched = currentEpisode?.watched || false;
-      
+
       // Toggle status: if watched, mark as unwatched; if unwatched, mark as watched
       const newStatus = isCurrentlyWatched ? 'unwatched' : 'watched';
-      
+
       // Make API call to persist the progress
       const token = localStorage.getItem('authToken') || undefined;
       await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${tmdbId}/progress`, {
@@ -396,7 +396,7 @@ const MyShows: React.FC = () => {
           status: newStatus
         })
       }, token);
-      
+
       // Update local UI state to reflect the change
       setEpisodeData(prev => ({
         ...prev,
@@ -416,21 +416,21 @@ const MyShows: React.FC = () => {
         prevShows.map(show => {
           if (show.show.tmdb_id === tmdbId) {
             const currentProgress = show.progress || { totalEpisodes: 0, watchedEpisodes: 0 };
-            
+
             // Count the actual watched episodes from the episode data
             const allSeasonData = episodeData[tmdbId] || {};
             let totalWatchedEpisodes = 0;
             Object.values(allSeasonData).forEach((seasonEpisodes: any[]) => {
               totalWatchedEpisodes += seasonEpisodes.filter(ep => ep.watched).length;
             });
-            
+
             // Adjust count based on the current toggle action
             if (newStatus === 'watched' && !isCurrentlyWatched) {
               totalWatchedEpisodes += episodeNumber; // Add episodes 1 through episodeNumber
             } else if (newStatus === 'unwatched' && isCurrentlyWatched) {
               totalWatchedEpisodes -= 1; // Remove just this episode
             }
-            
+
             return {
               ...show,
               progress: {
@@ -442,7 +442,7 @@ const MyShows: React.FC = () => {
           return show;
         })
       );
-      
+
       console.log(`Successfully ${newStatus === 'watched' ? 'marked' : 'unmarked'} episode ${episodeNumber} of season ${seasonNumber} for show ${tmdbId}`);
     } catch (error) {
       console.error('Failed to save episode progress:', error);
@@ -460,10 +460,10 @@ const MyShows: React.FC = () => {
         console.warn(`Failed to fetch show analysis for poster: ${response.status}`);
         return null;
       }
-      
+
       const data = await response.json();
       const posterPath = data.analysis?.showDetails?.poster;
-      
+
       if (posterPath) {
         setPosterOverrides(prev => ({
           ...prev,
@@ -471,7 +471,7 @@ const MyShows: React.FC = () => {
         }));
         return posterPath;
       }
-      
+
       // Fallback: try the raw season endpoint as mentioned in the issue
       const latestSeasonNumber = data.analysis?.seasonInfo?.[data.analysis.seasonInfo.length - 1]?.seasonNumber || 1;
       const seasonResponse = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/season/${latestSeasonNumber}/raw?country=${country}`);
@@ -487,7 +487,7 @@ const MyShows: React.FC = () => {
           return fullPosterUrl;
         }
       }
-      
+
       return null;
     } catch (error) {
       console.error(`Failed to fetch poster for show ${tmdbId}:`, error);
@@ -503,19 +503,19 @@ const MyShows: React.FC = () => {
       if (!response.ok) {
         throw new Error('Failed to fetch providers');
       }
-      
+
       const data = await response.json();
       const providers = data.providers.map((provider: any) => ({
         id: provider.provider_id,
         name: provider.provider_name,
         logo_url: `https://image.tmdb.org/t/p/w45${provider.logo_path}`
       }));
-      
+
       setShowProviders(prev => ({
         ...prev,
         [tmdbId]: providers
       }));
-      
+
       return providers;
     } catch (error) {
       console.error(`Failed to fetch providers for show ${tmdbId}:`, error);
@@ -545,8 +545,8 @@ const MyShows: React.FC = () => {
     { key: 'completed' as const, label: 'Completed', count: stats?.byStatus.completed ?? (loadingStats ? '...' : 0) },
   ];
 
-  const StarRating: React.FC<{ 
-    rating?: number | undefined; 
+  const StarRating: React.FC<{
+    rating?: number | undefined;
     onRating?: (rating: number) => void;
     readonly?: boolean;
   }> = ({ rating, onRating, readonly = false }) => {
@@ -562,13 +562,11 @@ const MyShows: React.FC = () => {
             <button
               key={i}
               type="button"
-              className={`text-sm ${
-                readonly 
-                  ? 'cursor-default' 
-                  : 'cursor-pointer hover:scale-110 transition-transform'
-              } ${
-                isActive ? 'text-yellow-400' : 'text-gray-300'
-              }`}
+              className={`text-sm ${readonly
+                ? 'cursor-default'
+                : 'cursor-pointer hover:scale-110 transition-transform'
+                } ${isActive ? 'text-yellow-400' : 'text-gray-300'
+                }`}
               onClick={() => !readonly && onRating?.(starRating)}
               onMouseEnter={() => !readonly && setHoveredRating(starRating)}
               onMouseLeave={() => !readonly && setHoveredRating(null)}
@@ -605,7 +603,7 @@ const MyShows: React.FC = () => {
               onChange={(e) => setCountry(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
             >
-              {['US','GB','CA','AU','DE','FR','JP','KR','IN','BR'].map((code) => (
+              {['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'JP', 'KR', 'IN', 'BR'].map((code) => (
                 <option key={code} value={code}>{code}</option>
               ))}
             </select>
@@ -656,18 +654,16 @@ const MyShows: React.FC = () => {
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-                    activeTab === tab.key
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === tab.key
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
                 >
                   {tab.label}
-                  <span className={`ml-2 py-1 px-2 rounded-full text-xs ${
-                    activeTab === tab.key
-                      ? 'bg-blue-100 text-blue-600'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}>
+                  <span className={`ml-2 py-1 px-2 rounded-full text-xs ${activeTab === tab.key
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'bg-gray-100 text-gray-600'
+                    }`}>
                     {tab.count}
                   </span>
                 </button>
@@ -685,7 +681,7 @@ const MyShows: React.FC = () => {
             ) : error ? (
               <div className="text-center py-12">
                 <p className="text-red-600">{error}</p>
-                <button 
+                <button
                   onClick={() => fetchWatchlist()}
                   className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
@@ -710,7 +706,7 @@ const MyShows: React.FC = () => {
                   return (
                     <div key={userShow.id} className={`bg-gray-50 rounded-lg p-4 hover:shadow-md transition-all relative ${isExpanded ? 'lg:col-span-2 xl:col-span-3' : ''}`}>
                       {/* Main show info - clickable */}
-                      <div 
+                      <div
                         className="cursor-pointer"
                         onClick={() => toggleShowExpansion(userShow)}
                       >
@@ -749,38 +745,43 @@ const MyShows: React.FC = () => {
                             {/* Progress */}
                             {userShow.progress && (
                               <div className="mb-3">
-                                <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
-                                  <span>Progress</span>
-                                  <span>
-                                    {userShow.progress.watchedEpisodes}/
-                                    {(() => {
-                                      // First try to get episode count from current season data
-                                      const currentSeasonNumber = selectedSeasons[userShow.show.tmdb_id];
-                                      const currentSeasonEpisodes = currentSeasonNumber !== undefined ? episodeData[userShow.show.tmdb_id]?.[currentSeasonNumber]?.length : undefined;
-                                      
-                                      if (currentSeasonEpisodes) {
-                                        return currentSeasonEpisodes;
-                                      }
-                                      
-                                      // Fallback to total episodes for the whole show
-                                      return userShow.progress.totalEpisodes || 0;
-                                    })()} episodes
-                                  </span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div 
-                                    className="bg-blue-600 h-2 rounded-full"
-                                    style={{ width: `${getProgressPercentage(userShow)}%` }}
-                                  ></div>
-                                </div>
-                                {userShow.progress.currentEpisode && (
-                                  <EpisodeProgressDisplay
-                                    seasonNumber={userShow.progress.currentEpisode.season_number}
-                                    episodeNumber={userShow.progress.currentEpisode.episode_number}
-                                    episodeName={userShow.progress.currentEpisode.name || undefined} // Ensure it's string | undefined
-                                    tmdbId={userShow.show.tmdb_id}
-                                  />
-                                )}
+                                {(() => {
+                                  const tmdbId = userShow.show.tmdb_id;
+                                  const seasonNumber = selectedSeasons[tmdbId];
+                                  const seasonEpisodes = seasonNumber !== undefined
+                                    ? episodeData[tmdbId]?.[seasonNumber]
+                                    : undefined;
+
+                                  // If we have per-season episode data loaded, compute per-season progress
+                                  const denom = seasonEpisodes ? seasonEpisodes.length : (userShow.progress?.totalEpisodes || 0);
+                                  const numer = seasonEpisodes
+                                    ? seasonEpisodes.filter((ep) => ep.watched).length
+                                    : (userShow.progress?.watchedEpisodes || 0);
+                                  const pct = denom > 0 ? Math.round((numer / denom) * 100) : 0;
+
+                                  return (
+                                    <>
+                                      <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
+                                        <span>Progress</span>
+                                        <span>{numer}/{denom} episodes</span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div
+                                          className="bg-blue-600 h-2 rounded-full"
+                                          style={{ width: `${pct}%` }}
+                                        ></div>
+                                      </div>
+                                      {userShow.progress?.currentEpisode && (
+                                        <EpisodeProgressDisplay
+                                          seasonNumber={userShow.progress.currentEpisode.season_number}
+                                          episodeNumber={userShow.progress.currentEpisode.episode_number}
+                                          episodeName={userShow.progress.currentEpisode.name || undefined}
+                                          tmdbId={tmdbId}
+                                        />
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             )}
 
@@ -848,8 +849,8 @@ const MyShows: React.FC = () => {
                                         >
                                           <option value="">Select service...</option>
                                           {availableProviders.map((provider) => (
-                                            <option 
-                                              key={provider.id} 
+                                            <option
+                                              key={provider.id}
                                               value={`${provider.id}|${provider.name}|${provider.logo_url}`}
                                             >
                                               {provider.name}
@@ -918,7 +919,7 @@ const MyShows: React.FC = () => {
                                   className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                                 >
                                   <option value="">Default ({country})</option>
-                                  {['US','GB','CA','AU','DE','FR','JP','KR','IN','BR'].map((code) => (
+                                  {['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'JP', 'KR', 'IN', 'BR'].map((code) => (
                                     <option key={code} value={code}>{code}</option>
                                   ))}
                                 </select>
@@ -965,26 +966,25 @@ const MyShows: React.FC = () => {
                                       const airDate = new Date(episode.airDate);
                                       const today = new Date();
                                       const isFutureEpisode = airDate > today;
-                                      
+
                                       // Find the next unaired episode (first future episode that hasn't aired yet)
                                       const futureEpisodes = episodes.filter((ep: DisplayEpisode) => new Date(ep.airDate) > today);
                                       const nextUnaired = futureEpisodes.sort((a: DisplayEpisode, b: DisplayEpisode) => new Date(a.airDate).getTime() - new Date(b.airDate).getTime())[0];
                                       const isAiringNext = isFutureEpisode && episode.number === nextUnaired?.number;
-                                      
+
                                       return (
                                         <button
                                           key={episode.number}
                                           onClick={() => !isFutureEpisode && markEpisodeWatched(userShow.show.tmdb_id, selectedSeason, episode.number)}
                                           disabled={isFutureEpisode}
-                                          className={`w-full text-left p-2 rounded text-sm transition-colors ${
-                                            isAiringNext
-                                              ? 'bg-blue-50 text-blue-700 cursor-not-allowed'
-                                              : isFutureEpisode
-                                                ? 'bg-gray-50 text-gray-500 cursor-not-allowed'
+                                          className={`w-full text-left p-2 rounded text-sm transition-colors ${isAiringNext
+                                            ? 'bg-blue-50 text-blue-700 cursor-not-allowed'
+                                            : isFutureEpisode
+                                              ? 'bg-gray-50 text-gray-500 cursor-not-allowed'
                                               : episode.watched
                                                 ? 'bg-green-100 text-green-800'
                                                 : 'bg-white hover:bg-gray-100'
-                                          }`}
+                                            }`}
                                         >
                                           <div className="flex items-center justify-between">
                                             <span className="font-medium">
@@ -999,27 +999,54 @@ const MyShows: React.FC = () => {
                                       );
                                     })}
                                   </div>
-                                  
+
                                   {/* Season progress */}
                                   <div className="space-y-2">
                                     <div className="text-sm text-gray-600">
                                       {episodes.filter((ep: DisplayEpisode) => ep.watched).length}/{episodes.length} episodes watched in season {selectedSeason}
                                     </div>
-                                    
+
                                     {/* Full show progress bar - simplified version */}
                                     <div className="space-y-1">
-                                      <div className="text-xs text-gray-500">Overall series progress</div>
-                                      <div className="w-full bg-gray-200 rounded-full h-2">
-                                        <div
-                                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                          style={{ width: `${getProgressPercentage(userShow)}%` }}
-                                        ></div>
-                                      </div>
-                                      <div className="flex justify-between text-xs text-gray-500">
-                                        <span>0 episodes</span>
-                                        <span>{userShow.progress?.watchedEpisodes || 0}/{userShow.progress?.totalEpisodes || 0} total episodes</span>
-                                        <span>{userShow.progress?.totalEpisodes || 0} episodes</span>
-                                      </div>
+                                      {(() => {
+                                        const tmdbId = userShow.show.tmdb_id;
+                                        // Prefer API-provided overall progress if present; otherwise derive.
+                                        const apiProgress = userShow.progress;
+
+                                        const overallTotal = (apiProgress?.totalEpisodes && apiProgress.totalEpisodes > 0)
+                                          ? apiProgress.totalEpisodes
+                                          : (analysis?.seasonInfo?.reduce((sum: number, s: any) => sum + (s.episodeCount || 0), 0) || 0);
+
+                                        // Derive watched from API if available; otherwise count watched episodes from any seasons we have in memory.
+                                        const allSeasonData = episodeData[tmdbId] || {};
+                                        const watchedDerived = Object.values(allSeasonData).reduce((acc: number, seasonEps: any) => {
+                                          const arr = (seasonEps as any[]) || [];
+                                          return acc + arr.filter((ep: any) => ep.watched).length;
+                                        }, 0);
+                                        const overallWatched = Math.max(
+                                          (apiProgress?.watchedEpisodes ?? 0),
+                                          watchedDerived
+                                        );
+
+                                        const pct = overallTotal > 0 ? Math.round((overallWatched / overallTotal) * 100) : 0;
+
+                                        return (
+                                          <>
+                                            <div className="text-xs text-gray-500">Overall series progress</div>
+                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                              <div
+                                                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                                style={{ width: `${pct}%` }}
+                                              ></div>
+                                            </div>
+                                            <div className="flex justify-between text-xs text-gray-500">
+                                              <span>0 episodes</span>
+                                              <span>{overallWatched}/{overallTotal} total episodes</span>
+                                              <span>{overallTotal} episodes</span>
+                                            </div>
+                                          </>
+                                        );
+                                      })()}
                                     </div>
                                   </div>
                                 </div>

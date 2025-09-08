@@ -216,7 +216,7 @@ export class TMDBClient {
    */
   async detectReleasePatternFromTitle(
     showTitle: string
-  ): Promise<{ pattern: import('../types.js').ReleasePattern; tmdbId?: number } | null> {
+  ): Promise<{ pattern: 'weekly' | 'binge' | 'unknown'; tmdbId?: number } | null> {
     try {
       // Search for the show
       const searchResults = await this.searchTV(showTitle);
@@ -232,7 +232,7 @@ export class TMDBClient {
       const episodes = await this.getLatestSeasonEpisodes(show.id);
       
       if (!episodes.length) {
-        return { pattern: 'unknown' as const, tmdbId: show.id };
+        return { pattern: 'unknown' as 'weekly' | 'binge' | 'unknown', tmdbId: show.id };
       }
       
       // Use existing release pattern service to analyze
@@ -240,7 +240,7 @@ export class TMDBClient {
       const analysis = releasePatternService.analyzeEpisodes(episodes);
       
       return {
-        pattern: analysis.pattern.pattern,
+        pattern: analysis.pattern.pattern as 'weekly' | 'binge' | 'unknown',
         tmdbId: show.id
       };
     } catch (error) {

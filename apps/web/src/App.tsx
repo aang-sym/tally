@@ -1,5 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
+// Context Providers
+import { AuthProvider } from './context/AuthContext';
+
 // Layout Components
 import Layout from './components/Layout';
 
@@ -16,8 +19,9 @@ import TVGuide from './pages/TVGuide';
 
 function App() {
   return (
-    <Router>
-      <Routes>
+    <AuthProvider>
+      <Router>
+        <Routes>
         {/* Landing Page (public) */}
         <Route path="/" element={<LandingPage />} />
         
@@ -42,8 +46,9 @@ function App() {
 
         {/* Catch all route - redirect to landing */}
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 

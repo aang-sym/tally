@@ -663,6 +663,71 @@ export class WatchlistService {
     }
   }
 
+  /**
+   * Helper method to find streaming service UUID by TMDB provider ID
+   * Creates the service if it doesn't exist
+   */
+  private async getStreamingServiceUUID(tmdbProviderId: number, providerName: string, logoUrl?: string): Promise<string | null> {
+    try {
+      // First try to find by TMDB provider ID
+      const { data: serviceById } = await serviceSupabase
+        .from('streaming_services')
+        .select('id')
+        .eq('tmdb_provider_id', tmdbProviderId)
+        .single();
+
+      if (serviceById?.id) {
+        return serviceById.id;
+      }
+
+      // Fall back to name search (case insensitive)
+      const { data: serviceByName } = await serviceSupabase
+        .from('streaming_services')
+        .select('id')
+        .ilike('name', providerName)
+        .single();
+
+      if (serviceByName?.id) {
+        return serviceByName.id;
+      }
+
+      // Create new streaming service if it doesn't exist
+      const logoPath = logoUrl ? (() => {
+        try { return new URL(logoUrl).pathname; } catch { return null; }
+      })() : null;
+
+      const { data: newService, error: insertError } = await serviceSupabase
+        .from('streaming_services')
+        .insert([{
+          tmdb_provider_id: tmdbProviderId,
+          name: providerName,
+          logo_path: logoPath
+        }])
+        .select('id')
+        .single();
+
+      if (insertError) {
+        console.error('[WATCHLIST_SERVICE] Failed to create streaming service:', {
+          tmdbProviderId,
+          providerName,
+          error: insertError
+        });
+        return null;
+      }
+
+      console.log('[WATCHLIST_SERVICE] Created new streaming service:', {
+        tmdbProviderId,
+        providerName,
+        uuid: newService.id
+      });
+
+      return newService.id;
+    } catch (error) {
+      console.error('[WATCHLIST_SERVICE] getStreamingServiceUUID failed:', error);
+      return null;
+    }
+  }
+
   async updateStreamingProvider(
     userId: string,
     userShowId: string,
@@ -680,8 +745,29 @@ export class WatchlistService {
         return false;
       }
 
+      let selectedServiceId: string | null = null;
+
+      // Convert TMDB provider ID to UUID if provider is specified
+      if (provider) {
+        selectedServiceId = await this.getStreamingServiceUUID(
+          provider.id,
+          provider.name,
+          provider.logo_url
+        );
+
+        if (!selectedServiceId) {
+          console.error('[WATCHLIST_SERVICE] updateStreamingProvider: failed to resolve service UUID', {
+            userId,
+            userShowId,
+            tmdbProviderId: provider.id,
+            providerName: provider.name
+          });
+          return false;
+        }
+      }
+
       const updateData: Partial<UserShow> = {
-        selected_service_id: provider ? provider.id.toString() : null,
+        selected_service_id: selectedServiceId,
         updated_at: new Date().toISOString()
       };
 
@@ -708,7 +794,8 @@ export class WatchlistService {
       console.log('[WATCHLIST_SERVICE] updateStreamingProvider: update succeeded', {
         userShowId,
         userId,
-        providerId: updateData.selected_service_id,
+        tmdbProviderId: provider?.id,
+        serviceUUID: selectedServiceId,
         persistedRow: data,
       });
       return true;

@@ -33,17 +33,17 @@ function getUserToken(req: Request): string | undefined {
 router.get('/', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-// Diagnostic logging for GET /
-const token = getUserToken(req);
-console.log('🧪 [WATCHLIST-V2][GET /] Auth diagnostics:', {
-  hasAuthHeader: !!req.headers.authorization,
-  tokenPresent: !!token,
-  tokenStart: token ? token.substring(0, 20) + '...' : 'none',
-  userId: req.userId,
-  status: req.query.status || 'all',
-  timestamp: new Date().toISOString()
-});
-    
+    // Diagnostic logging for GET /
+    const token = getUserToken(req);
+    console.log('🧪 [WATCHLIST-V2][GET /] Auth diagnostics:', {
+      hasAuthHeader: !!req.headers.authorization,
+      tokenPresent: !!token,
+      tokenStart: token ? token.substring(0, 20) + '...' : 'none',
+      userId: req.userId,
+      status: req.query.status || 'all',
+      timestamp: new Date().toISOString()
+    });
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -51,29 +51,60 @@ console.log('🧪 [WATCHLIST-V2][GET /] Auth diagnostics:', {
       });
     }
     const status = req.query.status as string;
-    
+
     // Supabase path
     const watchlistService = new WatchlistService(getUserToken(req));
     const watchlist = await watchlistService.getUserWatchlist(userId, status as any);
-console.log('🧪 [WATCHLIST-V2][GET /] Data shape diagnostics:', {
-  itemCount: (watchlist || []).length,
-  sampleKeys: watchlist && watchlist[0] ? Object.keys(watchlist[0]) : [],
-  hasShowKey: watchlist && watchlist[0] ? 'show' in watchlist[0] : false,
-  hasShowsKey: watchlist && watchlist[0] ? 'shows' in watchlist[0] : false,
-  showKeys: watchlist && watchlist[0] && (watchlist[0] as any).show ? Object.keys((watchlist[0] as any).show) : [],
-});
+    console.log('🧪 [WATCHLIST-V2][GET /] Data shape diagnostics:', {
+      itemCount: (watchlist || []).length,
+      sampleKeys: watchlist && watchlist[0] ? Object.keys(watchlist[0]) : [],
+      hasShowKey: watchlist && watchlist[0] ? 'show' in watchlist[0] : false,
+      hasShowsKey: watchlist && watchlist[0] ? 'shows' in watchlist[0] : false,
+      showKeys: watchlist && watchlist[0] && (watchlist[0] as any).show ? Object.keys((watchlist[0] as any).show) : [],
+    });
 
-    // Normalize poster paths to full TMDB URLs for the web client
-    const normalized = (watchlist || []).map(item => {
-      // Fix: Supabase returns show data under 'show' key, which is correct.
-      const show: any = { ...(item as any).shows };
-      if (show && show.poster_path) {
-        if (typeof show.poster_path === 'string' && show.poster_path.startsWith('/')) {
-          show.poster_path = `https://image.tmdb.org/t/p/w500${show.poster_path}`;
+    // Normalize poster paths and attach selected streaming provider for each row
+    // 1) collect selected_service_id values to batch-fetch providers
+    const selectedIds = (watchlist || [])
+      .map((it: any) => it?.selected_service_id)
+      .filter((v: any): v is string => typeof v === 'string' && v.length > 0);
+
+    let providerByUuid = new Map<string, { id: number; name: string; logo_url: string }>();
+    if (selectedIds.length > 0) {
+      const { data: providers, error: provErr } = await serviceSupabase
+        .from('streaming_services')
+        .select('id, tmdb_provider_id, name, logo_path')
+        .in('id', Array.from(new Set(selectedIds)));
+
+      if (provErr) {
+        console.error('⚠️ [WATCHLIST-V2][GET /] provider fetch error:', provErr);
+      } else {
+        for (const p of providers || []) {
+          const logo_url = p.logo_path
+            ? (p.logo_path.startsWith('http') ? p.logo_path : `https://image.tmdb.org/t/p/w45${p.logo_path}`)
+            : null;
+          providerByUuid.set(p.id, {
+            id: p.tmdb_provider_id,
+            name: p.name,
+            logo_url: logo_url || ''
+          });
         }
       }
-      return { ...item, show };
+    }
+
+    const normalized = (watchlist || []).map((item: any) => {
+      // Supabase returns show data under 'show' (singular). Keep a defensive fallback.
+      const show = { ...(item.show ?? item.shows) };
+      if (show && show.poster_path && typeof show.poster_path === 'string' && show.poster_path.startsWith('/')) {
+        show.poster_path = `https://image.tmdb.org/t/p/w500${show.poster_path}`;
+      }
+
+      const selectedUuid = item.selected_service_id as string | null;
+      const streaming_provider = selectedUuid ? providerByUuid.get(selectedUuid) ?? null : null;
+
+      return { ...item, show, streaming_provider };
     });
+
     res.json({ success: true, data: { shows: normalized, totalCount: normalized.length, statusFilter: status || 'all' } });
   } catch (error) {
     console.error('Failed to get watchlist:', error);
@@ -92,7 +123,7 @@ console.log('🧪 [WATCHLIST-V2][GET /] Data shape diagnostics:', {
 router.get('/stats', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -120,7 +151,7 @@ router.get('/stats', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     console.log('🎬 [ROUTE] Starting watchlist addition:', {
       userId,
       body: req.body,
@@ -128,7 +159,7 @@ router.post('/', async (req: Request, res: Response) => {
       authHeaderStart: req.headers.authorization ? req.headers.authorization.substring(0, 20) + '...' : 'none',
       timestamp: new Date().toISOString()
     });
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -152,16 +183,16 @@ router.post('/', async (req: Request, res: Response) => {
       userTokenLength: userToken?.length || 0,
       userTokenStart: userToken ? userToken.substring(0, 30) + '...' : 'none'
     });
-    
+
     const watchlistService = new WatchlistService(userToken);
-    
+
     console.log('🚀 [ROUTE] Calling WatchlistService.addToWatchlist...', {
       userId,
       tmdbId,
       status,
       timestamp: new Date().toISOString()
     });
-    
+
     const userShow = await watchlistService.addToWatchlist(userId, tmdbId, status);
 
     if (!userShow) {
@@ -177,7 +208,7 @@ router.post('/', async (req: Request, res: Response) => {
         error: 'Failed to add show to watchlist - service returned null'
       });
     }
-    
+
     console.log('✅ [ROUTE] WatchlistService returned success:', {
       userShowId: userShow.id,
       showId: userShow.show_id,
@@ -216,7 +247,7 @@ router.post('/', async (req: Request, res: Response) => {
       timestamp: new Date().toISOString(),
       isPGRST301: (error as any)?.code === 'PGRST301'
     });
-    
+
     // Special handling for PGRST301 errors
     if ((error as any)?.code === 'PGRST301') {
       console.error('🔥 [ROUTE] PGRST301 ERROR DETECTED - Foreign key constraint issue:', {
@@ -228,7 +259,7 @@ router.post('/', async (req: Request, res: Response) => {
         userToken: getUserToken(req) ? 'present' : 'missing'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: `Failed to add show to watchlist: ${(error as any)?.code || 'UNKNOWN_ERROR'}`,
@@ -246,7 +277,7 @@ router.post('/', async (req: Request, res: Response) => {
 router.put('/:id/status', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -283,7 +314,7 @@ router.put('/:id/status', async (req: Request, res: Response) => {
 router.put('/:id/rating', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -321,7 +352,7 @@ router.put('/:id/rating', async (req: Request, res: Response) => {
 router.put('/:id/notes', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -482,7 +513,7 @@ router.put('/:id/buffer', async (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -513,7 +544,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 router.get('/watching', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -539,7 +570,7 @@ router.get('/watching', async (req: Request, res: Response) => {
 router.get('/watching/:showId', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -569,8 +600,8 @@ router.get('/watching/:showId', async (req: Request, res: Response) => {
         progress,
         totalEpisodes: progress.totalEpisodes,
         watchedEpisodes: progress.watchedEpisodes,
-        completionPercentage: progress.totalEpisodes > 0 
-          ? Math.round((progress.watchedEpisodes / progress.totalEpisodes) * 100) 
+        completionPercentage: progress.totalEpisodes > 0
+          ? Math.round((progress.watchedEpisodes / progress.totalEpisodes) * 100)
           : 0
       }
     });
@@ -592,7 +623,7 @@ router.get('/watching/:showId', async (req: Request, res: Response) => {
 router.post('/search-and-add', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -612,7 +643,7 @@ router.post('/search-and-add', async (req: Request, res: Response) => {
           error: 'No shows found for the given query'
         });
       }
-      
+
       // Use first result
       showId = searchResults[0].id;
     }
@@ -906,8 +937,8 @@ router.put('/:tmdbId/progress', async (req: Request, res: Response) => {
           status === 'watched'
             ? `Marked ${updatedCount}/${targetEpisodes.length} episodes as watched`
             : status === 'unwatched'
-            ? `Marked ${updatedCount}/${targetEpisodes.length} episodes as unwatched`
-            : `Marked ${updatedCount}/${targetEpisodes.length} episodes as watching`
+              ? `Marked ${updatedCount}/${targetEpisodes.length} episodes as unwatched`
+              : `Marked ${updatedCount}/${targetEpisodes.length} episodes as watching`
       }
     });
   } catch (error) {
@@ -918,5 +949,5 @@ router.put('/:tmdbId/progress', async (req: Request, res: Response) => {
     });
   }
 });
- 
+
 export default router;

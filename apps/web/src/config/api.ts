@@ -12,8 +12,8 @@ export const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL as string) || 'h
 export const API_ENDPOINTS = {
   // Authentication
   auth: {
-    login: `${API_BASE_URL}/api/users/login`,
-    signup: `${API_BASE_URL}/api/users/signup`,
+    login: `${API_BASE_URL}/api/auth/login`,
+    signup: `${API_BASE_URL}/api/auth/register`,
   },
 
   // Users

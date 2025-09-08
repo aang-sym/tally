@@ -37,10 +37,48 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
         console.log('Authorization required - user needs to create an account first');
       }
     }
-  };  const switchUser = (userId: string) => {
+  };  const switchUser = async (userId: string) => {
     const currentToken = localStorage.getItem('authToken');
     console.log('[AUTH DEBUG] Switching to user:', userId);
     console.log('[AUTH DEBUG] Current stored token:', currentToken ? `${currentToken.substring(0, 20)}...` : 'none');
+    
+    // Find the user we're switching to
+    const targetUser = users.find(user => user.id === userId);
+    if (!targetUser) {
+      console.error('User not found:', userId);
+      return;
+    }
+    
+    // For test users with known passwords, we can auto-login
+    const testCredentials: { [key: string]: string } = {
+      'freshtest@example.com': 'testpassword123',
+      'test1@example.com': 'password123',
+      'test2@example.com': 'password123', 
+      'admin@test.com': 'password123'
+    };
+    
+    const password = testCredentials[targetUser.email];
+    if (password) {
+      try {
+        // Login as the target user
+        const loginData = await apiRequest(API_ENDPOINTS.auth.login, {
+          method: 'POST',
+          body: JSON.stringify({
+            email: targetUser.email,
+            password: password
+          })
+        });
+        
+        if (loginData.token) {
+          localStorage.setItem('authToken', loginData.token);
+          localStorage.setItem('current_user_id', loginData.user.id);
+          console.log('[AUTH DEBUG] Successfully switched to user:', targetUser.email);
+        }
+      } catch (error) {
+        console.error('[AUTH DEBUG] Failed to login as target user:', error);
+        // Fall back to just setting the user ID
+      }
+    }
     
     UserManager.setCurrentUserId(userId);
     setCurrentUserId(userId);
@@ -59,27 +97,27 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
     try {
       setLoading(true);
       // Use the correct auth endpoint for registration
-      const data = await apiRequest(`${API_ENDPOINTS.users.base}/signup`, {
+      const data = await apiRequest(API_ENDPOINTS.auth.signup, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           email: userData.email,
-          password: userData.password,
-          displayName: userData.displayName
+          password: userData.password
         })
       });
 
-      if (data.data && data.data.token) { // Store the token if received
-        localStorage.setItem('authToken', data.data.token);
-        console.log('[AUTH DEBUG] Stored JWT token:', `${data.data.token.substring(0, 20)}...`);
+      if (data.token) { // Store the token if received
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('current_user_id', data.user.id);
+        console.log('[AUTH DEBUG] Stored JWT token:', `${data.token.substring(0, 20)}...`);
       } else {
         console.error('[AUTH DEBUG] No token received in signup response:', data);
       }
 
       await loadUsers();
-      switchUser(data.data.user.id); // User object is under data.data
+      switchUser(data.user.id); // User object is directly in response
       setShowCreateModal(false);
     } catch (error: any) {
       console.error('Failed to create user:', error);
@@ -115,32 +153,47 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
               <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b">
                 Users
               </div>
-              {users.map((user) => (
-                <button
-                  key={user.id}
-                  onClick={() => switchUser(user.id)}
-                  className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors ${
-                    user.id === currentUserId ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
-                      user.id === currentUserId ? 'bg-blue-500' : 'bg-gray-400'
-                    }`}>
-                      {user.display_name?.charAt(0) || 'U'}
+              {users.map((user) => {
+                const testCredentials = ['freshtest@example.com', 'test1@example.com', 'test2@example.com', 'admin@test.com'];
+                const hasKnownPassword = testCredentials.includes(user.email);
+                
+                return (
+                  <button
+                    key={user.id}
+                    onClick={() => switchUser(user.id)}
+                    className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors ${
+                      user.id === currentUserId ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
+                        user.id === currentUserId ? 'bg-blue-500' : hasKnownPassword ? 'bg-green-500' : 'bg-gray-400'
+                      }`}>
+                        {user.display_name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm flex items-center">
+                          {user.display_name || user.email}
+                          {hasKnownPassword && (
+                            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Quick
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                        {user.id === currentUserId && (
+                          <div className="text-xs text-blue-600 font-medium">Current User</div>
+                        )}
+                      </div>
+                      {user.id === currentUserId && (
+                        <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm">{user.display_name || user.email}</div>
-                      <div className="text-xs text-gray-500 truncate">{user.email}</div>
-                    </div>
-                    {user.id === currentUserId && (
-                      <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
               
               <div className="border-t mt-1">
                 <button
