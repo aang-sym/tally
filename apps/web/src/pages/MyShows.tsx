@@ -151,6 +151,21 @@ const MyShows: React.FC = () => {
   const [country, setCountry] = useState<string>(UserManager.getCountry());
   const [posterOverrides, setPosterOverrides] = useState<{ [tmdbId: number]: string | undefined }>({});
 
+  // Persist user's country to profile so API routes can fall back to users.country_code
+  const persistUserCountry = async (code: string) => {
+    try {
+      const userId = UserManager.getCurrentUserId();
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.users.base}/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ countryCode: code })
+      }, token);
+    } catch (e) {
+      console.warn('Failed to persist user country; keeping local override only', e);
+    }
+  };
+
   // Fetch watchlist data
   useEffect(() => {
     fetchWatchlist();
@@ -160,6 +175,7 @@ const MyShows: React.FC = () => {
   // When country changes, persist and refresh provider lists
   useEffect(() => {
     UserManager.setCountry(country);
+    persistUserCountry(country);
     setShowProviders({});
     // Re-fetch providers for current shows
     if (shows.length > 0) {
@@ -361,7 +377,8 @@ const MyShows: React.FC = () => {
     try {
       setLoadingAnalysis(prev => ({ ...prev, [tmdbId]: true }));
 
-      const response = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/analyze`);
+      const country = UserManager.getCountry();
+      const response = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/analyze?country=${country}`);
       if (!response.ok) throw new Error('Failed to fetch analysis');
 
       const data = await response.json();
@@ -477,10 +494,11 @@ const MyShows: React.FC = () => {
     try {
       const token = localStorage.getItem('authToken') || undefined;
 
-      // 1) Get total planned episodes across all seasons from analyze (no country filter)
+      // 1) Get total planned episodes across all seasons from analyze (country filter)
       let total = 0;
       try {
-        const analyzeResp = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/analyze`);
+        const ctry = UserManager.getCountry();
+        const analyzeResp = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/analyze?country=${ctry}`);
         if (analyzeResp.ok) {
           const analyze = await analyzeResp.json();
           const seasonInfo = analyze?.analysis?.seasonInfo || [];

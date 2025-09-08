@@ -413,55 +413,57 @@ router.get('/:id/profile', authenticateUser, async (req: Request, res: Response)
  * Update user information
  * Requires authentication - users can only update their own profile
  */
+// Update basic user fields (country_code, display_name, timezone, etc.)
 router.put('/:id', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { displayName, email, avatarUrl } = req.body;
 
-    const updateData: any = {};
-    if (displayName) updateData.display_name = displayName;
-    if (email) updateData.email = email;
-    if (avatarUrl !== undefined) updateData.avatar_url = avatarUrl;
-
-    if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'No update data provided'
-      });
+    // only allow self-update unless you add role checks
+    const authedUserId = (req as any).user?.id;
+    if (authedUserId && authedUserId !== id) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
     }
 
-    const { data: user, error } = await supabase
+    // accept either camelCase or snake_case
+    const {
+      countryCode,
+      country_code,
+      displayName,
+      display_name,
+      timezone,
+    } = req.body || {};
+
+    const update: any = {};
+    if (countryCode || country_code) {
+      update.country_code = String(countryCode || country_code).toUpperCase();
+    }
+    if (displayName || display_name) {
+      update.display_name = String(displayName || display_name);
+    }
+    if (timezone) {
+      update.timezone = String(timezone);
+    }
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ success: false, error: 'No valid fields to update' });
+    }
+
+    const { data, error } = await serviceSupabase
       .from('users')
-      .update(updateData)
+      .update(update)
       .eq('id', id)
-      .select('id, email, display_name, avatar_url, is_test_user, created_at')
+      .select('id, email, display_name, country_code, timezone')
       .single();
 
     if (error) {
-      throw error;
+      console.error('[users/PUT] Update failed', error);
+      return res.status(500).json({ success: false, error: 'Failed to update user' });
     }
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        user,
-        message: 'User updated successfully'
-      }
-    });
-  } catch (error) {
-    console.error('Failed to update user:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to update user',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    return res.json({ success: true, data });
+  } catch (e) {
+    console.error('[users/PUT] Unexpected error', e);
+    return res.status(500).json({ success: false, error: 'Unexpected error' });
   }
 });
 
@@ -587,7 +589,16 @@ router.post('/bulk-create', authenticateUser, async (req: Request, res: Response
 router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const country = (req.query.country as string) || 'US';
+    let country = (req.query.country as string) || '';
+    if (!country) {
+      const { data: userRow } = await serviceSupabase
+        .from('users')
+        .select('country_code')
+        .eq('id', id)
+        .single();
+      country = (userRow?.country_code as string) || 'US';
+    }
+    country = country.toUpperCase();
 
     if (req.userId !== id) {
       return res.status(403).json({ success: false, error: 'Forbidden: You can only access your own subscriptions.' });
@@ -612,7 +623,7 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
           name,
           logo_path,
           homepage,
-          streaming_service_prices:streaming_service_prices!inner (
+          streaming_service_prices (
             tier,
             monthly_cost,
             currency,
@@ -625,7 +636,6 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
         )
       `)
       .eq('user_id', id)
-      .eq('streaming_services.streaming_service_prices.country_code', country.toUpperCase())
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -654,8 +664,9 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
       const svcPricesSrc = Array.isArray(svc?.streaming_service_prices)
         ? svc.streaming_service_prices
         : [];
+      const svcPricesCountry = svcPricesSrc.filter((p: any) => (p?.country_code || '').toUpperCase() === country);
 
-      const prices = svcPricesSrc
+      const prices = svcPricesCountry
         .filter((p: any) => p && (p.active ?? true))
         .map((p: any) => ({
           tier: p.tier,
@@ -667,8 +678,8 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
           provider_name: p.provider_name ?? svc?.name ?? null,
         }));
 
-      const rank = (t: string) => {
-        const s = (t || '').toLowerCase();
+      const rank = (t: string | null | undefined): number => {
+        const s = (t ?? '').toLowerCase();
         if (s.startsWith('standard')) return 1;
         if (s.includes('no ads')) return 2;
         if (s.includes('ads')) return 3;
@@ -676,7 +687,10 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
         return 9;
       };
       const default_price = prices.length
-        ? prices.slice().sort((a, b) => rank(a.tier) - rank(b.tier))[0]
+        ? [...prices].sort(
+            (a: { tier: string | null | undefined }, b: { tier: string | null | undefined }) =>
+              rank(a.tier) - rank(b.tier)
+          )[0]
         : null;
       // --- END normalize prices and default_price ---
 

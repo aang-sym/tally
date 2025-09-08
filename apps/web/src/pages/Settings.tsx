@@ -116,7 +116,8 @@ const Settings: React.FC = () => {
       setLoading(true);
       const userId = UserManager.getCurrentUserId();
       const token = localStorage.getItem('authToken') || undefined;
-      const data = await apiRequest(API_ENDPOINTS.users.subscriptions(userId), {}, token);
+      const country = UserManager.getCountry?.() || 'US';
+      const data = await apiRequest(`${API_ENDPOINTS.users.subscriptions(userId)}?country=${country}`, {}, token);
       setUserSubscriptions(data.data.subscriptions || []);
       setError(null);
     } catch (err) {
@@ -204,6 +205,22 @@ const Settings: React.FC = () => {
       alert(`Failed to ${isActive ? 'add' : 'remove'} ${service.name} subscription`);
     } finally {
       setSavingSubscription(null);
+    }
+  };
+
+  const updateSubscriptionTier = async (subscriptionId: string, newTier: string) => {
+    try {
+      const userId = UserManager.getCurrentUserId();
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(`${API_ENDPOINTS.users.subscriptions(userId)}/${subscriptionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier: newTier })
+      }, token);
+      await loadUserSubscriptions();
+    } catch (err) {
+      console.error('Failed to update tier:', err);
+      alert('Failed to update tier');
     }
   };
 
@@ -477,9 +494,27 @@ const Settings: React.FC = () => {
                           </div>
                         ) : null)}
 
-                        {/* Edit cost for existing subscription */}
                         {subscribed && subscription && (
                           <div className="mt-3">
+                            {(service.prices && service.prices.length > 0) && (
+                              <div className="mb-3">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tier</label>
+                                <select
+                                  className="border rounded px-2 py-1 text-sm"
+                                  value={subscription.tier || service.default_price?.tier || ''}
+                                  onChange={(e) => updateSubscriptionTier(subscription.id, e.target.value)}
+                                >
+                                  {service.prices
+                                    .filter(t => t.active !== false)
+                                    .map(t => (
+                                      <option key={t.tier} value={t.tier}>
+                                        {t.tier}{t.amount != null ? ` — ${t.currency ?? ''}${t.amount.toFixed(2)}/mo` : ''}
+                                      </option>
+                                    ))}
+                                </select>
+                              </div>
+                            )}
+
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               Monthly Cost
                             </label>
