@@ -11,13 +11,13 @@ import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { authenticateUser } from '../middleware/user-identity.js';
-import { 
-  sendErrorResponse, 
-  sendSuccessResponse, 
-  handleDatabaseError, 
+import {
+  sendErrorResponse,
+  sendSuccessResponse,
+  handleDatabaseError,
   handleValidationError,
   handleNotFoundError,
-  asyncHandler 
+  asyncHandler
 } from '../utils/errorHandler.js';
 
 const router = Router();
@@ -55,7 +55,7 @@ router.post('/signup', asyncHandler(async (req: Request, res: Response) => {
   // Validation
   if (!email || !password || !displayName) {
     return sendErrorResponse(res, handleValidationError(
-      'required fields', 
+      'required fields',
       'Email, password, and display name are required'
     ), 400);
   }
@@ -64,7 +64,7 @@ router.post('/signup', asyncHandler(async (req: Request, res: Response) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     return sendErrorResponse(res, handleValidationError(
-      'email', 
+      'email',
       'Please provide a valid email address'
     ), 400);
   }
@@ -72,7 +72,7 @@ router.post('/signup', asyncHandler(async (req: Request, res: Response) => {
   // Basic password validation
   if (password.length < 6) {
     return sendErrorResponse(res, handleValidationError(
-      'password', 
+      'password',
       'Password must be at least 6 characters long'
     ), 400);
   }
@@ -86,7 +86,7 @@ router.post('/signup', asyncHandler(async (req: Request, res: Response) => {
 
   if (existingUser) {
     return sendErrorResponse(res, handleValidationError(
-      'email', 
+      'email',
       'A user with this email already exists'
     ), 409);
   }
@@ -170,7 +170,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
     // Verify password
     const validPassword = await bcrypt.compare(password, user.password_hash);
-    
+
     if (!validPassword) {
       return res.status(401).json({
         success: false,
@@ -596,6 +596,7 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
       .from('user_streaming_subscriptions')
       .select(`
         id,
+        user_id,
         service_id,
         monthly_cost,
         is_active,
@@ -605,10 +606,10 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
         updated_at,
         streaming_services:service_id (
           id,
+          tmdb_provider_id,
           name,
           logo_path,
-          base_url,
-          country_code
+          homepage
         )
       `)
       .eq('user_id', id)
@@ -624,16 +625,36 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
       throw error;
     }
 
-    // Transform the data to match the expected format
-    const formattedSubscriptions = subscriptions?.map(sub => ({
-      id: sub.id,
-      service_id: sub.service_id,
-      monthly_cost: sub.monthly_cost,
-      is_active: sub.is_active,
-      started_date: sub.started_date,
-      ended_date: sub.ended_date,
-      service: Array.isArray(sub.streaming_services) ? sub.streaming_services[0] : sub.streaming_services
-    })) || [];
+    // Transform the data to match the expected format (normalize provider fields)
+    const formattedSubscriptions = (subscriptions ?? []).map((sub: any) => {
+      const svc = Array.isArray(sub.streaming_services)
+        ? sub.streaming_services[0]
+        : sub.streaming_services;
+
+      const logo_url = svc?.logo_path
+        ? (typeof svc.logo_path === 'string' && svc.logo_path.startsWith('http')
+          ? svc.logo_path
+          : `https://image.tmdb.org/t/p/w45${svc.logo_path}`)
+        : null;
+
+      return {
+        id: sub.id,
+        service_id: sub.service_id,
+        monthly_cost: sub.monthly_cost,
+        is_active: sub.is_active,
+        started_date: sub.started_date,
+        ended_date: sub.ended_date,
+        service: svc
+          ? {
+            id: svc.id,
+            tmdb_provider_id: svc.tmdb_provider_id,
+            name: svc.name,
+            logo_url,
+            homepage: svc.homepage || null,
+          }
+          : null,
+      };
+    }) || [];
 
     res.json({
       success: true,
