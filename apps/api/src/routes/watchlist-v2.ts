@@ -367,6 +367,115 @@ router.put('/:id/notes', async (req: Request, res: Response) => {
 });
 
 /**
+ * PUT /api/watchlist-v2/:id/provider
+ * Update streaming provider for the user's show
+ *
+ * Body: { provider: { id: number, name: string, logo_url: string } | null }
+ */
+router.put('/:id/provider', async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'User not authenticated' });
+    }
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, error: 'Show ID is required.' });
+    }
+    const { provider } = req.body;
+
+    // Validate provider structure if not null
+    if (provider !== null && (typeof provider !== 'object' || !provider.id || !provider.name || !provider.logo_url)) {
+      return res.status(400).json({ success: false, error: 'Invalid provider object. Expected { id: number, name: string, logo_url: string } or null.' });
+    }
+
+    const watchlistService = new WatchlistService(getUserToken(req));
+    const success = await watchlistService.updateStreamingProvider(userId, id, provider);
+
+    if (!success) {
+      return res.status(404).json({ success: false, error: 'Show not found or access denied' });
+    }
+
+    res.json({ success: true, data: { provider, message: 'Streaming provider updated successfully' } });
+  } catch (error) {
+    console.error('Failed to update streaming provider:', error);
+    res.status(500).json({ success: false, error: 'Failed to update streaming provider' });
+  }
+});
+
+/**
+ * PUT /api/watchlist-v2/:id/country
+ * Update country code for the user's show
+ *
+ * Body: { countryCode: string | null }
+ */
+router.put('/:id/country', async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'User not authenticated' });
+    }
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, error: 'Show ID is required.' });
+    }
+    const { countryCode } = req.body;
+
+    if (countryCode !== null && typeof countryCode !== 'string') {
+      return res.status(400).json({ success: false, error: 'Invalid countryCode. Expected string or null.' });
+    }
+
+    const watchlistService = new WatchlistService(getUserToken(req));
+    const success = await watchlistService.updateCountryCode(userId, id, countryCode);
+
+    if (!success) {
+      return res.status(404).json({ success: false, error: 'Show not found or access denied' });
+    }
+
+    res.json({ success: true, data: { countryCode, message: 'Country code updated successfully' } });
+  } catch (error) {
+    console.error('Failed to update country code:', error);
+    res.status(500).json({ success: false, error: 'Failed to update country code' });
+  }
+});
+
+/**
+ * PUT /api/watchlist-v2/:id/buffer
+ * Update buffer days for the user's show
+ *
+ * Body: { bufferDays: number }
+ */
+router.put('/:id/buffer', async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'User not authenticated' });
+    }
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, error: 'Show ID is required.' });
+    }
+    const { bufferDays } = req.body;
+
+    if (typeof bufferDays !== 'number' || bufferDays < 0) {
+      return res.status(400).json({ success: false, error: 'Invalid bufferDays. Expected a non-negative number.' });
+    }
+
+    const watchlistService = new WatchlistService(getUserToken(req));
+    const success = await watchlistService.updateBufferDays(userId, id, bufferDays);
+
+    if (!success) {
+      return res.status(404).json({ success: false, error: 'Show not found or access denied' });
+    }
+
+    res.json({ success: true, data: { bufferDays, message: 'Buffer days updated successfully' } });
+  } catch (error) {
+    console.error('Failed to update buffer days:', error);
+    res.status(500).json({ success: false, error: 'Failed to update buffer days' });
+  }
+});
+
+/**
  * DELETE /api/watchlist-v2/:id
  * Remove show from all lists
  */
@@ -643,7 +752,18 @@ router.get('/:tmdbId/progress', async (req: Request, res: Response) => {
       })
       .filter(Boolean);
 
-    res.json({ success: true, data: { showProgress } });
+    const seasonsGrouped: { [seasonNumber: number]: Array<{ episodeNumber: number, status: string }> } = {};
+    (showProgress as Array<NonNullable<typeof showProgress[number]>>).forEach(ep => {
+      if (!seasonsGrouped[ep.seasonNumber]) {
+        seasonsGrouped[ep.seasonNumber] = [];
+      }
+      seasonsGrouped[ep.seasonNumber].push({
+        episodeNumber: ep.episodeNumber,
+        status: ep.status
+      });
+    });
+
+    res.json({ success: true, data: { seasons: seasonsGrouped } });
   } catch (error) {
     console.error('Failed to get show episode progress:', error);
     res.status(500).json({

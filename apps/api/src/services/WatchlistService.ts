@@ -22,6 +22,9 @@ export interface UserShow {
   show_rating?: number;
   notes?: string;
   updated_at?: string;
+  buffer_days?: number;
+  country_code?: string | null;
+  selected_service_id?: string | null;
 }
 
 export interface UserShowWithDetails extends UserShow {
@@ -616,6 +619,209 @@ export class WatchlistService {
 
       return !!userShow?.started_watching_at;
     } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Verify the user owns the user_show record (manual auth when using service role)
+   */
+  private async verifyOwnership(userId: string, userShowId: string): Promise<boolean> {
+    try {
+      const startedAt = new Date().toISOString();
+      const { data, error } = await serviceSupabase
+        .from('user_shows')
+        .select('user_id')
+        .eq('id', userShowId)
+        .single();
+
+      if (error || !data) {
+        console.warn('[WATCHLIST_SERVICE] Ownership verification failed or record not found', {
+          userShowId,
+          errorCode: (error as any)?.code,
+          errorMessage: (error as any)?.message,
+          startedAt,
+          finishedAt: new Date().toISOString(),
+        });
+        return false;
+      }
+
+      const match = data.user_id === userId;
+      console.log('[WATCHLIST_SERVICE] Ownership verification result', {
+        userShowId,
+        expectedUserId: userId,
+        actualUserId: data.user_id,
+        match,
+        startedAt,
+        finishedAt: new Date().toISOString(),
+      });
+
+      return match;
+    } catch (e) {
+      console.error('[WATCHLIST_SERVICE] Ownership verification exception', e);
+      return false;
+    }
+  }
+
+  async updateStreamingProvider(
+    userId: string,
+    userShowId: string,
+    provider: { id: number; name: string; logo_url: string } | null
+  ): Promise<boolean> {
+    try {
+      // Manual authorization: verify ownership first using service role
+      const owns = await this.verifyOwnership(userId, userShowId);
+      if (!owns) {
+        console.warn('[WATCHLIST_SERVICE] updateStreamingProvider: ownership check failed', {
+          userId,
+          userShowId,
+          provider,
+        });
+        return false;
+      }
+
+      const updateData: Partial<UserShow> = {
+        selected_service_id: provider ? provider.id.toString() : null,
+        updated_at: new Date().toISOString()
+      };
+
+      // Use serviceSupabase to bypass RLS after manual auth check
+      const { data, error } = await serviceSupabase
+        .from('user_shows')
+        .update(updateData)
+        .eq('id', userShowId)
+        .select('id, user_id, selected_service_id, buffer_days, country_code')
+        .single();
+
+      if (error) {
+        console.error('[WATCHLIST_SERVICE] updateStreamingProvider: update failed', {
+          userId,
+          userShowId,
+          errorCode: (error as any)?.code,
+          errorMessage: (error as any)?.message,
+          details: (error as any)?.details,
+          hint: (error as any)?.hint,
+        });
+        throw error;
+      }
+
+      console.log('[WATCHLIST_SERVICE] updateStreamingProvider: update succeeded', {
+        userShowId,
+        userId,
+        providerId: updateData.selected_service_id,
+        persistedRow: data,
+      });
+      return true;
+    } catch (error) {
+      console.error('Failed to update streaming provider:', error);
+      return false;
+    }
+  }
+
+  async updateCountryCode(
+    userId: string,
+    userShowId: string,
+    countryCode: string | null
+  ): Promise<boolean> {
+    try {
+      // Manual authorization: verify ownership
+      const owns = await this.verifyOwnership(userId, userShowId);
+      if (!owns) {
+        console.warn('[WATCHLIST_SERVICE] updateCountryCode: ownership check failed', {
+          userId,
+          userShowId,
+          countryCode,
+        });
+        return false;
+      }
+
+      const updateData: Partial<UserShow> = {
+        country_code: countryCode,
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await serviceSupabase
+        .from('user_shows')
+        .update(updateData)
+        .eq('id', userShowId)
+        .select('id, user_id, selected_service_id, buffer_days, country_code')
+        .single();
+
+      if (error) {
+        console.error('[WATCHLIST_SERVICE] updateCountryCode: update failed', {
+          userId,
+          userShowId,
+          errorCode: (error as any)?.code,
+          errorMessage: (error as any)?.message,
+          details: (error as any)?.details,
+          hint: (error as any)?.hint,
+        });
+        throw error;
+      }
+
+      console.log('[WATCHLIST_SERVICE] updateCountryCode: update succeeded', {
+        userShowId,
+        userId,
+        countryCode: updateData.country_code,
+        persistedRow: data,
+      });
+      return true;
+    } catch (error) {
+      console.error('Failed to update country code:', error);
+      return false;
+    }
+  }
+
+  async updateBufferDays(
+    userId: string,
+    userShowId: string,
+    bufferDays: number
+  ): Promise<boolean> {
+    try {
+      // Manual authorization: verify ownership
+      const owns = await this.verifyOwnership(userId, userShowId);
+      if (!owns) {
+        console.warn('[WATCHLIST_SERVICE] updateBufferDays: ownership check failed', {
+          userId,
+          userShowId,
+          bufferDays,
+        });
+        return false;
+      }
+
+      const updateData: Partial<UserShow> = {
+        buffer_days: bufferDays,
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await serviceSupabase
+        .from('user_shows')
+        .update(updateData)
+        .eq('id', userShowId)
+        .select('id, user_id, selected_service_id, buffer_days, country_code')
+        .single();
+
+      if (error) {
+        console.error('[WATCHLIST_SERVICE] updateBufferDays: update failed', {
+          userId,
+          userShowId,
+          errorCode: (error as any)?.code,
+          errorMessage: (error as any)?.message,
+          details: (error as any)?.details,
+          hint: (error as any)?.hint,
+        });
+        throw error;
+      }
+
+      console.log('[WATCHLIST_SERVICE] updateBufferDays: update succeeded', {
+        userShowId,
+        userId,
+        bufferDays: updateData.buffer_days,
+        persistedRow: data,
+      });
+      return true;
+    } catch (error) {
+      console.error('Failed to update buffer days:', error);
       return false;
     }
   }

@@ -33,8 +33,8 @@ const generateToken = (userId: string, email: string, displayName: string) => {
 
   return jwt.sign(
     { userId, email, displayName },
-    jwtSecret,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    jwtSecret as string, // Explicitly cast to string
+    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as jwt.SignOptions // Explicitly cast to SignOptions
   );
 };
 
@@ -588,7 +588,11 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
   try {
     const { id } = req.params;
 
-    const { data: subscriptions, error } = await supabase
+    if (req.userId !== id) {
+      return res.status(403).json({ success: false, error: 'Forbidden: You can only access your own subscriptions.' });
+    }
+
+    const { data: subscriptions, error } = await serviceSupabase
       .from('user_streaming_subscriptions')
       .select(`
         id,
@@ -611,6 +615,12 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
       .order('created_at', { ascending: false });
 
     if (error) {
+      console.error('[users/:id/subscriptions] Nested select failed', {
+        code: (error as any)?.code,
+        message: (error as any)?.message,
+        details: (error as any)?.details,
+        hint: (error as any)?.hint
+      });
       throw error;
     }
 
