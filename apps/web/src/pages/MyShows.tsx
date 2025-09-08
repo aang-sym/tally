@@ -8,7 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserManager } from '../services/UserManager';
 import { API_ENDPOINTS, apiRequest } from '../config/api';
-import { UserShow, StreamingProvider, Show, StoredEpisodeProgress, ShowProgressData } from '../types/api';
+import { UserShow, StreamingProvider, StoredEpisodeProgress } from '../types/api';
 
 // Episode Progress Display Component
 interface DisplayEpisode {
@@ -80,6 +80,8 @@ const MyShows: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(true); // New loading state for stats
   const [statsError, setStatsError] = useState<string | null>(null); // New error state for stats
+  // Series-wide progress prefetch (keyed by tmdbId)
+  const [seriesProgress, setSeriesProgress] = useState<{ [tmdbId: number]: { total: number; watched: number } }>({});
 
   // Expandable show details state
   const [expandedShow, setExpandedShow] = useState<string | null>(null);
@@ -115,6 +117,21 @@ const MyShows: React.FC = () => {
       const data = await apiRequest(`${API_ENDPOINTS.watchlist.v2}${statusParam}`, {}, token);
 
       setShows(data.data.shows);
+
+      // Prefetch overall progress so header bars are populated on initial load
+      if (data.data.shows && data.data.shows.length > 0) {
+        const items: UserShow[] = data.data.shows;
+        items.forEach(async (it: UserShow) => {
+          const prog = await fetchShowProgress(it.show.tmdb_id);
+          if (prog) {
+            setSeriesProgress(prev => ({
+              ...prev,
+              [it.show.tmdb_id]: { total: prog.total, watched: prog.watched }
+            }));
+          }
+        });
+      }
+
       setError(null);
 
       // Fetch providers and posters for all shows
@@ -272,6 +289,22 @@ const MyShows: React.FC = () => {
       const data = await response.json();
       setShowAnalysis(prev => ({ ...prev, [tmdbId]: data.analysis }));
 
+      // Seed series-wide total from analysis (includes future episodes)
+      try {
+        const totalFromAnalysis =
+          (data.analysis?.seasonInfo || [])
+            .reduce((sum: number, s: any) => sum + (s.episodeCount || 0), 0);
+        if (totalFromAnalysis > 0) {
+          setSeriesProgress(prev => ({
+            ...prev,
+            [tmdbId]: {
+              total: Math.max(prev[tmdbId]?.total || 0, totalFromAnalysis),
+              watched: prev[tmdbId]?.watched || 0,
+            },
+          }));
+        }
+      } catch { }
+
       // Set default selected season to latest
       if (data.analysis?.seasonInfo?.length > 0) {
         const latestSeason = Math.max(...data.analysis.seasonInfo.map((s: any) => s.seasonNumber));
@@ -358,6 +391,54 @@ const MyShows: React.FC = () => {
       console.log(`Episode data updated for show ${tmdbId}, season ${seasonNumber}`);
     } catch (err) {
       console.error('Failed to fetch season episodes:', err);
+    }
+  };
+
+  // Fetch overall progress for a show (series-wide) so header has progress on initial load
+  const fetchShowProgress = async (tmdbId: number) => {
+    try {
+      const token = localStorage.getItem('authToken') || undefined;
+
+      // 1) Get total planned episodes across all seasons from analyze (no country filter)
+      let total = 0;
+      try {
+        const analyzeResp = await fetch(`${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/analyze`);
+        if (analyzeResp.ok) {
+          const analyze = await analyzeResp.json();
+          const seasonInfo = analyze?.analysis?.seasonInfo || [];
+          total = seasonInfo.reduce((sum: number, s: any) => sum + (s.episodeCount || 0), 0);
+        }
+      } catch (e) {
+        console.warn('analyze fetch failed for total episodes; will fall back if needed', e);
+      }
+
+      // 2) Get watched count from stored progress
+      let watched = 0;
+      try {
+        const progressResp = await fetch(`${API_ENDPOINTS.watchlist.v2}/${tmdbId}/progress`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (progressResp.ok) {
+          const json = await progressResp.json();
+          const seasons = json?.data?.seasons || {};
+          for (const key of Object.keys(seasons)) {
+            const eps = seasons[key] || [];
+            watched += eps.filter((e: StoredEpisodeProgress) => e.status === 'watched').length;
+          }
+        }
+      } catch (e) {
+        console.warn('progress fetch failed for watched episodes; defaulting to 0', e);
+      }
+
+      // 3) Fallback: derive total from analysis cache if API gave none
+      if (total === 0 && showAnalysis[tmdbId]?.seasonInfo) {
+        total = showAnalysis[tmdbId].seasonInfo.reduce((sum: number, s: any) => sum + (s.episodeCount || 0), 0);
+      }
+
+      return { total, watched };
+    } catch (e) {
+      console.warn('fetchShowProgress failed for', tmdbId, e);
+      return null;
     }
   };
 
@@ -521,11 +602,6 @@ const MyShows: React.FC = () => {
       console.error(`Failed to fetch providers for show ${tmdbId}:`, error);
       return [];
     }
-  };
-
-  const getProgressPercentage = (show: UserShow): number => {
-    if (!show.progress || show.progress.totalEpisodes === 0) return 0;
-    return Math.round((show.progress.watchedEpisodes / show.progress.totalEpisodes) * 100);
   };
 
   const getStatusBadgeColor = (status: UserShow['status']): string => {
@@ -753,10 +829,11 @@ const MyShows: React.FC = () => {
                                     : undefined;
 
                                   // If we have per-season episode data loaded, compute per-season progress
-                                  const denom = seasonEpisodes ? seasonEpisodes.length : (userShow.progress?.totalEpisodes || 0);
+                                  const overall = seriesProgress[tmdbId];
+                                  const denom = seasonEpisodes ? seasonEpisodes.length : (overall?.total || 0);
                                   const numer = seasonEpisodes
                                     ? seasonEpisodes.filter((ep) => ep.watched).length
-                                    : (userShow.progress?.watchedEpisodes || 0);
+                                    : (overall?.watched || 0);
                                   const pct = denom > 0 ? Math.round((numer / denom) * 100) : 0;
 
                                   return (
@@ -1011,22 +1088,17 @@ const MyShows: React.FC = () => {
                                       {(() => {
                                         const tmdbId = userShow.show.tmdb_id;
                                         // Prefer API-provided overall progress if present; otherwise derive.
-                                        const apiProgress = userShow.progress;
-
-                                        const overallTotal = (apiProgress?.totalEpisodes && apiProgress.totalEpisodes > 0)
-                                          ? apiProgress.totalEpisodes
+                                        const prefetch = seriesProgress[tmdbId];
+                                        const overallTotal = (prefetch?.total && prefetch.total > 0)
+                                          ? prefetch.total
                                           : (analysis?.seasonInfo?.reduce((sum: number, s: any) => sum + (s.episodeCount || 0), 0) || 0);
 
-                                        // Derive watched from API if available; otherwise count watched episodes from any seasons we have in memory.
                                         const allSeasonData = episodeData[tmdbId] || {};
                                         const watchedDerived = Object.values(allSeasonData).reduce((acc: number, seasonEps: any) => {
                                           const arr = (seasonEps as any[]) || [];
                                           return acc + arr.filter((ep: any) => ep.watched).length;
                                         }, 0);
-                                        const overallWatched = Math.max(
-                                          (apiProgress?.watchedEpisodes ?? 0),
-                                          watchedDerived
-                                        );
+                                        const overallWatched = Math.max(prefetch?.watched ?? 0, watchedDerived);
 
                                         const pct = overallTotal > 0 ? Math.round((overallWatched / overallTotal) * 100) : 0;
 
