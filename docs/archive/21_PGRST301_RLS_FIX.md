@@ -95,12 +95,12 @@ After running the SQL, you should see these policies:
 
 ```bash
 # Create test user
-curl -X POST http://localhost:3001/api/users/signup \
+curl -X POST http://localhost:4000/api/users/signup \
   -H "Content-Type: application/json" \
   -d '{"email": "test-fix@example.com", "password": "testpass123", "displayName": "Fix Test", "countryCode": "US"}'
 
 # Use the returned JWT token to test watchlist addition
-curl -X POST http://localhost:3001/api/watchlist-v2 \
+curl -X POST http://localhost:4000/api/watchlist-v2 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE" \
   -d '{"tmdbId": 157239, "status": "watchlist"}'

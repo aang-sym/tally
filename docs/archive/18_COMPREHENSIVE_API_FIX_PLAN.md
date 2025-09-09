@@ -225,25 +225,25 @@ echo "Build status: $?"
 npm run dev:api
 # Should start without module errors
 # Should show database connection success
-# Should show "🚀 Tally API server running on port 3001"
+# Should show "🚀 Tally API server running on port 4000"
 ```
 
 3. **Authentication Test**
 ```bash
 # Test user signup
-curl -X POST "http://localhost:3001/api/users/signup" \
+curl -X POST "http://localhost:4000/api/users/signup" \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"password123","displayName":"Test User"}'
 
 # Test user retrieval with token
 curl -H "Authorization: Bearer [TOKEN_FROM_SIGNUP]" \
-  "http://localhost:3001/api/users"
+  "http://localhost:4000/api/users"
 ```
 
 4. **Watchlist Test**
 ```bash
 # Test adding show to watchlist
-curl -X POST "http://localhost:3001/api/watchlist-v2" \
+curl -X POST "http://localhost:4000/api/watchlist-v2" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer [TOKEN]" \
   -d '{"tmdbId": 1399, "status": "watchlist"}'
@@ -351,7 +351,7 @@ app.get('/api/system-status', async (req, res) => {
 
 2. **✅ API Server Running Successfully** 
    - Used `npx tsx` to bypass TypeScript compilation issues
-   - Server running on port 3001 with all services operational
+   - Server running on port 4000 with all services operational
    - Database connectivity confirmed working
    - User authentication and retrieval working
 
@@ -362,13 +362,13 @@ app.get('/api/system-status', async (req, res) => {
 
 4. **✅ Frontend-Backend Connection Established**
    - Frontend running on http://localhost:3002
-   - API running on http://localhost:3001  
+   - API running on http://localhost:4000  
    - CORS properly configured for cross-origin requests
    - User loading issues from screenshot are resolved
 
 ### **Final Working Configuration:**
 
-- **API Server:** `cd apps/api && npx tsx src/server.ts` (port 3001)
+- **API Server:** `cd apps/api && npx tsx src/server.ts` (port 4000)
 - **Frontend:** `npm run dev:web` (auto-assigned to port 3002) 
 - **CORS Origins:** localhost:3000, 3002, 127.0.0.1:3000, 3002
 - **Database:** Supabase with RLS policies working

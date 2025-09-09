@@ -6,7 +6,7 @@ info:
     Endpoints for streaming services and region-scoped pricing/tiers.
 
 servers:
-  - url: http://localhost:3001
+  - url: http://localhost:4000
     description: Local dev
 
 security:

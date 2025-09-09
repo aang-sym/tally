@@ -70,7 +70,7 @@ curl "https://streaming-availability.p.rapidapi.com/shows/search/title?title=Ava
 # Returns: Complete streaming data including services, links, pricing
 
 # Application test - SUCCESS  
-curl -X POST "localhost:3001/api/watchlist" -d '{"title": "Breaking Bad", ...}'
+curl -X POST "localhost:4000/api/watchlist" -d '{"title": "Breaking Bad", ...}'
 # Result: 1 API call consumed, search works perfectly
 ```
 
@@ -121,7 +121,7 @@ curl -X POST "localhost:3001/api/watchlist" -d '{"title": "Breaking Bad", ...}'
 ### Environment Status
 - **Development servers**: ✅ Running (`npm run dev`)
 - **API integration**: ✅ Fully functional  
-- **Quota monitoring**: ✅ Available at `localhost:3001/api/streaming-quota`
+- **Quota monitoring**: ✅ Available at `localhost:4000/api/streaming-quota`
 - **Test scripts**: ✅ Available in `/scripts/`
 
 ---

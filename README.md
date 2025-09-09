@@ -25,13 +25,13 @@ This is the foundational backend API and web landing page for Tally, designed to
 # Install all dependencies
 npm install
 
-# Run both API (port 3001) and web (port 3000)  
+# Run both API (port 4000) and web (port 3000)  
 npm run dev
 ```
 
 Visit:
 - **Web app**: http://localhost:3000
-- **API health**: http://localhost:3001/api/health
+- **API health**: http://localhost:4000/api/health
 
 ### Individual Services
 ```bash
@@ -54,35 +54,35 @@ The API is fully functional. Here are curl examples:
 
 ```bash
 # Health check
-curl http://localhost:3001/api/health
+curl http://localhost:4000/api/health
 
 # Join waitlist
-curl -X POST http://localhost:3001/api/waitlist \
+curl -X POST http://localhost:4000/api/waitlist \
   -H "Content-Type: application/json" \
   -d '{"email": "test@example.com", "country": "US"}'
 
 # Register user (stubbed auth)
-curl -X POST http://localhost:3001/api/auth/register \
+curl -X POST http://localhost:4000/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email": "user@example.com", "password": "password123"}'
 
 # Login (returns stub token)
-curl -X POST http://localhost:3001/api/auth/login \
+curl -X POST http://localhost:4000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "user@example.com", "password": "password123"}'
 
 # Get watchlist (requires auth)
-curl http://localhost:3001/api/watchlist \
+curl http://localhost:4000/api/watchlist \
   -H "Authorization: Bearer stub_token_USER_ID"
 
 # Add to watchlist
-curl -X POST http://localhost:3001/api/watchlist \
+curl -X POST http://localhost:4000/api/watchlist \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer stub_token_USER_ID" \
   -d '{"titleId": "1", "title": "Stranger Things", "serviceId": "netflix", "serviceName": "Netflix"}'
 
 # Generate savings plan
-curl -X POST http://localhost:3001/api/plan/generate \
+curl -X POST http://localhost:4000/api/plan/generate \
   -H "Content-Type: application/json"
 ```
 

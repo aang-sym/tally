@@ -311,7 +311,7 @@ const MyShows: React.FC = () => {
   };
 
   // Update streaming provider for a show
-  const updateStreamingProvider = async (userShowId: string, provider: StreamingProvider | null) => {
+  const updateStreamingProvider = async (userShowId: string, provider: { id: number; name: string; logo_path: string } | null) => {
     try {
       const token = localStorage.getItem('authToken') || undefined;
       await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShowId}/provider`, {
@@ -970,8 +970,8 @@ const MyShows: React.FC = () => {
                                     {userShow.streaming_provider ? (
                                       <div className="flex items-center space-x-2">
                                         <img
-                                          src={userShow.streaming_provider.logo_path}
-                                          alt={userShow.streaming_provider.name}
+                                          src={userShow.streaming_provider.logo_path!}
+                                          alt={userShow.streaming_provider.name || 'Provider logo'}
                                           className="w-6 h-6 rounded"
                                         />
                                         <span className="text-sm font-medium">{userShow.streaming_provider.name}</span>
@@ -994,14 +994,10 @@ const MyShows: React.FC = () => {
                                             const value = e.target.value;
                                             if (value) {
                                               const [idStr, name, logo_path] = value.split('|');
-                                              if (userShow.id && idStr && name && logo_path) { // Ensure idStr is defined
-                                                const id = parseInt(idStr);
+                                              if (userShow.id && idStr) {
+                                                const id = parseInt(idStr, 10);
                                                 if (!isNaN(id)) {
-                                                  updateStreamingProvider(userShow.id, {
-                                                    id,
-                                                    name,
-                                                    logo_path
-                                                  });
+                                                  updateStreamingProvider(userShow.id, { id, name: name!, logo_path: logo_path! });
                                                 }
                                               }
                                             }
@@ -1026,7 +1022,7 @@ const MyShows: React.FC = () => {
                                           e.stopPropagation();
                                           const p = availableProviders[0];
                                           if (userShow.id && p) {
-                                            updateStreamingProvider(userShow.id, p);
+                                            updateStreamingProvider(userShow.id, { id: p.id, name: p.name, logo_path: p.logo_path });
                                           }
                                         }}
                                         className="inline-flex items-center space-x-2 px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"

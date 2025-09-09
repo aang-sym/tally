@@ -6,7 +6,7 @@
  */
 
 // Get API base URL from environment variable or use default
-export const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001';
+export const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:4000';
 
 // API endpoints
 export const API_ENDPOINTS = {

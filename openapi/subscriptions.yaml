@@ -6,7 +6,7 @@ info:
     Contracts for user streaming subscriptions, including tiered pricing scoped by country.
 
 servers:
-  - url: http://localhost:3001
+  - url: http://localhost:4000
     description: Local dev
 
 security:

@@ -128,27 +128,27 @@ const { data: user, error } = await serviceSupabase
 
 # Current errors:
 XHRGET
-http://localhost:3001/api/users
+http://localhost:4000/api/users
 [HTTP/1.1 401 Unauthorized 2ms]
 
 XHRGET
-http://localhost:3001/api/watchlist-v2/stats
+http://localhost:4000/api/watchlist-v2/stats
 [HTTP/1.1 401 Unauthorized 1ms]
 
 XHRGET
-http://localhost:3001/api/users
+http://localhost:4000/api/users
 [HTTP/1.1 401 Unauthorized 3ms]
 
 XHRGET
-http://localhost:3001/api/recommendations/optimization
+http://localhost:4000/api/recommendations/optimization
 [HTTP/1.1 401 Unauthorized 2ms]
 
 XHRGET
-http://localhost:3001/api/recommendations/optimization
+http://localhost:4000/api/recommendations/optimization
 [HTTP/1.1 401 Unauthorized 1ms]
 
 XHRGET
-http://localhost:3001/api/watchlist-v2/stats
+http://localhost:4000/api/watchlist-v2/stats
 [HTTP/1.1 401 Unauthorized 1ms]
 
 Failed to load users: Error: Authorization token required. Please provide a valid Bearer token.

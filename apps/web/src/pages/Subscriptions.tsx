@@ -55,7 +55,7 @@ interface UserProfile {
   created_at: string;
 }
 
-const Settings: React.FC = () => {
+const Subscriptions: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [availableServices, setAvailableServices] = useState<StreamingService[]>([]);
   const [userSubscriptions, setUserSubscriptions] = useState<UserSubscription[]>([]);
@@ -558,4 +558,4 @@ const Settings: React.FC = () => {
   );
 };
 
-export default Settings;
+export default Subscriptions;

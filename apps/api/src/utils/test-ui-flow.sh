@@ -11,7 +11,7 @@ echo ""
 TEST_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJiMzY4Njk3My1iYTYwLTQ0MDUtODUyNS1mOGQ2YjNkY2I3ZmMiLCJlbWFpbCI6InRlc3RAdGVzdC5jb20iLCJkaXNwbGF5TmFtZSI6IlRlc3QgVXNlciIsImlhdCI6MTc1NzA0NTEyNCwiZXhwIjoxNzU3MTMxNTI0fQ.s3h5d7uqikw_vwYoZ2jlKOQhPYTFdHcMV9Kq2ekb-rc"
 
 echo "📱 Step 1: Simulating frontend API call..."
-echo "   Target: POST http://localhost:3001/api/watchlist"
+echo "   Target: POST http://localhost:4000/api/watchlist"
 echo "   User ID: b3686973-ba60-4405-8525-f8d6b3dcb7fc"
 echo "   TMDB ID: 110492 (Peacemaker)"
 echo "   Status: watching"
@@ -27,7 +27,7 @@ curl -v \
   -H "Authorization: Bearer ${TEST_TOKEN}" \
   -H "User-Agent: Test-UI-Flow/1.0" \
   -d '{"tmdbId": 110492, "status": "watching"}' \
-  http://localhost:3001/api/watchlist
+  http://localhost:4000/api/watchlist
 
 echo ""
 echo ""

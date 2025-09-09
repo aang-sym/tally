@@ -291,7 +291,7 @@ ORDER BY routine_name;
 
 #### Create Test User
 ```bash
-curl -X POST http://localhost:3001/api/users/signup \
+curl -X POST http://localhost:4000/api/users/signup \
   -H "Content-Type: application/json" \
   -d '{"email": "test@example.com", "password": "testpass123", "displayName": "Test User", "countryCode": "US"}'
 ```
@@ -299,7 +299,7 @@ curl -X POST http://localhost:3001/api/users/signup \
 #### Test Watchlist Addition
 ```bash
 # Use JWT token from signup response
-curl -X POST http://localhost:3001/api/watchlist-v2 \
+curl -X POST http://localhost:4000/api/watchlist-v2 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{"tmdbId": 157239, "status": "watchlist"}'
@@ -322,13 +322,13 @@ curl -X POST http://localhost:3001/api/watchlist-v2 \
 
 #### Test Watchlist Retrieval
 ```bash
-curl -X GET http://localhost:3001/api/watchlist-v2 \
+curl -X GET http://localhost:4000/api/watchlist-v2 \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
 #### Test Episode Progress
 ```bash
-curl -X POST http://localhost:3001/api/progress \
+curl -X POST http://localhost:4000/api/progress \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{"showId": "SHOW_UUID", "episodeId": "EPISODE_UUID", "state": "watched", "progress": 100}'
@@ -505,14 +505,14 @@ Verify RPCs properly authenticate and authorize:
 
 ```bash
 # Test unauthenticated RPC call (should fail)
-curl -X POST http://localhost:3001/api/watchlist-v2 \
+curl -X POST http://localhost:4000/api/watchlist-v2 \
   -H "Content-Type: application/json" \
   -d '{"tmdbId": 157239, "status": "watchlist"}'
 
 # Expected: 401 Unauthorized
 
 # Test with invalid token (should fail)  
-curl -X POST http://localhost:3001/api/watchlist-v2 \
+curl -X POST http://localhost:4000/api/watchlist-v2 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer invalid.token.here" \
   -d '{"tmdbId": 157239, "status": "watchlist"}'

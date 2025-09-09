@@ -426,7 +426,7 @@ DELETE /api/auth/account (authenticated)
 
 ### Current Working Architecture
 - **Frontend**: React + TypeScript + Vite (port 3000)
-- **Backend**: Node.js + Express + TypeScript (port 3001)  
+- **Backend**: Node.js + Express + TypeScript (port 4000)  
 - **Storage**: In-memory Maps (simple-watchlist.ts, users-simple.ts)
 - **TMDB Integration**: Working with real API for show data
 - **User System**: Simple hardcoded test users with switching

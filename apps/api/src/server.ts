@@ -80,17 +80,6 @@ app.use('/api/users', usersDbRouter); // Handles auth internally per endpoint
 // Admin routes (require authentication)
 app.use('/api/admin', authenticateUser, dbAdminRouter);
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'NOT_FOUND',
-    message: `Route ${req.method} ${req.originalUrl} not found`,
-  });
-});
-
-// Error handling middleware
-app.use(errorHandler);
-
 // --- OpenAPI quickstart: minimal spec + docs ---
 // Gives us a live contract surface we can refine incrementally.
 
@@ -134,7 +123,7 @@ const openapiDoc = {
         }
       }
     },
-    '/api/watchlist/{userShowId}/provider': {
+    '/api/watchlist/:userShowId/provider': {
       put: {
         summary: 'Set selected streaming provider for a user_show',
         tags: ['watchlist'],
@@ -238,6 +227,17 @@ app.get('/docs', (_req, res) => {
 </html>`);
 });
 // --- /OpenAPI quickstart ---
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'NOT_FOUND',
+    message: `Route ${req.method} ${req.originalUrl} not found`,
+  });
+});
+
+// Error handling middleware
+app.use(errorHandler);
 
 app.listen(config.port, async () => {
   console.log(`🚀 Tally API server running on port ${config.port}`);

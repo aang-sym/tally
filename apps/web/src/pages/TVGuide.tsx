@@ -19,7 +19,7 @@ const TVGuidePage: React.FC = () => {
               {/* Quick actions */}
               <div className="flex items-center space-x-3">
                 <button className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                  View Settings
+                  View Subscriptions
                 </button>
                 <button className="px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors">
                   Add Shows

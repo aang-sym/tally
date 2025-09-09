@@ -45,7 +45,7 @@ npm install
 npm run dev
 
 # Run individual services
-npm run dev:api    # API server on :3001
+npm run dev:api    # API server on :4000
 npm run dev:web    # Web frontend on :3000
 
 # Build all packages

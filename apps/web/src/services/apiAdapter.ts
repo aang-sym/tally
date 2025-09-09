@@ -1,12 +1,18 @@
 // apps/web/src/services/apiAdapter.ts
-import {
-  ApiWatchlistTmdbIdProgressPutRequest,
-  SubscriptionCreateRequest,
-  SubscriptionUpdateRequest,
-  SelectedProvider,
-  UserSubscription,
-} from '@tally/api-client';
 import { api } from './apiClient';
+
+// Local fallbacks for types not exported by the generated client
+export type ApiWatchlistTmdbIdProgressPutRequest = {
+  state?: 'watched' | 'unwatched';
+  progress?: number; // 0..100
+  started_watching_at?: string; // ISO
+  watched_at?: string; // ISO
+};
+
+export type SelectedProviderMinimal = { id: number; name?: string; logo_url?: string | null };
+export type SubscriptionCreateRequest = any; // TODO: replace with generated type when available
+export type SubscriptionUpdateRequest = any; // TODO: replace with generated type when available
+export type UserSubscription = any; // TODO: replace with generated type when available
 
 // Local request type to avoid generator name churn
 export type ListUserSubsArgs = { id: string; country?: string };
@@ -37,7 +43,7 @@ export async function updateSelectedProvider(userShowId: string, providerId: str
   // SelectedProvider in the client expects more fields; we only have id here.
   // Send a minimal object and let the server resolve it.
   const res = await api.apiWatchlistIdProviderPut(userShowId, {
-    provider: providerId ? ({ id: providerId } as unknown as SelectedProvider) : null,
+    provider: providerId ? ({ id: Number(providerId) } as SelectedProviderMinimal) : null,
   });
   return res.data?.data ?? null;
 }

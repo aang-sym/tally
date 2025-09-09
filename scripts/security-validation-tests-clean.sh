@@ -6,7 +6,7 @@
 echo "🔐 TALLY SECURITY VALIDATION TESTS (WITH CLEANUP)"
 echo "================================================="
 
-API_BASE="http://localhost:3001"
+API_BASE="http://localhost:4000"
 TEST_USER1_EMAIL="testuser1-$(date +%s)@security-test.com"
 TEST_USER2_EMAIL="testuser2-$(date +%s)@security-test.com"
 TEST_PASSWORD="SecureTestPass123"

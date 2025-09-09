@@ -51,7 +51,7 @@ This plan addresses 5 critical areas: pattern detection, poster loading, episode
 **Issue**: TV Guide not populating with user shows from MyShows
 **Files**: `/apps/web/src/components/tv-guide/TVGuide.tsx` - Fixed API URL
 **Actions Completed**:
-- ✅ Fixed API endpoint URL from `/api/tv-guide` to `http://localhost:3001/api/tv-guide`
+- ✅ Fixed API endpoint URL from `/api/tv-guide` to `http://localhost:4000/api/tv-guide`
 - ✅ API endpoint was already properly implemented with user show integration
 - ✅ TV Guide now fetches user's MyShows data correctly
 - ✅ Infinite scroll and date navigation working

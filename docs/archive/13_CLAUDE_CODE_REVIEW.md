@@ -135,7 +135,7 @@ const supabase = createClient(url, serviceKey);
 ### 3. Centralize API Configuration
 
 - **Files:** `apps/web/src/pages/MyShows.tsx`, `apps/web/src/pages/SearchShows.tsx`
-- **Issue:** API base URL (`http://localhost:3001`) hardcoded in multiple places
+- **Issue:** API base URL (`http://localhost:4000`) hardcoded in multiple places
 - **Action Plan:**
   1. Create `apps/web/src/config/api.ts` with environment-based config
   2. Replace all hardcoded URLs with imports from config

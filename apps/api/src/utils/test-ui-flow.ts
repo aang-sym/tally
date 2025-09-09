@@ -17,7 +17,7 @@ async function testUIFlow() {
     const testToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJiMzY4Njk3My1iYTYwLTQ0MDUtODUyNS1mOGQ2YjNkY2I3ZmMiLCJlbWFpbCI6InRlc3RAdGVzdC5jb20iLCJzdWIiOiJiMzY4Njk3My1iYTYwLTQ0MDUtODUyNS1mOGQ2YjNkY2I3ZmMiLCJpYXQiOjE2MzA0NDQ4MDAsImV4cCI6OTk5OTk5OTk5OX0.test_signature_for_debugging';
     
     console.log('📱 Step 1: Simulating frontend API call...');
-    console.log('   Target: POST http://localhost:3001/api/watchlist');
+    console.log('   Target: POST http://localhost:4000/api/watchlist');
     console.log('   User ID: b3686973-ba60-4405-8525-f8d6b3dcb7fc');
     console.log('   TMDB ID: 110492 (Peacemaker)');
     console.log('   Status: watching');
@@ -28,7 +28,7 @@ async function testUIFlow() {
       status: 'watching'
     };
     
-    const response = await fetch('http://localhost:3001/api/watchlist', {
+    const response = await fetch('http://localhost:4000/api/watchlist', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

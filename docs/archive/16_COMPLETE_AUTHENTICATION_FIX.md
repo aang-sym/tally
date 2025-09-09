@@ -128,16 +128,16 @@ curl -H "Authorization: Bearer invalid-token" /api/recommendations/optimization
 
 ```bash
 # Test users endpoint (should return test users)
-curl http://localhost:3001/api/users
+curl http://localhost:4000/api/users
 
 # Test JWT authentication flow
-curl -X POST http://localhost:3001/api/users/signup \
+curl -X POST http://localhost:4000/api/users/signup \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"testpass123","displayName":"Test User"}'
 
 # Use returned JWT token with protected endpoint
 curl -H "Authorization: Bearer [JWT_TOKEN]" \
-  http://localhost:3001/api/recommendations/optimization
+  http://localhost:4000/api/recommendations/optimization
 ```
 
 ## Issue Resolution

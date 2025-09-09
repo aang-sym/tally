@@ -176,25 +176,25 @@ CREATE POLICY "Users can manage own subscriptions" ON user_streaming_subscriptio
 ### Test My Shows API Endpoints
 ```bash
 # Test provider update (currently fails with 404)
-curl -X PUT http://localhost:3001/api/watchlist-v2/SHOW_ID/provider \
+curl -X PUT http://localhost:4000/api/watchlist-v2/SHOW_ID/provider \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"provider":{"id":1,"name":"Netflix","logo_path":"..."}}'
 
 # Test country update (currently fails with 404)  
-curl -X PUT http://localhost:3001/api/watchlist-v2/SHOW_ID/country \
+curl -X PUT http://localhost:4000/api/watchlist-v2/SHOW_ID/country \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"countryCode":"US"}'
 
 # Test rating update (should work but currently fails)
-curl -X PUT http://localhost:3001/api/watchlist-v2/SHOW_ID/rating \
+curl -X PUT http://localhost:4000/api/watchlist-v2/SHOW_ID/rating \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"rating":8.5}'
 
 # Test episode progress (should work)
-curl -X PUT http://localhost:3001/api/watchlist-v2/TMDB_ID/progress \
+curl -X PUT http://localhost:4000/api/watchlist-v2/TMDB_ID/progress \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"seasonNumber":1,"episodeNumber":3,"status":"watched"}'
@@ -203,11 +203,11 @@ curl -X PUT http://localhost:3001/api/watchlist-v2/TMDB_ID/progress \
 ### Test Calendar API Endpoints
 ```bash
 # Test user subscriptions (currently returns 500)
-curl -X GET http://localhost:3001/api/users/USER_ID/subscriptions \
+curl -X GET http://localhost:4000/api/users/USER_ID/subscriptions \
   -H "Authorization: Bearer $TOKEN"
 
 # Test watchlist stats (for show counter)
-curl -X GET http://localhost:3001/api/watchlist-v2/stats \
+curl -X GET http://localhost:4000/api/watchlist-v2/stats \
   -H "Authorization: Bearer $TOKEN"
 ```
 

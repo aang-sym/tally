@@ -44,7 +44,7 @@ When ready to start iOS development:
 
 1. Ensure the API is running (`npm run dev:api`)
 2. Create new iOS project in this directory
-3. Configure API base URL for local development (`http://localhost:3001/api`)
+3. Configure API base URL for local development (`http://localhost:4000/api`)
 4. Generate Swift models from `/packages/types`
 
 See the main project README and CLAUDE.md for full context.

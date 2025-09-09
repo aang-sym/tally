@@ -63,7 +63,7 @@ function logConfigWarnings() {
 logConfigWarnings();
 
 export const config: ApiConfig = {
-  port: parseInt(getOptionalEnvVar('PORT', '3001'), 10),
+  port: parseInt(getOptionalEnvVar('PORT', '4000'), 10),
   frontendUrl: getOptionalEnvVar('FRONTEND_URL', 'http://localhost:3000'),
   nodeEnv: (process.env.NODE_ENV as ApiConfig['nodeEnv']) || 'development',
   

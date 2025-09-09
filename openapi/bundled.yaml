@@ -3,7 +3,7 @@ info:
   title: Tally API (Bundled)
   version: 0.1.0
 servers:
-  - url: http://localhost:3001
+  - url: http://localhost:4000
 security:
   - bearerAuth: []
 paths:

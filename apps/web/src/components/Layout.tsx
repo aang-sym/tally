@@ -21,7 +21,7 @@ const Layout: React.FC = () => {
     { name: 'TV Guide', href: '/tv-guide', icon: '📋' },
     { name: 'Calendar', href: '/calendar', icon: '📅' },
     { name: 'Recommendations', href: '/recommendations', icon: '💡' },
-    { name: 'Settings', href: '/settings', icon: '⚙️' },
+    { name: 'Subscriptions', href: '/settings', icon: '⚙️' },
   ];
 
   const isActive = (path: string) => location.pathname === path;

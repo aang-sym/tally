@@ -13,7 +13,7 @@ import MyShows from './pages/MyShows';
 import Calendar from './pages/Calendar';
 import Recommendations from './pages/Recommendations';
 import SearchShows from './pages/SearchShows';
-import Settings from './pages/Settings';
+import Subscriptions from './pages/Subscriptions';
 import Admin from './pages/Admin';
 import TVGuide from './pages/TVGuide';
 
@@ -33,7 +33,7 @@ function App() {
           <Route path="/tv-guide" element={<TVGuide />} />
           <Route path="/recommendations" element={<Recommendations />} />
           <Route path="/search" element={<SearchShows />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings" element={<Subscriptions />} />
           
           {/* Development Routes */}
           {process.env.NODE_ENV === 'development' && (

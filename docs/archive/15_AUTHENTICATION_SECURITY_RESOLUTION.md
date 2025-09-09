@@ -23,28 +23,28 @@ After comprehensive testing and debugging of the authentication system, the **pr
 
 ```bash
 # 1. User Signup - SUCCESS ✅
-curl -X POST http://localhost:3001/api/users/signup \
+curl -X POST http://localhost:4000/api/users/signup \
   -H "Content-Type: application/json" \
   -d '{"email":"test-auth-fix@example.com","password":"password123","displayName":"Test Auth User"}'
 # Result: HTTP 201, JWT token generated
 
 # 2. User Login - SUCCESS ✅  
-curl -X POST http://localhost:3001/api/users/login \
+curl -X POST http://localhost:4000/api/users/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test-auth-fix@example.com","password":"password123"}'
 # Result: HTTP 200, JWT token generated
 
 # 3. Protected Endpoint with Token - SUCCESS ✅
-curl -X GET http://localhost:3001/api/users \
+curl -X GET http://localhost:4000/api/users \
   -H "Authorization: Bearer [TOKEN]"
 # Result: HTTP 200, authenticated access granted
 
 # 4. Protected Endpoint without Token - SUCCESS ✅
-curl -X GET http://localhost:3001/api/users
+curl -X GET http://localhost:4000/api/users
 # Result: HTTP 401, properly rejected with authentication error
 
 # 5. Public Endpoint - SUCCESS ✅
-curl -X GET http://localhost:3001/api/health
+curl -X GET http://localhost:4000/api/health
 # Result: HTTP 200, public access working
 ```
 
@@ -52,7 +52,7 @@ curl -X GET http://localhost:3001/api/health
 
 ```bash
 # Watchlist Operations - FAILING due to DB issues ❌
-curl -X POST http://localhost:3001/api/watchlist-v2 \
+curl -X POST http://localhost:4000/api/watchlist-v2 \
   -H "Authorization: Bearer [TOKEN]" \
   -d '{"tmdbId":456,"title":"Test Show","status":"watchlist"}'
 # Result: HTTP 400, PGRST301 "No suitable key or wrong key type"

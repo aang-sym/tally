@@ -10,7 +10,7 @@ Replicate the exact user flow that produces watchlist errors, implement fixes, a
 
 #### Step 1: Reset Environment to Known State
 - [ ] Clear browser cache/localStorage
-- [ ] Ensure both API (port 3001) and Frontend (port 3002) are running
+- [ ] Ensure both API (port 4000) and Frontend (port 3002) are running
 - [ ] Check API logs are clean
 
 #### Step 2: Execute Exact User Flow
@@ -58,7 +58,7 @@ Using the documented errors from Phase 1, identify:
 ### Environment Setup Check
 ```bash
 # Terminal 1: API Server Status
-curl -s http://localhost:3001/api/health | head -20
+curl -s http://localhost:4000/api/health | head -20
 
 # Terminal 2: Frontend Status  
 curl -s http://localhost:3002 | head -10
