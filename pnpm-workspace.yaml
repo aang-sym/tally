@@ -1,0 +1,6 @@
+# pnpm-workspace.yaml
+packages:
+  - "apps/*"        # apps/api, apps/web, etc.
+  - "packages/*"    # shared libs if you have them
+  - "clients/*"     # generated API clients, optional
+  - "tools/*"       # build/dev tools, optional

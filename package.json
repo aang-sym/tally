@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "iOS-first app for smart streaming service management",
   "private": true,
+  "packageManager": "pnpm@9.6.0",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -23,6 +24,7 @@
     "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "@redocly/cli": "^2.0.8",
     "@types/node": "^20.11.16",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
