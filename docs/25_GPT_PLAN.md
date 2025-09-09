@@ -1,5 +1,3 @@
-
-
 # Dev Console vs iOS App Strategy
 
 ## What to keep in the web app (dev console)
@@ -39,3 +37,13 @@
 
 - Use the web console only to seed, spot-check, and debug. Don’t chase pixel-perfection on web.  
   **Branch:** `chore/web-console-lite`
+
+## Code quality & automation (later)
+- [ ] **ESLint/Prettier baseline**: unify lint/format across apps and packages; wire `lint-staged` + `husky` pre-commit.  
+  **Branch:** `chore/eslint-prettier-baseline`
+- [ ] **ESLint 9 migration**: upgrade to ESLint v9 and align `@typescript-eslint` + configs; fix/relax breaking rules project-wide.  
+  **Branch:** `feat/eslint9-migration`
+- [ ] **Deprecations sweep**: replace deprecated packages (e.g., `supertest@6`, legacy glob) with maintained alternatives or upgraded majors; record decisions in CHANGELOG.  
+  **Branch:** `chore/deps-deprecations`
+- [ ] **CI gates**: add `pnpm run spec:lint`, `pnpm -r typecheck`, and lint/format checks to CI; cache pnpm store for speed.  
+  **Branch:** `chore/ci-quality-gates`

@@ -26,7 +26,7 @@ export const API_ENDPOINTS = {
   // Watchlist
   watchlist: {
     v1: `${API_BASE_URL}/api/watchlist`,
-    v2: `${API_BASE_URL}/api/watchlist-v2`,
+    v2: `${API_BASE_URL}/api/watchlist`,
   },
 
   // Shows and Content

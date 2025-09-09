@@ -23,7 +23,7 @@ interface PriceTier {
 interface StreamingService {
   id: string;
   name: string;
-  logo_url?: string;
+  logo_path?: string;
   homepage?: string;
   country_code?: string;
   tmdb_provider_id?: number;
@@ -411,9 +411,9 @@ const Settings: React.FC = () => {
                       >
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center space-x-3">
-                            {service.logo_url ? (
+                            {service.logo_path ? (
                               <img
-                                src={service.logo_url}
+                                src={service.logo_path}
                                 alt={`${service.name} logo`}
                                 className="w-8 h-8 object-contain"
                               />

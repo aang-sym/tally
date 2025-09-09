@@ -654,7 +654,7 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
         ? sub.streaming_services[0]
         : sub.streaming_services;
 
-      const logo_url = svc?.logo_path
+      const logo_path = svc?.logo_path
         ? (typeof svc.logo_path === 'string' && svc.logo_path.startsWith('http')
           ? svc.logo_path
           : `https://image.tmdb.org/t/p/w45${svc.logo_path}`)
@@ -707,7 +707,7 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
             id: svc.id,
             tmdb_provider_id: svc.tmdb_provider_id,
             name: svc.name,
-            logo_url,
+            logo_path,
             homepage: svc.homepage || null,
             prices,
             default_price,

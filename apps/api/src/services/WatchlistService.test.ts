@@ -39,7 +39,7 @@ describe('WatchlistService update field methods', () => {
     userClient.from.mockReturnValue(q);
     q.single.mockResolvedValue({ data: { id: 'xyz' }, error: null });
 
-    const ok = await service.updateStreamingProvider('user-1', 'user-show-1', { id: 8, name: 'Netflix', logo_url: '/logo.png' });
+    const ok = await service.updateStreamingProvider('user-1', 'user-show-1', { id: 8, name: 'Netflix', logo_path: '/logo.png' });
 
     expect(ok).toBe(true);
     expect(userClient.from).toHaveBeenCalledWith('user_shows');
@@ -56,7 +56,7 @@ describe('WatchlistService update field methods', () => {
     userClient.from.mockReturnValue(q);
     q.single.mockRejectedValue(new Error('update failed'));
 
-    const ok = await service.updateStreamingProvider('user-1', 'user-show-1', { id: 100, name: 'X', logo_url: '/x.png' });
+    const ok = await service.updateStreamingProvider('user-1', 'user-show-1', { id: 100, name: 'X', logo_path: '/x.png' });
     expect(ok).toBe(false);
   });
 

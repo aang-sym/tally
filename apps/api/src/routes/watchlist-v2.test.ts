@@ -96,15 +96,15 @@ vi.mock('../db/supabase.js', () => {
 });
 
 // Now import the router under test after mocks are set
-import watchlistV2Router from './watchlist-v2.js';
+import watchlistV2Router from './watchlist.js';
 
 // Helper: build an express app mounting the same middleware chain as [Node.app()](apps/api/src/server.ts:1) for this route
 const buildApp = () => {
   const app = express();
   app.use(express.json());
-  // In server.ts the route is protected with authenticateUser before mounting the router at /api/watchlist-v2
+  // In server.ts the route is protected with authenticateUser before mounting the router at /api/watchlist
   // We replicate that for accurate 401 behavior.
-  app.use('/api/watchlist-v2', authenticateUser as any, watchlistV2Router);
+  app.use('/api/watchlist', authenticateUser as any, watchlistV2Router);
   // Generic error passthrough to reveal route status codes in tests
   app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err?.statusCode || 500;
@@ -127,7 +127,7 @@ const signToken = (payload: { userId: string; email?: string; displayName?: stri
 
 const authHeaderFor = (userId: string) => `Bearer ${signToken({ userId })}`;
 
-describe('watchlist-v2 PUT endpoints', () => {
+describe('watchlist PUT endpoints', () => {
   const app = buildApp();
   const userId = 'user-1';
   const otherUserId = 'user-2';
@@ -140,8 +140,8 @@ describe('watchlist-v2 PUT endpoints', () => {
   // Common 401 - no token
   it('PUT /:id/provider - 401 when no token', async () => {
     const res = await request(app)
-      .put(`/api/watchlist-v2/${showId}/provider`)
-      .send({ provider: { id: 8, name: 'Netflix', logo_url: '/p/netflix.png' } });
+      .put(`/api/watchlist/${showId}/provider`)
+      .send({ provider: { id: 8, name: 'Netflix', logo_path: '/p/netflix.png' } });
 
     expect(res.status).toBe(401);
     expect(res.body.success).toBe(false);
@@ -149,7 +149,7 @@ describe('watchlist-v2 PUT endpoints', () => {
 
   it('PUT /:id/country - 401 when no token', async () => {
     const res = await request(app)
-      .put(`/api/watchlist-v2/${showId}/country`)
+      .put(`/api/watchlist/${showId}/country`)
       .send({ countryCode: 'US' });
 
     expect(res.status).toBe(401);
@@ -157,7 +157,7 @@ describe('watchlist-v2 PUT endpoints', () => {
 
   it('PUT /:id/buffer - 401 when no token', async () => {
     const res = await request(app)
-      .put(`/api/watchlist-v2/${showId}/buffer`)
+      .put(`/api/watchlist/${showId}/buffer`)
       .send({ bufferDays: 7 });
 
     expect(res.status).toBe(401);
@@ -166,9 +166,9 @@ describe('watchlist-v2 PUT endpoints', () => {
   // Validation errors (400)
   it('PUT /:id/provider - 400 for invalid provider payload', async () => {
     const res = await request(app)
-      .put(`/api/watchlist-v2/${showId}/provider`)
+      .put(`/api/watchlist/${showId}/provider`)
       .set('Authorization', authHeaderFor(userId))
-      .send({ provider: { id: 1, name: 'X' } }); // missing logo_url
+      .send({ provider: { id: 1, name: 'X' } }); // missing logo_path
 
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('Invalid provider object');
@@ -177,7 +177,7 @@ describe('watchlist-v2 PUT endpoints', () => {
 
   it('PUT /:id/country - 400 for invalid countryCode type', async () => {
     const res = await request(app)
-      .put(`/api/watchlist-v2/${showId}/country`)
+      .put(`/api/watchlist/${showId}/country`)
       .set('Authorization', authHeaderFor(userId))
       .send({ countryCode: 123 }); // invalid
 
@@ -187,7 +187,7 @@ describe('watchlist-v2 PUT endpoints', () => {
 
   it('PUT /:id/buffer - 400 for invalid bufferDays', async () => {
     const res = await request(app)
-      .put(`/api/watchlist-v2/${showId}/buffer`)
+      .put(`/api/watchlist/${showId}/buffer`)
       .set('Authorization', authHeaderFor(userId))
       .send({ bufferDays: -1 });
 
@@ -199,9 +199,9 @@ describe('watchlist-v2 PUT endpoints', () => {
   it('PUT /:id/provider - 404 when service reports not found or access denied', async () => {
     mockWatchlistService.updateStreamingProvider.mockResolvedValue(false);
     const res = await request(app)
-      .put(`/api/watchlist-v2/${showId}/provider`)
+      .put(`/api/watchlist/${showId}/provider`)
       .set('Authorization', authHeaderFor(otherUserId))
-      .send({ provider: { id: 8, name: 'Netflix', logo_url: '/p/netflix.png' } });
+      .send({ provider: { id: 8, name: 'Netflix', logo_path: '/p/netflix.png' } });
 
     expect(res.status).toBe(404);
   });
@@ -209,7 +209,7 @@ describe('watchlist-v2 PUT endpoints', () => {
   it('PUT /:id/country - 404 when service reports not found or access denied', async () => {
     mockWatchlistService.updateCountryCode.mockResolvedValue(false);
     const res = await request(app)
-      .put(`/api/watchlist-v2/${showId}/country`)
+      .put(`/api/watchlist/${showId}/country`)
       .set('Authorization', authHeaderFor(otherUserId))
       .send({ countryCode: 'AU' });
 
@@ -219,7 +219,7 @@ describe('watchlist-v2 PUT endpoints', () => {
   it('PUT /:id/buffer - 404 when service reports not found or access denied', async () => {
     mockWatchlistService.updateBufferDays.mockResolvedValue(false);
     const res = await request(app)
-      .put(`/api/watchlist-v2/${showId}/buffer`)
+      .put(`/api/watchlist/${showId}/buffer`)
       .set('Authorization', authHeaderFor(otherUserId))
       .send({ bufferDays: 3 });
 
@@ -229,10 +229,10 @@ describe('watchlist-v2 PUT endpoints', () => {
   // Success cases (200)
   it('PUT /:id/provider - 200 and returns updated provider', async () => {
     mockWatchlistService.updateStreamingProvider.mockResolvedValue(true);
-    const provider = { id: 9, name: 'Disney+', logo_url: '/p/dp.png' };
+    const provider = { id: 9, name: 'Disney+', logo_path: '/p/dp.png' };
 
     const res = await request(app)
-      .put(`/api/watchlist-v2/${showId}/provider`)
+      .put(`/api/watchlist/${showId}/provider`)
       .set('Authorization', authHeaderFor(userId))
       .send({ provider });
 
@@ -246,7 +246,7 @@ describe('watchlist-v2 PUT endpoints', () => {
     mockWatchlistService.updateCountryCode.mockResolvedValue(true);
 
     const res = await request(app)
-      .put(`/api/watchlist-v2/${showId}/country`)
+      .put(`/api/watchlist/${showId}/country`)
       .set('Authorization', authHeaderFor(userId))
       .send({ countryCode: 'US' });
 
@@ -259,7 +259,7 @@ describe('watchlist-v2 PUT endpoints', () => {
     mockWatchlistService.updateBufferDays.mockResolvedValue(true);
 
     const res = await request(app)
-      .put(`/api/watchlist-v2/${showId}/buffer`)
+      .put(`/api/watchlist/${showId}/buffer`)
       .set('Authorization', authHeaderFor(userId))
       .send({ bufferDays: 5 });
 
@@ -269,7 +269,7 @@ describe('watchlist-v2 PUT endpoints', () => {
   });
 });
 
-describe('watchlist-v2 GET :tmdbId/progress - fixed response shape', () => {
+describe('watchlist GET :tmdbId/progress - fixed response shape', () => {
   const app = buildApp();
   const userId = 'user-1';
 
@@ -328,7 +328,7 @@ describe('watchlist-v2 GET :tmdbId/progress - fixed response shape', () => {
     });
 
     const res = await request(app)
-      .get(`/api/watchlist-v2/999/progress`)
+      .get(`/api/watchlist/999/progress`)
       .set('Authorization', authHeaderFor(userId));
 
     expect(res.status).toBe(200);
@@ -349,7 +349,7 @@ describe('watchlist-v2 GET :tmdbId/progress - fixed response shape', () => {
     (svc.in as any).mockResolvedValue({ data: [], error: null });
 
     const res = await request(app)
-      .get(`/api/watchlist-v2/100/progress`)
+      .get(`/api/watchlist/100/progress`)
       .set('Authorization', authHeaderFor(userId));
 
     expect(res.status).toBe(200);
@@ -358,13 +358,13 @@ describe('watchlist-v2 GET :tmdbId/progress - fixed response shape', () => {
   });
 
   it('401 when no auth', async () => {
-    const res = await request(app).get(`/api/watchlist-v2/100/progress`);
+    const res = await request(app).get(`/api/watchlist/100/progress`);
     expect(res.status).toBe(401);
   });
 
   it('400 for invalid tmdbId', async () => {
     const res = await request(app)
-      .get(`/api/watchlist-v2/not-a-number/progress`)
+      .get(`/api/watchlist/not-a-number/progress`)
       .set('Authorization', authHeaderFor(userId));
 
     expect(res.status).toBe(400);
@@ -373,11 +373,11 @@ describe('watchlist-v2 GET :tmdbId/progress - fixed response shape', () => {
 
 // Additional cases appended by tests
 
-describe('watchlist-v2 PUT /:id/provider - null provider clears value', () => {
+describe('watchlist PUT /:id/provider - null provider clears value', () => {
   const app = (function build() {
     const expressApp = express();
     expressApp.use(express.json());
-    expressApp.use('/api/watchlist-v2', authenticateUser as any, watchlistV2Router);
+    expressApp.use('/api/watchlist', authenticateUser as any, watchlistV2Router);
     return expressApp;
   })();
 
@@ -392,7 +392,7 @@ describe('watchlist-v2 PUT /:id/provider - null provider clears value', () => {
     mockWatchlistService.updateStreamingProvider.mockResolvedValue(true);
 
     const res = await request(app)
-      .put(`/api/watchlist-v2/${showId}/provider`)
+      .put(`/api/watchlist/${showId}/provider`)
       .set('Authorization', `Bearer ${jwt.sign({ userId, email: 'x@test.dev', displayName: 'X' }, process.env.JWT_SECRET!, { expiresIn: '1d' })}`)
       .send({ provider: null });
 

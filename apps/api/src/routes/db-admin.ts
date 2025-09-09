@@ -335,7 +335,7 @@ router.post('/seed/memory-to-supabase', async (req: Request, res: Response) => {
             selected_service_id = svcByName.id;
           } else {
             const logoPath = (() => {
-              try { return new URL(item.streamingProvider!.logo_url).pathname; } catch { return null; }
+              try { return new URL(item.streamingProvider!.logo_path).pathname; } catch { return null; }
             })();
             const { data: newSvc } = await supabase
               .from('streaming_services')

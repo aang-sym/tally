@@ -11,7 +11,7 @@ interface UserSubscription {
   service: {
     id: string;
     name: string;
-    logo_url?: string;
+    logo_path?: string;
   };
 }
 
@@ -497,8 +497,8 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
 
   // Helper function to extract provider logo URL from show
   const getProviderLogoFromShow = (show: any): string | null => {
-    if (show.streaming_provider?.logo_url) {
-      return upgradeTmdbLogoUrl(show.streaming_provider.logo_url);
+    if (show.streaming_provider?.logo_path) {
+      return upgradeTmdbLogoUrl(show.streaming_provider.logo_path);
     }
     return null;
   };

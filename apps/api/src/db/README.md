@@ -179,7 +179,7 @@ Public tables (shows, episodes, streaming_services) are readable by all authenti
 ## 🏗️ Data Flow
 
 ### Adding a Show
-1. User adds show via `/api/watchlist-v2`
+1. User adds show via `/api/watchlist`
 2. System fetches show data from TMDB API
 3. Show/season/episode data cached in database
 4. User-show relationship created in `user_shows`

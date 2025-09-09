@@ -54,7 +54,7 @@ paths:
                             id: "c38c74f5-b020-4292-9aba-6342ba529485"
                             tmdb_provider_id: 1899
                             name: "HBO Max"
-                            logo_url: "https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg"
+                            logo_path: "https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg"
                             homepage: "https://www.max.com/"
                             prices:
                               - tier: "Standard"
@@ -295,7 +295,7 @@ components:
           nullable: true
         name:
           type: string
-        logo_url:
+        logo_path:
           type: string
           format: uri
           nullable: true

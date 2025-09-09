@@ -266,7 +266,7 @@ const SearchShows: React.FC = () => {
     try {
       setSettingProgress(true);
 
-      // First, add show to watchlist as "watching" using the watchlist-v2 API
+      // First, add show to watchlist as "watching" using the watchlist API
       const watchlistData: WatchlistAddRequest = { tmdbId: selectedShow.id, title: selectedShow.title, status: 'watching' };
       const token = localStorage.getItem('authToken') || undefined;
       const watchlistResult = await apiRequest(API_ENDPOINTS.watchlist.v2, {
@@ -282,7 +282,7 @@ const SearchShows: React.FC = () => {
         // Continue without the userShowId - we can still set progress using tmdbId
       }
 
-      // Then set the episode progress using the watchlist-v2 API
+      // Then set the episode progress using the watchlist API
       const progressData = await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${selectedShow.id}/progress`, {
         method: 'PUT',
         headers: {

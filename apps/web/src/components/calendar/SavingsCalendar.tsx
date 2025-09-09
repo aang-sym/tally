@@ -11,7 +11,7 @@ interface UserSubscription {
   service: {
     id: string;
     name: string;
-    logo_url?: string;
+    logo_path?: string;
   };
 }
 

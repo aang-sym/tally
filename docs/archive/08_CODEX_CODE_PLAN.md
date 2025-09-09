@@ -44,7 +44,7 @@ Primary reference: Image 2 (stacked logo bubbles), light theme only.
 
 ## Notes
 
-- Service logos: use `streaming_provider.logo_url` when available; fallback color dot.
+- Service logos: use `streaming_provider.logo_path` when available; fallback color dot.
 - Data model: compute per-provider per-day `displayType` (`logo` vs `bar` → now `pip`), with flags for `isStart`, `isEnd`, `isEndingSoon` for status dots.
 - Keep `SavingsCalendar` behavior intact by making new props optional with safe defaults.
 

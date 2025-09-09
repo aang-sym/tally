@@ -27,7 +27,7 @@ function getUserToken(req: Request): string | undefined {
 }
 
 /**
- * GET /api/watchlist-v2
+ * GET /api/watchlist
  * Get user's complete watchlist with show details and progress
  */
 router.get('/', async (req: Request, res: Response) => {
@@ -69,7 +69,7 @@ router.get('/', async (req: Request, res: Response) => {
       .map((it: any) => it?.selected_service_id)
       .filter((v: any): v is string => typeof v === 'string' && v.length > 0);
 
-    let providerByUuid = new Map<string, { id: number; name: string; logo_url: string }>();
+    let providerByUuid = new Map<string, { id: number; name: string; logo_path: string }>();
     if (selectedIds.length > 0) {
       const { data: providers, error: provErr } = await serviceSupabase
         .from('streaming_services')
@@ -80,13 +80,13 @@ router.get('/', async (req: Request, res: Response) => {
         console.error('⚠️ [WATCHLIST-V2][GET /] provider fetch error:', provErr);
       } else {
         for (const p of providers || []) {
-          const logo_url = p.logo_path
+          const logo_path = p.logo_path
             ? (p.logo_path.startsWith('http') ? p.logo_path : `https://image.tmdb.org/t/p/w45${p.logo_path}`)
             : null;
           providerByUuid.set(p.id, {
             id: p.tmdb_provider_id,
             name: p.name,
-            logo_url: logo_url || ''
+            logo_path: logo_path || ''
           });
         }
       }
@@ -117,7 +117,7 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/watchlist-v2/stats
+ * GET /api/watchlist/stats
  * Get user's watchlist statistics
  */
 router.get('/stats', async (req: Request, res: Response) => {
@@ -143,7 +143,7 @@ router.get('/stats', async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/watchlist-v2
+ * POST /api/watchlist
  * Add show to watchlist
  * 
  * Body: { tmdbId: number, status?: 'watchlist' | 'watching' }
@@ -269,7 +269,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 /**
- * PUT /api/watchlist-v2/:id/status
+ * PUT /api/watchlist/:id/status
  * Update show status (watchlist -> watching -> completed, etc.)
  * 
  * Body: { status: 'watchlist' | 'watching' | 'completed' | 'dropped' }
@@ -306,7 +306,7 @@ router.put('/:id/status', async (req: Request, res: Response) => {
 });
 
 /**
- * PUT /api/watchlist-v2/:id/rating
+ * PUT /api/watchlist/:id/rating
  * Rate a show
  * 
  * Body: { rating: number } (0.0-10.0)
@@ -344,7 +344,7 @@ router.put('/:id/rating', async (req: Request, res: Response) => {
 });
 
 /**
- * PUT /api/watchlist-v2/:id/notes
+ * PUT /api/watchlist/:id/notes
  * Update show notes
  * 
  * Body: { notes: string }
@@ -398,10 +398,10 @@ router.put('/:id/notes', async (req: Request, res: Response) => {
 });
 
 /**
- * PUT /api/watchlist-v2/:id/provider
+ * PUT /api/watchlist/:id/provider
  * Update streaming provider for the user's show
  *
- * Body: { provider: { id: number, name: string, logo_url: string } | null }
+ * Body: { provider: { id: number, name: string, logo_path: string } | null }
  */
 router.put('/:id/provider', async (req: Request, res: Response) => {
   try {
@@ -416,8 +416,8 @@ router.put('/:id/provider', async (req: Request, res: Response) => {
     const { provider } = req.body;
 
     // Validate provider structure if not null
-    if (provider !== null && (typeof provider !== 'object' || !provider.id || !provider.name || !provider.logo_url)) {
-      return res.status(400).json({ success: false, error: 'Invalid provider object. Expected { id: number, name: string, logo_url: string } or null.' });
+    if (provider !== null && (typeof provider !== 'object' || !provider.id || !provider.name || !provider.logo_path)) {
+      return res.status(400).json({ success: false, error: 'Invalid provider object. Expected { id: number, name: string, logo_path: string } or null.' });
     }
 
     const watchlistService = new WatchlistService(getUserToken(req));
@@ -435,7 +435,7 @@ router.put('/:id/provider', async (req: Request, res: Response) => {
 });
 
 /**
- * PUT /api/watchlist-v2/:id/country
+ * PUT /api/watchlist/:id/country
  * Update country code for the user's show
  *
  * Body: { countryCode: string | null }
@@ -471,7 +471,7 @@ router.put('/:id/country', async (req: Request, res: Response) => {
 });
 
 /**
- * PUT /api/watchlist-v2/:id/buffer
+ * PUT /api/watchlist/:id/buffer
  * Update buffer days for the user's show
  *
  * Body: { bufferDays: number }
@@ -507,7 +507,7 @@ router.put('/:id/buffer', async (req: Request, res: Response) => {
 });
 
 /**
- * DELETE /api/watchlist-v2/:id
+ * DELETE /api/watchlist/:id
  * Remove show from all lists
  */
 router.delete('/:id', async (req: Request, res: Response) => {
@@ -538,7 +538,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/watchlist-v2/watching
+ * GET /api/watchlist/watching
  * Get currently watching shows with detailed progress
  */
 router.get('/watching', async (req: Request, res: Response) => {
@@ -564,7 +564,7 @@ router.get('/watching', async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/watchlist-v2/watching/:showId
+ * GET /api/watchlist/watching/:showId
  * Get detailed watch progress for a specific show
  */
 router.get('/watching/:showId', async (req: Request, res: Response) => {
@@ -615,7 +615,7 @@ router.get('/watching/:showId', async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/watchlist-v2/search-and-add
+ * POST /api/watchlist/search-and-add
  * Search TMDB and add show in one step
  * 
  * Body: { query: string, tmdbId?: number, status?: 'watchlist' | 'watching' }
@@ -681,11 +681,11 @@ router.post('/search-and-add', async (req: Request, res: Response) => {
 });
 
 // -----------------------------------------------------------------------------
-// NEW: Episode progress endpoints for watchlist-v2
+// NEW: Episode progress endpoints for watchlist
 // -----------------------------------------------------------------------------
 
 /**
- * GET /api/watchlist-v2/:tmdbId/progress
+ * GET /api/watchlist/:tmdbId/progress
  * Return user's episode progress for a show identified by TMDB ID
  * Response format (used by SearchShows): { data: { showProgress: [{ seasonNumber, episodeNumber, status }] } }
  */
@@ -807,7 +807,7 @@ router.get('/:tmdbId/progress', async (req: Request, res: Response) => {
 });
 
 /**
- * PUT /api/watchlist-v2/:tmdbId/progress
+ * PUT /api/watchlist/:tmdbId/progress
  * Body: { seasonNumber: number, episodeNumber: number, status: 'watched' | 'unwatched' | 'watching' }
  * Sets progress up to the specified episode (inclusive).
  */

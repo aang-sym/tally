@@ -687,7 +687,7 @@ const MyShows: React.FC = () => {
       const providers = data.providers.map((provider: any) => ({
         id: provider.provider_id,
         name: provider.provider_name,
-        logo_url: `https://image.tmdb.org/t/p/w45${provider.logo_path}`
+        logo_path: `https://image.tmdb.org/t/p/w45${provider.logo_path}`
       }));
 
       setShowProviders(prev => ({
@@ -970,7 +970,7 @@ const MyShows: React.FC = () => {
                                     {userShow.streaming_provider ? (
                                       <div className="flex items-center space-x-2">
                                         <img
-                                          src={userShow.streaming_provider.logo_url}
+                                          src={userShow.streaming_provider.logo_path}
                                           alt={userShow.streaming_provider.name}
                                           className="w-6 h-6 rounded"
                                         />
@@ -993,14 +993,14 @@ const MyShows: React.FC = () => {
                                           onChange={(e) => {
                                             const value = e.target.value;
                                             if (value) {
-                                              const [idStr, name, logo_url] = value.split('|');
-                                              if (userShow.id && idStr && name && logo_url) { // Ensure idStr is defined
+                                              const [idStr, name, logo_path] = value.split('|');
+                                              if (userShow.id && idStr && name && logo_path) { // Ensure idStr is defined
                                                 const id = parseInt(idStr);
                                                 if (!isNaN(id)) {
                                                   updateStreamingProvider(userShow.id, {
                                                     id,
                                                     name,
-                                                    logo_url
+                                                    logo_path
                                                   });
                                                 }
                                               }
@@ -1013,7 +1013,7 @@ const MyShows: React.FC = () => {
                                           {availableProviders.map((provider) => (
                                             <option
                                               key={provider.id}
-                                              value={`${provider.id}|${provider.name}|${provider.logo_url}`}
+                                              value={`${provider.id}|${provider.name}|${provider.logo_path}`}
                                             >
                                               {provider.name}
                                             </option>
@@ -1034,7 +1034,7 @@ const MyShows: React.FC = () => {
                                       >
                                         {availableProviders[0] && (
                                           <>
-                                            <img src={availableProviders[0].logo_url} alt={availableProviders[0].name} className="w-5 h-5 rounded" />
+                                            <img src={availableProviders[0].logo_path} alt={availableProviders[0].name} className="w-5 h-5 rounded" />
                                             <span>Use {availableProviders[0].name}</span>
                                           </>
                                         )}

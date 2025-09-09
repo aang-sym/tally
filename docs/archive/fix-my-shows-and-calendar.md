@@ -179,7 +179,7 @@ CREATE POLICY "Users can manage own subscriptions" ON user_streaming_subscriptio
 curl -X PUT http://localhost:3001/api/watchlist-v2/SHOW_ID/provider \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"provider":{"id":1,"name":"Netflix","logo_url":"..."}}'
+  -d '{"provider":{"id":1,"name":"Netflix","logo_path":"..."}}'
 
 # Test country update (currently fails with 404)  
 curl -X PUT http://localhost:3001/api/watchlist-v2/SHOW_ID/country \

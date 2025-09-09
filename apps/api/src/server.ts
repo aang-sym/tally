@@ -13,7 +13,7 @@ import { showsRouter } from './routes/shows.js';
 import { tmdbRouter } from './routes/tmdb.js';
 import { usageStatsRouter } from './routes/usage-stats.js';
 // New v4 routes
-import watchlistV2Router from './routes/watchlist-v2.js';
+import watchlistV2Router from './routes/watchlist.js';
 import progressRouter from './routes/progress.js';
 import ratingsRouter from './routes/ratings.js';
 import recommendationsRouter from './routes/recommendations.js';
@@ -63,13 +63,13 @@ app.use('/api/streaming-services', optionalAuth, streamingServicesRouter);
 app.use('/api/tv-guide', optionalAuth, tvGuideRouter);
 
 // Protected routes (require authentication)
-// Old watchlist route removed - use /api/watchlist-v2 instead
+// Old watchlist route removed - use /api/watchlist instead
 app.use('/api/plan', authenticateUser, planRouter);
 app.use('/api/streaming-quota', authenticateUser, streamingQuotaRouter);
 app.use('/api/usage-stats', authenticateUser, usageStatsRouter);
 
 // New v4 protected API routes
-app.use('/api/watchlist-v2', authenticateUser, watchlistV2Router);
+app.use('/api/watchlist', authenticateUser, watchlistV2Router);
 app.use('/api/progress', authenticateUser, progressRouter);
 app.use('/api/ratings', authenticateUser, ratingsRouter);
 app.use('/api/recommendations', authenticateUser, recommendationsRouter);

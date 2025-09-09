@@ -122,7 +122,7 @@ echo "====================================="
 
 # Test 8: Create watchlist item for User 1
 echo "Test 3.1: Create watchlist item for User 1"
-ADD_SHOW_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST "$API_BASE/api/watchlist-v2" \
+ADD_SHOW_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST "$API_BASE/api/watchlist" \
     -H "Authorization: Bearer $USER1_TOKEN" \
     -H "Content-Type: application/json" \
     -d '{"tmdbId":"123","title":"Test Show","status":"watchlist"}')
@@ -141,7 +141,7 @@ fi
 
 # Test 9: Try to access User 1's data with User 2's token
 echo "Test 3.2: Cross-user data access attempt"
-CROSS_ACCESS_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" -X GET "$API_BASE/api/watchlist-v2" \
+CROSS_ACCESS_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" -X GET "$API_BASE/api/watchlist" \
     -H "Authorization: Bearer $USER2_TOKEN")
 CROSS_ACCESS_STATUS=$(echo "$CROSS_ACCESS_RESPONSE" | grep -o "HTTPSTATUS:[0-9]*" | cut -d: -f2)
 CROSS_ACCESS_BODY=$(echo "$CROSS_ACCESS_RESPONSE" | sed 's/HTTPSTATUS:[0-9]*$//')

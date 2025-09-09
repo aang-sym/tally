@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import express from 'express';
-import watchlistRouter from './watchlist-v2.js';
+import watchlistRouter from './watchlist.js';
 import { watchlistStore } from '../storage/index.js';
 import { streamingAvailabilityService } from '../services/streaming-availability.js';
 

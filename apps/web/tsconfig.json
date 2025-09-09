@@ -18,5 +18,9 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "references": [{ "path": "./tsconfig.node.json" }],
+  "exclude": [
+    "../../packages/api-client", // adjust the relative path if needed
+    "node_modules"
+  ]
 }

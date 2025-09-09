@@ -1,6 +1,6 @@
 /**
  * Simple in-memory watchlist storage
- * Shared between TMDB router and watchlist-v2 router
+ * Shared between TMDB router and watchlist router
  */
 
 export interface WatchlistItem {
@@ -12,7 +12,7 @@ export interface WatchlistItem {
   streamingProvider?: {
     id: number;
     name: string;
-    logo_url: string;
+    logo_path: string;
   };
   bufferDays?: number; // optional per-show buffer extension (UI hint)
   country?: string;    // user's selected country for this show (e.g., 'US','AU')
@@ -48,7 +48,7 @@ const testWatchingShows: WatchlistItem[] = [
     streamingProvider: {
       id: 1899,
       name: 'HBO Max',
-      logo_url: 'https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg'
+      logo_path: 'https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg'
     }
   },
   {
@@ -60,7 +60,7 @@ const testWatchingShows: WatchlistItem[] = [
     streamingProvider: {
       id: 4888,
       name: 'Paramount+ with Showtime',
-      logo_url: 'https://image.tmdb.org/t/p/w45/h5DcR0J2EESLitnhR8xLG1QymTE.jpg'
+      logo_path: 'https://image.tmdb.org/t/p/w45/h5DcR0J2EESLitnhR8xLG1QymTE.jpg'
     }
   }
 ];
@@ -264,7 +264,7 @@ export const watchlistStorageService = {
   },
 
   // Update streaming provider for a watchlist item
-  updateStreamingProvider(userId: string, itemId: string, provider: { id: number; name: string; logo_url: string } | null): WatchlistItem | null {
+  updateStreamingProvider(userId: string, itemId: string, provider: { id: number; name: string; logo_path: string } | null): WatchlistItem | null {
     const userWatchlist = this.getUserWatchlist(userId);
     const item = userWatchlist.find(item => item.id === itemId);
     

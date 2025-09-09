@@ -121,7 +121,7 @@ async function buildShowFromTMDB(tmdbId: number, title: string, provider: any, s
       streamingServices: provider ? [{
         id: provider.id,
         name: provider.name,
-        logo: provider.logo_url,
+        logo: provider.logo_path,
         color: getServiceColor(provider.name),
         textColor: '#FFFFFF'
       }] : [],
@@ -180,7 +180,7 @@ router.get('/', async (req, res) => {
         const provider = row.service ? {
           id: row.selected_service_id,
           name: row.service.name,
-          logo_url: row.service.logo_path ? `https://image.tmdb.org/t/p/w92${row.service.logo_path}` : ''
+          logo_path: row.service.logo_path ? `https://image.tmdb.org/t/p/w92${row.service.logo_path}` : ''
         } : null;
         const country = row.country_code || defaultCountry;
         const bufferDays = row.buffer_days || 0;

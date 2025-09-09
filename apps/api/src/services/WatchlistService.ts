@@ -731,7 +731,7 @@ export class WatchlistService {
   async updateStreamingProvider(
     userId: string,
     userShowId: string,
-    provider: { id: number; name: string; logo_url: string } | null
+    provider: { id: number; name: string; logo_path: string } | null
   ): Promise<boolean> {
     try {
       // Manual authorization: verify ownership first using service role
@@ -752,7 +752,7 @@ export class WatchlistService {
         selectedServiceId = await this.getStreamingServiceUUID(
           provider.id,
           provider.name,
-          provider.logo_url
+          provider.logo_path
         );
 
         if (!selectedServiceId) {
