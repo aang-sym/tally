@@ -8,7 +8,21 @@ import { Router, Request, Response } from 'express';
 import { supabase } from '../db/supabase.js';
 import { streamingService } from '../services/StreamingService.js';
 
-const router = Router();
+// --- Local row types to satisfy TS when mapping/sorting Supabase results ---
+type SubscriptionRow = {
+  id: string;
+  is_active: boolean;
+};
+
+interface ServiceRow {
+  id: string;
+  name: string;
+  logo_path?: string | null;
+  homepage?: string | null;
+  user_streaming_subscriptions?: SubscriptionRow[] | null;
+}
+
+const router: Router = Router();
 
 /**
  * GET /api/streaming-services
@@ -127,16 +141,17 @@ router.get('/popular', async (req: Request, res: Response) => {
       throw error;
     }
 
-    // Group by service and count active subscriptions
-    const popularServices = services?.map(service => ({
-      id: service.id,
-      name: service.name,
-      logo_path: service.logo_path,
-      homepage: service.homepage,
-      subscriber_count: Array.isArray(service.user_streaming_subscriptions) 
-        ? service.user_streaming_subscriptions.length 
-        : 1
-    })).sort((a, b) => b.subscriber_count - a.subscriber_count) || [];
+    const popularServices =
+      (services as ServiceRow[] | null)?.map((service: ServiceRow) => ({
+        id: service.id,
+        name: service.name,
+        logo_path: service.logo_path ?? null,
+        homepage: service.homepage ?? null,
+        subscriber_count: Array.isArray(service.user_streaming_subscriptions)
+          ? service.user_streaming_subscriptions.length
+          : 0
+      }))
+      .sort((a: { subscriber_count: number }, b: { subscriber_count: number }) => b.subscriber_count - a.subscriber_count) || [];
 
     res.json({
       success: true,

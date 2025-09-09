@@ -11,7 +11,7 @@ import { showService } from '../services/ShowService.js';
 import { streamingService } from '../services/StreamingService.js';
 import { supabase, serviceSupabase, createUserClient } from '../db/supabase.js';
 
-const router = Router();
+const router: Router = Router();
 
 // Note: Authentication is now handled by server-level middleware
 

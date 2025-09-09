@@ -1,6 +1,5 @@
 // apps/web/src/services/apiClient.ts
-import { Configuration, DefaultApi } from '../../../packages/api-client';
-import { UserManager } from '../services/UserManager';
+import { Configuration, DefaultApi } from '@tally/api-client';
 
 const basePath =
   import.meta.env.VITE_API_BASE_URL ??
@@ -9,9 +8,9 @@ const basePath =
 
 const config = new Configuration({
   basePath,
-  accessToken: async () => {
-    // return token string or undefined
-    return localStorage.getItem('authToken') ?? undefined;
+  accessToken: () => {
+    const t = localStorage.getItem('authToken');
+    return t || '';
   },
   // optional: send credentials, timeouts, etc.
 });

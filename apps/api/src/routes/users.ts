@@ -20,7 +20,7 @@ import {
   asyncHandler
 } from '../utils/errorHandler.js';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * Helper function to generate JWT token
