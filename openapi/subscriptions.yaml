@@ -1,0 +1,391 @@
+openapi: 3.1.0
+info:
+  title: Tally Subscriptions API
+  version: 0.1.0
+  description: |
+    Contracts for user streaming subscriptions, including tiered pricing scoped by country.
+
+servers:
+  - url: http://localhost:3001
+    description: Local dev
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/users/{id}/subscriptions:
+    get:
+      summary: List a user's subscriptions
+      description: |
+        Returns the user's active/inactive subscriptions. Prices/tiers in the embedded service object are filtered by `country`.
+        If `country` is omitted server-side may fall back to `users.country_code`, then 'US'.
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+        - name: country
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 2
+            example: AU
+          description: ISO 3166-1 alpha-2 country code (e.g., AU, US).
+      responses:
+        '200':
+          description: Subscriptions retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionsResponse'
+              examples:
+                ok:
+                  value:
+                    success: true
+                    data:
+                      subscriptions:
+                        - id: "23fd0b2a-5c8a-4a5e-9e6a-1b2c3d4e5f60"
+                          service_id: "c38c74f5-b020-4292-9aba-6342ba529485"
+                          monthly_cost: 14.99
+                          is_active: true
+                          started_date: "2025-09-01"
+                          ended_date: null
+                          tier: "Standard"
+                          service:
+                            id: "c38c74f5-b020-4292-9aba-6342ba529485"
+                            tmdb_provider_id: 1899
+                            name: "HBO Max"
+                            logo_url: "https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg"
+                            homepage: "https://www.max.com/"
+                            prices:
+                              - tier: "Standard"
+                                amount: 14.99
+                                currency: "USD"
+                                billing_frequency: "monthly"
+                                active: true
+                                provider_name: "HBO Max"
+                              - tier: "Premium"
+                                amount: 19.99
+                                currency: "USD"
+                                billing_frequency: "monthly"
+                                active: true
+                                provider_name: "HBO Max"
+                            default_price:
+                              tier: "Standard"
+                              amount: 14.99
+                              currency: "USD"
+                              billing_frequency: "monthly"
+                              active: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      summary: Add (or upsert) a subscription
+      description: |
+        Creates a new subscription for the user; if one already exists for the service, updates it.
+        `tier` is optional; when provided, it is stored alongside the subscription.
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionCreateRequest'
+            examples:
+              add:
+                value:
+                  service_id: "c38c74f5-b020-4292-9aba-6342ba529485"
+                  monthly_cost: 14.99
+                  tier: "Standard"
+                  is_active: true
+      responses:
+        '200':
+          description: Upserted subscription
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/users/{id}/subscriptions/{subscriptionId}:
+    put:
+      summary: Update a subscription
+      description: |
+        Partial update; any of `monthly_cost`, `is_active`, or `tier` may be provided.
+        Supports **tier-only** updates for quick UI changes.
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+        - $ref: '#/components/parameters/SubscriptionIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionUpdateRequest'
+            examples:
+              tierOnly:
+                value:
+                  tier: "Premium"
+              costAndActive:
+                value:
+                  monthly_cost: 19.99
+                  is_active: true
+      responses:
+        '200':
+          description: Updated subscription
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      summary: Remove (deactivate or delete) a subscription
+      description: |
+        Deletes or marks the subscription inactive (implementation-defined). Client should treat as removed.
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+        - $ref: '#/components/parameters/SubscriptionIdParam'
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    UserIdParam:
+      name: id
+      in: path
+      required: true
+      description: User UUID
+      schema:
+        type: string
+        format: uuid
+    SubscriptionIdParam:
+      name: subscriptionId
+      in: path
+      required: true
+      description: Subscription UUID
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unauthorized:
+              value:
+                success: false
+                error: "Unauthorized"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            notFound:
+              value:
+                success: false
+                error: "Not Found"
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            bad:
+              value:
+                success: false
+                error: "Invalid input"
+    ServerError:
+      description: Server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            boom:
+              value:
+                success: false
+                error: "Failed to retrieve user subscriptions"
+                details: "Unknown error"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+        details:
+          type: string
+          nullable: true
+
+    PriceTier:
+      type: object
+      properties:
+        tier:
+          type: string
+          example: Standard
+        amount:
+          type: number
+          nullable: true
+          example: 14.99
+        currency:
+          type: string
+          nullable: true
+          example: USD
+        billing_frequency:
+          type: string
+          nullable: true
+          example: monthly
+        active:
+          type: boolean
+          nullable: true
+          example: true
+        notes:
+          type: string
+          nullable: true
+        provider_name:
+          type: string
+          nullable: true
+
+    StreamingServiceSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tmdb_provider_id:
+          type: integer
+          nullable: true
+        name:
+          type: string
+        logo_url:
+          type: string
+          format: uri
+          nullable: true
+        homepage:
+          type: string
+          format: uri
+          nullable: true
+        prices:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceTier'
+        default_price:
+          $ref: '#/components/schemas/PriceTier'
+
+    UserSubscription:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        service_id:
+          type: string
+          format: uuid
+        monthly_cost:
+          type: number
+        is_active:
+          type: boolean
+        started_date:
+          type: string
+          format: date
+        ended_date:
+          type: string
+          format: date
+          nullable: true
+        tier:
+          type: string
+          nullable: true
+        service:
+          $ref: '#/components/schemas/StreamingServiceSummary'
+
+    SubscriptionsEnvelope:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            subscriptions:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserSubscription'
+
+    SubscriptionsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SubscriptionsEnvelope'
+
+    SubscriptionCreateRequest:
+      type: object
+      required: [service_id, monthly_cost]
+      properties:
+        service_id:
+          type: string
+          format: uuid
+        monthly_cost:
+          type: number
+        is_active:
+          type: boolean
+          default: true
+        tier:
+          type: string
+          nullable: true
+
+    SubscriptionUpdateRequest:
+      type: object
+      properties:
+        monthly_cost:
+          type: number
+        is_active:
+          type: boolean
+        tier:
+          type: string
+          nullable: true
+
+    SubscriptionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/UserSubscription'
