@@ -91,6 +91,154 @@ app.use('*', (req, res) => {
 // Error handling middleware
 app.use(errorHandler);
 
+// --- OpenAPI quickstart: minimal spec + docs ---
+// Gives us a live contract surface we can refine incrementally.
+
+const openapiDoc = {
+  openapi: '3.0.3',
+  info: {
+    title: 'Tally API',
+    version: '0.1.0',
+    description:
+      'Minimal OpenAPI surface for watchlist v2. Expand with real schemas per route as we iterate.'
+  },
+  servers: [
+    { url: process.env.API_PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 3000}` }
+  ],
+  paths: {
+    '/api/watchlist': {
+      get: {
+        summary: 'List user shows with progress',
+        tags: ['watchlist'],
+        parameters: [
+          {
+            name: 'country',
+            in: 'query',
+            required: false,
+            schema: { type: 'string', minLength: 2, maxLength: 2 },
+            description: 'ISO country code (e.g., AU) used for availability/provider context.'
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Array of user shows',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'array',
+                  items: { $ref: '#/components/schemas/UserShowCard' }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/watchlist/{userShowId}/provider': {
+      put: {
+        summary: 'Set selected streaming provider for a user_show',
+        tags: ['watchlist'],
+        parameters: [
+          {
+            name: 'userShowId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' }
+          }
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/SetProviderRequest' }
+            }
+          }
+        },
+        responses: {
+          '200': {
+            description: 'Updated provider echo',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Provider' }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  components: {
+    schemas: {
+      Provider: {
+        type: 'object',
+        required: ['id', 'name'],
+        properties: {
+          id: { type: 'integer', description: 'TMDB provider id (numeric)' },
+          name: { type: 'string' },
+          logo_url: { type: 'string', nullable: true }
+        }
+      },
+      Progress: {
+        type: 'object',
+        properties: {
+          watched_eps: { type: 'integer', minimum: 0 },
+          total_eps: { type: 'integer', minimum: 0 },
+          watched_eps_latest: { type: 'integer', minimum: 0 },
+          total_eps_latest: { type: 'integer', minimum: 0 }
+        }
+      },
+      UserShowCard: {
+        type: 'object',
+        required: ['user_show_id', 'show_id', 'title'],
+        properties: {
+          user_show_id: { type: 'string', format: 'uuid' },
+          show_id: { type: 'string', format: 'uuid' },
+          tmdb_id: { type: 'integer' },
+          title: { type: 'string' },
+          country_code: { type: 'string', nullable: true },
+          streaming_provider: { $ref: '#/components/schemas/Provider' },
+          progress: { $ref: '#/components/schemas/Progress' }
+        }
+      },
+      SetProviderRequest: {
+        type: 'object',
+        required: ['provider'],
+        properties: {
+          provider: { $ref: '#/components/schemas/Provider' },
+          country: { type: 'string', nullable: true, minLength: 2, maxLength: 2 }
+        }
+      }
+    }
+  }
+} as const;
+
+// Serve the raw spec
+app.get('/openapi.json', (_req, res) => {
+  res.setHeader('cache-control', 'no-store');
+  res.json(openapiDoc);
+});
+
+// Simple Redoc UI (no extra deps)
+app.get('/docs', (_req, res) => {
+  res.setHeader('content-type', 'text/html');
+  res.send(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Tally API Docs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <style>html,body{height:100%;margin:0} .container{height:100vh}</style>
+  </head>
+  <body>
+    <div class="container">
+      <redoc spec-url="/openapi.json"></redoc>
+    </div>
+    <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+  </body>
+</html>`);
+});
+// --- /OpenAPI quickstart ---
+
 app.listen(config.port, async () => {
   console.log(`🚀 Tally API server running on port ${config.port}`);
   console.log(`📊 Health check: http://localhost:${config.port}/api/health`);
