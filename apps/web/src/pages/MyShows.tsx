@@ -133,6 +133,14 @@ const deriveStats = (items: UserShow[]): WatchlistStats => {
 const MyShows: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'watchlist' | 'watching' | 'completed'>('all');
   const [shows, setShows] = useState<UserShow[]>([]);
+  // Cache watchlist per tab to avoid full reloads when switching
+  const [watchlistCache, setWatchlistCache] = useState<{
+    all?: UserShow[];
+    watchlist?: UserShow[];
+    watching?: UserShow[];
+    completed?: UserShow[];
+  }>({});
+  const [isBackgroundLoading, setIsBackgroundLoading] = useState(false);
   const [stats, setStats] = useState<WatchlistStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -168,7 +176,15 @@ const MyShows: React.FC = () => {
 
   // Fetch watchlist data
   useEffect(() => {
-    fetchWatchlist();
+    // If we have cached data for this tab, show it immediately without flicker
+    const cached = watchlistCache[activeTab];
+    if (cached) {
+      setShows(cached);
+      setStats(deriveStats(cached));
+      setLoading(false);
+    }
+    // Always refresh in the background
+    fetchWatchlist(activeTab, !!cached);
     fetchStats();
   }, [activeTab]);
 
@@ -193,11 +209,12 @@ const MyShows: React.FC = () => {
     }
   }, [shows]);
 
-  const fetchWatchlist = async () => {
+  const fetchWatchlist = async (tab: 'all' | 'watchlist' | 'watching' | 'completed' = activeTab, useBackground = false) => {
     try {
-      setLoading(true);
+      if (!useBackground) setLoading(true);
+      setIsBackgroundLoading(useBackground);
       const token = localStorage.getItem('authToken') || undefined;
-      const statusParam = activeTab !== 'all' ? activeTab : undefined;
+      const statusParam = tab !== 'all' ? tab : undefined;
 
       // Use apiRequest helper to fetch watchlist, tolerant of both array and object shapes
       const qs = statusParam ? `?status=${encodeURIComponent(statusParam)}` : '';
@@ -210,6 +227,9 @@ const MyShows: React.FC = () => {
           ? payload.shows
           : [];
       const showsList: UserShow[] = showsArray as UserShow[];
+
+      // Cache by tab to avoid flicker on subsequent switches
+      setWatchlistCache(prev => ({ ...prev, [tab]: showsList }));
 
       setShows(showsList);
       setStats(deriveStats(showsList));
@@ -230,12 +250,15 @@ const MyShows: React.FC = () => {
         });
       }
 
-      // Fetch providers and posters for all shows
+      // Fetch providers and posters for shows that are missing them
       if (showsList.length > 0) {
         showsList.forEach((show: UserShow) => {
-          fetchShowProviders(show.show.tmdb_id);
-          if (!show.show.poster_path && !posterOverrides[show.show.tmdb_id]) {
-            fetchShowPoster(show.show.tmdb_id);
+          const tmdb = show.show.tmdb_id;
+          if (!showProviders[tmdb]) {
+            fetchShowProviders(tmdb);
+          }
+          if (!show.show.poster_path && !posterOverrides[tmdb]) {
+            fetchShowPoster(tmdb);
           }
         });
       }
@@ -243,7 +266,8 @@ const MyShows: React.FC = () => {
       console.error('Failed to fetch watchlist:', err);
       setError('Failed to load your shows');
     } finally {
-      setLoading(false);
+      if (!useBackground) setLoading(false);
+      setIsBackgroundLoading(false);
     }
   };
 
@@ -732,10 +756,10 @@ const MyShows: React.FC = () => {
   };
 
   const tabs = [
-    { key: 'all' as const, label: 'All Shows', count: stats?.totalShows ?? (loadingStats ? '...' : 0) },
-    { key: 'watchlist' as const, label: 'Watchlist', count: stats?.byStatus.watchlist ?? (loadingStats ? '...' : 0) },
-    { key: 'watching' as const, label: 'Watching', count: stats?.byStatus.watching ?? (loadingStats ? '...' : 0) },
-    { key: 'completed' as const, label: 'Completed', count: stats?.byStatus.completed ?? (loadingStats ? '...' : 0) },
+    { key: 'all' as const, label: 'All Shows', count: stats ? stats.totalShows : '...' },
+    { key: 'watchlist' as const, label: 'Watchlist', count: stats ? stats.byStatus.watchlist : '...' },
+    { key: 'watching' as const, label: 'Watching', count: stats ? stats.byStatus.watching : '...' },
+    { key: 'completed' as const, label: 'Completed', count: stats ? stats.byStatus.completed : '...' },
   ];
 
   const StarRating: React.FC<{
@@ -859,6 +883,9 @@ const MyShows: React.FC = () => {
                     }`}>
                     {tab.count}
                   </span>
+                  {activeTab === tab.key && isBackgroundLoading && (
+                    <span className="ml-2 inline-block h-3 w-3 rounded-full bg-blue-200 animate-pulse" aria-hidden="true" />
+                  )}
                 </button>
               ))}
             </nav>
