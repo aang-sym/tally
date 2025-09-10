@@ -38,7 +38,9 @@ app.use(cors({
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://localhost:3002',
-    'http://127.0.0.1:3002'
+    'http://127.0.0.1:3002',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
   ],
   credentials: true,
 }));
@@ -125,7 +127,7 @@ const openapiDoc = {
         ],
         responses: {
           '200': {
-            description: 'Array of user shows',
+            description: 'Object with count and shows',
             content: {
               'application/json': {
                 schema: {
@@ -145,7 +147,40 @@ const openapiDoc = {
         }
       }
     },
-    '/api/watchlist/:userShowId/provider': {
+    '/api/watchlist/stats': {
+      get: {
+        summary: 'Watchlist aggregate stats',
+        tags: ['watchlist'],
+        responses: {
+          '200': {
+            description: 'Aggregated stats for the user’s watchlist',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['totalShows', 'byStatus', 'averageRating'],
+                  properties: {
+                    totalShows: { type: 'integer' },
+                    byStatus: {
+                      type: 'object',
+                      required: ['watchlist', 'watching', 'completed', 'dropped'],
+                      properties: {
+                        watchlist: { type: 'integer' },
+                        watching: { type: 'integer' },
+                        completed: { type: 'integer' },
+                        dropped: { type: 'integer' }
+                      }
+                    },
+                    averageRating: { type: 'number' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/watchlist/{userShowId}/provider': {
       put: {
         summary: 'Set selected streaming provider for a user_show',
         tags: ['watchlist'],

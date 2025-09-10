@@ -8,8 +8,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserManager } from '../services/UserManager';
 import { API_ENDPOINTS, apiRequest } from '../config/api';
-import { api } from '../services/apiClient';
-import { ApiWatchlistGetStatusEnum } from '@tally/api-client';
 import { UserShow, StreamingProvider, StoredEpisodeProgress } from '../types/api';
 
 // Shared, accessible progress bar component
@@ -250,24 +248,35 @@ const MyShows: React.FC = () => {
   };
 
   const fetchStats = async () => {
-    setLoadingStats(true); // Set loading true before fetch
-    setStatsError(null); // Clear previous errors
+    setLoadingStats(true);
+    setStatsError(null);
     try {
       const token = localStorage.getItem('authToken') || undefined;
-      const data = await apiRequest(`${API_ENDPOINTS.watchlist.v2}/stats`, {}, token);
-      const serverStats: WatchlistStats | undefined = data?.data;
-      const fallback = deriveStats(shows);
-      // Prefer server stats if they look populated; otherwise derive from current shows
-      if (serverStats && (serverStats.totalShows > 0 || Object.values(serverStats.byStatus).some(v => v > 0))) {
-        setStats(serverStats);
+
+      const raw = await apiRequest(`${API_ENDPOINTS.watchlist.v2}/stats`, {}, token);
+      const payload = (raw?.data ?? raw) as any;
+
+      const isValid = (
+        payload &&
+        typeof payload.totalShows === 'number' &&
+        payload.byStatus &&
+        ['watchlist', 'watching', 'completed', 'dropped'].every(
+          (k) => typeof payload.byStatus?.[k] === 'number'
+        ) &&
+        typeof payload.averageRating === 'number'
+      );
+
+      if (isValid) {
+        setStats(payload as WatchlistStats);
       } else {
-        setStats(fallback);
+        setStats(deriveStats(shows));
       }
     } catch (err) {
-      console.error('Failed to fetch stats:', err); // Change warn to error
-      setStatsError('Failed to load show statistics.'); // Set error message
+      console.error('Failed to fetch stats:', err);
+      setStatsError('Failed to load show statistics.');
+      setStats(deriveStats(shows));
     } finally {
-      setLoadingStats(false); // Set loading false after fetch
+      setLoadingStats(false);
     }
   };
 
