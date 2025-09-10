@@ -27,12 +27,14 @@ import { config } from './config/index.js';
 import { quotaTracker } from './services/quota-tracker.js';
 
 const app = express();
+// Prevent 304s on dynamic endpoints (Express enables ETag by default)
+app.set('etag', false);
 
 // Security middleware
 app.use(helmet());
 app.use(cors({
   origin: [
-    config.frontendUrl, 
+    config.frontendUrl,
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://localhost:3002',
@@ -47,6 +49,12 @@ app.use(morgan('combined'));
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+// Prevent caching on dynamic watchlist responses
+app.use('/api/watchlist', (_req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 
 // Import authentication middleware
 import { authenticateUser, optionalAuth } from './middleware/user-identity.js';
@@ -92,7 +100,7 @@ const openapiDoc = {
       'Minimal OpenAPI surface for watchlist v2. Expand with real schemas per route as we iterate.'
   },
   servers: [
-    { url: process.env.API_PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 3000}` }
+    { url: process.env.API_PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 4000}` }
   ],
   paths: {
     '/api/watchlist': {
@@ -106,6 +114,13 @@ const openapiDoc = {
             required: false,
             schema: { type: 'string', minLength: 2, maxLength: 2 },
             description: 'ISO country code (e.g., AU) used for availability/provider context.'
+          },
+          {
+            name: 'status',
+            in: 'query',
+            required: false,
+            schema: { type: 'string', enum: ['watchlist', 'watching', 'completed'] },
+            description: 'Filter by status. If omitted, returns all.'
           }
         ],
         responses: {
@@ -114,8 +129,15 @@ const openapiDoc = {
             content: {
               'application/json': {
                 schema: {
-                  type: 'array',
-                  items: { $ref: '#/components/schemas/UserShowCard' }
+                  type: 'object',
+                  properties: {
+                    count: { type: 'integer' },
+                    shows: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/UserShowCard' }
+                    }
+                  },
+                  required: ['shows']
                 }
               }
             }
@@ -242,20 +264,20 @@ app.use(errorHandler);
 app.listen(config.port, async () => {
   console.log(`🚀 Tally API server running on port ${config.port}`);
   console.log(`📊 Health check: http://localhost:${config.port}/api/health`);
-  
+
   // Log configuration status
   const hasApiKey = config.streamingAvailabilityApiKey !== 'dev-key-placeholder';
   console.log(`🎬 Streaming Availability API: ${hasApiKey ? 'Configured' : 'Not configured (using dev mode)'}`);
-  
+
   if (config.streamingApiDevMode) {
     console.log(`🔧 Streaming API Dev Mode: ENABLED (API calls will be mocked)`);
   }
-  
+
   // Log quota status
   try {
     const stats = await quotaTracker.getUsageStats();
     console.log(`📈 API Quota: ${stats.callsUsed}/${stats.limit} calls used this month (${stats.percentUsed.toFixed(1)}%)`);
-    
+
     const isLowQuota = await quotaTracker.shouldWarnLowQuota();
     if (isLowQuota && !config.streamingApiDevMode) {
       console.warn(`⚠️  API quota is running low! Only ${stats.callsRemaining} calls remaining.`);
@@ -263,6 +285,6 @@ app.listen(config.port, async () => {
   } catch (error) {
     console.log(`📈 API Quota: Unable to load quota data`);
   }
-  
+
   console.log(`🔍 Quota monitoring: http://localhost:${config.port}/api/streaming-quota`);
 });

@@ -8,6 +8,8 @@
 import React, { useState, useEffect } from 'react';
 import { UserManager } from '../services/UserManager';
 import { API_ENDPOINTS, apiRequest } from '../config/api';
+import { api } from '../services/apiClient';
+import { ApiWatchlistGetStatusEnum } from '@tally/api-client';
 import { UserShow, StreamingProvider, StoredEpisodeProgress } from '../types/api';
 
 // Shared, accessible progress bar component
@@ -196,19 +198,30 @@ const MyShows: React.FC = () => {
   const fetchWatchlist = async () => {
     try {
       setLoading(true);
-      const statusParam = activeTab !== 'all' ? `?status=${activeTab}` : '';
       const token = localStorage.getItem('authToken') || undefined;
-      const data = await apiRequest(`${API_ENDPOINTS.watchlist.v2}${statusParam}`, {}, token);
+      const statusParam = activeTab !== 'all' ? activeTab : undefined;
 
-      setShows(data.data.shows);
-      setStats(deriveStats(data.data.shows));
+      // Use apiRequest helper to fetch watchlist, tolerant of both array and object shapes
+      const qs = statusParam ? `?status=${encodeURIComponent(statusParam)}` : '';
+      const url = `${API_ENDPOINTS.watchlist.v2}${qs}`;
+      const raw = await apiRequest(url, {}, token);
+      const payload = raw?.data ?? raw; // backend may wrap in { data } or return directly
+      const showsArray = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.shows)
+          ? payload.shows
+          : [];
+      const showsList: UserShow[] = showsArray as UserShow[];
+
+      setShows(showsList);
+      setStats(deriveStats(showsList));
       setLoadingStats(false);
       setStatsError(null);
+      setError(null);
 
       // Prefetch overall progress so header bars are populated on initial load
-      if (data.data.shows && data.data.shows.length > 0) {
-        const items: UserShow[] = data.data.shows;
-        items.forEach(async (it: UserShow) => {
+      if (showsList.length > 0) {
+        showsList.forEach(async (it: UserShow) => {
           const prog = await fetchShowProgress(it.show.tmdb_id);
           if (prog) {
             setSeriesProgress(prev => ({
@@ -219,13 +232,10 @@ const MyShows: React.FC = () => {
         });
       }
 
-      setError(null);
-
       // Fetch providers and posters for all shows
-      if (data.data.shows && data.data.shows.length > 0) {
-        data.data.shows.forEach((show: UserShow) => {
+      if (showsList.length > 0) {
+        showsList.forEach((show: UserShow) => {
           fetchShowProviders(show.show.tmdb_id);
-          // Only fetch poster if not already present
           if (!show.show.poster_path && !posterOverrides[show.show.tmdb_id]) {
             fetchShowPoster(show.show.tmdb_id);
           }

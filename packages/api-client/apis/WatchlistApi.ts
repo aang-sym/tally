@@ -15,21 +15,22 @@
 
 import * as runtime from '../runtime';
 import type {
+  ApiWatchlistGet200Response,
   Provider,
   SetProviderRequest,
-  UserShowCard,
 } from '../models/index';
 import {
+    ApiWatchlistGet200ResponseFromJSON,
+    ApiWatchlistGet200ResponseToJSON,
     ProviderFromJSON,
     ProviderToJSON,
     SetProviderRequestFromJSON,
     SetProviderRequestToJSON,
-    UserShowCardFromJSON,
-    UserShowCardToJSON,
 } from '../models/index';
 
 export interface ApiWatchlistGetRequest {
     country?: string;
+    status?: ApiWatchlistGetStatusEnum;
 }
 
 export interface ApiWatchlistUserShowIdProviderPutRequest {
@@ -48,16 +49,17 @@ export interface WatchlistApiInterface {
      * 
      * @summary List user shows with progress
      * @param {string} [country] ISO country code (e.g., AU) used for availability/provider context.
+     * @param {'watchlist' | 'watching' | 'completed'} [status] Filter by status. If omitted, returns all.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof WatchlistApiInterface
      */
-    apiWatchlistGetRaw(requestParameters: ApiWatchlistGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<UserShowCard>>>;
+    apiWatchlistGetRaw(requestParameters: ApiWatchlistGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiWatchlistGet200Response>>;
 
     /**
      * List user shows with progress
      */
-    apiWatchlistGet(requestParameters: ApiWatchlistGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<UserShowCard>>;
+    apiWatchlistGet(requestParameters: ApiWatchlistGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiWatchlistGet200Response>;
 
     /**
      * 
@@ -85,11 +87,15 @@ export class WatchlistApi extends runtime.BaseAPI implements WatchlistApiInterfa
     /**
      * List user shows with progress
      */
-    async apiWatchlistGetRaw(requestParameters: ApiWatchlistGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<UserShowCard>>> {
+    async apiWatchlistGetRaw(requestParameters: ApiWatchlistGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiWatchlistGet200Response>> {
         const queryParameters: any = {};
 
         if (requestParameters['country'] != null) {
             queryParameters['country'] = requestParameters['country'];
+        }
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -104,13 +110,13 @@ export class WatchlistApi extends runtime.BaseAPI implements WatchlistApiInterfa
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(UserShowCardFromJSON));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiWatchlistGet200ResponseFromJSON(jsonValue));
     }
 
     /**
      * List user shows with progress
      */
-    async apiWatchlistGet(requestParameters: ApiWatchlistGetRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<UserShowCard>> {
+    async apiWatchlistGet(requestParameters: ApiWatchlistGetRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiWatchlistGet200Response> {
         const response = await this.apiWatchlistGetRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -163,3 +169,13 @@ export class WatchlistApi extends runtime.BaseAPI implements WatchlistApiInterfa
     }
 
 }
+
+/**
+ * @export
+ */
+export const ApiWatchlistGetStatusEnum = {
+    Watchlist: 'watchlist',
+    Watching: 'watching',
+    Completed: 'completed'
+} as const;
+export type ApiWatchlistGetStatusEnum = typeof ApiWatchlistGetStatusEnum[keyof typeof ApiWatchlistGetStatusEnum];

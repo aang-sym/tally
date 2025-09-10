@@ -1,6 +1,7 @@
 apis/WatchlistApi.ts
 apis/index.ts
 index.ts
+models/ApiWatchlistGet200Response.ts
 models/Progress.ts
 models/Provider.ts
 models/SetProviderRequest.ts
