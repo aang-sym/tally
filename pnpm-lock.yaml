@@ -206,6 +206,10 @@ importers:
       axios:
         specifier: ^1.11.0
         version: 1.11.0
+    devDependencies:
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.2
 
   packages/config:
     devDependencies:
