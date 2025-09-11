@@ -29,44 +29,34 @@ import { quotaTracker } from './services/quota-tracker.js';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 function getSupabaseForRequest(req: any) {
-  const bearer = (req.headers?.authorization as string | undefined) || '';
   const url = process.env.SUPABASE_URL as string | undefined;
-  const anon = process.env.SUPABASE_API_KEY as string | undefined;
-  if (!url || !anon) {
-    const parts = [!url ? 'SUPABASE_URL' : null, !anon ? 'SUPABASE_API_KEY' : null].filter(Boolean).join(', ');
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY as string | undefined;
+  if (!url || !serviceKey) {
+    const parts = [!url ? 'SUPABASE_URL' : null, !serviceKey ? 'SUPABASE_SERVICE_KEY' : null].filter(Boolean).join(', ');
     throw new Error(`Supabase env missing: ${parts}. Ensure these are set in apps/api/.env`);
   }
-  const hasAuth = Boolean(bearer);
-  console.log('[SUPA][client] building per-request client', { hasAuth });
-  return createSupabaseClient(url, anon, {
+  
+  // Check if we have a validated user from the authenticateUser middleware
+  const userId = req.userId || req.user?.id;
+  const hasAuth = Boolean(userId);
+  
+  console.log('[SUPA][client] building per-request client', { hasAuth, userId: userId ? `${userId.substring(0, 8)}...` : null });
+  
+  // For authenticated users, we'll use the service key to bypass RLS and manually filter by user_id
+  // This is necessary because we use custom JWTs, not Supabase-issued tokens
+  return createSupabaseClient(url, serviceKey, {
     auth: { persistSession: false },
     db: { schema: 'public' },
     global: {
-      headers: hasAuth ? { Authorization: bearer } : {}
+      headers: {
+        // Preserve debugging info
+        ...(req.headers?.authorization ? { 'x-original-auth': req.headers.authorization } : {}),
+        ...(userId ? { 'x-user-id': userId } : {})
+      }
     }
   });
 }
 
-function getSupabaseForRequestMinimal(req: any) {
-  const bearer = (req.headers?.authorization as string | undefined) || '';
-  const url = process.env.SUPABASE_URL as string | undefined;
-  const anon = process.env.SUPABASE_API_KEY as string | undefined;
-  if (!url || !anon) {
-    const parts = [!url ? 'SUPABASE_URL' : null, !anon ? 'SUPABASE_API_KEY' : null].filter(Boolean).join(', ');
-    throw new Error(`Supabase env missing: ${parts}. Ensure these are set in apps/api/.env`);
-  }
-  const hasAuth = Boolean(bearer);
-  console.log('[SUPA][client-minimal] building per-request client', { hasAuth });
-  return createSupabaseClient(url, anon, {
-    auth: { persistSession: false },
-    db: { schema: 'public' },
-    global: {
-      headers: hasAuth
-        ? { Authorization: bearer, Prefer: 'return=minimal' }
-        : { Prefer: 'return=minimal' }
-    }
-  });
-}
 
 const app = express();
 // Prevent 304s on dynamic endpoints (Express enables ETag by default)
@@ -137,84 +127,59 @@ app.use('/api/tv-guide', optionalAuth, tvGuideRouter);
 app.put('/api/watchlist/:userShowId/rating', authenticateUser, async (req, res) => {
   try {
     const supaRead = getSupabaseForRequest(req);
-    const supaWrite = getSupabaseForRequestMinimal(req);
+    const supaWrite = getSupabaseForRequest(req); // Use regular client for writes to get data back
     const userId = (req as any).user?.id as string | undefined;
     const { userShowId } = req.params as { userShowId: string };
     const { rating } = req.body as { rating?: number };
 
     // Diagnostics to line up front/back ids
     console.log('[RATE] incoming', {
-      userId,
+      userId: userId ? `${userId.substring(0, 8)}...` : null,
       userShowId,
       rating,
       ts: new Date().toISOString(),
     });
 
-    // ==== Deep diagnostics for PGRST301 ====
-    console.log('[RATE][diag] inputs', {
-      userId,
-      userShowId,
-      rating,
-      idLooksUuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userShowId),
-      typeofUserShowId: typeof userShowId,
-    });
-
-    // Use same-auth read client for probes
-    // (supaRead already assigned above)
-
-    // 1) Probe simple select by primary key
-    const probePk = await supaRead
-      .from('user_shows')
-      .select('id,user_id,show_rating', { count: 'exact' })
-      .eq('id', userShowId)
-      .limit(2);
-    if (probePk.error) {
-      console.log('[RATE][diag] probePk error', probePk.error);
-    } else {
-      console.log('[RATE][diag] probePk rows', probePk.data?.length, 'count', probePk.count, 'first', probePk.data?.[0]);
-    }
-
-    // 2) Probe with id + user_id to see whether policy demands both
-    const probePkAndUser = await supaRead
-      .from('user_shows')
-      .select('id,user_id', { count: 'exact' })
-      .eq('id', userShowId)
-      .eq('user_id', userId as string)
-      .limit(2);
-    if (probePkAndUser.error) {
-      console.log('[RATE][diag] probePkAndUser error', probePkAndUser.error);
-    } else {
-      console.log('[RATE][diag] probePkAndUser rows', probePkAndUser.data?.length, 'count', probePkAndUser.count);
-    }
-
-    // 3) Probe expected columns (catch schema cache drift)
-    const probeCols = await supaRead
-      .from('user_shows')
-      .select('id,user_id,show_id,show_rating,updated_at')
-      .eq('id', userShowId)
-      .limit(1);
-    if (probeCols.error) {
-      console.log('[RATE][diag] probeCols error', probeCols.error);
-    } else {
-      console.log('[RATE][diag] probeCols ok keys', Object.keys(probeCols.data?.[0] || {}));
-    }
-    // ==== End diagnostics ====
-
     if (!userId) {
-      return res.status(401).json({ success: false, error: 'Unauthorized' });
+      console.error('[RATE] No userId found in request');
+      return res.status(401).json({ success: false, error: 'Unauthorized - no user ID' });
     }
+
     if (typeof rating !== 'number' || Number.isNaN(rating) || rating < 0 || rating > 10) {
       return res.status(400).json({ success: false, error: 'Invalid rating (0..10)' });
     }
 
-    // === Direct UPDATE via PostgREST (with explicit id + user_id predicates) ===
+    // ==== Verification that user owns this user_show ====
+    const ownership = await supaRead
+      .from('user_shows')
+      .select('id,user_id,show_rating', { count: 'exact' })
+      .eq('id', userShowId)
+      .eq('user_id', userId)
+      .limit(1);
+
+    if (ownership.error) {
+      console.error('[RATE][ownership] error', ownership.error);
+      return res.status(400).json({ success: false, error: 'Failed to verify ownership' });
+    }
+
+    if (!ownership.data || ownership.data.length === 0) {
+      console.warn('[RATE][ownership] user_show not found or not owned', { userShowId, userId: `${userId.substring(0, 8)}...` });
+      return res.status(404).json({ success: false, error: 'Show not found or not owned by user' });
+    }
+
+    console.log('[RATE][ownership] verified, current rating:', ownership.data[0]?.show_rating);
+
+    // === Direct UPDATE via PostgREST with service key (bypasses RLS) ===
     try {
-      // Minimal client to avoid echoing entire row; add select() to fetch changed fields.
+      // Since we're using service key, we must explicitly filter by user_id for security
       const upd = await supaWrite
         .from('user_shows')
-        .update({ show_rating: rating })
+        .update({ 
+          show_rating: rating,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', userShowId)
-        .eq('user_id', userId)
+        .eq('user_id', userId) // Critical: must include user_id filter when using service key
         .select('id, user_id, show_rating')
         .limit(1);
 
@@ -226,31 +191,20 @@ app.put('/api/watchlist/:userShowId/rating', authenticateUser, async (req, res) 
           hint: upd.error.hint,
         });
 
-        // Special diagnostics for PGRST301 (key inference issues)
-        if (upd.error.code === 'PGRST301') {
-          // Attempt a read to confirm visibility under same auth
-          const probe = await supaRead
-            .from('user_shows')
-            .select('id,user_id,show_rating', { count: 'exact' })
-            .eq('id', userShowId)
-            .eq('user_id', userId)
-            .limit(1);
-
-          console.warn('[RATE][update][diag after PGRST301]', {
-            probeCount: probe.count,
-            probeError: probe.error || null,
-            hasData: Array.isArray(probe.data) && probe.data.length > 0,
-          });
-        }
-
         return res.status(400).json({ success: false, error: upd.error.message || 'Update failed' });
       }
 
-      const row = Array.isArray(upd.data) ? upd.data[0] : null;
+      const row = Array.isArray(upd.data) ? upd.data[0] : upd.data;
       if (!row) {
-        console.warn('[RATE][update] no row returned after update', { userShowId, userId });
+        console.warn('[RATE][update] no row returned after update', { userShowId, userId: `${userId.substring(0, 8)}...` });
         return res.status(404).json({ success: false, error: 'Show not found or not owned' });
       }
+
+      console.log('[RATE][update] success', { 
+        id: row.id, 
+        old_rating: ownership.data[0]?.show_rating, 
+        new_rating: row.show_rating 
+      });
 
       return res.json({ success: true, data: { id: row.id, show_rating: row.show_rating } });
     } catch (e: any) {

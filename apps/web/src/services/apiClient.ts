@@ -6,25 +6,33 @@ const basePath =
   (window as any).__API_BASE_URL__ ??
   'http://localhost:4000';
 
-// Try multiple sources for a Supabase access token without importing a client:
-// 1) window.__supabase or window.supabase (if app exposes it)
-// 2) localStorage Supabase v2 keys: sb-<project-ref>-auth-token (JSON with access_token)
-// 3) legacy local storage fallback ("sb-access-token" JSON or "authToken" plain)
+// Get the auth token from the current authentication system
+// This application uses custom JWTs stored in localStorage after login
 async function getSupabaseAccessToken(): Promise<string | undefined> {
-  // 1) window-exposed supabase client (optional)
   try {
+    // First try the current auth system token
+    const authToken = localStorage.getItem('authToken');
+    if (authToken) {
+      if (import.meta.env?.DEV) {
+        console.debug('[API DEBUG] Found authToken in localStorage');
+      }
+      return authToken;
+    }
+
+    // Fallback: window-exposed supabase client (optional)
     const supa = (window as any).__supabase ?? (window as any).supabase;
     if (supa?.auth?.getSession) {
       const { data } = await supa.auth.getSession();
       const token = data?.session?.access_token;
-      if (token) return token as string;
+      if (token) {
+        if (import.meta.env?.DEV) {
+          console.debug('[API DEBUG] Found token from window.supabase');
+        }
+        return token as string;
+      }
     }
-  } catch {
-    // ignore
-  }
 
-  // 2) Look for Supabase v2 localStorage keys
-  try {
+    // Fallback: Look for Supabase v2 localStorage keys
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
@@ -33,32 +41,25 @@ async function getSupabaseAccessToken(): Promise<string | undefined> {
         try {
           const parsed = JSON.parse(raw);
           const token = parsed?.access_token ?? parsed?.currentSession?.access_token;
-          if (token) return token as string;
+          if (token) {
+            if (import.meta.env?.DEV) {
+              console.debug('[API DEBUG] Found token from Supabase localStorage key:', key);
+            }
+            return token as string;
+          }
         } catch {
           // not JSON, skip
         }
       }
     }
-  } catch {
-    // ignore
-  }
 
-  // 3) Legacy fallbacks
-  try {
-    const sb = localStorage.getItem('sb-access-token');
-    if (sb) {
-      try {
-        const parsed = JSON.parse(sb);
-        const token = parsed?.access_token ?? parsed?.currentSession?.access_token;
-        if (token) return token as string;
-      } catch {
-        if (sb) return sb;
-      }
+    if (import.meta.env?.DEV) {
+      console.debug('[API DEBUG] No auth token found');
     }
-    const legacy = localStorage.getItem('authToken');
-    if (legacy) return legacy;
-  } catch {
-    // ignore
+  } catch (error) {
+    if (import.meta.env?.DEV) {
+      console.error('[API DEBUG] Error getting auth token:', error);
+    }
   }
 
   return undefined;
