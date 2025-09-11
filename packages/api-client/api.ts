@@ -1947,6 +1947,19 @@ export interface WatchlistSearchAndAddRequest {
      */
     'status'?: WatchlistSearchAndAddRequestStatusEnum;
 }
+
+/**
+ * @export
+ * @enum {string}
+ */
+export const WatchlistSearchAndAddRequestStatusEnum = {
+    Watchlist: 'watchlist',
+    Watching: 'watching',
+    Completed: 'completed'
+} as const;
+
+export type WatchlistSearchAndAddRequestStatusEnum = typeof WatchlistSearchAndAddRequestStatusEnum[keyof typeof WatchlistSearchAndAddRequestStatusEnum];
+
 /**
  * 
  * @export

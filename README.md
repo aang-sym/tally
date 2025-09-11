@@ -48,45 +48,80 @@ npm run typecheck  # TypeScript checking
 npm run format     # Format with Prettier
 ```
 
-## API Testing
+## Using the Generated API Client
 
-The API is fully functional. Here are curl examples:
+Tally provides a fully-typed TypeScript API client that's auto-generated from the OpenAPI specification:
 
+### Installation
 ```bash
-# Health check
-curl http://localhost:4000/api/health
-
-# Join waitlist
-curl -X POST http://localhost:4000/api/waitlist \
-  -H "Content-Type: application/json" \
-  -d '{"email": "test@example.com", "country": "US"}'
-
-# Register user (stubbed auth)
-curl -X POST http://localhost:4000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com", "password": "password123"}'
-
-# Login (returns stub token)
-curl -X POST http://localhost:4000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "user@example.com", "password": "password123"}'
-
-# Get watchlist (requires auth)
-curl http://localhost:4000/api/watchlist \
-  -H "Authorization: Bearer stub_token_USER_ID"
-
-# Add to watchlist
-curl -X POST http://localhost:4000/api/watchlist \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer stub_token_USER_ID" \
-  -d '{"titleId": "1", "title": "Stranger Things", "serviceId": "netflix", "serviceName": "Netflix"}'
-
-# Generate savings plan
-curl -X POST http://localhost:4000/api/plan/generate \
-  -H "Content-Type: application/json"
+# Install the generated client
+npm install @tally/api-client
 ```
 
-Replace `USER_ID` in the Bearer token with the actual user ID returned from login.
+### Basic Usage
+```typescript
+import { WatchlistApi, Configuration } from '@tally/api-client';
+
+// Configure with JWT authentication
+const config = new Configuration({
+  basePath: 'http://localhost:4000',
+  accessToken: 'your-jwt-token' // Bearer token from authentication
+});
+
+const watchlistApi = new WatchlistApi(config);
+
+// Get user's watchlist (RLS-filtered automatically)
+const response = await watchlistApi.apiWatchlistGet();
+console.log(response.data.data.shows); // User's shows only
+
+// Get user statistics
+const stats = await watchlistApi.apiWatchlistStatsGet();
+console.log(stats.data.data); // { totalShows, byStatus, averageRating }
+
+// Update show status
+await watchlistApi.apiWatchlistUserShowIdStatusPut(
+  'show-uuid',
+  { status: 'completed' }
+);
+```
+
+### Authentication
+All user-scoped endpoints require JWT authentication. Generate a test token:
+
+```bash
+# Generate a valid JWT token for testing
+cd apps/api
+node src/utils/generate-test-token.js
+```
+
+### API Documentation
+- **Live OpenAPI Spec**: http://localhost:4000/openapi.json
+- **Interactive Docs**: http://localhost:4000/docs (Swagger UI)
+
+## Manual API Testing
+
+For curl testing or development:
+
+```bash
+# Health check (public endpoint)
+curl http://localhost:4000/api/health
+
+# Get user watchlist (requires authentication)
+curl http://localhost:4000/api/watchlist \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Get watchlist statistics
+curl http://localhost:4000/api/watchlist/stats \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Update show status
+curl -X PUT http://localhost:4000/api/watchlist/SHOW_ID/status \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{"status": "completed"}'
+```
+
+**Security Note**: All user data is isolated using Row-Level Security (RLS) policies. Users can only access their own data.
 
 ## Project Structure
 
