@@ -145,8 +145,16 @@ app.put('/api/watchlist/:userShowId/rating', authenticateUser, async (req, res) 
       return res.status(401).json({ success: false, error: 'Unauthorized - no user ID' });
     }
 
-    if (typeof rating !== 'number' || Number.isNaN(rating) || rating < 0 || rating > 10) {
-      return res.status(400).json({ success: false, error: 'Invalid rating (0..10)' });
+    // Validate rating: must be a number, finite, 0-10 range, and in 0.5 increments
+    if (typeof rating !== 'number' || 
+        !Number.isFinite(rating) || 
+        rating < 0 || 
+        rating > 10 || 
+        (rating * 2) % 1 !== 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid rating (0-10 in 0.5 increments, e.g., 0, 0.5, 1, 1.5, ..., 10)' 
+      });
     }
 
     // ==== Verification that user owns this user_show ====
@@ -286,7 +294,34 @@ const openapiDoc = {
   servers: [
     { url: process.env.API_PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 4000}` }
   ],
+  security: [
+    { bearerAuth: [] }
+  ],
   paths: {
+    '/api/health': {
+      get: {
+        summary: 'Health check endpoint',
+        tags: ['system'],
+        security: [],
+        responses: {
+          '200': {
+            description: 'Service is healthy',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['ok', 'timestamp'],
+                  properties: {
+                    ok: { type: 'boolean', example: true },
+                    timestamp: { type: 'string', format: 'date-time' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     '/api/watchlist': {
       get: {
         summary: 'List user shows with progress',
@@ -325,6 +360,22 @@ const openapiDoc = {
                 }
               }
             }
+          },
+          '401': {
+            description: 'Missing or invalid JWT token',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          },
+          '403': {
+            description: 'RLS policy denied access',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
           }
         }
       }
@@ -335,7 +386,7 @@ const openapiDoc = {
         tags: ['watchlist'],
         responses: {
           '200': {
-            description: 'Aggregated stats for the user’s watchlist',
+            description: 'Aggregated stats for the user\'s watchlist',
             content: {
               'application/json': {
                 schema: {
@@ -356,6 +407,22 @@ const openapiDoc = {
                     averageRating: { type: 'number' }
                   }
                 }
+              }
+            }
+          },
+          '401': {
+            description: 'Missing or invalid JWT token',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          },
+          '403': {
+            description: 'RLS policy denied access',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
               }
             }
           }
@@ -390,6 +457,38 @@ const openapiDoc = {
                 schema: { $ref: '#/components/schemas/Provider' }
               }
             }
+          },
+          '400': {
+            description: 'Invalid request data',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          },
+          '401': {
+            description: 'Missing or invalid JWT token',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          },
+          '403': {
+            description: 'RLS policy denied access',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          },
+          '404': {
+            description: 'User show not found',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
           }
         }
       }
@@ -409,6 +508,38 @@ const openapiDoc = {
           '200': {
             description: 'Status updated',
             content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' } } } } }
+          },
+          '400': {
+            description: 'Invalid request data',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          },
+          '401': {
+            description: 'Missing or invalid JWT token',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          },
+          '403': {
+            description: 'RLS policy denied access',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          },
+          '404': {
+            description: 'User show not found',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
           }
         }
       }
@@ -428,6 +559,38 @@ const openapiDoc = {
           '200': {
             description: 'Rating updated',
             content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' } } } } }
+          },
+          '400': {
+            description: 'Invalid request data',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          },
+          '401': {
+            description: 'Missing or invalid JWT token',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          },
+          '403': {
+            description: 'RLS policy denied access',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          },
+          '404': {
+            description: 'User show not found',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
           }
         }
       }
@@ -447,13 +610,61 @@ const openapiDoc = {
           '200': {
             description: 'Progress updated',
             content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' } } } } }
+          },
+          '400': {
+            description: 'Invalid request data',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          },
+          '401': {
+            description: 'Missing or invalid JWT token',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          },
+          '403': {
+            description: 'RLS policy denied access',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          },
+          '404': {
+            description: 'User show not found',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
           }
         }
       }
     },
   },
   components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT'
+      }
+    },
     schemas: {
+      Error: {
+        type: 'object',
+        required: ['success', 'error'],
+        properties: {
+          success: { type: 'boolean', example: false },
+          error: { type: 'string' },
+          details: { type: 'string' }
+        }
+      },
       Provider: {
         type: 'object',
         required: ['id', 'name'],
@@ -504,7 +715,7 @@ const openapiDoc = {
         type: 'object',
         required: ['rating'],
         properties: {
-          rating: { type: 'number', minimum: 0, maximum: 10 }
+          rating: { type: 'number', minimum: 0, maximum: 10, multipleOf: 0.5 }
         }
       },
       ProgressUpdateRequest: {

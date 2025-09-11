@@ -666,6 +666,7 @@ paths:
                   type: number
                   minimum: 0
                   maximum: 10
+                  multipleOf: 0.5
       responses:
         '200':
           description: Rated

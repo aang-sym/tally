@@ -6,7 +6,7 @@
 
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = 'tally_super_secret_jwt_key_2025_production_ready_secure_token_12345';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-for-tally-security-tests-2025-9f8a7b6c5d';
 
 const payload = {
   sub: 'b3686973-ba60-4405-8525-f8d6b3dcb7fc',

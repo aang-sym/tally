@@ -777,30 +777,67 @@ const MyShows: React.FC = () => {
     return (
       <div className="flex items-center space-x-1">
         {[...Array(10)].map((_, i) => {
-          const starRating = i + 1;
-          const isActive = (hoveredRating || rating || 0) >= starRating;
-
+          const starIndex = i + 1;
+          const currentRating = hoveredRating || rating || 0;
+          
+          // Determine star display state
+          const isFull = currentRating >= starIndex;
+          const isHalf = currentRating >= starIndex - 0.5 && currentRating < starIndex;
+          
           return (
-            <button
-              key={i}
-              type="button"
-              className={`text-sm ${readonly
-                ? 'cursor-default'
-                : 'cursor-pointer hover:scale-110 transition-transform'
-                } ${isActive ? 'text-yellow-400' : 'text-gray-300'
+            <div key={i} className="relative inline-block">
+              <button
+                type="button"
+                className={`text-sm transition-transform relative ${
+                  readonly ? 'cursor-default' : 'cursor-pointer hover:scale-110'
                 }`}
-              onClick={() => !readonly && onRating?.(starRating)}
-              onMouseEnter={() => !readonly && setHoveredRating(starRating)}
-              onMouseLeave={() => !readonly && setHoveredRating(null)}
-              disabled={readonly}
-            >
-              ★
-            </button>
+                style={{ width: '16px', height: '16px' }}
+                disabled={readonly}
+              >
+                {/* Base star (empty) */}
+                <span className="absolute inset-0 text-gray-300">☆</span>
+                
+                {/* Half star overlay */}
+                {isHalf && (
+                  <span 
+                    className="absolute inset-0 text-yellow-400 overflow-hidden"
+                    style={{ clipPath: 'inset(0 50% 0 0)' }}
+                  >
+                    ★
+                  </span>
+                )}
+                
+                {/* Full star overlay */}
+                {isFull && (
+                  <span className="absolute inset-0 text-yellow-400">★</span>
+                )}
+                
+                {/* Clickable areas for half and full ratings */}
+                {!readonly && (
+                  <>
+                    {/* Left half - half star */}
+                    <div
+                      className="absolute inset-0 w-1/2 h-full cursor-pointer z-10"
+                      onClick={() => onRating?.(starIndex - 0.5)}
+                      onMouseEnter={() => setHoveredRating(starIndex - 0.5)}
+                      onMouseLeave={() => setHoveredRating(null)}
+                    />
+                    {/* Right half - full star */}
+                    <div
+                      className="absolute inset-0 w-1/2 h-full cursor-pointer z-10 left-1/2"
+                      onClick={() => onRating?.(starIndex)}
+                      onMouseEnter={() => setHoveredRating(starIndex)}
+                      onMouseLeave={() => setHoveredRating(null)}
+                    />
+                  </>
+                )}
+              </button>
+            </div>
           );
         })}
-        {rating && (
+        {rating !== undefined && rating > 0 && (
           <span className="text-xs text-gray-500 ml-2">
-            {rating.toFixed(1)}/10
+            {rating % 1 === 0 ? rating.toFixed(0) : rating.toFixed(1)}/10
           </span>
         )}
       </div>
