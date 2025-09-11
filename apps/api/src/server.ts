@@ -26,6 +26,48 @@ import { trackAPIUsage } from './middleware/usage-tracker.js';
 import { config } from './config/index.js';
 import { quotaTracker } from './services/quota-tracker.js';
 
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+
+function getSupabaseForRequest(req: any) {
+  const bearer = (req.headers?.authorization as string | undefined) || '';
+  const url = process.env.SUPABASE_URL as string | undefined;
+  const anon = process.env.SUPABASE_API_KEY as string | undefined;
+  if (!url || !anon) {
+    const parts = [!url ? 'SUPABASE_URL' : null, !anon ? 'SUPABASE_API_KEY' : null].filter(Boolean).join(', ');
+    throw new Error(`Supabase env missing: ${parts}. Ensure these are set in apps/api/.env`);
+  }
+  const hasAuth = Boolean(bearer);
+  console.log('[SUPA][client] building per-request client', { hasAuth });
+  return createSupabaseClient(url, anon, {
+    auth: { persistSession: false },
+    db: { schema: 'public' },
+    global: {
+      headers: hasAuth ? { Authorization: bearer } : {}
+    }
+  });
+}
+
+function getSupabaseForRequestMinimal(req: any) {
+  const bearer = (req.headers?.authorization as string | undefined) || '';
+  const url = process.env.SUPABASE_URL as string | undefined;
+  const anon = process.env.SUPABASE_API_KEY as string | undefined;
+  if (!url || !anon) {
+    const parts = [!url ? 'SUPABASE_URL' : null, !anon ? 'SUPABASE_API_KEY' : null].filter(Boolean).join(', ');
+    throw new Error(`Supabase env missing: ${parts}. Ensure these are set in apps/api/.env`);
+  }
+  const hasAuth = Boolean(bearer);
+  console.log('[SUPA][client-minimal] building per-request client', { hasAuth });
+  return createSupabaseClient(url, anon, {
+    auth: { persistSession: false },
+    db: { schema: 'public' },
+    global: {
+      headers: hasAuth
+        ? { Authorization: bearer, Prefer: 'return=minimal' }
+        : { Prefer: 'return=minimal' }
+    }
+  });
+}
+
 const app = express();
 // Prevent 304s on dynamic endpoints (Express enables ETag by default)
 app.set('etag', false);
@@ -52,6 +94,22 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Normalize Supabase auth headers: if the client sends only x-supabase-access-token,
+// synthesize the standard Authorization: Bearer <token> header so downstream
+// Supabase clients pick it up for RLS.
+app.use((req, _res, next) => {
+  const existingAuth = req.headers?.authorization;
+  const xTokenHeader = req.headers['x-supabase-access-token'];
+  const xToken = Array.isArray(xTokenHeader) ? xTokenHeader[0] : xTokenHeader;
+  if (!existingAuth && typeof xToken === 'string' && xToken.trim()) {
+    req.headers.authorization = `Bearer ${xToken.trim()}`;
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[AUTH][normalize] synthesized Authorization from x-supabase-access-token');
+    }
+  }
+  next();
+});
+
 // Prevent caching on dynamic watchlist responses
 app.use('/api/watchlist', (_req, res, next) => {
   res.set('Cache-Control', 'no-store');
@@ -74,12 +132,182 @@ app.use('/api/tv-guide', optionalAuth, tvGuideRouter);
 
 // Protected routes (require authentication)
 // Old watchlist route removed - use /api/watchlist instead
+
+// Explicit rating endpoint to avoid PGRST301 issues
+app.put('/api/watchlist/:userShowId/rating', authenticateUser, async (req, res) => {
+  try {
+    const supaRead = getSupabaseForRequest(req);
+    const supaWrite = getSupabaseForRequestMinimal(req);
+    const userId = (req as any).user?.id as string | undefined;
+    const { userShowId } = req.params as { userShowId: string };
+    const { rating } = req.body as { rating?: number };
+
+    // Diagnostics to line up front/back ids
+    console.log('[RATE] incoming', {
+      userId,
+      userShowId,
+      rating,
+      ts: new Date().toISOString(),
+    });
+
+    // ==== Deep diagnostics for PGRST301 ====
+    console.log('[RATE][diag] inputs', {
+      userId,
+      userShowId,
+      rating,
+      idLooksUuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userShowId),
+      typeofUserShowId: typeof userShowId,
+    });
+
+    // Use same-auth read client for probes
+    // (supaRead already assigned above)
+
+    // 1) Probe simple select by primary key
+    const probePk = await supaRead
+      .from('user_shows')
+      .select('id,user_id,show_rating', { count: 'exact' })
+      .eq('id', userShowId)
+      .limit(2);
+    if (probePk.error) {
+      console.log('[RATE][diag] probePk error', probePk.error);
+    } else {
+      console.log('[RATE][diag] probePk rows', probePk.data?.length, 'count', probePk.count, 'first', probePk.data?.[0]);
+    }
+
+    // 2) Probe with id + user_id to see whether policy demands both
+    const probePkAndUser = await supaRead
+      .from('user_shows')
+      .select('id,user_id', { count: 'exact' })
+      .eq('id', userShowId)
+      .eq('user_id', userId as string)
+      .limit(2);
+    if (probePkAndUser.error) {
+      console.log('[RATE][diag] probePkAndUser error', probePkAndUser.error);
+    } else {
+      console.log('[RATE][diag] probePkAndUser rows', probePkAndUser.data?.length, 'count', probePkAndUser.count);
+    }
+
+    // 3) Probe expected columns (catch schema cache drift)
+    const probeCols = await supaRead
+      .from('user_shows')
+      .select('id,user_id,show_id,show_rating,updated_at')
+      .eq('id', userShowId)
+      .limit(1);
+    if (probeCols.error) {
+      console.log('[RATE][diag] probeCols error', probeCols.error);
+    } else {
+      console.log('[RATE][diag] probeCols ok keys', Object.keys(probeCols.data?.[0] || {}));
+    }
+    // ==== End diagnostics ====
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    if (typeof rating !== 'number' || Number.isNaN(rating) || rating < 0 || rating > 10) {
+      return res.status(400).json({ success: false, error: 'Invalid rating (0..10)' });
+    }
+
+    // === Direct UPDATE via PostgREST (with explicit id + user_id predicates) ===
+    try {
+      // Minimal client to avoid echoing entire row; add select() to fetch changed fields.
+      const upd = await supaWrite
+        .from('user_shows')
+        .update({ show_rating: rating })
+        .eq('id', userShowId)
+        .eq('user_id', userId)
+        .select('id, user_id, show_rating')
+        .limit(1);
+
+      if (upd.error) {
+        console.error('[RATE][update] error', {
+          code: upd.error.code,
+          message: upd.error.message,
+          details: upd.error.details,
+          hint: upd.error.hint,
+        });
+
+        // Special diagnostics for PGRST301 (key inference issues)
+        if (upd.error.code === 'PGRST301') {
+          // Attempt a read to confirm visibility under same auth
+          const probe = await supaRead
+            .from('user_shows')
+            .select('id,user_id,show_rating', { count: 'exact' })
+            .eq('id', userShowId)
+            .eq('user_id', userId)
+            .limit(1);
+
+          console.warn('[RATE][update][diag after PGRST301]', {
+            probeCount: probe.count,
+            probeError: probe.error || null,
+            hasData: Array.isArray(probe.data) && probe.data.length > 0,
+          });
+        }
+
+        return res.status(400).json({ success: false, error: upd.error.message || 'Update failed' });
+      }
+
+      const row = Array.isArray(upd.data) ? upd.data[0] : null;
+      if (!row) {
+        console.warn('[RATE][update] no row returned after update', { userShowId, userId });
+        return res.status(404).json({ success: false, error: 'Show not found or not owned' });
+      }
+
+      return res.json({ success: true, data: { id: row.id, show_rating: row.show_rating } });
+    } catch (e: any) {
+      console.error('[RATE][update] threw', e);
+      return res.status(500).json({ success: false, error: 'Update invocation failed' });
+    }
+  } catch (e: any) {
+    console.error('Unhandled error in PUT /api/watchlist/:userShowId/rating', e);
+    return res.status(500).json({ success: false, error: 'Internal Server Error' });
+  }
+});
+
+// === Temporary debug route for user_shows deep diagnostics ===
+app.get('/api/debug/user-shows/:id', authenticateUser, async (req, res) => {
+  try {
+    const userId = (req as any).user?.id as string;
+    const { id } = req.params as { id: string };
+    const supaRead = getSupabaseForRequest(req);
+
+    const probePk = await supaRead
+      .from('user_shows')
+      .select('id,user_id,show_rating', { count: 'exact' })
+      .eq('id', id)
+      .limit(2);
+
+    const probePkAndUser = await supaRead
+      .from('user_shows')
+      .select('id,user_id', { count: 'exact' })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .limit(2);
+
+    const probeCols = await supaRead
+      .from('user_shows')
+      .select('id,user_id,show_id,show_rating,updated_at')
+      .eq('id', id)
+      .limit(1);
+
+    return res.json({
+      userId,
+      idLooksUuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
+      probePk: { count: probePk.count, data: probePk.data, error: probePk.error },
+      probePkAndUser: { count: probePkAndUser.count, data: probePkAndUser.data, error: probePkAndUser.error },
+      probeCols: { data: probeCols.data, error: probeCols.error },
+    });
+  } catch (e: any) {
+    console.error('[DEBUG user-shows] error', e);
+    return res.status(500).json({ error: e?.message || 'debug error' });
+  }
+});
+
+app.use('/api/watchlist', authenticateUser, watchlistV2Router);
 app.use('/api/plan', authenticateUser, planRouter);
 app.use('/api/streaming-quota', authenticateUser, streamingQuotaRouter);
 app.use('/api/usage-stats', authenticateUser, usageStatsRouter);
 
 // New v4 protected API routes
-app.use('/api/watchlist', authenticateUser, watchlistV2Router);
 app.use('/api/progress', authenticateUser, progressRouter);
 app.use('/api/ratings', authenticateUser, ratingsRouter);
 app.use('/api/recommendations', authenticateUser, recommendationsRouter);
@@ -211,7 +439,64 @@ const openapiDoc = {
           }
         }
       }
-    }
+    },
+    '/api/watchlist/{userShowId}/status': {
+      put: {
+        summary: 'Update user show status',
+        tags: ['watchlist'],
+        parameters: [
+          { name: 'userShowId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }
+        ],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateStatusRequest' } } }
+        },
+        responses: {
+          '200': {
+            description: 'Status updated',
+            content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' } } } } }
+          }
+        }
+      }
+    },
+    '/api/watchlist/{userShowId}/rating': {
+      put: {
+        summary: 'Rate a user show',
+        tags: ['watchlist'],
+        parameters: [
+          { name: 'userShowId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }
+        ],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateRatingRequest' } } }
+        },
+        responses: {
+          '200': {
+            description: 'Rating updated',
+            content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' } } } } }
+          }
+        }
+      }
+    },
+    '/api/watchlist/{tmdbId}/progress': {
+      put: {
+        summary: 'Update progress for a TMDB show id',
+        tags: ['watchlist'],
+        parameters: [
+          { name: 'tmdbId', in: 'path', required: true, schema: { type: 'integer' } }
+        ],
+        requestBody: {
+          required: true,
+          content: { 'application/json': { schema: { $ref: '#/components/schemas/ProgressUpdateRequest' } } }
+        },
+        responses: {
+          '200': {
+            description: 'Progress updated',
+            content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' } } } } }
+          }
+        }
+      }
+    },
   },
   components: {
     schemas: {
@@ -221,7 +506,7 @@ const openapiDoc = {
         properties: {
           id: { type: 'integer', description: 'TMDB provider id (numeric)' },
           name: { type: 'string' },
-          logo_url: { type: 'string', nullable: true }
+          logo_path: { type: 'string', nullable: true }
         }
       },
       Progress: {
@@ -253,7 +538,30 @@ const openapiDoc = {
           provider: { $ref: '#/components/schemas/Provider' },
           country: { type: 'string', nullable: true, minLength: 2, maxLength: 2 }
         }
-      }
+      },
+      UpdateStatusRequest: {
+        type: 'object',
+        required: ['status'],
+        properties: {
+          status: { type: 'string', enum: ['watchlist', 'watching', 'completed'] }
+        }
+      },
+      UpdateRatingRequest: {
+        type: 'object',
+        required: ['rating'],
+        properties: {
+          rating: { type: 'number', minimum: 0, maximum: 10 }
+        }
+      },
+      ProgressUpdateRequest: {
+        type: 'object',
+        properties: {
+          state: { type: 'string', enum: ['watched', 'unwatched'] },
+          progress: { type: 'integer', minimum: 0, maximum: 100 },
+          started_watching_at: { type: 'string', format: 'date-time' },
+          watched_at: { type: 'string', format: 'date-time' }
+        }
+      },
     }
   }
 } as const;
@@ -299,6 +607,8 @@ app.use(errorHandler);
 app.listen(config.port, async () => {
   console.log(`🚀 Tally API server running on port ${config.port}`);
   console.log(`📊 Health check: http://localhost:${config.port}/api/health`);
+  console.log(`🗄️ Supabase URL env: ${process.env.SUPABASE_URL ? 'set' : 'MISSING'}`);
+  console.log(`🗝️ Supabase ANON KEY env: ${process.env.SUPABASE_API_KEY ? 'set' : 'MISSING'}`);
 
   // Log configuration status
   const hasApiKey = config.streamingAvailabilityApiKey !== 'dev-key-placeholder';

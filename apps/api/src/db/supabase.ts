@@ -5,7 +5,7 @@
  * with connection validation and error handling.
  */
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, SupabaseClientOptions } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -13,14 +13,15 @@ import path from 'path';
 dotenv.config({ path: path.resolve(process.cwd(), 'apps/api/.env') });
 
 const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseAnonKey = process.env.SUPABASE_API_KEY!;
+// We consistently use SUPABASE_API_KEY as the anon/public key
+const supabaseApiKey = process.env.SUPABASE_API_KEY!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!;
 
 if (!supabaseUrl) {
   throw new Error('Missing SUPABASE_URL environment variable');
 }
 
-if (!supabaseAnonKey) {
+if (!supabaseApiKey) {
   throw new Error('Missing SUPABASE_API_KEY environment variable');
 }
 
@@ -28,8 +29,57 @@ if (!supabaseServiceKey) {
   throw new Error('Missing SUPABASE_SERVICE_KEY environment variable');
 }
 
+/**
+ * Extract a Supabase access token (JWT) from typical header shapes.
+ * Supports:
+ *  - 'x-supabase-access-token': '<jwt>'
+ *  - 'authorization': 'Bearer <jwt>'
+ */
+export function getUserJwtFromHeaders(headers: Record<string, string | string[] | undefined>): string | undefined {
+  // Normalize header keys to lowercase
+  const lower: Record<string, string | string[] | undefined> = {};
+  for (const [k, v] of Object.entries(headers || {})) lower[k.toLowerCase()] = v;
+
+  const direct = lower['x-supabase-access-token'];
+  if (typeof direct === 'string' && direct.trim()) return direct.trim();
+
+  const auth = lower['authorization'];
+  const authStr = Array.isArray(auth) ? auth[0] : auth;
+  if (typeof authStr === 'string') {
+    const m = authStr.match(/^Bearer\s+(.+)$/i);
+    if (m) return m[1];
+  }
+  return undefined;
+}
+
+/**
+ * Create a Supabase client that forwards a specific user JWT via Authorization header,
+ * so Row-Level Security uses that identity.
+ */
+export function getSupabaseForToken(userJwtToken?: string): SupabaseClient {
+  const opts: SupabaseClientOptions<'public'> = {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
+    },
+    ...(userJwtToken
+      ? { global: { headers: { Authorization: `Bearer ${userJwtToken}` } as Record<string, string> } }
+      : {})
+  };
+  return createClient(supabaseUrl, supabaseApiKey, opts);
+}
+
+/**
+ * Convenience: build a per-request client from raw request headers.
+ */
+export function getSupabaseForRequestHeaders(headers: Record<string, string | string[] | undefined>): SupabaseClient {
+  const jwt = getUserJwtFromHeaders(headers);
+  return getSupabaseForToken(jwt);
+}
+
 // Create the default Supabase client using anon key (respects RLS)
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseApiKey, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,
@@ -51,18 +101,7 @@ export const serviceSupabase: SupabaseClient = createClient(supabaseUrl, supabas
  * This should be used in routes where user authentication is required
  */
 export const createUserClient = (userJwtToken: string): SupabaseClient => {
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false
-    },
-    global: {
-      headers: {
-        Authorization: `Bearer ${userJwtToken}`
-      }
-    }
-  });
+  return getSupabaseForToken(userJwtToken);
 };
 
 /**

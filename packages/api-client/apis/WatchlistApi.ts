@@ -16,16 +16,31 @@
 import * as runtime from '../runtime';
 import type {
   ApiWatchlistGet200Response,
+  ApiWatchlistStatsGet200Response,
+  ApiWatchlistUserShowIdStatusPut200Response,
+  ProgressUpdateRequest,
   Provider,
   SetProviderRequest,
+  UpdateRatingRequest,
+  UpdateStatusRequest,
 } from '../models/index';
 import {
     ApiWatchlistGet200ResponseFromJSON,
     ApiWatchlistGet200ResponseToJSON,
+    ApiWatchlistStatsGet200ResponseFromJSON,
+    ApiWatchlistStatsGet200ResponseToJSON,
+    ApiWatchlistUserShowIdStatusPut200ResponseFromJSON,
+    ApiWatchlistUserShowIdStatusPut200ResponseToJSON,
+    ProgressUpdateRequestFromJSON,
+    ProgressUpdateRequestToJSON,
     ProviderFromJSON,
     ProviderToJSON,
     SetProviderRequestFromJSON,
     SetProviderRequestToJSON,
+    UpdateRatingRequestFromJSON,
+    UpdateRatingRequestToJSON,
+    UpdateStatusRequestFromJSON,
+    UpdateStatusRequestToJSON,
 } from '../models/index';
 
 export interface ApiWatchlistGetRequest {
@@ -33,9 +48,24 @@ export interface ApiWatchlistGetRequest {
     status?: ApiWatchlistGetStatusEnum;
 }
 
+export interface ApiWatchlistTmdbIdProgressPutRequest {
+    tmdbId: number;
+    progressUpdateRequest: ProgressUpdateRequest;
+}
+
 export interface ApiWatchlistUserShowIdProviderPutRequest {
     userShowId: string;
     setProviderRequest: SetProviderRequest;
+}
+
+export interface ApiWatchlistUserShowIdRatingPutRequest {
+    userShowId: string;
+    updateRatingRequest: UpdateRatingRequest;
+}
+
+export interface ApiWatchlistUserShowIdStatusPutRequest {
+    userShowId: string;
+    updateStatusRequest: UpdateStatusRequest;
 }
 
 /**
@@ -63,6 +93,36 @@ export interface WatchlistApiInterface {
 
     /**
      * 
+     * @summary Watchlist aggregate stats
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WatchlistApiInterface
+     */
+    apiWatchlistStatsGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiWatchlistStatsGet200Response>>;
+
+    /**
+     * Watchlist aggregate stats
+     */
+    apiWatchlistStatsGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiWatchlistStatsGet200Response>;
+
+    /**
+     * 
+     * @summary Update progress for a TMDB show id
+     * @param {number} tmdbId 
+     * @param {ProgressUpdateRequest} progressUpdateRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WatchlistApiInterface
+     */
+    apiWatchlistTmdbIdProgressPutRaw(requestParameters: ApiWatchlistTmdbIdProgressPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiWatchlistUserShowIdStatusPut200Response>>;
+
+    /**
+     * Update progress for a TMDB show id
+     */
+    apiWatchlistTmdbIdProgressPut(requestParameters: ApiWatchlistTmdbIdProgressPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiWatchlistUserShowIdStatusPut200Response>;
+
+    /**
+     * 
      * @summary Set selected streaming provider for a user_show
      * @param {string} userShowId 
      * @param {SetProviderRequest} setProviderRequest 
@@ -76,6 +136,38 @@ export interface WatchlistApiInterface {
      * Set selected streaming provider for a user_show
      */
     apiWatchlistUserShowIdProviderPut(requestParameters: ApiWatchlistUserShowIdProviderPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Provider>;
+
+    /**
+     * 
+     * @summary Rate a user show
+     * @param {string} userShowId 
+     * @param {UpdateRatingRequest} updateRatingRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WatchlistApiInterface
+     */
+    apiWatchlistUserShowIdRatingPutRaw(requestParameters: ApiWatchlistUserShowIdRatingPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiWatchlistUserShowIdStatusPut200Response>>;
+
+    /**
+     * Rate a user show
+     */
+    apiWatchlistUserShowIdRatingPut(requestParameters: ApiWatchlistUserShowIdRatingPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiWatchlistUserShowIdStatusPut200Response>;
+
+    /**
+     * 
+     * @summary Update user show status
+     * @param {string} userShowId 
+     * @param {UpdateStatusRequest} updateStatusRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof WatchlistApiInterface
+     */
+    apiWatchlistUserShowIdStatusPutRaw(requestParameters: ApiWatchlistUserShowIdStatusPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiWatchlistUserShowIdStatusPut200Response>>;
+
+    /**
+     * Update user show status
+     */
+    apiWatchlistUserShowIdStatusPut(requestParameters: ApiWatchlistUserShowIdStatusPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiWatchlistUserShowIdStatusPut200Response>;
 
 }
 
@@ -122,6 +214,82 @@ export class WatchlistApi extends runtime.BaseAPI implements WatchlistApiInterfa
     }
 
     /**
+     * Watchlist aggregate stats
+     */
+    async apiWatchlistStatsGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiWatchlistStatsGet200Response>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/watchlist/stats`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiWatchlistStatsGet200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Watchlist aggregate stats
+     */
+    async apiWatchlistStatsGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiWatchlistStatsGet200Response> {
+        const response = await this.apiWatchlistStatsGetRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Update progress for a TMDB show id
+     */
+    async apiWatchlistTmdbIdProgressPutRaw(requestParameters: ApiWatchlistTmdbIdProgressPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiWatchlistUserShowIdStatusPut200Response>> {
+        if (requestParameters['tmdbId'] == null) {
+            throw new runtime.RequiredError(
+                'tmdbId',
+                'Required parameter "tmdbId" was null or undefined when calling apiWatchlistTmdbIdProgressPut().'
+            );
+        }
+
+        if (requestParameters['progressUpdateRequest'] == null) {
+            throw new runtime.RequiredError(
+                'progressUpdateRequest',
+                'Required parameter "progressUpdateRequest" was null or undefined when calling apiWatchlistTmdbIdProgressPut().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/watchlist/{tmdbId}/progress`;
+        urlPath = urlPath.replace(`{${"tmdbId"}}`, encodeURIComponent(String(requestParameters['tmdbId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ProgressUpdateRequestToJSON(requestParameters['progressUpdateRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiWatchlistUserShowIdStatusPut200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Update progress for a TMDB show id
+     */
+    async apiWatchlistTmdbIdProgressPut(requestParameters: ApiWatchlistTmdbIdProgressPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiWatchlistUserShowIdStatusPut200Response> {
+        const response = await this.apiWatchlistTmdbIdProgressPutRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Set selected streaming provider for a user_show
      */
     async apiWatchlistUserShowIdProviderPutRaw(requestParameters: ApiWatchlistUserShowIdProviderPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Provider>> {
@@ -146,7 +314,7 @@ export class WatchlistApi extends runtime.BaseAPI implements WatchlistApiInterfa
         headerParameters['Content-Type'] = 'application/json';
 
 
-        let urlPath = `/api/watchlist/:userShowId/provider`;
+        let urlPath = `/api/watchlist/{userShowId}/provider`;
         urlPath = urlPath.replace(`{${"userShowId"}}`, encodeURIComponent(String(requestParameters['userShowId'])));
 
         const response = await this.request({
@@ -165,6 +333,100 @@ export class WatchlistApi extends runtime.BaseAPI implements WatchlistApiInterfa
      */
     async apiWatchlistUserShowIdProviderPut(requestParameters: ApiWatchlistUserShowIdProviderPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Provider> {
         const response = await this.apiWatchlistUserShowIdProviderPutRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Rate a user show
+     */
+    async apiWatchlistUserShowIdRatingPutRaw(requestParameters: ApiWatchlistUserShowIdRatingPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiWatchlistUserShowIdStatusPut200Response>> {
+        if (requestParameters['userShowId'] == null) {
+            throw new runtime.RequiredError(
+                'userShowId',
+                'Required parameter "userShowId" was null or undefined when calling apiWatchlistUserShowIdRatingPut().'
+            );
+        }
+
+        if (requestParameters['updateRatingRequest'] == null) {
+            throw new runtime.RequiredError(
+                'updateRatingRequest',
+                'Required parameter "updateRatingRequest" was null or undefined when calling apiWatchlistUserShowIdRatingPut().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/watchlist/{userShowId}/rating`;
+        urlPath = urlPath.replace(`{${"userShowId"}}`, encodeURIComponent(String(requestParameters['userShowId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateRatingRequestToJSON(requestParameters['updateRatingRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiWatchlistUserShowIdStatusPut200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Rate a user show
+     */
+    async apiWatchlistUserShowIdRatingPut(requestParameters: ApiWatchlistUserShowIdRatingPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiWatchlistUserShowIdStatusPut200Response> {
+        const response = await this.apiWatchlistUserShowIdRatingPutRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Update user show status
+     */
+    async apiWatchlistUserShowIdStatusPutRaw(requestParameters: ApiWatchlistUserShowIdStatusPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiWatchlistUserShowIdStatusPut200Response>> {
+        if (requestParameters['userShowId'] == null) {
+            throw new runtime.RequiredError(
+                'userShowId',
+                'Required parameter "userShowId" was null or undefined when calling apiWatchlistUserShowIdStatusPut().'
+            );
+        }
+
+        if (requestParameters['updateStatusRequest'] == null) {
+            throw new runtime.RequiredError(
+                'updateStatusRequest',
+                'Required parameter "updateStatusRequest" was null or undefined when calling apiWatchlistUserShowIdStatusPut().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/watchlist/{userShowId}/status`;
+        urlPath = urlPath.replace(`{${"userShowId"}}`, encodeURIComponent(String(requestParameters['userShowId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateStatusRequestToJSON(requestParameters['updateStatusRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiWatchlistUserShowIdStatusPut200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Update user show status
+     */
+    async apiWatchlistUserShowIdStatusPut(requestParameters: ApiWatchlistUserShowIdStatusPutRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiWatchlistUserShowIdStatusPut200Response> {
+        const response = await this.apiWatchlistUserShowIdStatusPutRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

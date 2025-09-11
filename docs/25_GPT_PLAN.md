@@ -13,6 +13,18 @@
 ## Where to double down
 - **API contracts**: lock them with an OpenAPI spec, generate a TypeScript client, and share that between web and iOS. Add examples for each response state.  
   **Branch:** `feature/api-contracts-openapi`
+  - Progress:
+    - **Done**
+      - Added `/api/watchlist` and `/api/watchlist/{userShowId}/provider` to spec.
+      - Regenerated TypeScript client, wired into `MyShows.tsx` for watchlist list fetch.
+      - Updated `server.ts` spec to reflect `{ count, shows }` response.
+      - Added `/api/watchlist/stats` path and used `apiRequest` with validation in UI.
+    - **Remaining**
+      - Add `/api/watchlist/{id}/status` to spec + client.
+      - Add `/api/watchlist/{id}/rating` to spec + client.
+      - Add `/api/watchlist/{id}/progress` to spec + client.
+      - Switch UI calls (status updates, rating, provider updates, progress fetch) to generated client.
+      - Re‑regenerate client and remove legacy `apiRequest` fallbacks once stable.
 
 - **Test data & seeds**: scripts to seed shows, seasons, availability, prices per country, and user scenarios (watching/completed/mixed).  
   **Branch:** `feature/test-data-seeds`

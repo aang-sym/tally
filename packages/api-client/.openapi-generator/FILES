@@ -2,9 +2,15 @@ apis/WatchlistApi.ts
 apis/index.ts
 index.ts
 models/ApiWatchlistGet200Response.ts
+models/ApiWatchlistStatsGet200Response.ts
+models/ApiWatchlistStatsGet200ResponseByStatus.ts
+models/ApiWatchlistUserShowIdStatusPut200Response.ts
 models/Progress.ts
+models/ProgressUpdateRequest.ts
 models/Provider.ts
 models/SetProviderRequest.ts
+models/UpdateRatingRequest.ts
+models/UpdateStatusRequest.ts
 models/UserShowCard.ts
 models/index.ts
 runtime.ts

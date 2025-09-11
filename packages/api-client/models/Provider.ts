@@ -36,7 +36,7 @@ export interface Provider {
      * @type {string}
      * @memberof Provider
      */
-    logoUrl?: string | null;
+    logoPath?: string | null;
 }
 
 /**
@@ -60,7 +60,7 @@ export function ProviderFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         
         'id': json['id'],
         'name': json['name'],
-        'logoUrl': json['logo_url'] == null ? undefined : json['logo_url'],
+        'logoPath': json['logo_path'] == null ? undefined : json['logo_path'],
     };
 }
 
@@ -77,7 +77,7 @@ export function ProviderToJSONTyped(value?: Provider | null, ignoreDiscriminator
         
         'id': value['id'],
         'name': value['name'],
-        'logo_url': value['logoUrl'],
+        'logo_path': value['logoPath'],
     };
 }
 

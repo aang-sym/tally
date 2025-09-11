@@ -183,10 +183,15 @@ const MyShows: React.FC = () => {
       setStats(deriveStats(cached));
       setLoading(false);
     }
-    // Always refresh in the background
+    // Always refresh the list in the background; stats are global and fetched separately
     fetchWatchlist(activeTab, !!cached);
-    fetchStats();
   }, [activeTab]);
+
+  useEffect(() => {
+    // Initial stats fetch on mount; subsequent updates come from mutations or background refresh
+    fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // When country changes, persist and refresh provider lists
   useEffect(() => {
@@ -340,7 +345,7 @@ const MyShows: React.FC = () => {
       // Update local state
       setShows(prevShows =>
         prevShows.map(show =>
-          show.id === userShowId
+          ((show as any).user_show_id === userShowId || show.id === userShowId)
             ? { ...show, show_rating: rating }
             : show
         )
@@ -368,7 +373,7 @@ const MyShows: React.FC = () => {
       // Update local state immediately without full refresh
       setShows(prevShows =>
         prevShows.map(show =>
-          show.id === userShowId
+          ((show as any).user_show_id === userShowId || show.id === userShowId)
             ? { ...show, streaming_provider: provider }
             : show
         )
@@ -997,7 +1002,10 @@ const MyShows: React.FC = () => {
                             <div className="mb-3">
                               <StarRating
                                 rating={userShow.show_rating}
-                                onRating={(rating) => userShow.id && rateShow(userShow.id, rating)}
+                                onRating={(rating) => {
+                                  const uid = (userShow as any).user_show_id ?? userShow.id;
+                                  if (uid) rateShow(uid, rating);
+                                }}
                               />
                             </div>
 
@@ -1040,10 +1048,11 @@ const MyShows: React.FC = () => {
                                             const value = e.target.value;
                                             if (value) {
                                               const [idStr, name, logo_path] = value.split('|');
-                                              if (userShow.id && idStr) {
+                                              const uid = (userShow as any).user_show_id ?? userShow.id;
+                                              if (uid && idStr) {
                                                 const id = parseInt(idStr, 10);
                                                 if (!isNaN(id)) {
-                                                  updateStreamingProvider(userShow.id, { id, name: name!, logo_path: logo_path! });
+                                                  updateStreamingProvider(uid, { id, name: name!, logo_path: logo_path! });
                                                 }
                                               }
                                             }
@@ -1067,8 +1076,9 @@ const MyShows: React.FC = () => {
                                         onClick={(e) => {
                                           e.stopPropagation();
                                           const p = availableProviders[0];
-                                          if (userShow.id && p) {
-                                            updateStreamingProvider(userShow.id, { id: p.id, name: p.name, logo_path: p.logo_path });
+                                          const uid = (userShow as any).user_show_id ?? userShow.id;
+                                          if (uid && p) {
+                                            updateStreamingProvider(uid, { id: p.id, name: p.name, logo_path: p.logo_path });
                                           }
                                         }}
                                         className="inline-flex items-center space-x-2 px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
@@ -1098,11 +1108,19 @@ const MyShows: React.FC = () => {
                                   onBlur={(e) => {
                                     e.stopPropagation();
                                     const v = Number(e.currentTarget.value) || 0;
-                                    userShow.id && apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShow.id}/buffer`, {
+                                    const uid = (userShow as any).user_show_id ?? userShow.id;
+                                    if (!uid) return;
+                                    apiRequest(`${API_ENDPOINTS.watchlist.v2}/${uid}/buffer`, {
                                       method: 'PUT',
                                       headers: { 'Content-Type': 'application/json' },
                                       body: JSON.stringify({ bufferDays: v })
-                                    }, localStorage.getItem('authToken') || undefined).then(() => setShows(prev => prev.map(s => s.id === userShow.id ? { ...s, buffer_days: v } : s)));
+                                    }, localStorage.getItem('authToken') || undefined).then(() =>
+                                      setShows(prev =>
+                                        prev.map(s =>
+                                          ((s as any).user_show_id === uid || s.id === uid) ? { ...s, buffer_days: v } : s
+                                        )
+                                      )
+                                    );
                                   }}
                                   className="w-24 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                                 />
@@ -1114,11 +1132,19 @@ const MyShows: React.FC = () => {
                                   onChange={(e) => {
                                     e.stopPropagation();
                                     const code = e.target.value || null;
-                                    apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShow.id}/country`, {
+                                    const uid = (userShow as any).user_show_id ?? userShow.id;
+                                    if (!uid) return;
+                                    apiRequest(`${API_ENDPOINTS.watchlist.v2}/${uid}/country`, {
                                       method: 'PUT',
                                       headers: { 'Content-Type': 'application/json' },
                                       body: JSON.stringify({ countryCode: code })
-                                    }, localStorage.getItem('authToken') || undefined).then(() => setShows(prev => prev.map(s => s.id === userShow.id ? { ...s, country_code: code || null } : s)));
+                                    }, localStorage.getItem('authToken') || undefined).then(() =>
+                                      setShows(prev =>
+                                        prev.map(s =>
+                                          ((s as any).user_show_id === uid || s.id === uid) ? { ...s, country_code: code || null } : s
+                                        )
+                                      )
+                                    );
                                   }}
                                   className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                                 >
@@ -1262,7 +1288,10 @@ const MyShows: React.FC = () => {
                       <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
                         {userShow.status === 'watchlist' && userShow.id && (
                           <button
-                            onClick={() => updateShowStatus(userShow.id!, 'watching')}
+                            onClick={() => {
+                              const uid = (userShow as any).user_show_id ?? userShow.id;
+                              if (uid) updateShowStatus(uid, 'watching');
+                            }}
                             className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
                           >
                             Start Watching
@@ -1271,7 +1300,10 @@ const MyShows: React.FC = () => {
 
                         {userShow.status === 'watching' && userShow.id && (
                           <button
-                            onClick={() => updateShowStatus(userShow.id!, 'completed')}
+                            onClick={() => {
+                              const uid = (userShow as any).user_show_id ?? userShow.id;
+                              if (uid) updateShowStatus(uid, 'completed');
+                            }}
                             className="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700"
                           >
                             Mark Completed
@@ -1280,7 +1312,10 @@ const MyShows: React.FC = () => {
 
                         {userShow.id && (
                           <button
-                            onClick={() => removeShow(userShow.id!)}
+                            onClick={() => {
+                              const uid = (userShow as any).user_show_id ?? userShow.id;
+                              if (uid) removeShow(uid);
+                            }}
                             className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
                           >
                             Remove
