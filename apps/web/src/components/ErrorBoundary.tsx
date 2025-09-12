@@ -3,10 +3,10 @@ import React from 'react';
 type ErrorBoundaryState = { hasError: boolean; error?: Error; info?: React.ErrorInfo };
 
 export default class ErrorBoundary extends React.Component<
-  React.PropsWithChildren<Record<string, never>>,
+  React.PropsWithChildren,
   ErrorBoundaryState
 > {
-  constructor(props: React.PropsWithChildren<Record<string, never>>) {
+  constructor(props: React.PropsWithChildren) {
     super(props);
     this.state = { hasError: false };
   }
