@@ -98,7 +98,7 @@ jobs:
         run: |
           # Run tests but exclude integration tests that require live server
           cd apps/api
-          pnpm test --config vitest.config.unit.ts
+          npx vitest run --config vitest.config.unit.ts
 
   rls-integration-tests:
     name: RLS Integration Tests
@@ -168,13 +168,13 @@ jobs:
         run: |
           cd apps/api
           # Run RLS integration tests with timeout
-          timeout 300s pnpm test --config vitest.config.integration.ts src/integration/rls/rls-summary.test.ts
+          timeout 300s npx vitest run --config vitest.config.integration.ts src/integration/rls/rls-summary.test.ts
 
       - name: Run comprehensive RLS validation
         run: |
           cd apps/api
           # Run the main RLS validation tests
-          timeout 300s pnpm test --config vitest.config.integration.ts src/integration/rls/ || true
+          timeout 300s npx vitest run --config vitest.config.integration.ts src/integration/rls/ || true
 
       - name: Cleanup API server
         if: always()
