@@ -60,6 +60,12 @@ describe('GET /api/users/:id/subscriptions', () => {
   it('403 when requesting another user subscriptions', async () => {
     const me = 'user-a';
     const other = 'user-b';
+
+    // Ensure country lookup does not fail before auth check
+    const chain = hoisted.mkChain();
+    hoisted.serviceFrom.mockReturnValue(chain);
+    chain.single.mockResolvedValue({ data: { country_code: 'US' }, error: null });
+
     const res = await request(app)
       .get(`/api/users/${other}/subscriptions`)
       .set('Authorization', `Bearer ${tokenFor(me)}`);
@@ -72,6 +78,10 @@ describe('GET /api/users/:id/subscriptions', () => {
     const me = 'user-a';
     const chain = hoisted.mkChain();
     hoisted.serviceFrom.mockReturnValue(chain);
+
+    // Country lookup succeeds
+    chain.single.mockResolvedValue({ data: { country_code: 'US' }, error: null });
+    // Subscriptions query returns empty
     chain.order.mockResolvedValue({ data: [], error: null });
 
     const res = await request(app)
@@ -88,6 +98,9 @@ describe('GET /api/users/:id/subscriptions', () => {
     const me = 'user-a';
     const chain = hoisted.mkChain();
     hoisted.serviceFrom.mockReturnValue(chain);
+
+    // Country lookup succeeds
+    chain.single.mockResolvedValue({ data: { country_code: 'US' }, error: null });
 
     const rows = [
       {
@@ -150,6 +163,9 @@ describe('GET /api/users/:id/subscriptions', () => {
     const me = 'user-a';
     const chain = hoisted.mkChain();
     hoisted.serviceFrom.mockReturnValue(chain);
+
+    // Country lookup ok; subscriptions query fails
+    chain.single.mockResolvedValue({ data: { country_code: 'US' }, error: null });
     chain.order.mockResolvedValue({ data: null, error: { message: 'db down' } });
 
     const res = await request(app)

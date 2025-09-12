@@ -20,15 +20,43 @@ vi.mock('@tally/core', () => ({
 vi.mock('../config/index.js', () => ({
   config: {
     streamingAvailabilityApiKey: 'test-api-key',
+    streamingApiDevMode: false,
+    streamingApiMonthlyLimit: 1000000,
   },
 }));
+// Mock the quota tracker to bypass monthly quota and provide stable stats
+vi.mock('./quota-tracker.js', () => {
+  const canMakeCall = vi.fn().mockResolvedValue(true);
+  const shouldWarnLowQuota = vi.fn().mockResolvedValue(false);
+  const getRemainingCalls = vi.fn().mockResolvedValue(1000);
+  const getUsageStats = vi.fn().mockResolvedValue({
+    month: '2025-09',
+    callsUsed: 0,
+    callsRemaining: 1000,
+    limit: 1000000,
+    percentUsed: 0,
+    lastReset: new Date().toISOString(),
+  });
+  const recordCall = vi.fn().mockResolvedValue(undefined);
+
+  return {
+    quotaTracker: {
+      canMakeCall,
+      shouldWarnLowQuota,
+      getRemainingCalls,
+      getUsageStats,
+      recordCall,
+    },
+  };
+});
 
 describe('StreamingAvailabilityService', () => {
   let mockClient: any;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-
+    await vi.resetModules(); // ensure singleton service re-initializes per test
+  
     // Create a mock client instance
     mockClient = {
       search: vi.fn(),
@@ -39,7 +67,7 @@ describe('StreamingAvailabilityService', () => {
       getExpirationDate: vi.fn(),
       isLeavingSoon: vi.fn(),
     };
-
+  
     // Make the constructor return our mock
     (StreamingAvailabilityClient as any).mockImplementation(() => mockClient);
   });
@@ -130,7 +158,7 @@ describe('StreamingAvailabilityService', () => {
 
     expect(result).toEqual({
       available: true,
-      expiresOn: new Date('2024-12-31'),
+      expiresOn: new Date('2024-12-31').toISOString(),
       leavingSoon: true,
     });
   });
