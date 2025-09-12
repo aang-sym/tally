@@ -230,10 +230,6 @@ router.get('/', async (req: Request, res: Response) => {
       });
     }
 
-    // Get authorization header to determine if user is authenticated
-    const authHeader = req.headers.authorization;
-    const _isAuthenticated = authHeader && authHeader.startsWith('Bearer ');
-
     const query = serviceSupabase
       .from('users')
       .select('id, email, display_name, avatar_url, is_test_user, created_at')

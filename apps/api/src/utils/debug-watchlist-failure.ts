@@ -5,7 +5,7 @@
  * Step-by-step diagnostic to identify why watchlist addition is failing
  */
 
-import { supabase, serviceSupabase, createUserClient } from '../db/supabase.js';
+import { serviceSupabase, createUserClient } from '../db/supabase.js';
 import { showService } from '../services/ShowService.js';
 import { WatchlistService } from '../services/WatchlistService.js';
 

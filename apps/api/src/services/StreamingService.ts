@@ -8,7 +8,8 @@
 import { supabase } from '../db/supabase.js';
 import { tmdbService } from './tmdb.js';
 import { providerNormalizer } from './provider-normalizer.js';
-import { TMDBProviderListItem } from '@tally/core';
+/* Removed unused/unavailable type import to satisfy TS */
+// import { TMDBProviderListItem } from '@tally/core';
 
 export interface StreamingServiceData {
   id: string;
@@ -125,11 +126,12 @@ export class StreamingService {
             `🔍 Auto-discovering missing provider during availability lookup: ${provider.provider_name} (TMDB ID: ${provider.provider_id})`
           );
 
-          service = await this.autoDiscoverProvider(
-            provider.provider_id,
-            provider.provider_name,
-            provider.logo_path
-          );
+          service =
+            (await this.autoDiscoverProvider(
+              provider.provider_id,
+              provider.provider_name,
+              provider.logo_path
+            )) || undefined;
 
           if (!service) {
             console.warn(
@@ -380,17 +382,9 @@ export class StreamingService {
       if (servicesError) throw servicesError;
 
       // Get service popularity (most shows available)
-      const { data: serviceStats, error: statsError } = await supabase
-        .from('show_availability')
-        .select(
-          `
-          service_id,
-          streaming_services (*)
-        `
-        )
-        .group(['service_id', 'streaming_services']);
+      /* Stats aggregation temporarily disabled to avoid unsupported client-side grouping and unused var */
 
-      if (statsError) throw statsError;
+      // stats aggregation skipped
 
       // This is a simplified version - in a real implementation you'd want
       // proper aggregation queries for accurate statistics
@@ -490,7 +484,7 @@ export class StreamingService {
       );
 
       // Convert TMDB providers to our format and sync with database
-      const tmdbProviders = allProvidersData.providers.map((provider: TMDBProviderListItem) => ({
+      const tmdbProviders = allProvidersData.providers.map((provider: any) => ({
         provider_id: provider.provider_id,
         provider_name: provider.provider_name,
         logo_path: provider.logo_path,

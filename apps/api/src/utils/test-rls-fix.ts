@@ -25,8 +25,9 @@ async function testRLSFix() {
       console.log('❌ Public shows access failed:', showsError);
     } else {
       console.log(`✅ Public shows access works: ${showsPublic?.length || 0} shows found`);
-      if (showsPublic && showsPublic.length > 0) {
-        console.log(`   First show: ${showsPublic[0].title} (TMDB: ${showsPublic[0].tmdb_id})`);
+      const firstShow = showsPublic?.[0];
+      if (firstShow) {
+        console.log(`   First show: ${firstShow.title} (TMDB: ${firstShow.tmdb_id})`);
       }
     }
 
@@ -67,11 +68,16 @@ async function testRLSFix() {
     console.log('\n📋 Test 4: Manual watchlist insertion');
 
     if (userShows && userShows.length > 0) {
+      const firstUserShow = userShows?.[0];
+      if (!firstUserShow) {
+        console.log('⚠️  No first show found in userShows array');
+        return;
+      }
       const { data: watchlistData, error: watchlistError } = await userSupabase
         .from('user_shows')
         .insert({
           user_id: testUserId,
-          show_id: userShows[0].id,
+          show_id: firstUserShow.id,
           status: 'watchlist',
           added_at: new Date().toISOString(),
         })
@@ -89,7 +95,7 @@ async function testRLSFix() {
 
     // Test 5: Check if the problematic policies still exist
     console.log('\n📋 Test 5: Check for problematic policies');
-    const { data: badPolicies } = await serviceSupabase.from('shows').select('count').limit(0); // Just test connection
+    await serviceSupabase.from('shows').select('count').limit(0); // Just test connection
 
     console.log('✅ Connection to shows table works');
   } catch (error) {

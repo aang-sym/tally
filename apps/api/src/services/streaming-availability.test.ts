@@ -46,7 +46,7 @@ describe('StreamingAvailabilityService', () => {
 
   it('should initialize with API key', async () => {
     // Import after mocks are set up
-    const { streamingAvailabilityService } = await import('./streaming-availability.js');
+    await import('./streaming-availability.js');
 
     expect(StreamingAvailabilityClient).toHaveBeenCalledWith('test-api-key');
   });

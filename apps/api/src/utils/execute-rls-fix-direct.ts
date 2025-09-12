@@ -50,7 +50,7 @@ async function executeRLSFixDirect() {
     for (const [index, sql] of SQL_COMMANDS.entries()) {
       console.log(`[${index + 2}/${SQL_COMMANDS.length + 1}] ${sql.substring(0, 50)}...`);
 
-      const { data, error } = await serviceSupabase.rpc('exec_sql', { sql });
+      const { error } = await serviceSupabase.rpc('exec_sql', { sql });
 
       if (error) {
         console.log(`   ❌ Failed: ${error.message}`);

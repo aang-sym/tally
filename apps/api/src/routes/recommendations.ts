@@ -28,7 +28,6 @@ const authenticateUser: RequestHandler = (req, _res, next) => {
   next();
 };
 
-
 const router: ExpressRouter = Router();
 
 router.use(authenticateUser);

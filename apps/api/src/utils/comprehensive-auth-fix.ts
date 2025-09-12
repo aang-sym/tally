@@ -9,7 +9,7 @@
  * 4. Enhanced error handling
  */
 
-import { supabase, serviceSupabase, createUserClient } from '../db/supabase.js';
+import { serviceSupabase, createUserClient } from '../db/supabase.js';
 
 export class AuthenticationFixer {
   /**
@@ -103,14 +103,14 @@ export class AuthenticationFixer {
   }> {
     try {
       // Check if RLS policies exist
-      const { data: policies, error: policyError } = await serviceSupabase
+      const { error: policyError } = await serviceSupabase
         .from('information_schema.table_constraints')
         .select('constraint_name')
         .eq('table_name', 'user_shows');
 
       if (policyError) {
         // Try alternative approach with exec_sql
-        const { data: execResult, error: execError } = await serviceSupabase.rpc('exec_sql', {
+        const { error: execError } = await serviceSupabase.rpc('exec_sql', {
           sql: `SELECT constraint_name FROM information_schema.table_constraints WHERE table_name = 'user_shows';`,
         });
 
@@ -233,10 +233,7 @@ export class AuthenticationFixer {
       const userClient = createUserClient(testToken);
 
       // Test SELECT operation
-      const { data: selectTest, error: selectError } = await userClient
-        .from('user_shows')
-        .select('*')
-        .limit(5);
+      const { error: selectError } = await userClient.from('user_shows').select('*').limit(5);
 
       if (selectError) {
         return { success: false, error: `SELECT test failed: ${selectError.message}` };

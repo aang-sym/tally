@@ -14,8 +14,8 @@ app.use(express.json());
 app.use('/api/watchlist', watchlistRouter);
 
 // Mock error handler
-app.use((err: any, req: any, res: any, next: any) => {
-  res.status(err.statusCode || 500).json({ error: err.message });
+app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  res.status((err as any).statusCode || 500).json({ error: err.message });
 });
 
 describe('Watchlist Routes with Streaming Availability', () => {

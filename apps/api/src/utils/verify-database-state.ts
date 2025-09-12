@@ -6,7 +6,7 @@
  * to diagnose authentication and PGRST301 issues
  */
 
-import { supabase, serviceSupabase, createUserClient } from '../db/supabase.js';
+import { serviceSupabase, createUserClient } from '../db/supabase.js';
 
 async function verifyDatabaseState() {
   console.log('🔍 COMPREHENSIVE DATABASE STATE VERIFICATION...\n');
@@ -51,7 +51,7 @@ async function verifyDatabaseState() {
       console.error('❌ Cannot check RLS policies:', rlsError);
     } else {
       console.log('   RLS Policies found:', rlsPolicies?.length || 0);
-      rlsPolicies?.forEach((policy) => {
+      rlsPolicies?.forEach((policy: any) => {
         console.log(`   - ${policy.tablename}.${policy.policyname} (${policy.cmd})`);
       });
       results.rlsPolicies = (rlsPolicies?.length || 0) > 0;
@@ -73,7 +73,7 @@ async function verifyDatabaseState() {
       console.error('❌ Cannot check RPC functions:', rpcError);
     } else {
       console.log('   RPC Functions found:', rpcFunctions?.length || 0);
-      rpcFunctions?.forEach((func) => {
+      rpcFunctions?.forEach((func: any) => {
         console.log(`   - ${func.proname} (security definer: ${func.prosecdef})`);
       });
       results.rpcFunctions = (rpcFunctions?.length || 0) > 0;

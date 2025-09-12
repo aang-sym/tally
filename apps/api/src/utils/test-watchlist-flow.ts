@@ -8,7 +8,7 @@
  * 3. User_shows record gets inserted
  */
 
-import { serviceSupabase, createUserClient } from '../db/supabase.js';
+import { serviceSupabase } from '../db/supabase.js';
 
 async function testWatchlistFlow() {
   console.log('🧪 Testing Watchlist Flow - PGRST301 Fix Verification...\n');
@@ -54,10 +54,6 @@ async function testWatchlistFlow() {
 
     // Step 3: Create user client (simulates authenticated user)
     console.log('\n📋 Step 3: Testing user_shows insertion as authenticated user...');
-
-    // Create a simple JWT token (doesn't need to be real for this test)
-    const simpleJWT =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxMjM0NTYiLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.test';
 
     // Use anonymous client instead to test the fix
     console.log('   Using anonymous client to test foreign key validation...');

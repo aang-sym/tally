@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import express, { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
@@ -46,12 +46,9 @@ const hoisted = vi.hoisted(() => {
 });
 
 const mockWatchlistService = hoisted.svc;
-const MockWatchlistServiceCtor = hoisted.WatchlistCtor;
 const mockShowService = hoisted.showSvc;
 const supabaseFrom = hoisted.supFrom;
 const serviceSupabaseFrom = hoisted.svcSupFrom;
-const mockSupabase = hoisted.sup;
-const mockServiceSupabase = hoisted.svcSup;
 
 // Provide select()->eq()->single() chains for GET progress
 const chain = () => {

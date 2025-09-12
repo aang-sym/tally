@@ -92,10 +92,8 @@ class StreamingAvailabilityService {
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
 
-    let _success = false;
     try {
       const result = await operation();
-      _success = true;
       this.lastRequestTime = Date.now();
 
       return result;

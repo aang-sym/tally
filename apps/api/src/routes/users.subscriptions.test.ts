@@ -29,7 +29,6 @@ vi.mock('../db/supabase.js', () => {
 
 // Now import after mocks
 import usersRouter from './users.js';
-import { authenticateUser } from '../middleware/user-identity.js';
 
 const buildApp = () => {
   const app = express();
