@@ -62,7 +62,7 @@ export interface ShowProgressData {
     [seasonNumber: number]: StoredEpisodeProgress[];
   };
 }
- 
+
 // Basic user progress summary used by TV Guide and other UI components
 export interface UserProgress {
   totalEpisodes: number;
@@ -77,7 +77,7 @@ export interface UserProgress {
     name?: string;
   };
 }
- 
+
 export interface StreamingService {
   id: number;
   name: string;

@@ -36,8 +36,7 @@ const ShowBlock: React.FC<ShowBlockProps> = ({
     : [];
   const hasProgress = watched.length > 0;
   const isNewEpisode =
-    !!nextEpisode &&
-    !watched.includes(`S${nextEpisode.seasonNumber}E${nextEpisode.episodeNumber}`);
+    !!nextEpisode && !watched.includes(`S${nextEpisode.seasonNumber}E${nextEpisode.episodeNumber}`);
 
   const handleShowClick = () => {
     // TODO: Navigate to show details or episode list

@@ -12,11 +12,11 @@ const TVGuideHeader: React.FC<TVGuideHeaderProps> = ({ dates, columnWidth, onJum
   const safeDates: Date[] = Array.isArray(dates)
     ? dates.filter((d): d is Date => d instanceof Date && !isNaN(d.getTime()))
     : [];
- 
+
   const formatDateHeader = (date: Date): { day: string; date: string; isSpecial: boolean } => {
     let day = format(date, 'EEE'); // Mon, Tue, etc.
     let isSpecial = false;
- 
+
     if (isToday(date)) {
       day = 'Today';
       isSpecial = true;
@@ -27,21 +27,21 @@ const TVGuideHeader: React.FC<TVGuideHeaderProps> = ({ dates, columnWidth, onJum
       day = 'Yesterday';
       isSpecial = true;
     }
- 
+
     return {
       day,
       date: format(date, 'MMM d'),
       isSpecial,
     };
   };
- 
+
   const handleJumpToToday = () => {
     const today = new Date();
     if (onJumpToDate) {
       onJumpToDate(today);
     }
   };
- 
+
   const handleJumpToNextMonth = () => {
     if (!safeDates.length || !onJumpToDate) return;
     const last = safeDates[safeDates.length - 1]!;
@@ -49,7 +49,7 @@ const TVGuideHeader: React.FC<TVGuideHeaderProps> = ({ dates, columnWidth, onJum
     nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
     onJumpToDate(nextMonth);
   };
- 
+
   return (
     <div className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
       <div className="flex items-center h-16">
@@ -73,13 +73,13 @@ const TVGuideHeader: React.FC<TVGuideHeaderProps> = ({ dates, columnWidth, onJum
             </button>
           </div>
         </div>
- 
+
         {/* Date columns */}
         <div className="flex-1 flex overflow-hidden">
           {safeDates.map((date, index) => {
             const { day, date: dateStr, isSpecial } = formatDateHeader(date);
             const isTodayColumn = isToday(date);
- 
+
             return (
               <div
                 key={`${date.getTime()}-${index}`}

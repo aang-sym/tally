@@ -28,7 +28,7 @@ export async function getShowProgress(tmdbId: number) {
   const res = await api.apiWatchlistTmdbIdProgressGet(tmdbId);
   return res.data?.data ?? null;
 }
- 
+
 export async function updateShowProgress(tmdbId: number, payload: ProgressUpdatePayload) {
   // Directly forward to generated client
   const res = await api.apiWatchlistTmdbIdProgressPut(tmdbId, payload);
