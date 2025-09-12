@@ -549,7 +549,7 @@ export class ShowService {
   /**
    * Private: Update seasons and episodes for an existing show
    */
-  private async updateSeasonsAndEpisodes(showId: string, tmdbShow: any): Promise<void> {
+  private async updateSeasonsAndEpisodes(showId: string, _tmdbShow: any): Promise<void> {
     // For now, we'll skip updating seasons/episodes to avoid complexity
     // In a full implementation, you'd compare existing vs new data
     // and update accordingly

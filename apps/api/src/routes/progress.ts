@@ -5,17 +5,20 @@
  * auto-completion features, and bulk operations.
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+// Request type augmented with optional userId set by auth middleware
+type AuthedRequest = Request & { userId?: string };
+
 import { episodeProgressService } from '../services/EpisodeProgressService.js';
 import { showService } from '../services/ShowService.js';
 
-const router = Router();
+const router: Router = Router();
 
 // Middleware to extract userId (stub implementation)
-const authenticateUser = (req: Request, res: Response, next: any) => {
+const authenticateUser = (req: AuthedRequest, res: Response, next: NextFunction) => {
   // TODO: Replace with proper JWT authentication
   const userId = (req.headers['x-user-id'] as string) || 'user-1';
-  (req as any).userId = userId;
+  (req as AuthedRequest).userId = userId;
   next();
 };
 
@@ -25,7 +28,7 @@ router.use(authenticateUser);
  * GET /api/progress/:showId
  * Get show watch progress with episode details and live stats
  */
-router.get('/:showId', async (req: Request, res: Response) => {
+router.get('/:showId', async (req: AuthedRequest, res: Response) => {
   try {
     const userId = req.userId;
 
@@ -35,10 +38,18 @@ router.get('/:showId', async (req: Request, res: Response) => {
         error: 'User not authenticated',
       });
     }
-    const { showId } = req.params;
-    const includeLiveStats = req.query.liveStats !== 'false';
+    const uid = userId as string;
 
-    const showDetails = await showService.getShowWithDetails(showId);
+    const { showId } = req.params as { showId?: string };
+    if (!showId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required path parameter: showId',
+      });
+    }
+    const sid: string = showId;
+
+    const showDetails = await showService.getShowWithDetails(sid);
 
     if (!showDetails) {
       return res.status(404).json({
@@ -54,9 +65,9 @@ router.get('/:showId', async (req: Request, res: Response) => {
 
     // Get progress for all episodes
     const episodesWithProgress = await episodeProgressService.getEpisodesWithProgress(
-      userId,
+      uid,
       allEpisodeIds,
-      includeLiveStats
+      req.query.liveStats !== 'false'
     );
 
     // Group episodes back into seasons
@@ -108,7 +119,7 @@ router.get('/:showId', async (req: Request, res: Response) => {
  * POST /api/progress/episode/:episodeId/watching
  * Mark episode as currently watching
  */
-router.post('/episode/:episodeId/watching', async (req: Request, res: Response) => {
+router.post('/episode/:episodeId/watching', async (req: AuthedRequest, res: Response) => {
   try {
     const userId = req.userId;
 
@@ -118,9 +129,18 @@ router.post('/episode/:episodeId/watching', async (req: Request, res: Response) 
         error: 'User not authenticated',
       });
     }
-    const { episodeId } = req.params;
+    const uid = userId as string;
 
-    const progress = await episodeProgressService.markEpisodeWatching(userId, episodeId);
+    const { episodeId } = req.params as { episodeId?: string };
+    if (!episodeId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required path parameter: episodeId',
+      });
+    }
+    const eid: string = episodeId;
+
+    const progress = await episodeProgressService.markEpisodeWatching(uid, eid);
 
     if (!progress) {
       return res.status(400).json({
@@ -130,7 +150,7 @@ router.post('/episode/:episodeId/watching', async (req: Request, res: Response) 
     }
 
     // Get live stats for the episode
-    const liveStats = await episodeProgressService.getEpisodeLiveStats(episodeId);
+    const liveStats = await episodeProgressService.getEpisodeLiveStats(eid);
 
     res.json({
       success: true,
@@ -153,7 +173,7 @@ router.post('/episode/:episodeId/watching', async (req: Request, res: Response) 
  * POST /api/progress/episode/:episodeId/watched
  * Mark episode as watched
  */
-router.post('/episode/:episodeId/watched', async (req: Request, res: Response) => {
+router.post('/episode/:episodeId/watched', async (req: AuthedRequest, res: Response) => {
   try {
     const userId = req.userId;
 
@@ -163,9 +183,18 @@ router.post('/episode/:episodeId/watched', async (req: Request, res: Response) =
         error: 'User not authenticated',
       });
     }
-    const { episodeId } = req.params;
+    const uid = userId as string;
 
-    const progress = await episodeProgressService.markEpisodeWatched(userId, episodeId);
+    const { episodeId } = req.params as { episodeId?: string };
+    if (!episodeId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required path parameter: episodeId',
+      });
+    }
+    const eid: string = episodeId;
+
+    const progress = await episodeProgressService.markEpisodeWatched(uid, eid);
 
     if (!progress) {
       return res.status(400).json({
@@ -175,7 +204,7 @@ router.post('/episode/:episodeId/watched', async (req: Request, res: Response) =
     }
 
     // Get live stats for the episode
-    const liveStats = await episodeProgressService.getEpisodeLiveStats(episodeId);
+    const liveStats = await episodeProgressService.getEpisodeLiveStats(eid);
 
     res.json({
       success: true,
@@ -203,7 +232,7 @@ router.post('/episode/:episodeId/watched', async (req: Request, res: Response) =
  *   status: 'watched' | 'unwatched'
  * }
  */
-router.post('/bulk-update', async (req: Request, res: Response) => {
+router.post('/bulk-update', async (req: AuthedRequest, res: Response) => {
   try {
     const userId = req.userId;
 
@@ -213,6 +242,7 @@ router.post('/bulk-update', async (req: Request, res: Response) => {
         error: 'User not authenticated',
       });
     }
+    const uid = userId as string;
     const { episodeIds, status } = req.body;
 
     if (!Array.isArray(episodeIds) || episodeIds.length === 0) {
@@ -229,7 +259,7 @@ router.post('/bulk-update', async (req: Request, res: Response) => {
       });
     }
 
-    const updates = await episodeProgressService.bulkUpdateEpisodes(userId, episodeIds, status);
+    const updates = await episodeProgressService.bulkUpdateEpisodes(uid, episodeIds, status);
 
     res.json({
       success: true,
@@ -255,7 +285,7 @@ router.post('/bulk-update', async (req: Request, res: Response) => {
  *
  * Body: { rating: number } (0.0-10.0)
  */
-router.put('/episode/:episodeId/rating', async (req: Request, res: Response) => {
+router.put('/episode/:episodeId/rating', async (req: AuthedRequest, res: Response) => {
   try {
     const userId = req.userId;
 
@@ -265,7 +295,17 @@ router.put('/episode/:episodeId/rating', async (req: Request, res: Response) => 
         error: 'User not authenticated',
       });
     }
-    const { episodeId } = req.params;
+    const uid = userId as string;
+
+    const { episodeId } = req.params as { episodeId?: string };
+    if (!episodeId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required path parameter: episodeId',
+      });
+    }
+    const eid: string = episodeId;
+
     const { rating } = req.body;
 
     if (typeof rating !== 'number' || rating < 0 || rating > 10) {
@@ -275,7 +315,7 @@ router.put('/episode/:episodeId/rating', async (req: Request, res: Response) => 
       });
     }
 
-    const success = await episodeProgressService.rateEpisode(userId, episodeId, rating);
+    const success = await episodeProgressService.rateEpisode(uid, eid, rating);
 
     if (!success) {
       return res.status(400).json({
@@ -285,7 +325,7 @@ router.put('/episode/:episodeId/rating', async (req: Request, res: Response) => 
     }
 
     // Get updated live stats
-    const liveStats = await episodeProgressService.getEpisodeLiveStats(episodeId);
+    const liveStats = await episodeProgressService.getEpisodeLiveStats(eid);
 
     res.json({
       success: true,
@@ -308,7 +348,7 @@ router.put('/episode/:episodeId/rating', async (req: Request, res: Response) => 
  * GET /api/progress/user/stats
  * Get user's watch statistics
  */
-router.get('/user/stats', async (req: Request, res: Response) => {
+router.get('/user/stats', async (req: AuthedRequest, res: Response) => {
   try {
     const userId = req.userId;
 
@@ -318,8 +358,9 @@ router.get('/user/stats', async (req: Request, res: Response) => {
         error: 'User not authenticated',
       });
     }
+    const uid = userId as string;
 
-    const stats = await episodeProgressService.getUserWatchStats(userId);
+    const stats = await episodeProgressService.getUserWatchStats(uid);
 
     res.json({
       success: true,
@@ -338,16 +379,23 @@ router.get('/user/stats', async (req: Request, res: Response) => {
  * GET /api/progress/episode/:episodeId/stats
  * Get live statistics for a specific episode
  */
-router.get('/episode/:episodeId/stats', async (req: Request, res: Response) => {
+router.get('/episode/:episodeId/stats', async (req: AuthedRequest, res: Response) => {
   try {
-    const { episodeId } = req.params;
+    const { episodeId } = req.params as { episodeId?: string };
+    if (!episodeId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required path parameter: episodeId',
+      });
+    }
+    const eid: string = episodeId;
 
-    const liveStats = await episodeProgressService.getEpisodeLiveStats(episodeId);
+    const liveStats = await episodeProgressService.getEpisodeLiveStats(eid);
 
     res.json({
       success: true,
       data: {
-        episodeId,
+        episodeId: eid,
         ...liveStats,
         timestamp: new Date().toISOString(),
       },
@@ -365,7 +413,7 @@ router.get('/episode/:episodeId/stats', async (req: Request, res: Response) => {
  * POST /api/progress/season/:seasonId/mark-watched
  * Mark all episodes in a season as watched
  */
-router.post('/season/:seasonId/mark-watched', async (req: Request, res: Response) => {
+router.post('/season/:seasonId/mark-watched', async (req: AuthedRequest, res: Response) => {
   try {
     const userId = req.userId;
 
@@ -375,10 +423,14 @@ router.post('/season/:seasonId/mark-watched', async (req: Request, res: Response
         error: 'User not authenticated',
       });
     }
-    const { seasonId: _seasonId } = req.params;
-
-    // Get all episodes in the season
-    const _showDetails = await showService.getShowWithDetails(''); // This would need the show ID
+    const { seasonId } = req.params as { seasonId?: string };
+    if (!seasonId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required path parameter: seasonId',
+      });
+    }
+    // TODO: Once season→show mapping is available, fetch episodes by seasonId here.
     // For now, we'll need a different approach to get episodes by season ID
 
     // Alternative: Query episodes directly by season ID
@@ -401,7 +453,7 @@ router.post('/season/:seasonId/mark-watched', async (req: Request, res: Response
  * GET /api/progress/episodes/currently-watching
  * Get all episodes the user is currently watching across all shows
  */
-router.get('/episodes/currently-watching', async (req: Request, res: Response) => {
+router.get('/episodes/currently-watching', async (req: AuthedRequest, res: Response) => {
   try {
     const userId = req.userId;
 

@@ -9,7 +9,7 @@ import { Router, Request, Response } from 'express';
 import { WatchlistService } from '../services/WatchlistService.js';
 import { showService } from '../services/ShowService.js';
 import { streamingService } from '../services/StreamingService.js';
-import { supabase, serviceSupabase, createUserClient } from '../db/supabase.js';
+import { supabase, serviceSupabase } from '../db/supabase.js';
 
 const router: Router = Router();
 

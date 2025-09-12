@@ -10,7 +10,7 @@ import { tmdbService } from './tmdb.js';
 import { providerNormalizer } from './provider-normalizer.js';
 import { TMDBProviderListItem } from '@tally/core';
 
-export interface StreamingService {
+export interface StreamingServiceData {
   id: string;
   tmdb_provider_id: number;
   name: string;
@@ -31,16 +31,16 @@ export interface ShowAvailability {
 }
 
 export interface ShowAvailabilityWithService extends ShowAvailability {
-  service: StreamingService;
+  service: StreamingServiceData;
 }
 
 export class StreamingService {
   /**
    * Get or create streaming services from TMDB provider data
    */
-  async syncStreamingServices(tmdbProviders: any[]): Promise<StreamingService[]> {
+  async syncStreamingServices(tmdbProviders: any[]): Promise<StreamingServiceData[]> {
     try {
-      const services: StreamingService[] = [];
+      const services: StreamingServiceData[] = [];
 
       for (const provider of tmdbProviders) {
         // Check if service already exists
@@ -242,7 +242,7 @@ export class StreamingService {
   /**
    * Get all streaming services
    */
-  async getAllStreamingServices(): Promise<StreamingService[]> {
+  async getAllStreamingServices(): Promise<StreamingServiceData[]> {
     try {
       const { data: services, error } = await supabase
         .from('streaming_services')
@@ -263,7 +263,7 @@ export class StreamingService {
    */
   async getUserSubscriptionAnalysis(userId: string): Promise<{
     services: {
-      service: StreamingService;
+      service: StreamingServiceData;
       showCount: number;
       watchingCount: number;
       watchlistCount: number;
@@ -298,7 +298,7 @@ export class StreamingService {
       const serviceMap = new Map<
         string,
         {
-          service: StreamingService;
+          service: StreamingServiceData;
           showCount: number;
           watchingCount: number;
           watchlistCount: number;
@@ -366,7 +366,7 @@ export class StreamingService {
   async getStreamingServiceStats(): Promise<{
     totalServices: number;
     mostPopularServices: {
-      service: StreamingService;
+      service: StreamingServiceData;
       showCount: number;
       userCount: number;
     }[];
@@ -459,14 +459,14 @@ export class StreamingService {
     totalFetched: number;
     newProviders: number;
     updatedProviders: number;
-    providers: StreamingService[];
+    providers: StreamingServiceData[];
     errors: string[];
   }> {
     const result = {
       totalFetched: 0,
       newProviders: 0,
       updatedProviders: 0,
-      providers: [] as StreamingService[],
+      providers: [] as StreamingServiceData[],
       errors: [] as string[],
     };
 
@@ -541,7 +541,7 @@ export class StreamingService {
     tmdbProviderId: number,
     providerName: string,
     logoPath?: string
-  ): Promise<StreamingService | null> {
+  ): Promise<StreamingServiceData | null> {
     try {
       // Check if provider already exists
       const { data: existingService, error: fetchError } = await supabase
