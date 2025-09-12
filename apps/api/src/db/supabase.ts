@@ -62,6 +62,10 @@ export function getUserJwtFromHeaders(
  * so Row-Level Security uses that identity.
  */
 export function getSupabaseForToken(userJwtToken?: string): SupabaseClient {
+  if (process.env.NODE_ENV === 'test') {
+    return createTestMockClient();
+  }
+
   const opts: SupabaseClientOptions<'public'> = {
     auth: {
       persistSession: false,
@@ -90,22 +94,82 @@ export function getSupabaseForRequestHeaders(
 }
 
 // Create the default Supabase client using anon key (respects RLS)
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseApiKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-  },
-});
+export const supabase: SupabaseClient =
+  process.env.NODE_ENV === 'test'
+    ? createTestMockClient()
+    : createClient(supabaseUrl, supabaseApiKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      });
 
 // Create a service role client (bypasses RLS for admin operations like user creation)
-export const serviceSupabase: SupabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-  },
-});
+export const serviceSupabase: SupabaseClient =
+  process.env.NODE_ENV === 'test'
+    ? createTestMockClient()
+    : createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      });
+
+// Mock client for test environment
+function createTestMockClient(): SupabaseClient {
+  const createChainableMock = (): any => {
+    const chainable = {
+      select: () => chainable,
+      insert: () => chainable,
+      update: () => chainable,
+      delete: () => chainable,
+      eq: () => chainable,
+      neq: () => chainable,
+      gt: () => chainable,
+      gte: () => chainable,
+      lt: () => chainable,
+      lte: () => chainable,
+      like: () => chainable,
+      ilike: () => chainable,
+      is: () => chainable,
+      in: () => chainable,
+      contains: () => chainable,
+      containedBy: () => chainable,
+      rangeGt: () => chainable,
+      rangeGte: () => chainable,
+      rangeLt: () => chainable,
+      rangeLte: () => chainable,
+      rangeAdjacent: () => chainable,
+      overlaps: () => chainable,
+      textSearch: () => chainable,
+      match: () => chainable,
+      not: () => chainable,
+      or: () => chainable,
+      filter: () => chainable,
+      order: () => chainable,
+      limit: () => chainable,
+      range: () => chainable,
+      single: () => Promise.resolve({ data: null, error: null }),
+      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+      then: (resolve: any) => resolve({ data: null, error: null }),
+    };
+    return chainable;
+  };
+
+  const mockClient = {
+    from: () => createChainableMock(),
+    rpc: () => createChainableMock(),
+    auth: {
+      getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+      signInWithPassword: () => Promise.resolve({ data: null, error: null }),
+      signUp: () => Promise.resolve({ data: null, error: null }),
+      signOut: () => Promise.resolve({ error: null }),
+    },
+  } as any as SupabaseClient;
+  return mockClient;
+}
 
 /**
  * Create a Supabase client with a specific JWT token for RLS enforcement

@@ -588,12 +588,18 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
     const { id } = req.params;
     let country = (req.query.country as string) || '';
     if (!country) {
-      const { data: userRow } = await serviceSupabase
+      const response = await serviceSupabase
         .from('users')
         .select('country_code')
         .eq('id', id)
         .single();
-      country = (userRow?.country_code as string) || 'US';
+
+      if (response.error) {
+        console.warn('Failed to fetch user country:', response.error);
+        country = 'US';
+      } else {
+        country = (response.data?.country_code as string) || 'US';
+      }
     }
     country = country.toUpperCase();
 
