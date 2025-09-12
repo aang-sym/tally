@@ -2,8 +2,6 @@ import { Router } from 'express';
 import { PlanResponseSchema, type ServiceWindow } from '@tally/types';
 import { generateActivationWindows, calculateSavingsEstimate } from '@tally/core';
 import { watchlistStore } from '../storage/index.js';
-import { streamingAvailabilityService } from '../services/streaming-availability.js';
-import { tmdbService } from '../services/tmdb.js';
 import { ValidationError } from '../middleware/errorHandler.js';
 
 const router = Router();

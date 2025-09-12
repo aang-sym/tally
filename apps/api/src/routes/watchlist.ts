@@ -72,7 +72,7 @@ router.get('/', async (req: Request, res: Response) => {
       .map((it: any) => it?.selected_service_id)
       .filter((v: any): v is string => typeof v === 'string' && v.length > 0);
 
-    let providerByUuid = new Map<string, { id: number; name: string; logo_path: string }>();
+    const providerByUuid = new Map<string, { id: number; name: string; logo_path: string }>();
     if (selectedIds.length > 0) {
       const { data: providers, error: provErr } = await serviceSupabase
         .from('streaming_services')

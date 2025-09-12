@@ -12,10 +12,13 @@ import path from 'path';
 // Load environment variables from .env file
 dotenv.config({ path: path.resolve(process.cwd(), 'apps/api/.env') });
 
-const supabaseUrl = process.env.SUPABASE_URL || (process.env.NODE_ENV === 'test' ? 'http://test-supabase-url' : '');
+const supabaseUrl =
+  process.env.SUPABASE_URL || (process.env.NODE_ENV === 'test' ? 'http://test-supabase-url' : '');
 // We consistently use SUPABASE_API_KEY as the anon/public key
-const supabaseApiKey = process.env.SUPABASE_API_KEY || (process.env.NODE_ENV === 'test' ? 'test-supabase-key' : '');
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || (process.env.NODE_ENV === 'test' ? 'test-service-key' : '');
+const supabaseApiKey =
+  process.env.SUPABASE_API_KEY || (process.env.NODE_ENV === 'test' ? 'test-supabase-key' : '');
+const supabaseServiceKey =
+  process.env.SUPABASE_SERVICE_KEY || (process.env.NODE_ENV === 'test' ? 'test-service-key' : '');
 
 if (!supabaseUrl && process.env.NODE_ENV !== 'test') {
   throw new Error('Missing SUPABASE_URL environment variable');
@@ -117,7 +120,7 @@ export const createUserClient = (userJwtToken: string): SupabaseClient => {
  */
 export async function testConnection(): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data, error } = await supabase.from('users').select('count').limit(1);
+    const { error } = await supabase.from('users').select('count').limit(1);
 
     if (error) {
       return { success: false, error: error.message };

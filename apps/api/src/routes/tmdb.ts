@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { ValidationError } from '../middleware/errorHandler.js';
 import { tmdbService } from '../services/tmdb.js';
-import { releasePatternService } from '@tally/core';
 import { watchlistStorageService } from '../storage/simple-watchlist.js';
 // Types are inferred from the API responses, no imports needed from @tally/types for this router
 

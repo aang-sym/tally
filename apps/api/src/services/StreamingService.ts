@@ -44,7 +44,7 @@ export class StreamingService {
 
       for (const provider of tmdbProviders) {
         // Check if service already exists
-        let { data: existingService, error: fetchError } = await supabase
+        const { data: existingService, error: fetchError } = await supabase
           .from('streaming_services')
           .select('*')
           .eq('tmdb_provider_id', provider.provider_id)

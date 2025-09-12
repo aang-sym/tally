@@ -236,7 +236,7 @@ router.get('/', async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
     const isAuthenticated = authHeader && authHeader.startsWith('Bearer ');
 
-    let query = serviceSupabase
+    const query = serviceSupabase
       .from('users')
       .select('id, email, display_name, avatar_url, is_test_user, created_at')
       .order('created_at', { ascending: false });
@@ -373,7 +373,7 @@ router.get('/:id/profile', authenticateUser, async (req: Request, res: Response)
       .select('status')
       .eq('user_id', id);
 
-    let stats = {
+    const stats = {
       totalShows: 0,
       byStatus: {
         watchlist: 0,

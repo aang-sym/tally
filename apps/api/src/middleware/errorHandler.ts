@@ -38,7 +38,7 @@ export function errorHandler(
   error: AppError | ZodError,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) {
   console.error('Error:', error);
 

@@ -126,7 +126,7 @@ router.get('/subscribe', async (req: Request, res: Response) => {
     const preferences = await ratingService.getUserRatingPreferences(userId);
 
     // Analyze which services have the most content the user wants
-    const serviceRecommendations = new Map<
+    const _serviceRecommendations = new Map<
       string,
       {
         serviceName: string;
@@ -275,7 +275,7 @@ router.get('/optimization', async (req: Request, res: Response) => {
  */
 router.get('/calendar', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const _userId = (req as any).userId;
     const months = parseInt(req.query.months as string) || 6;
 
     // Generate calendar recommendations for the next N months
@@ -402,7 +402,7 @@ router.post('/feedback', async (req: Request, res: Response) => {
  */
 router.get('/savings-simulator', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const _userId = (req as any).userId;
 
     const strategies = [
       {

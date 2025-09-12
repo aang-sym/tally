@@ -375,10 +375,10 @@ router.post('/season/:seasonId/mark-watched', async (req: Request, res: Response
         error: 'User not authenticated',
       });
     }
-    const { seasonId } = req.params;
+    const { seasonId: _seasonId } = req.params;
 
     // Get all episodes in the season
-    const showDetails = await showService.getShowWithDetails(''); // This would need the show ID
+    const _showDetails = await showService.getShowWithDetails(''); // This would need the show ID
     // For now, we'll need a different approach to get episodes by season ID
 
     // Alternative: Query episodes directly by season ID

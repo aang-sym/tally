@@ -408,10 +408,11 @@ router.post('/batch', async (req: Request, res: Response) => {
           case 'show':
             success = await ratingService.rateShow(userId, rating.id, rating.rating);
             break;
-          case 'season':
+          case 'season': {
             const seasonRating = await ratingService.rateSeason(userId, rating.id, rating.rating);
             success = !!seasonRating;
             break;
+          }
           case 'episode':
             success = await ratingService.rateEpisode(userId, rating.id, rating.rating);
             break;

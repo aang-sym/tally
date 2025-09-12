@@ -283,7 +283,7 @@ export class TMDBService {
       if (!showDetails) return null;
 
       // Determine which season to analyze
-      let realSeasons = showDetails.seasons?.filter((s: any) => s.season_number >= 1) || [];
+      const realSeasons = showDetails.seasons?.filter((s: any) => s.season_number >= 1) || [];
       // Ensure seasons are sorted by season_number ascending
       realSeasons.sort((a: any, b: any) => a.season_number - b.season_number);
       if (realSeasons.length === 0) return null;

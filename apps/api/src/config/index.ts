@@ -95,7 +95,7 @@ export const config: ApiConfig = {
   tmdbDevMode: getOptionalEnvVar('TMDB_DEV_MODE', 'false').toLowerCase() === 'true',
 
   // Supabase Configuration - required for database operations, optional for tests
-  supabaseUrl: 
+  supabaseUrl:
     process.env.NODE_ENV === 'test'
       ? getOptionalEnvVar('SUPABASE_URL', 'test-supabase-url')
       : getEnvVar('SUPABASE_URL'),
