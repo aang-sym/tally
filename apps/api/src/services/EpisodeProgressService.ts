@@ -300,8 +300,7 @@ export class EpisodeProgressService {
       if (ratings && ratings.length > 0) {
         const validRatings = ratings.map((r) => r.episode_rating).filter((r) => r !== null);
         if (validRatings.length > 0) {
-          const avg =
-            validRatings.reduce((sum, rating) => sum + rating, 0) / validRatings.length;
+          const avg = validRatings.reduce((sum, rating) => sum + rating, 0) / validRatings.length;
           averageRating = Math.round(avg * 10) / 10; // Round to 1 decimal
         }
       }

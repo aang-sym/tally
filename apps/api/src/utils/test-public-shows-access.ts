@@ -44,9 +44,7 @@ async function testPublicShowsAccess() {
       console.log('❌ Peacemaker show access failed:', peacemakerError);
     } else if (peacemakerData && peacemakerData.length > 0) {
       const first = peacemakerData[0]!;
-      console.log(
-        `✅ Peacemaker show found: ${first.title} (ID: ${first.id})`
-      );
+      console.log(`✅ Peacemaker show found: ${first.title} (ID: ${first.id})`);
       return first; // Return the show data for further testing
     } else {
       console.log('⚠️  Peacemaker show not found in database');

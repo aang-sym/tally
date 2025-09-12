@@ -155,15 +155,14 @@ async function discoverAndAnalyzeShows(endpoint: 'popular' | 'top_rated', sample
 
       results.totalAnalyzed++;
       {
-        const patternKey =
-          ((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as keyof typeof results.patternDistribution;
+        const patternKey = ((analysis as any).pattern?.pattern ??
+          (analysis as any).pattern) as keyof typeof results.patternDistribution;
         results.patternDistribution[patternKey]++;
       }
       {
-        const conf =
-          ((analysis as any).confidence ??
-            (analysis as any).pattern?.confidence ??
-            0) as number;
+        const conf = ((analysis as any).confidence ??
+          (analysis as any).pattern?.confidence ??
+          0) as number;
         confidences.push(conf);
       }
 
@@ -181,8 +180,10 @@ async function discoverAndAnalyzeShows(endpoint: 'popular' | 'top_rated', sample
         title: show.name,
         seasons: seasonsInfo.length,
         episodesInSeason1: episodes.length, // Keep field name for compatibility but it's actually current season
-        pattern: (((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string),
-        confidence: (((analysis as any).confidence ?? (analysis as any).pattern?.confidence ?? 0) as number),
+        pattern: ((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string,
+        confidence: ((analysis as any).confidence ??
+          (analysis as any).pattern?.confidence ??
+          0) as number,
         reasoning: (analysis as any).diagnostics?.reasoning || 'No diagnostic info',
       });
 
@@ -193,8 +194,10 @@ async function discoverAndAnalyzeShows(endpoint: 'popular' | 'top_rated', sample
         firstAirDate: show.first_air_date || 'Unknown',
         seasons: seasonsInfo,
         season1Analysis: {
-          pattern: (((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string),
-          confidence: (((analysis as any).confidence ?? (analysis as any).pattern?.confidence ?? 0) as number),
+          pattern: ((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string,
+          confidence: ((analysis as any).confidence ??
+            (analysis as any).pattern?.confidence ??
+            0) as number,
           totalEpisodes: ((analysis as any).totalEpisodes ?? episodes.length) as number,
           reasoning: (analysis as any).diagnostics?.reasoning,
         },
@@ -202,10 +205,9 @@ async function discoverAndAnalyzeShows(endpoint: 'popular' | 'top_rated', sample
 
       {
         const patt = ((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string;
-        const confNum =
-          ((analysis as any).confidence ??
-            (analysis as any).pattern?.confidence ??
-            0) as number;
+        const confNum = ((analysis as any).confidence ??
+          (analysis as any).pattern?.confidence ??
+          0) as number;
         console.log(
           `   ✅ "${show.name}" S${currentSeasonNumber}: ${patt} (${confNum.toFixed(
             2
@@ -400,15 +402,14 @@ async function discoverAndAnalyzeCurrentlyAiringShows(sampleSize: number) {
 
       results.totalAnalyzed++;
       {
-        const patternKey =
-          ((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as keyof typeof results.patternDistribution;
+        const patternKey = ((analysis as any).pattern?.pattern ??
+          (analysis as any).pattern) as keyof typeof results.patternDistribution;
         results.patternDistribution[patternKey]++;
       }
       {
-        const conf =
-          ((analysis as any).confidence ??
-            (analysis as any).pattern?.confidence ??
-            0) as number;
+        const conf = ((analysis as any).confidence ??
+          (analysis as any).pattern?.confidence ??
+          0) as number;
         confidences.push(conf);
       }
 
@@ -427,8 +428,10 @@ async function discoverAndAnalyzeCurrentlyAiringShows(sampleSize: number) {
         currentSeason: currentSeasonNumber,
         episodesInCurrentSeason: episodes.length,
         isCurrentlyAiring,
-        pattern: (((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string),
-        confidence: (((analysis as any).confidence ?? (analysis as any).pattern?.confidence ?? 0) as number),
+        pattern: ((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string,
+        confidence: ((analysis as any).confidence ??
+          (analysis as any).pattern?.confidence ??
+          0) as number,
         reasoning: (analysis as any).diagnostics?.reasoning || 'No diagnostic info',
       });
 
@@ -442,8 +445,10 @@ async function discoverAndAnalyzeCurrentlyAiringShows(sampleSize: number) {
         seasons: seasonsInfo,
         currentSeasonAnalysis: {
           seasonNumber: currentSeasonNumber,
-          pattern: (((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string),
-          confidence: (((analysis as any).confidence ?? (analysis as any).pattern?.confidence ?? 0) as number),
+          pattern: ((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string,
+          confidence: ((analysis as any).confidence ??
+            (analysis as any).pattern?.confidence ??
+            0) as number,
           totalEpisodes: ((analysis as any).totalEpisodes ?? episodes.length) as number,
           reasoning: (analysis as any).diagnostics?.reasoning,
         },
@@ -452,10 +457,9 @@ async function discoverAndAnalyzeCurrentlyAiringShows(sampleSize: number) {
 
       {
         const patt = ((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string;
-        const confNum =
-          ((analysis as any).confidence ??
-            (analysis as any).pattern?.confidence ??
-            0) as number;
+        const confNum = ((analysis as any).confidence ??
+          (analysis as any).pattern?.confidence ??
+          0) as number;
         console.log(
           `   ✅ "${show.name}" S${currentSeasonNumber}: ${patt} (${confNum.toFixed(
             2

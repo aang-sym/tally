@@ -204,8 +204,12 @@ router.get('/', async (req, res) => {
 
       const tvGuideShows: TVGuideShow[] = [];
       for (const row of userShows || []) {
-        const showsRel = Array.isArray((row as any).shows) ? (row as any).shows[0] : (row as any).shows;
-        const serviceRel = Array.isArray((row as any).service) ? (row as any).service[0] : (row as any).service;
+        const showsRel = Array.isArray((row as any).shows)
+          ? (row as any).shows[0]
+          : (row as any).shows;
+        const serviceRel = Array.isArray((row as any).service)
+          ? (row as any).service[0]
+          : (row as any).service;
 
         const tmdbId = showsRel?.tmdb_id as number | undefined;
         const title = (showsRel?.title as string) || '';
