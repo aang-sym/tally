@@ -32,6 +32,13 @@ const Admin: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [bulkCreating, setBulkCreating] = useState(false);
 
+  useEffect(() => {
+    // Only load users if in development mode
+    if (process.env.NODE_ENV === 'development') {
+      loadUsers();
+    }
+  }, []);
+
   // Check if we're in development mode
   if (process.env.NODE_ENV !== 'development') {
     return (
@@ -44,10 +51,6 @@ const Admin: React.FC = () => {
       </div>
     );
   }
-
-  useEffect(() => {
-    loadUsers();
-  }, []);
 
   const loadUsers = async () => {
     try {
