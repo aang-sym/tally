@@ -183,10 +183,10 @@ class StreamingAvailabilityService {
       return cached;
     }
 
-    const result = await this.withRateLimit(
+    const result = (await this.withRateLimit(
       () => this.client!.getLeavingSoon(country, service, 50),
       'getLeavingSoon'
-    ) as StreamingAvailability[];
+    )) as StreamingAvailability[];
 
     this.setCache(cacheKey, result, 360); // Cache for 6 hours
     return result;
@@ -206,10 +206,10 @@ class StreamingAvailabilityService {
       return cached;
     }
 
-    const result = await this.withRateLimit(
+    const result = (await this.withRateLimit(
       () => this.client!.getNewlyAdded(country, service, 50),
       'getNewlyAdded'
-    ) as StreamingAvailability[];
+    )) as StreamingAvailability[];
 
     this.setCache(cacheKey, result, 720); // Cache for 12 hours
     return result;
