@@ -4,7 +4,7 @@ import { generateActivationWindows, calculateSavingsEstimate } from '@tally/core
 import { watchlistStore } from '../storage/index.js';
 import { ValidationError } from '../middleware/errorHandler.js';
 
-const router = Router();
+const router: Router = Router();
 
 // Mock auth middleware - extracts user from stubbed token
 function extractUserId(req: any): string {
@@ -155,10 +155,15 @@ router.post('/optimize', async (req, res, next) => {
       group.items.push(item);
 
       // Categorize by release pattern - prioritize TMDB detected patterns
-      const releasePattern = item.detectedReleasePattern || item.releasePattern?.pattern;
-      if (releasePattern === 'weekly') {
+      const rp =
+        item.detectedReleasePattern?.pattern ??
+        // Back-compat fallback if older field exists on stored item
+        (item as any).releasePattern?.pattern ??
+        undefined;
+
+      if (rp === 'weekly') {
         group.weeklyShows.push(item);
-      } else if (releasePattern === 'binge') {
+      } else if (rp === 'binge') {
         group.bingeShows.push(item);
       }
     }

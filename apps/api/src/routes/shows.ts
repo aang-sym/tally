@@ -4,7 +4,7 @@ import { tmdbService } from '../services/tmdb.js';
 import { TMDBClient, releasePatternService } from '@tally/core';
 import { config } from '../config/index.js';
 
-const router = Router();
+const router: Router = Router();
 
 // Helper function to get TMDB client
 function getTMDBClient(): TMDBClient | null {
@@ -135,7 +135,7 @@ async function discoverAndAnalyzeShows(endpoint: 'popular' | 'top_rated', sample
       }
 
       // Analyze the pattern
-      let analysis = releasePatternService.analyzeReleasePattern(episodes);
+      let analysis = releasePatternService.analyzeEpisodes(episodes);
 
       // Apply smart binge logic for fully aired shows (like Breaking Bad)
       const isShowEnded = showDetails.status === 'Ended' || showDetails.status === 'Canceled';
@@ -144,22 +144,28 @@ async function discoverAndAnalyzeShows(endpoint: 'popular' | 'top_rated', sample
 
       if (isShowEnded && allEpisodesAired) {
         // For fully aired shows, they can be binged regardless of original pattern
-        if (analysis.pattern !== 'binge') {
+        const patt = ((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string;
+        if (patt !== 'binge') {
           analysis = {
-            ...analysis,
-            pattern: 'binge',
-            confidence: 0.85,
-            diagnostics: {
-              ...analysis.diagnostics!,
-              reasoning: `Show fully aired (Status: ${showDetails.status}) - all episodes available for binge watching. Original pattern was ${analysis.pattern}.`,
-            },
-          };
+            ...(analysis as any),
+            pattern: { pattern: 'binge', confidence: 0.85 },
+          } as any;
         }
       }
 
       results.totalAnalyzed++;
-      results.patternDistribution[analysis.pattern as keyof typeof results.patternDistribution]++;
-      confidences.push(analysis.confidence);
+      {
+        const patternKey =
+          ((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as keyof typeof results.patternDistribution;
+        results.patternDistribution[patternKey]++;
+      }
+      {
+        const conf =
+          ((analysis as any).confidence ??
+            (analysis as any).pattern?.confidence ??
+            0) as number;
+        confidences.push(conf);
+      }
 
       // Prepare season info
       const seasonsInfo = showDetails.seasons
@@ -175,9 +181,9 @@ async function discoverAndAnalyzeShows(endpoint: 'popular' | 'top_rated', sample
         title: show.name,
         seasons: seasonsInfo.length,
         episodesInSeason1: episodes.length, // Keep field name for compatibility but it's actually current season
-        pattern: analysis.pattern,
-        confidence: analysis.confidence,
-        reasoning: analysis.diagnostics?.reasoning || 'No diagnostic info',
+        pattern: (((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string),
+        confidence: (((analysis as any).confidence ?? (analysis as any).pattern?.confidence ?? 0) as number),
+        reasoning: (analysis as any).diagnostics?.reasoning || 'No diagnostic info',
       });
 
       results.detailedShows.push({
@@ -187,16 +193,27 @@ async function discoverAndAnalyzeShows(endpoint: 'popular' | 'top_rated', sample
         firstAirDate: show.first_air_date || 'Unknown',
         seasons: seasonsInfo,
         season1Analysis: {
-          pattern: analysis.pattern,
-          confidence: analysis.confidence,
-          totalEpisodes: analysis.totalEpisodes,
-          reasoning: analysis.diagnostics?.reasoning,
+          pattern: (((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string),
+          confidence: (((analysis as any).confidence ?? (analysis as any).pattern?.confidence ?? 0) as number),
+          totalEpisodes: ((analysis as any).totalEpisodes ?? episodes.length) as number,
+          reasoning: (analysis as any).diagnostics?.reasoning,
         },
       });
 
-      console.log(
-        `   ✅ "${show.name}" S${currentSeasonNumber}: ${analysis.pattern} (${analysis.confidence.toFixed(2)} confidence, ${episodes.length} episodes, ${seasonsInfo.length} total seasons, Status: ${showDetails.status})`
-      );
+      {
+        const patt = ((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string;
+        const confNum =
+          ((analysis as any).confidence ??
+            (analysis as any).pattern?.confidence ??
+            0) as number;
+        console.log(
+          `   ✅ "${show.name}" S${currentSeasonNumber}: ${patt} (${confNum.toFixed(
+            2
+          )} confidence, ${episodes.length} episodes, ${seasonsInfo.length} total seasons, Status: ${
+            showDetails.status
+          })`
+        );
+      }
     } catch (error) {
       console.error(`   ❌ Error analyzing "${show.name}":`, error);
       results.errors++;
@@ -350,7 +367,7 @@ async function discoverAndAnalyzeCurrentlyAiringShows(sampleSize: number) {
         futureEpisodes.length > 0 || showDetails.status === 'Returning Series';
 
       // Analyze the pattern
-      let analysis = releasePatternService.analyzeReleasePattern(episodes);
+      let analysis = releasePatternService.analyzeEpisodes(episodes);
 
       // Special logic for currently airing shows
       let airingStatus = 'Unknown';
@@ -358,36 +375,42 @@ async function discoverAndAnalyzeCurrentlyAiringShows(sampleSize: number) {
         airingStatus = 'Currently Airing';
         // If show is currently airing and we don't detect a clear pattern,
         // it's likely weekly since that's the most common for ongoing shows
-        if (analysis.pattern === 'unknown' && episodes.length >= 2) {
-          analysis = {
-            ...analysis,
-            pattern: 'weekly',
-            confidence: 0.7,
-            diagnostics: {
-              ...analysis.diagnostics!,
-              reasoning: 'Currently airing show with unclear pattern - likely weekly release',
-            },
-          };
+        {
+          const patt2 = ((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string;
+          if (patt2 === 'unknown' && episodes.length >= 2) {
+            analysis = {
+              ...(analysis as any),
+              pattern: { pattern: 'weekly', confidence: 0.7 },
+            } as any;
+          }
         }
       } else {
         airingStatus = 'Season Complete';
         // For completed seasons, if all episodes are available, it's effectively binge-watchable
-        if (analysis.pattern === 'unknown') {
-          analysis = {
-            ...analysis,
-            pattern: 'binge',
-            confidence: 0.6,
-            diagnostics: {
-              ...analysis.diagnostics!,
-              reasoning: 'Season complete - all episodes available for binge watching',
-            },
-          };
+        {
+          const patt3 = ((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string;
+          if (patt3 === 'unknown') {
+            analysis = {
+              ...(analysis as any),
+              pattern: { pattern: 'binge', confidence: 0.6 },
+            } as any;
+          }
         }
       }
 
       results.totalAnalyzed++;
-      results.patternDistribution[analysis.pattern as keyof typeof results.patternDistribution]++;
-      confidences.push(analysis.confidence);
+      {
+        const patternKey =
+          ((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as keyof typeof results.patternDistribution;
+        results.patternDistribution[patternKey]++;
+      }
+      {
+        const conf =
+          ((analysis as any).confidence ??
+            (analysis as any).pattern?.confidence ??
+            0) as number;
+        confidences.push(conf);
+      }
 
       // Prepare season info
       const seasonsInfo = showDetails.seasons
@@ -404,9 +427,9 @@ async function discoverAndAnalyzeCurrentlyAiringShows(sampleSize: number) {
         currentSeason: currentSeasonNumber,
         episodesInCurrentSeason: episodes.length,
         isCurrentlyAiring,
-        pattern: analysis.pattern,
-        confidence: analysis.confidence,
-        reasoning: analysis.diagnostics?.reasoning || 'No diagnostic info',
+        pattern: (((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string),
+        confidence: (((analysis as any).confidence ?? (analysis as any).pattern?.confidence ?? 0) as number),
+        reasoning: (analysis as any).diagnostics?.reasoning || 'No diagnostic info',
       });
 
       results.detailedShows.push({
@@ -419,17 +442,26 @@ async function discoverAndAnalyzeCurrentlyAiringShows(sampleSize: number) {
         seasons: seasonsInfo,
         currentSeasonAnalysis: {
           seasonNumber: currentSeasonNumber,
-          pattern: analysis.pattern,
-          confidence: analysis.confidence,
-          totalEpisodes: analysis.totalEpisodes,
-          reasoning: analysis.diagnostics?.reasoning,
+          pattern: (((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string),
+          confidence: (((analysis as any).confidence ?? (analysis as any).pattern?.confidence ?? 0) as number),
+          totalEpisodes: ((analysis as any).totalEpisodes ?? episodes.length) as number,
+          reasoning: (analysis as any).diagnostics?.reasoning,
         },
         airingStatus,
       });
 
-      console.log(
-        `   ✅ "${show.name}" S${currentSeasonNumber}: ${analysis.pattern} (${analysis.confidence.toFixed(2)} confidence, ${episodes.length} episodes, ${airingStatus})`
-      );
+      {
+        const patt = ((analysis as any).pattern?.pattern ?? (analysis as any).pattern) as string;
+        const confNum =
+          ((analysis as any).confidence ??
+            (analysis as any).pattern?.confidence ??
+            0) as number;
+        console.log(
+          `   ✅ "${show.name}" S${currentSeasonNumber}: ${patt} (${confNum.toFixed(
+            2
+          )} confidence, ${episodes.length} episodes, ${airingStatus})`
+        );
+      }
     } catch (error) {
       console.error(`   ❌ Error analyzing "${show.name}":`, error);
       results.errors++;
@@ -495,7 +527,7 @@ router.post('/analyze-pattern', async (req, res, next) => {
             }));
 
           if (episodes.length > 0) {
-            analysis = releasePatternService.analyzeReleasePattern(episodes);
+            analysis = releasePatternService.analyzeEpisodes(episodes);
           }
         }
       } catch (error) {
@@ -720,7 +752,7 @@ router.get('/diagnostics/:tmdbId', async (req, res, next) => {
         });
       }
 
-      const analysis = releasePatternService.analyzeReleasePattern(episodes);
+      const analysis = releasePatternService.analyzeEpisodes(episodes);
 
       res.json({
         tmdbId: parseInt(tmdbId),

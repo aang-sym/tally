@@ -6,7 +6,7 @@
  * Peacemaker (TMDB ID 110492) to watchlist, including authentication
  */
 
-import fetch from 'node-fetch';
+// Use global fetch available in Node 18+
 
 async function testUIFlow() {
   console.log('🎭 Testing UI Flow - Frontend Watchlist Addition Simulation...\n');
@@ -37,7 +37,7 @@ async function testUIFlow() {
         'User-Agent': 'Test-UI-Flow/1.0',
       },
       body: JSON.stringify(requestBody),
-    });
+    } as RequestInit);
 
     console.log(`\n📊 Response Status: ${response.status} ${response.statusText}`);
 

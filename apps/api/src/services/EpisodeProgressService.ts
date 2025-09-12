@@ -296,21 +296,28 @@ export class EpisodeProgressService {
 
       if (ratingsError) throw ratingsError;
 
-      let averageRating = undefined;
+      let averageRating = undefined as number | undefined;
       if (ratings && ratings.length > 0) {
         const validRatings = ratings.map((r) => r.episode_rating).filter((r) => r !== null);
         if (validRatings.length > 0) {
-          averageRating =
+          const avg =
             validRatings.reduce((sum, rating) => sum + rating, 0) / validRatings.length;
-          averageRating = Math.round(averageRating * 10) / 10; // Round to 1 decimal
+          averageRating = Math.round(avg * 10) / 10; // Round to 1 decimal
         }
       }
 
-      return {
+      const result: {
+        currentlyWatching: number;
+        totalWatched: number;
+        averageRating?: number;
+      } = {
         currentlyWatching: watching?.length || 0,
         totalWatched: watched?.length || 0,
-        averageRating,
       };
+      if (averageRating !== undefined) {
+        result.averageRating = averageRating;
+      }
+      return result;
     } catch (error) {
       console.error(`Failed to get live stats for episode ${episodeId}:`, error);
       return {
@@ -406,13 +413,13 @@ export class EpisodeProgressService {
       };
 
       // Calculate total watch time
-      const watchedWithRuntime =
-        progress?.filter((p) => p.status === 'watched' && p.episodes.runtime) || [];
+      const getRuntime = (p: any): number =>
+        Array.isArray(p.episodes) ? (p.episodes[0]?.runtime ?? 0) : (p.episodes?.runtime ?? 0);
 
-      stats.totalWatchTime = watchedWithRuntime.reduce(
-        (total, p) => total + (p.episodes.runtime || 0),
-        0
-      );
+      const watchedWithRuntime =
+        progress?.filter((p) => p.status === 'watched' && getRuntime(p) > 0) || [];
+
+      stats.totalWatchTime = watchedWithRuntime.reduce((total, p) => total + getRuntime(p), 0);
 
       // Calculate average rating
       const validRatings = progress?.filter((p) => p.episode_rating !== null) || [];
@@ -447,13 +454,11 @@ export class EpisodeProgressService {
         .eq('id', episodeId)
         .single();
 
-      if (error || !episode?.runtime) {
-        // Default to 45 minutes if no runtime available
-        episode.runtime = 45;
-      }
+      // Determine runtime safely with a default
+      const runtime = !error && episode?.runtime ? episode.runtime : 45;
 
       // Schedule auto-complete for runtime + 30 minutes buffer
-      const delayMs = (episode.runtime + 30) * 60 * 1000; // Convert to milliseconds
+      const delayMs = (runtime + 30) * 60 * 1000; // Convert to milliseconds
 
       // Cancel any existing timer
       this.cancelAutoComplete(userId, episodeId);
@@ -511,7 +516,14 @@ export class EpisodeProgressService {
         return;
       }
 
-      const showId = episode.seasons.show_id;
+      const showId =
+        Array.isArray((episode as any).seasons) && (episode as any).seasons.length > 0
+          ? (episode as any).seasons[0]?.show_id
+          : (episode as any).seasons?.show_id;
+
+      if (!showId) {
+        return;
+      }
 
       // Update user_shows with last watched episode
       await supabase

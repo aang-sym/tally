@@ -31,12 +31,13 @@ const ShowBlock: React.FC<ShowBlockProps> = ({
   const nextEpisode = show.upcomingEpisodes[0];
 
   // Determine if user has watched episodes
-  const hasProgress = show.userProgress && show.userProgress.watchedEpisodes.length > 0;
+  const watched = Array.isArray(show.userProgress?.watchedEpisodes)
+    ? show.userProgress!.watchedEpisodes
+    : [];
+  const hasProgress = watched.length > 0;
   const isNewEpisode =
-    nextEpisode &&
-    !show.userProgress?.watchedEpisodes.includes(
-      `S${nextEpisode.seasonNumber}E${nextEpisode.episodeNumber}`
-    );
+    !!nextEpisode &&
+    !watched.includes(`S${nextEpisode.seasonNumber}E${nextEpisode.episodeNumber}`);
 
   const handleShowClick = () => {
     // TODO: Navigate to show details or episode list
@@ -119,7 +120,7 @@ const ShowBlock: React.FC<ShowBlockProps> = ({
             {isNewEpisode && (
               <div className="w-2 h-2 bg-yellow-400 rounded-full" title="New episode" />
             )}
-            {show.upcomingEpisodes.length > 1 && (
+            {Array.isArray(show.upcomingEpisodes) && show.upcomingEpisodes.length > 1 && (
               <span className="text-xs opacity-75">+{show.upcomingEpisodes.length - 1}</span>
             )}
           </div>
@@ -143,7 +144,7 @@ const ShowBlock: React.FC<ShowBlockProps> = ({
             </div>
           )}
 
-          {show.upcomingEpisodes.length > 1 && (
+          {Array.isArray(show.upcomingEpisodes) && show.upcomingEpisodes.length > 1 && (
             <div className="text-xs text-gray-400">
               {show.upcomingEpisodes.length} episodes scheduled
             </div>

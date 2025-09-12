@@ -8,7 +8,12 @@ export interface EpisodeSchedule extends Omit<TVGuideEpisode, 'airDate'> {
   airDate: Date;
 }
 
-export interface ShowSchedule extends Omit<TVGuideShow, 'nextEpisodeDate' | 'upcomingEpisodes'> {
+/**
+ * ShowSchedule adapts string date fields from TVGuideShow into concrete Date instances for UI.
+ * Important: also omit 'activeWindow' to avoid string vs Date type mismatch.
+ */
+export interface ShowSchedule
+  extends Omit<TVGuideShow, 'nextEpisodeDate' | 'upcomingEpisodes' | 'activeWindow'> {
   nextEpisodeDate?: Date;
   upcomingEpisodes: EpisodeSchedule[];
   activeWindow?: { start: Date; end: Date };

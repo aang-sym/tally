@@ -36,7 +36,7 @@ const Dashboard: React.FC = () => {
       setLoading(true);
 
       // Get auth token from localStorage
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken') || undefined;
 
       // Fetch all dashboard data in parallel using apiRequest with JWT authentication
       const [watchlistResponse, optimizationResponse] = await Promise.allSettled([

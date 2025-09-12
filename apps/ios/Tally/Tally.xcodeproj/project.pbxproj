@@ -29,9 +29,67 @@
 		B688E6B12E73F21600757DB1 /* TallyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TallyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B655C2A42E74361900F06962 /* Exceptions for "Tally" folder in "Tally" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = B688E6992E73F21400757DB1 /* Tally */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		B655C29A2E73FA1A00F06962 /* Docs */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Docs;
+			sourceTree = "<group>";
+		};
+		B655C29F2E73FA7300F06962 /* Services */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Services;
+			sourceTree = "<group>";
+		};
+		B655C3022E7441A200F06962 /* UI */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = UI;
+			sourceTree = "<group>";
+		};
+		B655C3082E7441BB00F06962 /* Preview Content */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		B655C30D2E7441BB00F06962 /* App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = App;
+			sourceTree = "<group>";
+		};
+		B655C3182E7441BB00F06962 /* Core */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Core;
+			sourceTree = "<group>";
+		};
+		B655C32B2E7441BB00F06962 /* Features */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Features;
+			sourceTree = "<group>";
+		};
+		B655C3362E7441BB00F06962 /* Resources */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		B655C33B2E74422600F06962 /* Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Tests;
+			sourceTree = "<group>";
+		};
 		B688E69C2E73F21400757DB1 /* Tally */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B655C2A42E74361900F06962 /* Exceptions for "Tally" folder in "Tally" target */,
+			);
 			path = Tally;
 			sourceTree = "<group>";
 		};
@@ -75,10 +133,19 @@
 		B688E6912E73F21400757DB1 = {
 			isa = PBXGroup;
 			children = (
+				B655C29A2E73FA1A00F06962 /* Docs */,
 				B688E69C2E73F21400757DB1 /* Tally */,
 				B688E6AA2E73F21600757DB1 /* TallyTests */,
 				B688E6B42E73F21600757DB1 /* TallyUITests */,
 				B688E69B2E73F21400757DB1 /* Products */,
+				B655C29F2E73FA7300F06962 /* Services */,
+				B655C30D2E7441BB00F06962 /* App */,
+				B655C3182E7441BB00F06962 /* Core */,
+				B655C32B2E7441BB00F06962 /* Features */,
+				B655C3082E7441BB00F06962 /* Preview Content */,
+				B655C3362E7441BB00F06962 /* Resources */,
+				B655C33B2E74422600F06962 /* Tests */,
+				B655C3022E7441A200F06962 /* UI */,
 			);
 			sourceTree = "<group>";
 		};
@@ -108,6 +175,15 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				B655C29A2E73FA1A00F06962 /* Docs */,
+				B655C29F2E73FA7300F06962 /* Services */,
+				B655C3022E7441A200F06962 /* UI */,
+				B655C3082E7441BB00F06962 /* Preview Content */,
+				B655C30D2E7441BB00F06962 /* App */,
+				B655C3182E7441BB00F06962 /* Core */,
+				B655C32B2E7441BB00F06962 /* Features */,
+				B655C3362E7441BB00F06962 /* Resources */,
+				B655C33B2E74422600F06962 /* Tests */,
 				B688E69C2E73F21400757DB1 /* Tally */,
 			);
 			name = Tally;
@@ -400,6 +476,7 @@
 				DEVELOPMENT_TEAM = CDHYXQ7U25;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Tally/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -428,6 +505,7 @@
 				DEVELOPMENT_TEAM = CDHYXQ7U25;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Tally/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

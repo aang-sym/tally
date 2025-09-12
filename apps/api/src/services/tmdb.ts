@@ -6,9 +6,18 @@
  */
 
 import { TMDBClient, TMDBError } from '@tally/core';
-import type { ReleasePattern, TMDBWatchProvider } from '@tally/types';
+import type { ReleasePattern } from '@tally/types';
 import { config } from '../config/index.js';
 import { providerNormalizer, type ProviderVariant } from './provider-normalizer.js';
+
+// Local fallback type to avoid dependency on build artifacts from @tally/types
+// Matches TMDBWatchProviderSchema shape
+interface TMDBWatchProvider {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string;
+  display_priority: number;
+}
 
 export interface TMDBEnhancedWatchlistItem {
   tmdbShowId?: number;
@@ -121,7 +130,11 @@ export class TMDBService {
       if (patternResult.tmdbId) {
         enhancement.tmdbShowId = patternResult.tmdbId;
       }
-      enhancement.detectedReleasePattern = patternResult.pattern;
+      // Ensure detectedReleasePattern is a structured object (not a plain string)
+      enhancement.detectedReleasePattern =
+        typeof (patternResult as any).pattern === 'string'
+          ? { pattern: (patternResult as any).pattern, confidence: 0.5 }
+          : (patternResult as any).pattern;
 
       // Get watch providers if we have a TMDB ID
       if (patternResult.tmdbId) {
@@ -166,7 +179,15 @@ export class TMDBService {
     }
 
     try {
-      return await this.client.detectReleasePatternFromTitle(title);
+      const result = await this.client.detectReleasePatternFromTitle(title);
+      if (!result) return null;
+
+      const pattern: ReleasePattern =
+        typeof (result as any).pattern === 'string'
+          ? { pattern: (result as any).pattern, confidence: 0.5 }
+          : (result as any).pattern;
+
+      return { pattern, tmdbId: (result as any).tmdbId };
     } catch (error) {
       console.warn(`Failed to get release pattern for "${title}":`, error);
       return null;
@@ -310,7 +331,9 @@ export class TMDBService {
         } else {
           // Try latest season, then walk back until we find dated episodes
           for (let i = realSeasons.length - 1; i >= 0; i--) {
-            const sNum = realSeasons[i].season_number;
+            const seasonEntry = realSeasons[i];
+            if (!seasonEntry) continue;
+            const sNum = seasonEntry.season_number;
             const eps = await fetchSeasonEpisodes(sNum);
             if (eps.length > 0) {
               episodes = eps;

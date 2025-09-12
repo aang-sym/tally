@@ -7,7 +7,7 @@
 import { Router } from 'express';
 import { usageTracker } from '../middleware/usage-tracker.js';
 
-const router = Router();
+const router: Router = Router();
 
 // Get all usage statistics
 router.get('/', async (req, res) => {

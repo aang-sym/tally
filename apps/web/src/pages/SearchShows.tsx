@@ -135,11 +135,12 @@ const SearchShows: React.FC = () => {
       return result;
     }
     const sorted = dates.slice().sort((a, b) => a.getTime() - b.getTime());
-    const intervals = [] as number[];
-    for (let i = 1; i < sorted.length; i++)
-      intervals.push(
-        Math.round((sorted[i].getTime() - sorted[i - 1].getTime()) / (1000 * 60 * 60 * 24))
-      );
+    const intervals: number[] = [];
+    for (let i = 1; i < sorted.length; i++) {
+      const curr = sorted[i]!;
+      const prev = sorted[i - 1]!;
+      intervals.push(Math.round((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24)));
+    }
     const avg = intervals.reduce((s, d) => s + d, 0) / intervals.length;
     const std = Math.sqrt(
       intervals.reduce((s, d) => s + Math.pow(d - avg, 2), 0) / intervals.length

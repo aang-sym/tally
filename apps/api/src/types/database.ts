@@ -116,14 +116,12 @@ export interface UserStreamingSubscriptions {
 export interface Users {
   instance_id?: string | null;
   id: string;
-  id: string;
-  email: string;
+  email?: string | null;
   aud?: string | null;
   password_hash: string;
   country_code?: string | null;
   role?: string | null;
   timezone?: string | null;
-  email?: string | null;
   created_at?: string | null;
   encrypted_password?: string | null;
   updated_at?: string | null;
@@ -144,8 +142,6 @@ export interface Users {
   raw_app_meta_data?: any | null;
   raw_user_meta_data?: any | null;
   is_super_admin?: boolean | null;
-  created_at?: string | null;
-  updated_at?: string | null;
   phone?: string | null;
   phone_confirmed_at?: string | null;
   phone_change?: string | null;

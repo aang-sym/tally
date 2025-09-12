@@ -10,7 +10,7 @@ import { supabase, getDatabaseHealth } from '../db/supabase.js';
 import { watchlistStorageService } from '../storage/simple-watchlist.js';
 import { showService } from '../services/ShowService.js';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * GET /api/admin/db-status
@@ -215,10 +215,20 @@ router.get('/show-stats/:showId', async (req: Request, res: Response) => {
     const { showId } = req.params;
 
     // Get all episodes for this show that someone is currently watching
-    const { data: showEpisodes, error: episodesError } = await supabase
-      .from('episodes')
+    // First fetch season IDs for the show, then fetch episodes for those seasons
+    const { data: seasonsForShow, error: seasonsError } = await supabase
+      .from('seasons')
       .select('id')
-      .in('season_id', supabase.from('seasons').select('id').eq('show_id', showId));
+      .eq('show_id', showId);
+
+    if (seasonsError) {
+      throw seasonsError;
+    }
+
+    const seasonIds = (seasonsForShow || []).map((s) => s.id);
+    const { data: showEpisodes, error: episodesError } = seasonIds.length
+      ? await supabase.from('episodes').select('id').in('season_id', seasonIds)
+      : { data: [], error: null as any };
 
     if (episodesError) {
       throw episodesError;

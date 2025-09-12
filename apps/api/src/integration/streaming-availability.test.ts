@@ -28,9 +28,12 @@ describe.skipIf(!shouldRunIntegrationTests)('Streaming Availability Integration 
     expect(results.shows.length).toBeGreaterThan(0);
 
     const show = results.shows[0];
+    if (!show) {
+      throw new Error('No show found in results');
+    }
     expect(show.title).toContain('Stranger');
     expect(show.type).toBe('series');
-    expect(show.streamingOptions.us).toBeDefined();
+    expect(show.streamingOptions?.us).toBeDefined();
   }, 10000); // 10 second timeout for API calls
 
   it('should get show details', async () => {
@@ -38,7 +41,11 @@ describe.skipIf(!shouldRunIntegrationTests)('Streaming Availability Integration 
     const searchResults = await client.search('The Office', 'us', 'series', 1);
     expect(searchResults.shows.length).toBeGreaterThan(0);
 
-    const showId = searchResults.shows[0].id;
+    const first = searchResults.shows[0];
+    if (!first) {
+      throw new Error('No show found in search results');
+    }
+    const showId = first.id;
     const show = await client.getShow(showId, 'us');
 
     expect(show.id).toBe(showId);
@@ -53,6 +60,7 @@ describe.skipIf(!shouldRunIntegrationTests)('Streaming Availability Integration 
     // Note: This may be empty if no shows are leaving soon
     if (leavingSoon.length > 0) {
       const show = leavingSoon[0];
+      if (!show) return;
       expect(show.id).toBeDefined();
       expect(show.title).toBeDefined();
     }
@@ -64,6 +72,7 @@ describe.skipIf(!shouldRunIntegrationTests)('Streaming Availability Integration 
     expect(Array.isArray(newlyAdded)).toBe(true);
     if (newlyAdded.length > 0) {
       const show = newlyAdded[0];
+      if (!show) return;
       expect(show.id).toBeDefined();
       expect(show.title).toBeDefined();
     }
@@ -76,6 +85,9 @@ describe.skipIf(!shouldRunIntegrationTests)('Streaming Availability Integration 
     expect(services.length).toBeGreaterThan(0);
 
     const service = services[0];
+    if (!service) {
+      throw new Error('No services returned');
+    }
     expect(service.id).toBeDefined();
     expect(service.name).toBeDefined();
     expect(service.homePage).toBeDefined();

@@ -3,7 +3,7 @@ import { quotaTracker } from '../services/quota-tracker.js';
 import { streamingAvailabilityService } from '../services/streaming-availability.js';
 import { config } from '../config/index.js';
 
-const router = Router();
+const router: Router = Router();
 
 // Get quota usage statistics
 router.get('/', async (req, res, next) => {

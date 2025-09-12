@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { WaitlistRequestSchema, WaitlistResponseSchema } from '@tally/types';
 import { waitlistStore } from '../storage/index.js';
 
-const router = Router();
+const router: Router = Router();
 
 router.post('/', async (req, res, next) => {
   try {

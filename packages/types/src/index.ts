@@ -173,3 +173,6 @@ export type PlanResponse = z.infer<typeof PlanResponseSchema>;
 
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+
+// Additional type exports
+export type TMDBWatchProvider = z.infer<typeof TMDBWatchProviderSchema>;

@@ -43,11 +43,17 @@ async function testEndpoint(
   }
 
   try {
-    const response = await fetch(url, {
+    const init: RequestInit = {
       method,
       headers,
-      body: data ? JSON.stringify(data) : undefined,
-    });
+    };
+    if (data !== undefined) {
+      init.body = JSON.stringify(data);
+    } else {
+      init.body = null;
+    }
+
+    const response = await fetch(url, init);
 
     let responseData;
     try {

@@ -4,7 +4,7 @@ import { tmdbService } from '../services/tmdb.js';
 import { watchlistStorageService } from '../storage/simple-watchlist.js';
 // Types are inferred from the API responses, no imports needed from @tally/types for this router
 
-const router = Router();
+const router: Router = Router();
 
 // Search TV shows
 router.get('/search', async (req, res, next) => {

@@ -5,7 +5,7 @@ import { RegisterRequestSchema, LoginRequestSchema, AuthResponseSchema } from '@
 import { serviceSupabase } from '../db/supabase.js';
 import { ValidationError } from '../middleware/errorHandler.js';
 
-const router = Router();
+const router: Router = Router();
 
 router.post('/register', async (req, res, next) => {
   try {

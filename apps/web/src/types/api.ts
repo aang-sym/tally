@@ -62,7 +62,22 @@ export interface ShowProgressData {
     [seasonNumber: number]: StoredEpisodeProgress[];
   };
 }
-
+ 
+// Basic user progress summary used by TV Guide and other UI components
+export interface UserProgress {
+  totalEpisodes: number;
+  // Normalized watched episode keys: "S{season}E{episode}"
+  watchedEpisodes: string[];
+  // Optional detailed progress map by season -> episodes
+  data?: ShowProgressData;
+  // Optional current episode pointer
+  currentEpisode?: {
+    season_number: number;
+    episode_number: number;
+    name?: string;
+  };
+}
+ 
 export interface StreamingService {
   id: number;
   name: string;

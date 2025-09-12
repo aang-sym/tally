@@ -445,7 +445,10 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
         .sort((a: any, b: any) => new Date(a.airDate).getTime() - new Date(b.airDate).getTime());
 
       if (sortedEpisodes.length > 0) {
-        return new Date(sortedEpisodes[0].airDate);
+        const firstAirDate: string | undefined = sortedEpisodes[0]?.airDate;
+        if (firstAirDate) {
+          return new Date(firstAirDate);
+        }
       }
     }
 

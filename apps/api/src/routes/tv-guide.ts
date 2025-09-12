@@ -4,7 +4,7 @@ import { watchlistStorageService } from '../storage/simple-watchlist.js';
 import { supabase } from '../db/supabase.js';
 import { tmdbService } from '../services/tmdb.js';
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 // Helper: color map for known services
 function getServiceColor(serviceName: string): string {
@@ -106,8 +106,10 @@ async function buildShowFromTMDB(
 
     // Ensure episodes are sorted by air date
     episodes.sort((a, b) => new Date(a.airDate).getTime() - new Date(b.airDate).getTime());
-    const firstAir = new Date(episodes[0].airDate);
-    const lastAir = new Date(episodes[episodes.length - 1].airDate);
+    const firstEp = episodes[0]!;
+    const lastEp = episodes[episodes.length - 1]!;
+    const firstAir = new Date(firstEp.airDate);
+    const lastAir = new Date(lastEp.airDate);
 
     // Filter upcoming episodes within requested range
     const upcoming = episodes.filter((ep) => {
@@ -119,8 +121,9 @@ async function buildShowFromTMDB(
     const poster = analysis?.showDetails?.poster || undefined;
 
     // Prefer the first upcoming episode inside requested window for the bar start
-    const barStart = upcoming[0] ? new Date(upcoming[0].airDate) : firstAir;
-    return {
+    const barStart = upcoming[0] ? new Date(upcoming[0]!.airDate) : firstAir;
+
+    const base: TVGuideShow = {
       tmdbId,
       title,
       poster,
@@ -137,11 +140,20 @@ async function buildShowFromTMDB(
             },
           ]
         : [],
-      nextEpisodeDate: upcoming[0]?.airDate,
       activeWindow: { start: format(barStart, 'yyyy-MM-dd'), end: format(lastAir, 'yyyy-MM-dd') },
       upcomingEpisodes: upcoming,
-      bufferDays,
       country,
+    };
+
+    // exactOptionalPropertyTypes: only include optional fields if defined
+    const maybeNext =
+      upcoming[0]?.airDate !== undefined ? { nextEpisodeDate: upcoming[0]!.airDate } : {};
+    const maybeBuffer = bufferDays !== undefined ? { bufferDays } : {};
+
+    return {
+      ...base,
+      ...maybeNext,
+      ...maybeBuffer,
     };
   } catch (e) {
     console.error('TMDB analyze failed for', tmdbId, e);
@@ -192,19 +204,22 @@ router.get('/', async (req, res) => {
 
       const tvGuideShows: TVGuideShow[] = [];
       for (const row of userShows || []) {
-        const tmdbId = row.shows?.tmdb_id;
-        const title = row.shows?.title || '';
-        const provider = row.service
+        const showsRel = Array.isArray((row as any).shows) ? (row as any).shows[0] : (row as any).shows;
+        const serviceRel = Array.isArray((row as any).service) ? (row as any).service[0] : (row as any).service;
+
+        const tmdbId = showsRel?.tmdb_id as number | undefined;
+        const title = (showsRel?.title as string) || '';
+        const provider = serviceRel
           ? {
               id: row.selected_service_id,
-              name: row.service.name,
-              logo_path: row.service.logo_path
-                ? `https://image.tmdb.org/t/p/w92${row.service.logo_path}`
+              name: serviceRel.name,
+              logo_path: serviceRel.logo_path
+                ? `https://image.tmdb.org/t/p/w92${serviceRel.logo_path}`
                 : '',
             }
           : null;
-        const country = row.country_code || defaultCountry;
-        const bufferDays = row.buffer_days || 0;
+        const country = (row as any).country_code || defaultCountry;
+        const bufferDays = (row as any).buffer_days || 0;
         if (tmdbId) {
           const show = await buildShowFromTMDB(
             tmdbId,

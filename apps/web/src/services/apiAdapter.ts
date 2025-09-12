@@ -1,15 +1,13 @@
 // apps/web/src/services/apiAdapter.ts
 import { api } from './apiClient';
+import type {
+  ApiWatchlistTmdbIdProgressPutRequest as GeneratedProgressRequest,
+  SelectedProvider,
+} from '@tally/api-client';
 
-// Local fallbacks for types not exported by the generated client
-export type ApiWatchlistTmdbIdProgressPutRequest = {
-  state?: 'watched' | 'unwatched';
-  progress?: number; // 0..100
-  started_watching_at?: string; // ISO
-  watched_at?: string; // ISO
-};
+// Local friendly aliases that map to generated types
+export type ProgressUpdatePayload = GeneratedProgressRequest;
 
-export type SelectedProviderMinimal = { id: number; name?: string; logo_url?: string | null };
 export type SubscriptionCreateRequest = any; // TODO: replace with generated type when available
 export type SubscriptionUpdateRequest = any; // TODO: replace with generated type when available
 export type UserSubscription = any; // TODO: replace with generated type when available
@@ -30,20 +28,20 @@ export async function getShowProgress(tmdbId: number) {
   const res = await api.apiWatchlistTmdbIdProgressGet(tmdbId);
   return res.data?.data ?? null;
 }
-
-export async function updateShowProgress(
-  tmdbId: number,
-  payload: ApiWatchlistTmdbIdProgressPutRequest
-) {
+ 
+export async function updateShowProgress(tmdbId: number, payload: ProgressUpdatePayload) {
+  // Directly forward to generated client
   const res = await api.apiWatchlistTmdbIdProgressPut(tmdbId, payload);
   return res.data?.data ?? null;
 }
 
 export async function updateSelectedProvider(userShowId: string, providerId: string | null) {
-  // SelectedProvider in the client expects more fields; we only have id here.
-  // Send a minimal object and let the server resolve it.
+  // Construct a SelectedProvider object with minimal required fields
+  const provider: SelectedProvider | null = providerId
+    ? { id: Number(providerId), name: '', logo_path: '' }
+    : null;
   const res = await api.apiWatchlistIdProviderPut(userShowId, {
-    provider: providerId ? ({ id: Number(providerId) } as SelectedProviderMinimal) : null,
+    provider,
   });
   return res.data?.data ?? null;
 }

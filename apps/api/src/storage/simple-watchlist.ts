@@ -175,8 +175,11 @@ export const watchlistStorageService = {
 
         if (existingIndex >= 0) {
           // Update existing
-          userProgress[existingIndex].status = 'watched';
-          userProgress[existingIndex].watchedAt = watchedAt;
+          const existing = userProgress[existingIndex];
+          if (existing) {
+            existing.status = 'watched';
+            existing.watchedAt = watchedAt;
+          }
         } else {
           // Create new
           userProgress.push({
@@ -199,8 +202,11 @@ export const watchlistStorageService = {
       );
 
       if (existingIndex >= 0) {
-        userProgress[existingIndex].status = 'watched';
-        userProgress[existingIndex].watchedAt = watchedAt;
+        const existing = userProgress[existingIndex];
+        if (existing) {
+          existing.status = 'watched';
+          existing.watchedAt = watchedAt;
+        }
       } else {
         userProgress.push({
           showId,
@@ -262,9 +268,12 @@ export const watchlistStorageService = {
 
     if (existingIndex >= 0) {
       // Update existing
-      userProgress[existingIndex].status = status;
-      if (status === 'watched') {
-        userProgress[existingIndex].watchedAt = new Date().toISOString();
+      const existing = userProgress[existingIndex];
+      if (existing) {
+        existing.status = status;
+        if (status === 'watched') {
+          existing.watchedAt = new Date().toISOString();
+        }
       }
     } else {
       // Create new
@@ -280,7 +289,10 @@ export const watchlistStorageService = {
     }
 
     episodeProgressStorage.set(userId, userProgress);
-    return userProgress[existingIndex] || userProgress[userProgress.length - 1];
+    const returned =
+      (existingIndex >= 0 ? userProgress[existingIndex] : userProgress[userProgress.length - 1]) ||
+      null;
+    return returned;
   },
 
   // Update streaming provider for a watchlist item
@@ -293,7 +305,11 @@ export const watchlistStorageService = {
     const item = userWatchlist.find((item) => item.id === itemId);
 
     if (item) {
-      item.streamingProvider = provider || undefined;
+      if (provider) {
+        item.streamingProvider = provider;
+      } else {
+        delete item.streamingProvider;
+      }
       watchlistStorage.set(userId, userWatchlist);
     }
 
@@ -316,7 +332,11 @@ export const watchlistStorageService = {
     const userWatchlist = this.getUserWatchlist(userId);
     const item = userWatchlist.find((item) => item.id === itemId);
     if (item) {
-      item.country = countryCode || undefined;
+      if (countryCode) {
+        item.country = countryCode;
+      } else {
+        delete item.country;
+      }
       watchlistStorage.set(userId, userWatchlist);
     }
     return item || null;
