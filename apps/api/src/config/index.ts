@@ -94,9 +94,15 @@ export const config: ApiConfig = {
     getOptionalEnvVar('STREAMING_API_DEV_MODE', 'false').toLowerCase() === 'true',
   tmdbDevMode: getOptionalEnvVar('TMDB_DEV_MODE', 'false').toLowerCase() === 'true',
 
-  // Supabase Configuration - required for database operations
-  supabaseUrl: getEnvVar('SUPABASE_URL'),
-  supabaseApiKey: getEnvVar('SUPABASE_API_KEY'),
+  // Supabase Configuration - required for database operations, optional for tests
+  supabaseUrl: 
+    process.env.NODE_ENV === 'test'
+      ? getOptionalEnvVar('SUPABASE_URL', 'test-supabase-url')
+      : getEnvVar('SUPABASE_URL'),
+  supabaseApiKey:
+    process.env.NODE_ENV === 'test'
+      ? getOptionalEnvVar('SUPABASE_API_KEY', 'test-supabase-key')
+      : getEnvVar('SUPABASE_API_KEY'),
 };
 
 export default config;

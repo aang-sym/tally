@@ -12,20 +12,20 @@ import path from 'path';
 // Load environment variables from .env file
 dotenv.config({ path: path.resolve(process.cwd(), 'apps/api/.env') });
 
-const supabaseUrl = process.env.SUPABASE_URL!;
+const supabaseUrl = process.env.SUPABASE_URL || (process.env.NODE_ENV === 'test' ? 'http://test-supabase-url' : '');
 // We consistently use SUPABASE_API_KEY as the anon/public key
-const supabaseApiKey = process.env.SUPABASE_API_KEY!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!;
+const supabaseApiKey = process.env.SUPABASE_API_KEY || (process.env.NODE_ENV === 'test' ? 'test-supabase-key' : '');
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || (process.env.NODE_ENV === 'test' ? 'test-service-key' : '');
 
-if (!supabaseUrl) {
+if (!supabaseUrl && process.env.NODE_ENV !== 'test') {
   throw new Error('Missing SUPABASE_URL environment variable');
 }
 
-if (!supabaseApiKey) {
+if (!supabaseApiKey && process.env.NODE_ENV !== 'test') {
   throw new Error('Missing SUPABASE_API_KEY environment variable');
 }
 
-if (!supabaseServiceKey) {
+if (!supabaseServiceKey && process.env.NODE_ENV !== 'test') {
   throw new Error('Missing SUPABASE_SERVICE_KEY environment variable');
 }
 
