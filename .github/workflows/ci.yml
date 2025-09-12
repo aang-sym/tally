@@ -33,7 +33,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build dependencies for typecheck
-        run: pnpm --dir packages/types build
+        run: |
+          pnpm --dir packages/types build
+          pnpm --dir packages/core build
 
       - name: Lint code
         run: pnpm run lint

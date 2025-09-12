@@ -97,7 +97,7 @@ class StreamingAvailabilityService {
       this.lastRequestTime = Date.now();
 
       return result;
-    } catch (error) {
+    } catch (error: any) {
       this.lastRequestTime = Date.now();
 
       if (error instanceof StreamingAvailabilityError && error.statusCode === 429) {
@@ -157,7 +157,7 @@ class StreamingAvailabilityService {
       console.log(`📺 Show details for ID "${id}":`, JSON.stringify(result, null, 2));
       this.setCache(cacheKey, result, 1440);
       return result;
-    } catch (error) {
+    } catch (error: any) {
       console.log(
         `❌ Failed to get show details for ID "${id}":`,
         error instanceof StreamingAvailabilityError ? error.message : error
@@ -186,7 +186,7 @@ class StreamingAvailabilityService {
     const result = await this.withRateLimit(
       () => this.client!.getLeavingSoon(country, service, 50),
       'getLeavingSoon'
-    );
+    ) as StreamingAvailability[];
 
     this.setCache(cacheKey, result, 360); // Cache for 6 hours
     return result;
@@ -209,7 +209,7 @@ class StreamingAvailabilityService {
     const result = await this.withRateLimit(
       () => this.client!.getNewlyAdded(country, service, 50),
       'getNewlyAdded'
-    );
+    ) as StreamingAvailability[];
 
     this.setCache(cacheKey, result, 720); // Cache for 12 hours
     return result;

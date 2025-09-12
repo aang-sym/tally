@@ -157,7 +157,7 @@ export class TMDBService {
       });
 
       return enhancement;
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof TMDBError) {
         console.warn(`TMDB API error for "${title}":`, error.message);
       } else {
