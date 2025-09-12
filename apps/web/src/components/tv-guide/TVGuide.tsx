@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { format, addDays, startOfDay } from 'date-fns';
-import { DateChunk, TVGuideService, ViewportRange, ScrollState, TV_GUIDE_CONSTANTS } from './tv-guide.types';
+import {
+  DateChunk,
+  TVGuideService,
+  ViewportRange,
+  ScrollState,
+  TV_GUIDE_CONSTANTS,
+} from './tv-guide.types';
 import { API_ENDPOINTS, apiRequest } from '../../config/api';
 import TVGuideHeader from './TVGuideHeader';
 import ServiceRow from './ServiceRow';
 
-const { COLUMN_WIDTH, CHUNK_SIZE_DAYS, BUFFER_COLUMNS, VISIBLE_COLUMNS_DESKTOP } = TV_GUIDE_CONSTANTS;
+const { COLUMN_WIDTH, CHUNK_SIZE_DAYS, BUFFER_COLUMNS, VISIBLE_COLUMNS_DESKTOP } =
+  TV_GUIDE_CONSTANTS;
 
 interface TVGuideProps {
   className?: string;
@@ -18,7 +25,7 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
     scrollLeft: 0,
     containerWidth: 0,
     columnWidth: COLUMN_WIDTH,
-    visibleColumns: VISIBLE_COLUMNS_DESKTOP
+    visibleColumns: VISIBLE_COLUMNS_DESKTOP,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +38,7 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
   const generateDateChunk = useCallback((startDate: Date, chunkId: string): DateChunk => {
     const dates: Date[] = [];
     let currentDate = startOfDay(startDate);
-    
+
     for (let i = 0; i < CHUNK_SIZE_DAYS; i++) {
       dates.push(new Date(currentDate));
       currentDate = addDays(currentDate, 1);
@@ -44,57 +51,57 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
       dates,
       isLoaded: false,
       isLoading: false,
-      shows: []
+      shows: [],
     };
   }, []);
 
   // Calculate viewport range based on scroll position
   const viewportRange = useMemo((): ViewportRange => {
     const startIndex = Math.floor(scrollState.scrollLeft / scrollState.columnWidth);
-    const endIndex = startIndex + scrollState.visibleColumns + (BUFFER_COLUMNS * 2);
-    
-    const allDates = dateChunks.flatMap(chunk => chunk.dates);
+    const endIndex = startIndex + scrollState.visibleColumns + BUFFER_COLUMNS * 2;
+
+    const allDates = dateChunks.flatMap((chunk) => chunk.dates);
     const startDate = allDates[Math.max(0, startIndex)] ?? new Date();
-    const endDate = allDates[Math.min(allDates.length - 1, endIndex)] ?? addDays(startDate, scrollState.visibleColumns);
+    const endDate =
+      allDates[Math.min(allDates.length - 1, endIndex)] ??
+      addDays(startDate, scrollState.visibleColumns);
 
     return {
       startIndex: Math.max(0, startIndex - BUFFER_COLUMNS),
       endIndex: Math.min(allDates.length - 1, endIndex),
       startDate,
-      endDate
+      endDate,
     };
   }, [scrollState, dateChunks]);
 
   // Load initial date chunks
   const loadInitialChunks = useCallback(async () => {
     if (initialLoadRef.current) return;
-    
+
     setLoading(true);
     try {
       const today = startOfDay(new Date());
       const chunks: DateChunk[] = [];
-      
+
       // Create initial 3 chunks (prev, current, next)
       for (let i = -1; i <= 1; i++) {
         const chunkStartDate = addDays(today, i * CHUNK_SIZE_DAYS);
         const chunkId = `chunk-${format(chunkStartDate, 'yyyy-MM-dd')}`;
         chunks.push(generateDateChunk(chunkStartDate, chunkId));
       }
-      
+
       setDateChunks(chunks);
-      
+
       // Load initial data for the first chunk
       if (chunks[0]) {
         try {
           const firstChunkData = await loadChunkData(chunks[0]);
           setServices(firstChunkData.services);
-          
+
           // Mark first chunk as loaded
-          setDateChunks(prev => 
-            prev.map(chunk => 
-              chunk.id === chunks[0]?.id 
-                ? { ...chunk, isLoaded: true, shows: [] }
-                : chunk
+          setDateChunks((prev) =>
+            prev.map((chunk) =>
+              chunk.id === chunks[0]?.id ? { ...chunk, isLoaded: true, shows: [] } : chunk
             )
           );
         } catch (err) {
@@ -102,7 +109,7 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
           setError('Failed to load initial TV guide data');
         }
       }
-      
+
       initialLoadRef.current = true;
       setLoading(false);
     } catch (err) {
@@ -114,23 +121,23 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
   // Load more chunks when user scrolls near the end
   const loadNextChunk = useCallback(async () => {
     if (!dateChunks.length) return;
-    
+
     const lastChunk = dateChunks[dateChunks.length - 1];
     if (!lastChunk) return;
-    
+
     const nextStartDate = addDays(lastChunk.endDate, 1);
     const chunkId = `chunk-${format(nextStartDate, 'yyyy-MM-dd')}`;
-    
+
     const newChunk = generateDateChunk(nextStartDate, chunkId);
-    
-    setDateChunks(prev => [...prev, newChunk]);
-    
+
+    setDateChunks((prev) => [...prev, newChunk]);
+
     // Load data for the new chunk
     try {
       const chunkData = await loadChunkData(newChunk);
-      setDateChunks(prev => 
-        prev.map(chunk => 
-          chunk.id === chunkId 
+      setDateChunks((prev) =>
+        prev.map((chunk) =>
+          chunk.id === chunkId
             ? { ...chunk, ...chunkData, isLoaded: true, isLoading: false }
             : chunk
         )
@@ -163,16 +170,18 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
       shows: serviceGroup.shows.map((show: any) => ({
         ...show,
         nextEpisodeDate: show.nextEpisodeDate ? new Date(show.nextEpisodeDate) : undefined,
-        activeWindow: show.activeWindow ? {
-          start: new Date(show.activeWindow.start),
-          end: new Date(show.activeWindow.end)
-        } : undefined,
+        activeWindow: show.activeWindow
+          ? {
+              start: new Date(show.activeWindow.start),
+              end: new Date(show.activeWindow.end),
+            }
+          : undefined,
         bufferDays: show.bufferDays ?? 0,
         upcomingEpisodes: show.upcomingEpisodes.map((episode: any) => ({
           ...episode,
-          airDate: new Date(episode.airDate)
-        }))
-      }))
+          airDate: new Date(episode.airDate),
+        })),
+      })),
     }));
   };
 
@@ -180,11 +189,11 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
     try {
       const apiData = await loadTVGuideData(chunk.startDate, chunk.endDate);
       const services = convertApiToServices(apiData);
-      
+
       return {
         services,
         isLoaded: true,
-        isLoading: false
+        isLoading: false,
       };
     } catch (error) {
       console.error('Failed to load chunk data:', error);
@@ -193,15 +202,18 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
   };
 
   // Handle scroll events
-  const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLDivElement;
-    const newScrollState = {
-      ...scrollState,
-      scrollLeft: target.scrollLeft,
-      containerWidth: target.clientWidth
-    };
-    setScrollState(newScrollState);
-  }, [scrollState]);
+  const handleScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLDivElement;
+      const newScrollState = {
+        ...scrollState,
+        scrollLeft: target.scrollLeft,
+        containerWidth: target.clientWidth,
+      };
+      setScrollState(newScrollState);
+    },
+    [scrollState]
+  );
 
   // Intersection observer for infinite loading
   useEffect(() => {
@@ -216,7 +228,7 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
       },
       {
         rootMargin: '200px',
-        threshold: 0.1
+        threshold: 0.1,
       }
     );
 
@@ -230,11 +242,11 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
       if (scrollContainerRef.current) {
         const containerWidth = scrollContainerRef.current.clientWidth;
         const visibleColumns = Math.floor(containerWidth / COLUMN_WIDTH);
-        
-        setScrollState(prev => ({
+
+        setScrollState((prev) => ({
           ...prev,
           containerWidth,
-          visibleColumns: Math.max(3, Math.min(visibleColumns, 14))
+          visibleColumns: Math.max(3, Math.min(visibleColumns, 14)),
         }));
       }
     };
@@ -252,9 +264,9 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
   // After chunks load, jump to today
   useEffect(() => {
     if (!scrollContainerRef.current) return;
-    const allDates = dateChunks.flatMap(c => c.dates);
+    const allDates = dateChunks.flatMap((c) => c.dates);
     const today = startOfDay(new Date());
-    const idx = allDates.findIndex(d => startOfDay(d).getTime() === today.getTime());
+    const idx = allDates.findIndex((d) => startOfDay(d).getTime() === today.getTime());
     if (idx >= 0) {
       scrollContainerRef.current.scrollLeft = idx * COLUMN_WIDTH;
     }
@@ -263,7 +275,7 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
   // Calculate total grid dimensions
   const totalColumns = dateChunks.reduce((total, chunk) => total + chunk.dates.length, 0);
   const gridTemplateColumns = `160px repeat(${totalColumns}, ${COLUMN_WIDTH}px)`;
-  
+
   // Calculate total rows (services can have multiple shows = multiple rows)
   const totalRows = services.reduce((total, service) => total + service.shows.length, 0);
 
@@ -284,7 +296,7 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
         <div className="text-center">
           <p className="text-red-600 font-medium mb-2">Failed to load TV Guide</p>
           <p className="text-gray-500 text-sm">{error}</p>
-          <button 
+          <button
             onClick={loadInitialChunks}
             className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
@@ -295,20 +307,18 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
     );
   }
 
-  const allDates = dateChunks.flatMap(chunk => chunk.dates);
+  const allDates = dateChunks.flatMap((chunk) => chunk.dates);
   const visibleDates = allDates.slice(viewportRange.startIndex, viewportRange.endIndex + 1);
 
   return (
     <div className={`bg-white rounded-lg shadow-lg overflow-hidden ${className}`}>
       {/* Header */}
-      <TVGuideHeader 
+      <TVGuideHeader
         dates={visibleDates}
         columnWidth={COLUMN_WIDTH}
         onJumpToDate={(date) => {
           // Implement jump to date functionality
-          const dateIndex = allDates.findIndex(d => 
-            d.toDateString() === date.toDateString()
-          );
+          const dateIndex = allDates.findIndex((d) => d.toDateString() === date.toDateString());
           if (dateIndex >= 0 && scrollContainerRef.current) {
             const scrollPosition = dateIndex * COLUMN_WIDTH;
             scrollContainerRef.current.scrollLeft = scrollPosition;
@@ -317,24 +327,24 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
       />
 
       {/* Main Content */}
-      <div 
+      <div
         ref={scrollContainerRef}
         className="overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300"
         onScroll={handleScroll}
         style={{ height: 'calc(100vh - 200px)', maxHeight: '600px' }}
       >
-        <div 
+        <div
           className="relative grid gap-0"
           style={{
             gridTemplateColumns,
             gridTemplateRows: `repeat(${totalRows}, 80px)`,
-            minWidth: `${160 + (totalColumns * COLUMN_WIDTH)}px`
+            minWidth: `${160 + totalColumns * COLUMN_WIDTH}px`,
           }}
         >
           {/* Today vertical indicator */}
           {(() => {
             const today = startOfDay(new Date());
-            const idx = allDates.findIndex(d => startOfDay(d).getTime() === today.getTime());
+            const idx = allDates.findIndex((d) => startOfDay(d).getTime() === today.getTime());
             if (idx >= 0) {
               const left = 160 + idx * COLUMN_WIDTH; // 160px service column
               return (
@@ -347,40 +357,44 @@ const TVGuide: React.FC<TVGuideProps> = ({ className = '' }) => {
             }
             return null;
           })()}
-          {services.map((service, serviceIndex) => {
-            // Calculate the starting row for this service
-            const rowOffset = services.slice(0, serviceIndex).reduce((total, prevService) => total + prevService.shows.length, 0);
-            
-            // Render a row for each show in this service
-            return service.shows.map((_, showIndex) => (
-              <ServiceRow
-                key={`${service.id}-show-${showIndex}`}
-                service={service}
-                dates={allDates}
-                visibleRange={viewportRange}
-                rowIndex={rowOffset + showIndex}
-                columnWidth={COLUMN_WIDTH}
-                shows={service.shows}
-                showIndex={showIndex}
-              />
-            ));
-          }).flat()}
+          {services
+            .map((service, serviceIndex) => {
+              // Calculate the starting row for this service
+              const rowOffset = services
+                .slice(0, serviceIndex)
+                .reduce((total, prevService) => total + prevService.shows.length, 0);
+
+              // Render a row for each show in this service
+              return service.shows.map((_, showIndex) => (
+                <ServiceRow
+                  key={`${service.id}-show-${showIndex}`}
+                  service={service}
+                  dates={allDates}
+                  visibleRange={viewportRange}
+                  rowIndex={rowOffset + showIndex}
+                  columnWidth={COLUMN_WIDTH}
+                  shows={service.shows}
+                  showIndex={showIndex}
+                />
+              ));
+            })
+            .flat()}
         </div>
 
         {/* Loading trigger for infinite scroll */}
-        <div 
+        <div
           ref={loadingTriggerRef}
           className="w-px h-px"
           style={{
             position: 'absolute',
             left: `${totalColumns * COLUMN_WIDTH - 500}px`,
-            top: '50%'
+            top: '50%',
           }}
         />
       </div>
 
       {/* Loading indicator for new chunks */}
-      {dateChunks.some(chunk => chunk.isLoading) && (
+      {dateChunks.some((chunk) => chunk.isLoading) && (
         <div className="absolute top-1/2 right-4 bg-white rounded-lg shadow-lg p-2">
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>

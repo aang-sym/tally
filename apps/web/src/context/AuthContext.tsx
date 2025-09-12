@@ -29,7 +29,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Check for existing auth token on app start
     const storedToken = localStorage.getItem('authToken');
     const storedUserId = localStorage.getItem('current_user_id');
-    
+
     if (storedToken && storedUserId) {
       // In a real app, you'd validate the token with the server
       // For now, we'll trust the stored data
@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const payload = JSON.parse(atob(storedToken.split('.')[1]));
         setUser({
           id: payload.userId || storedUserId,
-          email: payload.email || 'unknown@example.com'
+          email: payload.email || 'unknown@example.com',
         });
         setToken(storedToken);
       } catch (error) {
@@ -46,7 +46,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.removeItem('current_user_id');
       }
     }
-    
+
     setIsLoading(false);
   }, []);
 
@@ -73,11 +73,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = (): AuthContextType => {

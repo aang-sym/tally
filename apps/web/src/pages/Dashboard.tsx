@@ -34,28 +34,28 @@ const Dashboard: React.FC = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      
+
       // Get auth token from localStorage
       const token = localStorage.getItem('authToken');
-      
+
       // Fetch all dashboard data in parallel using apiRequest with JWT authentication
       const [watchlistResponse, optimizationResponse] = await Promise.allSettled([
         apiRequest(`${API_ENDPOINTS.watchlist.v2}/stats`, {}, token),
-        apiRequest(`${API_ENDPOINTS.recommendations}/optimization`, {}, token)
+        apiRequest(`${API_ENDPOINTS.recommendations}/optimization`, {}, token),
       ]);
 
       const dashboardStats: DashboardStats = {
         watchlistStats: {
           totalShows: 0,
           byStatus: { watchlist: 0, watching: 0, completed: 0, dropped: 0 },
-          averageRating: 0
+          averageRating: 0,
         },
         savingsStats: {
           potentialMonthlySavings: 0,
           potentialAnnualSavings: 0,
           currentMonthlyCost: 0,
-          optimizedMonthlyCost: 0
-        }
+          optimizedMonthlyCost: 0,
+        },
       };
 
       // Handle watchlist stats
@@ -66,14 +66,16 @@ const Dashboard: React.FC = () => {
       // Handle optimization stats
       if (optimizationResponse.status === 'fulfilled') {
         const optimization = optimizationResponse.value.data;
-        
+
         dashboardStats.savingsStats = {
-          potentialMonthlySavings: optimization.currentSituation.monthlyCost - optimization.optimizedPlan.estimatedMonthlyCost,
+          potentialMonthlySavings:
+            optimization.currentSituation.monthlyCost -
+            optimization.optimizedPlan.estimatedMonthlyCost,
           potentialAnnualSavings: optimization.optimizedPlan.estimatedAnnualSavings,
           currentMonthlyCost: optimization.currentSituation.monthlyCost,
-          optimizedMonthlyCost: optimization.optimizedPlan.estimatedMonthlyCost
+          optimizedMonthlyCost: optimization.optimizedPlan.estimatedMonthlyCost,
         };
-        
+
         dashboardStats.topRecommendation = optimization;
       }
 
@@ -85,14 +87,14 @@ const Dashboard: React.FC = () => {
         watchlistStats: {
           totalShows: 12,
           byStatus: { watchlist: 8, watching: 3, completed: 15, dropped: 1 },
-          averageRating: 8.2
+          averageRating: 8.2,
         },
         savingsStats: {
           potentialMonthlySavings: 23.98,
           potentialAnnualSavings: 287.76,
           currentMonthlyCost: 47.97,
-          optimizedMonthlyCost: 23.99
-        }
+          optimizedMonthlyCost: 23.99,
+        },
       });
     } finally {
       setLoading(false);
@@ -135,7 +137,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="p-2 bg-green-100 rounded-lg">
@@ -149,7 +151,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="p-2 bg-purple-100 rounded-lg">
@@ -163,7 +165,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="p-2 bg-yellow-100 rounded-lg">
@@ -231,7 +233,7 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="mt-6">
               <Link
                 to="/calendar"
@@ -261,7 +263,7 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
             </Link>
-            
+
             <Link
               to="/recommendations"
               className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
@@ -272,7 +274,7 @@ const Dashboard: React.FC = () => {
                 <div className="text-sm text-gray-600">Optimize subscriptions</div>
               </div>
             </Link>
-            
+
             <Link
               to="/tmdb-testing"
               className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
@@ -311,10 +313,9 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="bg-white rounded-lg p-4 text-center">
             <div className="text-2xl font-bold text-yellow-600">
-              {stats && stats.watchlistStats.averageRating > 0 
+              {stats && stats.watchlistStats.averageRating > 0
                 ? stats.watchlistStats.averageRating.toFixed(1)
-                : '-'
-              }
+                : '-'}
             </div>
             <div className="text-sm text-gray-600">Avg Rating</div>
           </div>

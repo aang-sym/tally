@@ -13,7 +13,7 @@ interface User {
 export const UserManager = {
   getCurrentUserId: (): string => {
     const storedId = localStorage.getItem('current_user_id');
-    
+
     // If no stored ID, try to extract from auth token
     if (!storedId || storedId === 'user-1') {
       const token = localStorage.getItem('authToken');
@@ -33,13 +33,13 @@ export const UserManager = {
           console.warn('Failed to decode auth token:', error);
         }
       }
-      
+
       // Default to proper UUID for test user instead of 'user-1'
       const defaultUUID = 'b3686973-ba60-4405-8525-f8d6b3dcb7fc';
       localStorage.setItem('current_user_id', defaultUUID);
       return defaultUUID;
     }
-    
+
     return storedId;
   },
 
@@ -67,7 +67,7 @@ export const UserManager = {
 
   setCountry: (code: string): void => {
     localStorage.setItem('user_country', code);
-  }
+  },
 };
 
 export type { User };

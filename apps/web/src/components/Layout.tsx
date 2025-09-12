@@ -73,18 +73,14 @@ const Layout: React.FC = () => {
                   Admin
                 </Link>
               )}
-              
+
               {/* User Switcher (only in development) */}
-              {process.env.NODE_ENV === 'development' && (
-                <UserSwitcher />
-              )}
-              
+              {process.env.NODE_ENV === 'development' && <UserSwitcher />}
+
               {/* Authentication Controls */}
               {isAuthenticated ? (
                 <div className="flex items-center space-x-3">
-                  <span className="text-sm text-gray-600">
-                    {user?.email}
-                  </span>
+                  <span className="text-sm text-gray-600">{user?.email}</span>
                   <button
                     onClick={logout}
                     className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
@@ -121,7 +117,7 @@ const Layout: React.FC = () => {
                 {item.name}
               </Link>
             ))}
-            
+
             {/* Dev admin in mobile */}
             {process.env.NODE_ENV === 'development' && (
               <>

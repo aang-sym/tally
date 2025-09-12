@@ -14,10 +14,12 @@ export const LoginRequestSchema = z.object({
 export const AuthResponseSchema = z.object({
   success: z.boolean(),
   token: z.string().optional(),
-  user: z.object({
-    id: z.string(),
-    email: z.string().email(),
-  }).optional(),
+  user: z
+    .object({
+      id: z.string(),
+      email: z.string().email(),
+    })
+    .optional(),
 });
 
 // Waitlist schemas
@@ -41,10 +43,12 @@ export const StreamingServiceSchema = z.object({
 export const StreamingOptionSchema = z.object({
   service: StreamingServiceSchema,
   type: z.enum(['subscription', 'rent', 'buy']),
-  price: z.object({
-    amount: z.number(),
-    currency: z.string(),
-  }).optional(),
+  price: z
+    .object({
+      amount: z.number(),
+      currency: z.string(),
+    })
+    .optional(),
   expiresSoon: z.boolean(),
   expiresOn: z.number().optional(), // Unix timestamp
   availableSince: z.number().optional(), // Unix timestamp
@@ -109,7 +113,7 @@ export const CreateWatchlistItemSchema = z.object({
   // Optional fields for enhanced search
   year: z.number().optional(),
   type: z.enum(['movie', 'series']).optional(),
-  // Note: TMDB fields (tmdbShowId, detectedReleasePattern, watchProviders) 
+  // Note: TMDB fields (tmdbShowId, detectedReleasePattern, watchProviders)
   // are populated by API, not provided by user input
 });
 

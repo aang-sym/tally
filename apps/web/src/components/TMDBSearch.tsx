@@ -34,10 +34,10 @@ const TMDBSearch: React.FC<TMDBSearchProps> = ({ onSelectShow, selectedShowId })
       try {
         setLoading(true);
         setError('');
-        
+
         const response = await fetch(`/api/tmdb/search?query=${encodeURIComponent(searchQuery)}`);
         const data = await response.json();
-        
+
         if (!response.ok) {
           throw new Error(data.message || 'Search failed');
         }
@@ -56,7 +56,7 @@ const TMDBSearch: React.FC<TMDBSearchProps> = ({ onSelectShow, selectedShowId })
   // Effect to trigger search when query changes
   useEffect(() => {
     debouncedSearch(query);
-    
+
     // Cleanup function to cancel debounced calls
     return () => {
       debouncedSearch.cancel();
@@ -114,7 +114,7 @@ const TMDBSearch: React.FC<TMDBSearchProps> = ({ onSelectShow, selectedShowId })
       {results.length > 0 && (
         <div className="results-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
           {results.map((show) => (
-            <ShowCard 
+            <ShowCard
               key={show.id}
               show={show}
               isSelected={selectedShowId === show.id}
@@ -140,8 +140,8 @@ const ShowCard: React.FC<ShowCardProps> = ({ show, isSelected, onClick, onKeyDow
   return (
     <div
       className={`show-card cursor-pointer rounded-lg border transition-all duration-200 hover:shadow-lg ${
-        isSelected 
-          ? 'border-blue-500 bg-blue-50 shadow-md' 
+        isSelected
+          ? 'border-blue-500 bg-blue-50 shadow-md'
           : 'border-gray-200 hover:border-gray-300'
       }`}
       onClick={onClick}
@@ -162,8 +162,18 @@ const ShowCard: React.FC<ShowCardProps> = ({ show, isSelected, onClick, onKeyDow
             />
           ) : (
             <div className="w-16 h-24 bg-gray-200 rounded-md flex items-center justify-center">
-              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h4a1 1 0 110 2h-1v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6H3a1 1 0 110-2h4zM9 6h6v12H9V6z" />
+              <svg
+                className="w-6 h-6 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h4a1 1 0 110 2h-1v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6H3a1 1 0 110-2h4zM9 6h6v12H9V6z"
+                />
               </svg>
             </div>
           )}
@@ -171,12 +181,8 @@ const ShowCard: React.FC<ShowCardProps> = ({ show, isSelected, onClick, onKeyDow
 
         {/* Content */}
         <div className="ml-3 flex-1 min-w-0">
-          <h3 className="text-sm font-medium text-gray-900 truncate">
-            {show.title}
-          </h3>
-          {show.year && (
-            <p className="text-xs text-gray-500 mt-1">{show.year}</p>
-          )}
+          <h3 className="text-sm font-medium text-gray-900 truncate">{show.title}</h3>
+          {show.year && <p className="text-xs text-gray-500 mt-1">{show.year}</p>}
           <p className="text-xs text-gray-600 mt-2 line-clamp-3">
             {show.overview || 'No description available'}
           </p>
@@ -192,7 +198,11 @@ const ShowCard: React.FC<ShowCardProps> = ({ show, isSelected, onClick, onKeyDow
           <div className="ml-2 flex-shrink-0">
             <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
               <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
           </div>

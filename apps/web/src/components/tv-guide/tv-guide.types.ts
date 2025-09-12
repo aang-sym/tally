@@ -49,15 +49,15 @@ export interface ScrollState {
 }
 
 export const STREAMING_SERVICE_THEMES = {
-  'Netflix': { bg: '#E50914', text: '#FFFFFF' },
+  Netflix: { bg: '#E50914', text: '#FFFFFF' },
   'HBO Max': { bg: '#9B59B6', text: '#FFFFFF' },
   'Disney+': { bg: '#113CCF', text: '#FFFFFF' },
   'Paramount+': { bg: '#0064FF', text: '#FFFFFF' },
   'Amazon Prime Video': { bg: '#00A8E1', text: '#FFFFFF' },
   'Apple TV+': { bg: '#000000', text: '#FFFFFF' },
-  'Hulu': { bg: '#1CE783', text: '#000000' },
-  'Peacock': { bg: '#F74C4C', text: '#FFFFFF' },
-  'default': { bg: '#6B7280', text: '#FFFFFF' }
+  Hulu: { bg: '#1CE783', text: '#000000' },
+  Peacock: { bg: '#F74C4C', text: '#FFFFFF' },
+  default: { bg: '#6B7280', text: '#FFFFFF' },
 } as const;
 
 export const TV_GUIDE_CONSTANTS = {

@@ -69,9 +69,11 @@ export async function listUserSubscriptions(args: ListUserSubsArgs) {
 export async function createSubscription(userId: string, body: SubscriptionCreateRequest) {
   const res = await api.apiUsersIdSubscriptionsPost(userId, body);
   // Some generators type data as UserSubscription directly; normalize to object shape
-  return (res.data?.data as { subscription?: UserSubscription })?.subscription
-    ?? (res.data?.data as unknown as UserSubscription)
-    ?? null;
+  return (
+    (res.data?.data as { subscription?: UserSubscription })?.subscription ??
+    (res.data?.data as unknown as UserSubscription) ??
+    null
+  );
 }
 
 export async function updateSubscription(
@@ -80,9 +82,11 @@ export async function updateSubscription(
   body: SubscriptionUpdateRequest
 ) {
   const res = await api.apiUsersIdSubscriptionsSubscriptionIdPut(userId, subscriptionId, body);
-  return (res.data?.data as { subscription?: UserSubscription })?.subscription
-    ?? (res.data?.data as unknown as UserSubscription)
-    ?? null;
+  return (
+    (res.data?.data as { subscription?: UserSubscription })?.subscription ??
+    (res.data?.data as unknown as UserSubscription) ??
+    null
+  );
 }
 
 export async function deleteSubscription(userId: string, subscriptionId: string) {

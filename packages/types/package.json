@@ -17,6 +17,10 @@
   },
   "devDependencies": {
     "@tally/config": "file:../config",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
     "typescript": "^5.3.3"
   }
 }

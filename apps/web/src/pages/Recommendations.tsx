@@ -17,12 +17,12 @@ const Recommendations: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('authToken') || undefined;
-      
+
       // Fetch all recommendation types
       const [cancelResult, subscribeResult, optimizationResult] = await Promise.allSettled([
         apiRequest(`${API_ENDPOINTS.recommendations}/cancel`, {}, token),
         apiRequest(`${API_ENDPOINTS.recommendations}/subscribe`, {}, token),
-        apiRequest(`${API_ENDPOINTS.recommendations}/optimization`, {}, token)
+        apiRequest(`${API_ENDPOINTS.recommendations}/optimization`, {}, token),
       ]);
 
       // Handle cancellation recommendations
@@ -52,18 +52,21 @@ const Recommendations: React.FC = () => {
     }
   };
 
-  const handleRecommendationFeedback = async (recommendationId: string, action: 'accepted' | 'rejected') => {
+  const handleRecommendationFeedback = async (
+    recommendationId: string,
+    action: 'accepted' | 'rejected'
+  ) => {
     try {
       const token = localStorage.getItem('authToken') || undefined;
       await apiRequest(`${API_ENDPOINTS.recommendations}/feedback`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           recommendationId,
-          action
-        })
+          action,
+        }),
       });
 
       // Refresh recommendations after feedback
@@ -73,7 +76,10 @@ const Recommendations: React.FC = () => {
     }
   };
 
-  const totalRecommendations = cancellationRecommendations.length + subscriptionRecommendations.length + (optimizationRecommendation ? 1 : 0);
+  const totalRecommendations =
+    cancellationRecommendations.length +
+    subscriptionRecommendations.length +
+    (optimizationRecommendation ? 1 : 0);
 
   if (loading) {
     return (
@@ -101,7 +107,8 @@ const Recommendations: React.FC = () => {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-blue-700">
-                  We found {totalRecommendations} optimization opportunity{totalRecommendations !== 1 ? 'ies' : 'y'} for you!
+                  We found {totalRecommendations} optimization opportunity
+                  {totalRecommendations !== 1 ? 'ies' : 'y'} for you!
                 </p>
               </div>
             </div>
@@ -112,7 +119,7 @@ const Recommendations: React.FC = () => {
       {error ? (
         <div className="text-center py-12">
           <p className="text-red-600">{error}</p>
-          <button 
+          <button
             onClick={() => fetchRecommendations()}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
@@ -124,10 +131,11 @@ const Recommendations: React.FC = () => {
           <div className="text-6xl mb-4">🎯</div>
           <h3 className="text-xl font-semibold text-gray-700 mb-2">No recommendations yet</h3>
           <p className="text-gray-500 mb-6">
-            Add shows to your watchlist and we'll analyze your subscriptions to find savings opportunities
+            Add shows to your watchlist and we'll analyze your subscriptions to find savings
+            opportunities
           </p>
           <button
-            onClick={() => window.location.href = '/my-shows'}
+            onClick={() => (window.location.href = '/my-shows')}
             className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
           >
             Manage My Shows
@@ -153,7 +161,9 @@ const Recommendations: React.FC = () => {
           {/* Cancellation Opportunities */}
           {cancellationRecommendations.length > 0 && (
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">❌ Cancellation Opportunities</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                ❌ Cancellation Opportunities
+              </h2>
               <div className="space-y-4">
                 {cancellationRecommendations.map((recommendation, index) => (
                   <RecommendationCard
@@ -171,7 +181,9 @@ const Recommendations: React.FC = () => {
           {/* Subscription Recommendations */}
           {subscriptionRecommendations.length > 0 && (
             <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">➕ Subscription Recommendations</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                ➕ Subscription Recommendations
+              </h2>
               <div className="space-y-4">
                 {subscriptionRecommendations.map((recommendation, index) => (
                   <RecommendationCard
@@ -198,7 +210,10 @@ const Recommendations: React.FC = () => {
               <p className="text-sm text-gray-600 mt-1">
                 Following our recommendations could save you up to{' '}
                 <strong className="text-green-600">
-                  ${optimizationRecommendation?.optimizedPlan?.estimatedAnnualSavings?.toFixed(2) || '0.00'}/year
+                  $
+                  {optimizationRecommendation?.optimizedPlan?.estimatedAnnualSavings?.toFixed(2) ||
+                    '0.00'}
+                  /year
                 </strong>{' '}
                 on streaming subscriptions
               </p>

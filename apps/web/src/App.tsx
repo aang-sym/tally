@@ -22,30 +22,28 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-        {/* Landing Page (public) */}
-        <Route path="/" element={<LandingPage />} />
-        
-        {/* Main App Routes (with navigation layout) */}
-        <Route path="/" element={<Layout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/my-shows" element={<MyShows />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/tv-guide" element={<TVGuide />} />
-          <Route path="/recommendations" element={<Recommendations />} />
-          <Route path="/search" element={<SearchShows />} />
-          <Route path="/settings" element={<Subscriptions />} />
-          
-          {/* Development Routes */}
-          {process.env.NODE_ENV === 'development' && (
-            <Route path="/admin" element={<Admin />} />
-          )}
-        </Route>
+          {/* Landing Page (public) */}
+          <Route path="/" element={<LandingPage />} />
 
-        {/* Redirect /app to /dashboard for convenience */}
-        <Route path="/app" element={<Navigate to="/dashboard" replace />} />
+          {/* Main App Routes (with navigation layout) */}
+          <Route path="/" element={<Layout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/my-shows" element={<MyShows />} />
+            <Route path="/calendar" element={<Calendar />} />
+            <Route path="/tv-guide" element={<TVGuide />} />
+            <Route path="/recommendations" element={<Recommendations />} />
+            <Route path="/search" element={<SearchShows />} />
+            <Route path="/settings" element={<Subscriptions />} />
 
-        {/* Catch all route - redirect to landing */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+            {/* Development Routes */}
+            {process.env.NODE_ENV === 'development' && <Route path="/admin" element={<Admin />} />}
+          </Route>
+
+          {/* Redirect /app to /dashboard for convenience */}
+          <Route path="/app" element={<Navigate to="/dashboard" replace />} />
+
+          {/* Catch all route - redirect to landing */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
     </AuthProvider>

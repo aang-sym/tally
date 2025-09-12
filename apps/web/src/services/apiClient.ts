@@ -2,9 +2,7 @@
 import { Configuration, WatchlistApi, Middleware, RequestContext } from '@tally/api-client';
 
 const basePath =
-  import.meta.env.VITE_API_BASE_URL ??
-  (window as any).__API_BASE_URL__ ??
-  'http://localhost:4000';
+  import.meta.env.VITE_API_BASE_URL ?? (window as any).__API_BASE_URL__ ?? 'http://localhost:4000';
 
 // Get the auth token from the current authentication system
 // This application uses custom JWTs stored in localStorage after login
@@ -85,17 +83,19 @@ const supabaseTokenMiddleware: Middleware = {
         headers.set('Content-Type', 'application/json');
       }
       if (import.meta.env?.DEV) {
-        console.debug('[API DEBUG] (web) attached Authorization and x-supabase-access-token headers');
+        console.debug(
+          '[API DEBUG] (web) attached Authorization and x-supabase-access-token headers'
+        );
       }
       context.init.headers = headers;
     }
     return context;
-  }
+  },
 };
 
 const config = new Configuration({
   basePath,
-  middleware: [supabaseTokenMiddleware]
+  middleware: [supabaseTokenMiddleware],
 });
 
 export const api = new WatchlistApi(config);

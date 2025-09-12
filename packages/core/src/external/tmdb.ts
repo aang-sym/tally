@@ -1,6 +1,6 @@
 /**
  * TMDB (The Movie Database) API Client
- * 
+ *
  * Integrates with TMDB API to get TV show data, episode release dates,
  * and watch provider information for release pattern detection.
  */
@@ -110,54 +110,45 @@ export class TMDBClient {
 
   private async makeRequest<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
     const url = new URL(`${this.baseUrl}${endpoint}`);
-    
+
     // Add default language
     params.language = params.language || 'en-US';
-    
+
     // Add query parameters (no longer adding api_key here)
     Object.entries(params).forEach(([key, value]) => {
       url.searchParams.append(key, value);
     });
 
-    const startTime = Date.now();
-    let success = false;
-    
-    try {
-      const response = await fetch(url.toString(), {
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      const responseTime = Date.now() - startTime;
-      success = response.ok;
+    const response = await fetch(url.toString(), {
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-      if (response.status === 429) {
-        throw new TMDBError('Rate limit exceeded', 429);
-      }
-
-      if (!response.ok) {
-        throw new TMDBError(
-          `TMDB API request failed: ${response.statusText}`,
-          response.status
-        );
-      }
-
-      return response.json();
-    } catch (error) {
-      throw error;
+    if (response.status === 429) {
+      throw new TMDBError('Rate limit exceeded', 429);
     }
+
+    if (!response.ok) {
+      throw new TMDBError(`TMDB API request failed: ${response.statusText}`, response.status);
+    }
+
+    return response.json();
   }
 
   /**
    * Search for TV shows by title
    */
-  async searchTV(query: string, page: number = 1, language: string = 'en-US'): Promise<TMDBSearchResult> {
+  async searchTV(
+    query: string,
+    page: number = 1,
+    language: string = 'en-US'
+  ): Promise<TMDBSearchResult> {
     return this.makeRequest<TMDBSearchResult>('/search/tv', {
       query,
       page: page.toString(),
-      language
+      language,
     });
   }
 
@@ -171,7 +162,11 @@ export class TMDBClient {
   /**
    * Get season details with episode information
    */
-  async getSeason(tvId: number, seasonNumber: number, language: string = 'en-US'): Promise<TMDBSeason> {
+  async getSeason(
+    tvId: number,
+    seasonNumber: number,
+    language: string = 'en-US'
+  ): Promise<TMDBSeason> {
     return this.makeRequest<TMDBSeason>(`/tv/${tvId}/season/${seasonNumber}`, { language });
   }
 
@@ -187,8 +182,8 @@ export class TMDBClient {
    */
   convertToEpisodeMetadata(episodes: TMDBEpisode[]): import('../types.js').EpisodeMetadata[] {
     return episodes
-      .filter(ep => ep.air_date) // Only include episodes with air dates
-      .map(episode => ({
+      .filter((ep) => ep.air_date) // Only include episodes with air dates
+      .map((episode) => ({
         id: episode.id.toString(),
         seasonNumber: episode.season_number,
         episodeNumber: episode.episode_number,
@@ -200,14 +195,17 @@ export class TMDBClient {
   /**
    * Get the latest season's episodes for release pattern detection
    */
-  async getLatestSeasonEpisodes(tvId: number, language: string = 'en-US'): Promise<import('../types.js').EpisodeMetadata[]> {
+  async getLatestSeasonEpisodes(
+    tvId: number,
+    language: string = 'en-US'
+  ): Promise<import('../types.js').EpisodeMetadata[]> {
     // Get TV show details first to find the latest season
     const tvShow = await this.getTVShow(tvId, language);
     const latestSeasonNumber = tvShow.number_of_seasons;
-    
+
     // Get the latest season's episodes
     const season = await this.getSeason(tvId, latestSeasonNumber, language);
-    
+
     return this.convertToEpisodeMetadata(season.episodes || []);
   }
 
@@ -220,28 +218,28 @@ export class TMDBClient {
     try {
       // Search for the show
       const searchResults = await this.searchTV(showTitle);
-      
+
       if (!searchResults.results.length) {
         return null;
       }
-      
+
       // Take the first (most relevant) result
       const show = searchResults.results[0];
-      
+
       // Get latest season episodes
       const episodes = await this.getLatestSeasonEpisodes(show.id);
-      
+
       if (!episodes.length) {
         return { pattern: 'unknown' as 'weekly' | 'binge' | 'unknown', tmdbId: show.id };
       }
-      
+
       // Use existing release pattern service to analyze
       const { releasePatternService } = await import('../services/release-pattern.js');
       const analysis = releasePatternService.analyzeEpisodes(episodes);
-      
+
       return {
         pattern: analysis.pattern.pattern as 'weekly' | 'binge' | 'unknown',
-        tmdbId: show.id
+        tmdbId: show.id,
       };
     } catch (error) {
       console.error('Error detecting release pattern from TMDB:', error);
@@ -253,17 +251,17 @@ export class TMDBClient {
    * Get watch providers for a specific country
    */
   async getWatchProvidersForCountry(
-    tvId: number, 
+    tvId: number,
     countryCode: string = 'US'
   ): Promise<TMDBWatchProvider[]> {
     try {
       const watchData = await this.getWatchProviders(tvId);
       const countryData = watchData.results[countryCode];
-      
+
       if (!countryData) {
         return [];
       }
-      
+
       // Return flatrate (subscription) providers primarily
       return countryData.flatrate || [];
     } catch (error) {
@@ -277,7 +275,9 @@ export class TMDBClient {
    */
   async getWatchProvidersList(region: string = 'US'): Promise<TMDBProviderListItem[]> {
     try {
-      const response = await this.makeRequest<TMDBProviderListResponse>(`/watch/providers/tv?watch_region=${region}`);
+      const response = await this.makeRequest<TMDBProviderListResponse>(
+        `/watch/providers/tv?watch_region=${region}`
+      );
       return response.results || [];
     } catch (error) {
       console.error('Error getting watch providers list from TMDB:', error);
@@ -290,7 +290,9 @@ export class TMDBClient {
    */
   async getWatchProviderRegions(): Promise<TMDBRegion[]> {
     try {
-      const response = await this.makeRequest<{ results: TMDBRegion[] }>('/watch/providers/regions');
+      const response = await this.makeRequest<{ results: TMDBRegion[] }>(
+        '/watch/providers/regions'
+      );
       return response.results || [];
     } catch (error) {
       console.error('Error getting watch provider regions from TMDB:', error);
@@ -308,7 +310,7 @@ export class TMDBClient {
   }> {
     try {
       const allProviders = new Map<number, TMDBProviderListItem>();
-      
+
       for (const region of regions) {
         const regionProviders = await this.getWatchProvidersList(region);
         for (const provider of regionProviders) {
@@ -319,27 +321,27 @@ export class TMDBClient {
             const existing = allProviders.get(provider.provider_id)!;
             existing.display_priorities = {
               ...existing.display_priorities,
-              ...provider.display_priorities
+              ...provider.display_priorities,
             };
           }
         }
       }
 
-      const providers = Array.from(allProviders.values()).sort((a, b) => 
+      const providers = Array.from(allProviders.values()).sort((a, b) =>
         a.provider_name.localeCompare(b.provider_name)
       );
 
       return {
         providers,
         regions,
-        total: providers.length
+        total: providers.length,
       };
     } catch (error) {
       console.error('Error getting all providers from TMDB:', error);
       return {
         providers: [],
         regions,
-        total: 0
+        total: 0,
       };
     }
   }
