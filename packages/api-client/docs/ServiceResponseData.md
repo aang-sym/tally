@@ -1,11 +1,10 @@
 # ServiceResponseData
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**service** | [**ServiceResponseDataService**](ServiceResponseDataService.md) |  | [optional] [default to undefined]
+| Name        | Type                                                            | Description | Notes                             |
+| ----------- | --------------------------------------------------------------- | ----------- | --------------------------------- |
+| **service** | [**ServiceResponseDataService**](ServiceResponseDataService.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -13,7 +12,7 @@ Name | Type | Description | Notes
 import { ServiceResponseData } from './api';
 
 const instance: ServiceResponseData = {
-    service,
+  service,
 };
 ```
 

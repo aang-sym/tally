@@ -7,16 +7,19 @@ This document outlines the implementation of advanced episode selection function
 ## Current Issues Addressed
 
 ### 1. Episode Click Failures from Search
+
 - **Problem**: Console errors when clicking episodes from search results
 - **Root Cause**: API endpoint inconsistencies and error handling gaps
 - **Impact**: Users cannot set episode progress directly from search
 
 ### 2. Missing Visual Feedback
+
 - **Problem**: No indication of watched vs unwatched episodes
 - **Root Cause**: Lack of episode state tracking and visual styling system
 - **Impact**: Users have no visual cue about their progress
 
 ### 3. Static Button States
+
 - **Problem**: Buttons don't reflect current watchlist status
 - **Root Cause**: No real-time watchlist status detection
 - **Impact**: Confusing UX where users can re-add already-added shows
@@ -26,24 +29,24 @@ This document outlines the implementation of advanced episode selection function
 ### Phase 1: API Reliability & Episode Click Fix
 
 #### 1.1 Debug Episode Click Handler
+
 ```typescript
 // Fixed API call sequence
 const handleEpisodeClick = async (episode) => {
   try {
     // 1. Add to watchlist first
     const watchlistResponse = await addToWatchlist(selectedShow, 'watching');
-    
+
     // 2. Then set episode progress
     const progressResponse = await setEpisodeProgress(
-      selectedShow.id, 
-      episode.seasonNumber, 
+      selectedShow.id,
+      episode.seasonNumber,
       episode.number
     );
-    
+
     // 3. Update local state to reflect changes
     updateLocalWatchlistStatus();
     updateEpisodeVisualStates();
-    
   } catch (error) {
     // Proper error handling with user feedback
     showErrorNotification(error.message);
@@ -52,6 +55,7 @@ const handleEpisodeClick = async (episode) => {
 ```
 
 #### 1.2 API Endpoint Standardization
+
 - Use `/api/watchlist-v2/:tmdbId/progress` consistently
 - Implement proper error handling and retry logic
 - Add comprehensive logging for debugging
@@ -59,16 +63,18 @@ const handleEpisodeClick = async (episode) => {
 ### Phase 2: Visual Episode State System
 
 #### 2.1 Episode State Definitions
+
 ```typescript
 enum EpisodeState {
-  UNWATCHED = 'unwatched',    // Default state, clickable
-  WATCHED = 'watched',        // Green background + ✓ tick
-  CURRENT = 'current',        // Blue highlight (next to watch)
-  FUTURE = 'future'          // Greyed out, disabled
+  UNWATCHED = 'unwatched', // Default state, clickable
+  WATCHED = 'watched', // Green background + ✓ tick
+  CURRENT = 'current', // Blue highlight (next to watch)
+  FUTURE = 'future', // Greyed out, disabled
 }
 ```
 
 #### 2.2 Visual Styling Implementation
+
 ```css
 .episode-watched {
   @apply bg-green-50 border-green-200 text-green-800;
@@ -91,6 +97,7 @@ enum EpisodeState {
 ### Phase 3: Dynamic Button State System
 
 #### 3.1 Button State Logic
+
 ```typescript
 interface ButtonState {
   isInWatchlist: boolean;
@@ -102,10 +109,10 @@ const renderActionButtons = ({ isInWatchlist, isWatching, isLoading }: ButtonSta
   if (isLoading) {
     return <LoadingButton />;
   }
-  
+
   if (isInWatchlist || isWatching) {
     return (
-      <WatchingButton 
+      <WatchingButton
         onRemove={() => removeFromWatchlist(selectedShow.id)}
         className="w-full bg-green-600 hover:bg-green-700"
       >
@@ -113,7 +120,7 @@ const renderActionButtons = ({ isInWatchlist, isWatching, isLoading }: ButtonSta
       </WatchingButton>
     );
   }
-  
+
   return (
     <DualActionButtons>
       <AddToWatchlistButton />
@@ -124,18 +131,19 @@ const renderActionButtons = ({ isInWatchlist, isWatching, isLoading }: ButtonSta
 ```
 
 #### 3.2 Watchlist Status Detection
+
 ```typescript
 const useWatchlistStatus = (tmdbId: number) => {
   const [status, setStatus] = useState({
     isInWatchlist: false,
     isWatching: false,
-    loading: true
+    loading: true,
   });
-  
+
   useEffect(() => {
     checkWatchlistStatus(tmdbId).then(setStatus);
   }, [tmdbId]);
-  
+
   return status;
 };
 ```
@@ -143,7 +151,9 @@ const useWatchlistStatus = (tmdbId: number) => {
 ### Phase 4: Cross-Page Consistency
 
 #### 4.1 Shared Episode Logic
+
 Extract common episode handling logic into reusable utilities:
+
 ```typescript
 // utils/episodeUtils.ts
 export const markEpisodeAsWatched = async (tmdbId, seasonNumber, episodeNumber) => {
@@ -156,6 +166,7 @@ export const calculateEpisodeState = (episode, userProgress) => {
 ```
 
 #### 4.2 Real-time State Synchronization
+
 - Update episode states immediately after actions
 - Sync changes between Search and My Shows views
 - Implement optimistic UI updates with error rollback
@@ -165,7 +176,7 @@ export const calculateEpisodeState = (episode, userProgress) => {
 ### New Components Created
 
 1. **EpisodeStateManager**: Centralized episode state logic
-2. **WatchlistActions**: Dynamic button rendering component  
+2. **WatchlistActions**: Dynamic button rendering component
 3. **EpisodeProgressIndicator**: Visual episode state component
 4. **WatchlistStatusProvider**: Context for watchlist state
 
@@ -178,12 +189,14 @@ export const calculateEpisodeState = (episode, userProgress) => {
 ## API Requirements
 
 ### Endpoints Used
+
 - `POST /api/tmdb/watchlist` - Add show to watchlist
 - `PUT /api/watchlist-v2/:tmdbId/progress` - Set episode progress
 - `DELETE /api/watchlist-v2/:tmdbId` - Remove from watchlist
 - `GET /api/watchlist-v2/:tmdbId/status` - Check watchlist status
 
 ### Error Handling Strategy
+
 - Network failures: Show retry button
 - API errors: Display user-friendly error messages
 - Validation errors: Highlight problematic fields
@@ -192,6 +205,7 @@ export const calculateEpisodeState = (episode, userProgress) => {
 ## User Experience Flow
 
 ### Episode Selection from Search
+
 1. User searches for show → sees episodes in timeline
 2. User clicks desired episode
 3. System adds show to "Watching" status
@@ -201,6 +215,7 @@ export const calculateEpisodeState = (episode, userProgress) => {
 7. Success notification appears
 
 ### Button State Transitions
+
 ```
 Initial State: [Add to Watchlist] [Start Watching]
         ↓ (click either button or episode)
@@ -214,18 +229,21 @@ Initial State: [Add to Watchlist] [Start Watching]
 ## Testing Strategy
 
 ### Functional Tests
+
 - Episode clicking from search sets correct progress
 - Visual states update immediately and correctly
 - Button states reflect actual watchlist status
 - Remove functionality works without errors
 
-### Integration Tests  
+### Integration Tests
+
 - Search episode actions sync with My Shows
 - API failures are handled gracefully
 - Multiple rapid clicks don't cause race conditions
 - Cross-browser compatibility for visual states
 
 ### User Acceptance Tests
+
 - Users can intuitively understand episode states
 - Button state changes feel natural and responsive
 - Error messages are clear and actionable
@@ -234,12 +252,14 @@ Initial State: [Add to Watchlist] [Start Watching]
 ## Performance Considerations
 
 ### Optimization Strategies
+
 - Debounce rapid episode clicks
 - Cache watchlist status to avoid repeated API calls
 - Use optimistic UI updates for immediate feedback
 - Lazy load episode details for better performance
 
 ### Memory Management
+
 - Clean up event listeners on component unmount
 - Avoid memory leaks in episode state tracking
 - Implement proper cleanup for API call cancellation
@@ -247,12 +267,14 @@ Initial State: [Add to Watchlist] [Start Watching]
 ## Future Enhancements
 
 ### Planned Features
+
 - Bulk episode marking (mark entire season as watched)
 - Episode notes and personal ratings
 - Watch history with timestamps
 - Cross-device synchronization
 
 ### Technical Debt
+
 - Migrate to React Query for better API state management
 - Implement proper TypeScript typing for all episode interfaces
 - Add comprehensive error boundary components

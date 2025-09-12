@@ -88,4 +88,3 @@ Files to Modify
     /apps/api/src/routes/plan.ts - Generate plans from real patterns
     .env.example - Add TMDB_API_READ_TOKEN
     /scripts/test-streaming-api.sh - Update to test TMDB instead of Streaming Availability API
-

@@ -1,12 +1,11 @@
 # RateShowResponseData
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**rating** | **number** |  | [optional] [default to undefined]
-**message** | **string** |  | [optional] [default to undefined]
+| Name        | Type       | Description | Notes                             |
+| ----------- | ---------- | ----------- | --------------------------------- |
+| **rating**  | **number** |             | [optional] [default to undefined] |
+| **message** | **string** |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { RateShowResponseData } from './api';
 
 const instance: RateShowResponseData = {
-    rating,
-    message,
+  rating,
+  message,
 };
 ```
 

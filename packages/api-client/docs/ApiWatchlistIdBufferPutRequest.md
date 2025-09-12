@@ -1,11 +1,10 @@
 # ApiWatchlistIdBufferPutRequest
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**bufferDays** | **number** |  | [default to undefined]
+| Name           | Type       | Description | Notes                  |
+| -------------- | ---------- | ----------- | ---------------------- |
+| **bufferDays** | **number** |             | [default to undefined] |
 
 ## Example
 
@@ -13,7 +12,7 @@ Name | Type | Description | Notes
 import { ApiWatchlistIdBufferPutRequest } from './api';
 
 const instance: ApiWatchlistIdBufferPutRequest = {
-    bufferDays,
+  bufferDays,
 };
 ```
 

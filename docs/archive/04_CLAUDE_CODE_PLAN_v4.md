@@ -5,11 +5,13 @@
 **ESTIMATED TOKENS**: ~65k for all tasks
 
 ## Task Priority
+
 **Phase 1 (Core Database & Watchlist)**: Tasks 1-5 (~32k tokens)
 **Phase 2 (Calendar & Optimization)**: Tasks 6-8 (~23k tokens)
 **Phase 3 (Polish & Advanced Features)**: Remaining tasks (~10k tokens)
 
 ## Overview
+
 Build comprehensive watchlist and watching tracking system with PostgreSQL backend, episode-level progress tracking, and intelligent subscription optimization recommendations.
 
 ## Database Schema Questions
@@ -17,6 +19,7 @@ Build comprehensive watchlist and watching tracking system with PostgreSQL backe
 ## Database Schema (Updated)
 
 ### Core Tables
+
 ```sql
 -- Users (extends existing)
 CREATE TABLE users (
@@ -139,25 +142,28 @@ CREATE TABLE show_availability (
 ## Tasks
 
 ### Task 1: Supabase Database Setup & Schema ⏳
+
 **STATUS**: PENDING  
 **ESTIMATED TOKENS**: ~7k
 
 **Goal**: Set up Supabase PostgreSQL database with proper schema and caching
 
 **Steps**:
+
 1. **Add Supabase dependencies**:
    - Add `@supabase/supabase-js` to package.json
    - Create Supabase client configuration
    - Add environment variables for Supabase connection
 
 2. **Database connection service** `/apps/api/src/db/supabase.ts`:
+
    ```typescript
-   import { createClient } from '@supabase/supabase-js'
-   
-   const supabaseUrl = process.env.SUPABASE_URL!
-   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-   
-   export const supabase = createClient(supabaseUrl, supabaseServiceKey)
+   import { createClient } from '@supabase/supabase-js';
+
+   const supabaseUrl = process.env.SUPABASE_URL!;
+   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+   export const supabase = createClient(supabaseUrl, supabaseServiceKey);
    ```
 
 3. **Create all database tables** (schema above) via Supabase SQL editor
@@ -167,18 +173,21 @@ CREATE TABLE show_availability (
    - `GET /api/admin/live-stats` - Current "watching" episode counts
 
 **Supabase Setup Instructions for You**:
+
 - Create new Supabase project
 - Get project URL and service role key
 - Run provided SQL migrations
 - Configure environment variables
 
 ### Task 2: Core Data Models & Services ⏳
+
 **STATUS**: PENDING
 **ESTIMATED TOKENS**: ~8k
 
 **Goal**: Data access layer for all watchlist functionality
 
 **Steps**:
+
 1. **Create data access layer** `/apps/api/src/services/`:
    - `ShowService` - TMDB data caching and retrieval
    - `WatchlistService` - User show tracking operations
@@ -186,20 +195,21 @@ CREATE TABLE show_availability (
    - `StreamingService` - Provider availability data
 
 2. **TMDB caching with TTL**:
+
    ```typescript
    // Smart cache refresh logic
    shouldRefreshShow(show: Show): boolean {
      const hoursSinceUpdate = (Date.now() - show.tmdb_last_updated) / (1000 * 60 * 60);
-     
+
      // Refresh ended shows every 7 days
      if (show.status === 'Ended') return hoursSinceUpdate > 168;
-     
-     // Refresh airing shows every 6 hours  
+
+     // Refresh airing shows every 6 hours
      if (show.status === 'Airing') return hoursSinceUpdate > 6;
-     
+
      // Refresh popular shows daily (background job)
      if (show.is_popular) return hoursSinceUpdate > 24;
-     
+
      return hoursSinceUpdate > 48; // Default: 2 days
    }
    ```
@@ -209,80 +219,89 @@ CREATE TABLE show_availability (
    - Refresh on search if cache is stale
    - Mark frequently searched shows as "popular"
 
-3. **Episode status management**:
+4. **Episode status management**:
+
    ```typescript
    markEpisodeWatching(userId: string, episodeId: string): Promise<void>
    markEpisodeWatched(userId: string, episodeId: string): Promise<void>
-   
+
    // Auto-mark as watched after episode duration + 30min buffer
    scheduleAutoComplete(userId: string, episodeId: string): void
-   
+
    // Live stats queries
    getCurrentlyWatchingCount(episodeId: string): Promise<number>
    getCurrentlyWatchingCount(showId: string): Promise<number>
    ```
 
-4. **Rating system**:
+5. **Rating system**:
+
    ```typescript
    rateShow(userId: string, showId: string, rating: number): Promise<void>
-   rateSeason(userId: string, seasonId: string, rating: number): Promise<void> 
+   rateSeason(userId: string, seasonId: string, rating: number): Promise<void>
    rateEpisode(userId: string, episodeId: string, rating: number): Promise<void>
-   
+
    getAggregateRating(showId: string): Promise<{ avg: number, count: number }>
    ```
 
 ### Task 3: Enhanced API Endpoints ⏳
+
 **STATUS**: PENDING
 **ESTIMATED TOKENS**: ~7k
 
 **Goal**: RESTful API for watchlist and progress tracking
 
 **Steps**:
+
 1. **Watchlist management endpoints**:
+
    ```typescript
-   GET    /api/watchlist/{userId}           // Get user's watchlist
-   POST   /api/watchlist                   // Add show to watchlist
-   PUT    /api/watchlist/{id}/status       // Move between watchlist/watching
-   DELETE /api/watchlist/{id}              // Remove from lists
-   
-   GET    /api/watching/{userId}           // Get currently watching shows
-   GET    /api/watching/{userId}/{showId}  // Get detailed watch progress
+   GET / api / watchlist / { userId }; // Get user's watchlist
+   POST / api / watchlist; // Add show to watchlist
+   PUT / api / watchlist / { id } / status; // Move between watchlist/watching
+   DELETE / api / watchlist / { id }; // Remove from lists
+
+   GET / api / watching / { userId }; // Get currently watching shows
+   GET / api / watching / { userId } / { showId }; // Get detailed watch progress
    ```
 
 2. **Episode progress endpoints**:
+
    ```typescript
-   GET    /api/progress/{userId}/{showId}           // Get show watch progress
-   POST   /api/progress/episode/{episodeId}/watching // Mark episode as watching
-   POST   /api/progress/episode/{episodeId}/watched  // Mark episode as watched
-   POST   /api/progress/bulk-update                  // Mark multiple episodes
-   
+   GET / api / progress / { userId } / { showId }; // Get show watch progress
+   POST / api / progress / episode / { episodeId } / watching; // Mark episode as watching
+   POST / api / progress / episode / { episodeId } / watched; // Mark episode as watched
+   POST / api / progress / bulk - update; // Mark multiple episodes
+
    // Live stats endpoints
-   GET    /api/stats/episode/{episodeId}/watching   // Count currently watching
-   GET    /api/stats/show/{showId}/watching         // Count watching show
+   GET / api / stats / episode / { episodeId } / watching; // Count currently watching
+   GET / api / stats / show / { showId } / watching; // Count watching show
    ```
 
 3. **Rating endpoints**:
+
    ```typescript
-   POST   /api/ratings/show/{showId}        // Rate show (0.0-10.0)
-   POST   /api/ratings/season/{seasonId}    // Rate season  
-   POST   /api/ratings/episode/{episodeId}  // Rate episode
-   GET    /api/ratings/show/{showId}/aggregate // Get average rating
+   POST / api / ratings / show / { showId }; // Rate show (0.0-10.0)
+   POST / api / ratings / season / { seasonId }; // Rate season
+   POST / api / ratings / episode / { episodeId }; // Rate episode
+   GET / api / ratings / show / { showId } / aggregate; // Get average rating
    ```
 
-3. **Smart recommendations endpoints**:
+4. **Smart recommendations endpoints**:
    ```typescript
-   GET    /api/recommendations/{userId}/cancel     // Subscription cancellation suggestions
-   GET    /api/recommendations/{userId}/subscribe  // What to subscribe to next
-   GET    /api/recommendations/{userId}/optimization // Full subscription optimization
+   GET / api / recommendations / { userId } / cancel; // Subscription cancellation suggestions
+   GET / api / recommendations / { userId } / subscribe; // What to subscribe to next
+   GET / api / recommendations / { userId } / optimization; // Full subscription optimization
    ```
 
 ### Task 4: Watchlist/Watching UI Components ⏳
+
 **STATUS**: PENDING
 **ESTIMATED TOKENS**: ~8k
 
 **Goal**: User interface for managing personal show lists
 
 **Steps**:
+
 1. **Create watchlist page** `/apps/web/src/pages/MyShows.tsx`:
    - Tabbed interface: "Watchlist" | "Currently Watching" | "Completed"
    - Show cards with poster, title, progress info
@@ -300,28 +319,31 @@ CREATE TABLE show_availability (
    - Modal for choosing: "Add to Watchlist" or "Start Watching"
    - Season selector for multi-season shows
 
-3. **Episode status indicators**:
+4. **Episode status indicators**:
    - ⚪ Unwatched
    - 🔵 Currently watching (with live count: "1.2k watching now")
    - ✅ Watched
    - ⭐ Rated episodes with star indicators
 
-4. **Live stats display**:
+5. **Live stats display**:
    ```tsx
    // Show live viewing stats
-   "🔥 1,247 people are watching this episode right now"
-   "📺 856 people watched this episode today"  
-   "⭐ 8.4/10 average rating from users"
+   '🔥 1,247 people are watching this episode right now';
+   '📺 856 people watched this episode today';
+   '⭐ 8.4/10 average rating from users';
    ```
 
 ### Task 5: Smart Recommendations Engine ⏳
+
 **STATUS**: PENDING
 **ESTIMATED TOKENS**: ~6k
 
 **Goal**: Intelligent subscription optimization suggestions
 
 **Steps**:
+
 1. **Cancellation suggestion logic**:
+
    ```typescript
    analyzeCancellationOpportunity(userId: string, serviceId: string) {
      // Check currently watching shows on service
@@ -338,28 +360,31 @@ CREATE TABLE show_availability (
    - Account for user's watch pace (episodes per week)
 
 3. **Recommendation UI** `/apps/web/src/components/RecommendationCard.tsx`:
+
    ```tsx
    // Example recommendations
-   "You finished The Last of Us on HBO Max. Cancel until Oct 15 when House of the Dragon returns. Save: $47.97"
-   
-   "You have 3 Netflix shows in your watchlist but nothing currently watching. Consider pausing Netflix subscription."
-   
-   "Based on your watching pace, you'll finish Stranger Things in 2 weeks. Perfect time to start The Crown before your next billing cycle."
+   'You finished The Last of Us on HBO Max. Cancel until Oct 15 when House of the Dragon returns. Save: $47.97';
+
+   'You have 3 Netflix shows in your watchlist but nothing currently watching. Consider pausing Netflix subscription.';
+
+   "Based on your watching pace, you'll finish Stranger Things in 2 weeks. Perfect time to start The Crown before your next billing cycle.";
    ```
 
 ## Subscription Optimization Dashboard
 
 ### Visual Components:
+
 1. **Savings Calendar**: Month-by-month view showing:
    - Green months: "Keep subscription" (active shows)
    - Red months: "Cancel subscription" (no content)
    - Yellow months: "Consider canceling" (light content)
 
 2. **Service Health Cards**:
+
    ```
    Netflix - $15.99/month
    ✅ Currently Watching: 2 shows
-   📋 Watchlist: 5 shows  
+   📋 Watchlist: 5 shows
    💰 Next safe cancel: After Dec 15
    💡 Potential savings: $31.98 (2 months)
    ```
@@ -372,33 +397,37 @@ CREATE TABLE show_availability (
 ## Anonymous Usage Stats
 
 Add simple analytics without user tracking:
+
 ```typescript
 // Show popularity indicators
-"🔥 1.2k users are watching this on Netflix"
-"📈 Popular on HBO Max this week"  
-"⭐ Highly rated by users who finished it"
+'🔥 1.2k users are watching this on Netflix';
+'📈 Popular on HBO Max this week';
+'⭐ Highly rated by users who finished it';
 ```
 
 ### Task 6: Calendar Views & Subscription Optimization ⏳
+
 **STATUS**: PENDING
 **ESTIMATED TOKENS**: ~10k
 
 **Goal**: Visual calendar interfaces for subscription planning and optimization
 
 **Steps**:
+
 1. **Create calendar components** `/apps/web/src/components/calendar/`:
+
    ```tsx
    // Base calendar component
-   CalendarView.tsx
-   CalendarDay.tsx
-   ServiceBar.tsx
-   
+   CalendarView.tsx;
+   CalendarDay.tsx;
+   ServiceBar.tsx;
+
    // Specific calendar views
-   OverviewCalendar.tsx      // Multi-service overview
-   ProviderCalendar.tsx      // Single provider detailed view
-   SavingsCalendar.tsx       // Financial optimization view
-   PersonalSchedule.tsx      // User's specific shows timeline
-   ReleaseTimeline.tsx       // Horizontal timeline of premieres
+   OverviewCalendar.tsx; // Multi-service overview
+   ProviderCalendar.tsx; // Single provider detailed view
+   SavingsCalendar.tsx; // Financial optimization view
+   PersonalSchedule.tsx; // User's specific shows timeline
+   ReleaseTimeline.tsx; // Horizontal timeline of premieres
    ```
 
 2. **Overview Calendar** (Multi-Service):
@@ -431,6 +460,7 @@ Add simple analytics without user tracking:
    - **Gap identification**: Clear periods with no content for cancellation
 
 **Calendar Data Architecture**:
+
 ```typescript
 interface CalendarData {
   date: string;
@@ -457,9 +487,10 @@ interface CalendarRecommendation {
   savings: number;
 }
 ```
+
 - `/apps/api/src/db/supabase.ts` - Supabase connection and client
 - `/apps/api/src/services/ShowService.ts` - Show data with smart caching
-- `/apps/api/src/services/WatchlistService.ts` - Watchlist operations  
+- `/apps/api/src/services/WatchlistService.ts` - Watchlist operations
 - `/apps/api/src/services/EpisodeService.ts` - Episode status and auto-completion
 - `/apps/api/src/services/RatingService.ts` - Rating system
 - `/apps/api/src/routes/watchlist.ts` - Enhanced watchlist API
@@ -474,8 +505,10 @@ interface CalendarRecommendation {
 - `.env.example` - Add Supabase environment variables
 
 ## Supabase Setup Guide
+
 When ready to implement, I'll provide step-by-step instructions for:
+
 1. Creating Supabase project
-2. Setting up database schema  
+2. Setting up database schema
 3. Configuring environment variables
 4. Setting up Row Level Security policies

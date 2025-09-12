@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, feat/*, fix/* ]
+    branches: [main, feat/*, fix/*]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   NODE_VERSION: '18'
@@ -98,7 +98,7 @@ jobs:
         run: |
           # Run tests but exclude integration tests that require live server
           cd apps/api
-          pnpm test --run --exclude "src/integration/**"
+          pnpm test --config vitest.config.unit.ts
 
   rls-integration-tests:
     name: RLS Integration Tests
@@ -118,7 +118,7 @@ jobs:
       FRONTEND_URL: http://localhost:3000
       # TMDB configuration (for tests that need show data)
       TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-      TMDB_DEV_MODE: 'true'  # Use dev mode for CI to avoid quota usage
+      TMDB_DEV_MODE: 'true' # Use dev mode for CI to avoid quota usage
       STREAMING_API_DEV_MODE: 'true'
 
     steps:
@@ -142,15 +142,23 @@ jobs:
       - name: Start API server in background
         run: |
           cd apps/api
-          pnpm dev &
-          # Store the PID for later cleanup
-          echo $! > api_server.pid
-        
+          pnpm dev &> ../../api.log &
+          echo $! > ../../api_server.pid
+
       - name: Wait for server to be ready
         run: |
-          # Wait up to 30 seconds for the server to start
-          timeout 30s sh -c 'until curl -f http://localhost:4000/api/health; do sleep 1; done'
-          
+          for i in {1..60}; do
+            if curl -fsS http://localhost:4000/api/health >/dev/null 2>&1; then
+              echo "✅ API server ready"
+              exit 0
+            fi
+            echo "Waiting for API... ($i/60)"
+            sleep 2
+          done  
+          echo "❌ API failed to start. Logs:"
+          tail -n 50 api.log || true
+          exit 1
+
       - name: Verify server is responding
         run: |
           curl -f http://localhost:4000/api/health
@@ -160,21 +168,21 @@ jobs:
         run: |
           cd apps/api
           # Run RLS integration tests with timeout
-          timeout 300s pnpm test --run src/integration/rls/rls-summary.test.ts
+          timeout 300s pnpm test --config vitest.config.integration.ts src/integration/rls/rls-summary.test.ts
 
       - name: Run comprehensive RLS validation
         run: |
           cd apps/api
           # Run the main RLS validation tests
-          timeout 300s pnpm test --run src/integration/rls/ || true
-          
+          timeout 300s pnpm test --config vitest.config.integration.ts src/integration/rls/ || true
+
       - name: Cleanup API server
         if: always()
         run: |
           # Kill the API server process
-          if [ -f apps/api/api_server.pid ]; then
-            kill $(cat apps/api/api_server.pid) || true
-            rm apps/api/api_server.pid
+          if [ -f api_server.pid ]; then
+            kill $(cat api_server.pid) || true
+            rm api_server.pid
           fi
           # Also kill any processes using port 4000
           pkill -f "tsx.*server.ts" || true
@@ -216,60 +224,60 @@ jobs:
       - name: Validate RLS policies are present
         run: |
           echo "🔍 Checking RLS policy migrations..."
-          
+
           # Check that RLS migration files exist
           if [ ! -f "apps/api/src/db/migrations/013_standardize_user_episode_progress_rls.sql" ]; then
             echo "❌ Missing RLS migration for user_episode_progress"
             exit 1
           fi
-          
+
           if [ ! -f "apps/api/src/db/migrations/013_standardize_user_season_ratings_rls.sql" ]; then
             echo "❌ Missing RLS migration for user_season_ratings"  
             exit 1
           fi
-          
+
           if [ ! -f "apps/api/src/db/migrations/013_enable_user_streaming_subscriptions_rls.sql" ]; then
             echo "❌ Missing RLS migration for user_streaming_subscriptions"
             exit 1
           fi
-          
+
           echo "✅ All expected RLS migration files are present"
 
       - name: Validate RLS test coverage
         run: |
           echo "🧪 Checking RLS integration test coverage..."
-          
+
           if [ ! -f "apps/api/src/integration/rls/rls-summary.test.ts" ]; then
             echo "❌ Missing comprehensive RLS validation test"
             exit 1
           fi
-          
+
           if [ ! -f "apps/api/src/integration/rls/rls-validation.test.ts" ]; then
             echo "❌ Missing primary RLS validation test"
             exit 1  
           fi
-          
+
           if [ ! -f "apps/api/src/integration/rls/user-episode-progress.test.ts" ]; then
             echo "❌ Missing user episode progress RLS test"
             exit 1
           fi
-          
+
           echo "✅ All expected RLS test files are present"
 
       - name: Check authentication middleware
         run: |
           echo "🔐 Validating authentication implementation..."
-          
+
           # Check that authentication middleware exists
           if ! grep -r "authenticateUser" apps/api/src/middleware/; then
             echo "❌ Authentication middleware not found"
             exit 1
           fi
-          
+
           # Check that JWT_SECRET is referenced
           if ! grep -r "JWT_SECRET" apps/api/src/; then
             echo "❌ JWT authentication not implemented"
             exit 1
           fi
-          
+
           echo "✅ Authentication implementation detected"

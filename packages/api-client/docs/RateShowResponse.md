@@ -1,12 +1,11 @@
 # RateShowResponse
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | [**RateShowResponseData**](RateShowResponseData.md) |  | [optional] [default to undefined]
+| Name        | Type                                                | Description | Notes                             |
+| ----------- | --------------------------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                                         |             | [optional] [default to undefined] |
+| **data**    | [**RateShowResponseData**](RateShowResponseData.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { RateShowResponse } from './api';
 
 const instance: RateShowResponse = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

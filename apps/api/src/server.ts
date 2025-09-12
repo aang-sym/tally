@@ -32,16 +32,21 @@ function getSupabaseForRequest(req: any) {
   const url = process.env.SUPABASE_URL as string | undefined;
   const serviceKey = process.env.SUPABASE_SERVICE_KEY as string | undefined;
   if (!url || !serviceKey) {
-    const parts = [!url ? 'SUPABASE_URL' : null, !serviceKey ? 'SUPABASE_SERVICE_KEY' : null].filter(Boolean).join(', ');
+    const parts = [!url ? 'SUPABASE_URL' : null, !serviceKey ? 'SUPABASE_SERVICE_KEY' : null]
+      .filter(Boolean)
+      .join(', ');
     throw new Error(`Supabase env missing: ${parts}. Ensure these are set in apps/api/.env`);
   }
-  
+
   // Check if we have a validated user from the authenticateUser middleware
   const userId = req.userId || req.user?.id;
   const hasAuth = Boolean(userId);
-  
-  console.log('[SUPA][client] building per-request client', { hasAuth, userId: userId ? `${userId.substring(0, 8)}...` : null });
-  
+
+  console.log('[SUPA][client] building per-request client', {
+    hasAuth,
+    userId: userId ? `${userId.substring(0, 8)}...` : null,
+  });
+
   // For authenticated users, we'll use the service key to bypass RLS and manually filter by user_id
   // This is necessary because we use custom JWTs, not Supabase-issued tokens
   return createSupabaseClient(url, serviceKey, {
@@ -51,12 +56,11 @@ function getSupabaseForRequest(req: any) {
       headers: {
         // Preserve debugging info
         ...(req.headers?.authorization ? { 'x-original-auth': req.headers.authorization } : {}),
-        ...(userId ? { 'x-user-id': userId } : {})
-      }
-    }
+        ...(userId ? { 'x-user-id': userId } : {}),
+      },
+    },
   });
 }
-
 
 const app = express();
 // Prevent 304s on dynamic endpoints (Express enables ETag by default)
@@ -64,18 +68,20 @@ app.set('etag', false);
 
 // Security middleware
 app.use(helmet());
-app.use(cors({
-  origin: [
-    config.frontendUrl,
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:3002',
-    'http://127.0.0.1:3002',
-    'http://localhost:3001',
-    'http://127.0.0.1:3001',
-  ],
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: [
+      config.frontendUrl,
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://localhost:3002',
+      'http://127.0.0.1:3002',
+      'http://localhost:3001',
+      'http://127.0.0.1:3001',
+    ],
+    credentials: true,
+  })
+);
 
 // Logging
 app.use(morgan('combined'));
@@ -146,14 +152,16 @@ app.put('/api/watchlist/:userShowId/rating', authenticateUser, async (req, res) 
     }
 
     // Validate rating: must be a number, finite, 0-10 range, and in 0.5 increments
-    if (typeof rating !== 'number' || 
-        !Number.isFinite(rating) || 
-        rating < 0 || 
-        rating > 10 || 
-        (rating * 2) % 1 !== 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid rating (0-10 in 0.5 increments, e.g., 0, 0.5, 1, 1.5, ..., 10)' 
+    if (
+      typeof rating !== 'number' ||
+      !Number.isFinite(rating) ||
+      rating < 0 ||
+      rating > 10 ||
+      (rating * 2) % 1 !== 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid rating (0-10 in 0.5 increments, e.g., 0, 0.5, 1, 1.5, ..., 10)',
       });
     }
 
@@ -171,7 +179,10 @@ app.put('/api/watchlist/:userShowId/rating', authenticateUser, async (req, res) 
     }
 
     if (!ownership.data || ownership.data.length === 0) {
-      console.warn('[RATE][ownership] user_show not found or not owned', { userShowId, userId: `${userId.substring(0, 8)}...` });
+      console.warn('[RATE][ownership] user_show not found or not owned', {
+        userShowId,
+        userId: `${userId.substring(0, 8)}...`,
+      });
       return res.status(404).json({ success: false, error: 'Show not found or not owned by user' });
     }
 
@@ -182,9 +193,9 @@ app.put('/api/watchlist/:userShowId/rating', authenticateUser, async (req, res) 
       // Since we're using service key, we must explicitly filter by user_id for security
       const upd = await supaWrite
         .from('user_shows')
-        .update({ 
+        .update({
           show_rating: rating,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', userShowId)
         .eq('user_id', userId) // Critical: must include user_id filter when using service key
@@ -199,19 +210,24 @@ app.put('/api/watchlist/:userShowId/rating', authenticateUser, async (req, res) 
           hint: upd.error.hint,
         });
 
-        return res.status(400).json({ success: false, error: upd.error.message || 'Update failed' });
+        return res
+          .status(400)
+          .json({ success: false, error: upd.error.message || 'Update failed' });
       }
 
       const row = Array.isArray(upd.data) ? upd.data[0] : upd.data;
       if (!row) {
-        console.warn('[RATE][update] no row returned after update', { userShowId, userId: `${userId.substring(0, 8)}...` });
+        console.warn('[RATE][update] no row returned after update', {
+          userShowId,
+          userId: `${userId.substring(0, 8)}...`,
+        });
         return res.status(404).json({ success: false, error: 'Show not found or not owned' });
       }
 
-      console.log('[RATE][update] success', { 
-        id: row.id, 
-        old_rating: ownership.data[0]?.show_rating, 
-        new_rating: row.show_rating 
+      console.log('[RATE][update] success', {
+        id: row.id,
+        old_rating: ownership.data[0]?.show_rating,
+        new_rating: row.show_rating,
       });
 
       return res.json({ success: true, data: { id: row.id, show_rating: row.show_rating } });
@@ -255,7 +271,11 @@ app.get('/api/debug/user-shows/:id', authenticateUser, async (req, res) => {
       userId,
       idLooksUuid: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
       probePk: { count: probePk.count, data: probePk.data, error: probePk.error },
-      probePkAndUser: { count: probePkAndUser.count, data: probePkAndUser.data, error: probePkAndUser.error },
+      probePkAndUser: {
+        count: probePkAndUser.count,
+        data: probePkAndUser.data,
+        error: probePkAndUser.error,
+      },
       probeCols: { data: probeCols.data, error: probeCols.error },
     });
   } catch (e: any) {
@@ -289,14 +309,10 @@ const openapiDoc = {
     title: 'Tally API',
     version: '0.1.0',
     description:
-      'Minimal OpenAPI surface for watchlist v2. Expand with real schemas per route as we iterate.'
+      'Minimal OpenAPI surface for watchlist v2. Expand with real schemas per route as we iterate.',
   },
-  servers: [
-    { url: process.env.API_PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 4000}` }
-  ],
-  security: [
-    { bearerAuth: [] }
-  ],
+  servers: [{ url: process.env.API_PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 4000}` }],
+  security: [{ bearerAuth: [] }],
   paths: {
     '/api/health': {
       get: {
@@ -313,14 +329,14 @@ const openapiDoc = {
                   required: ['ok', 'timestamp'],
                   properties: {
                     ok: { type: 'boolean', example: true },
-                    timestamp: { type: 'string', format: 'date-time' }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                    timestamp: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/api/watchlist': {
       get: {
@@ -332,15 +348,15 @@ const openapiDoc = {
             in: 'query',
             required: false,
             schema: { type: 'string', minLength: 2, maxLength: 2 },
-            description: 'ISO country code (e.g., AU) used for availability/provider context.'
+            description: 'ISO country code (e.g., AU) used for availability/provider context.',
           },
           {
             name: 'status',
             in: 'query',
             required: false,
             schema: { type: 'string', enum: ['watchlist', 'watching', 'completed'] },
-            description: 'Filter by status. If omitted, returns all.'
-          }
+            description: 'Filter by status. If omitted, returns all.',
+          },
         ],
         responses: {
           '200': {
@@ -353,32 +369,32 @@ const openapiDoc = {
                     count: { type: 'integer' },
                     shows: {
                       type: 'array',
-                      items: { $ref: '#/components/schemas/UserShowCard' }
-                    }
+                      items: { $ref: '#/components/schemas/UserShowCard' },
+                    },
                   },
-                  required: ['shows']
-                }
-              }
-            }
+                  required: ['shows'],
+                },
+              },
+            },
           },
           '401': {
             description: 'Missing or invalid JWT token',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
           },
           '403': {
             description: 'RLS policy denied access',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
-          }
-        }
-      }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
+          },
+        },
+      },
     },
     '/api/watchlist/stats': {
       get: {
@@ -386,7 +402,7 @@ const openapiDoc = {
         tags: ['watchlist'],
         responses: {
           '200': {
-            description: 'Aggregated stats for the user\'s watchlist',
+            description: "Aggregated stats for the user's watchlist",
             content: {
               'application/json': {
                 schema: {
@@ -401,33 +417,33 @@ const openapiDoc = {
                         watchlist: { type: 'integer' },
                         watching: { type: 'integer' },
                         completed: { type: 'integer' },
-                        dropped: { type: 'integer' }
-                      }
+                        dropped: { type: 'integer' },
+                      },
                     },
-                    averageRating: { type: 'number' }
-                  }
-                }
-              }
-            }
+                    averageRating: { type: 'number' },
+                  },
+                },
+              },
+            },
           },
           '401': {
             description: 'Missing or invalid JWT token',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
           },
           '403': {
             description: 'RLS policy denied access',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
-          }
-        }
-      }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
+          },
+        },
+      },
     },
     '/api/watchlist/{userShowId}/provider': {
       put: {
@@ -438,213 +454,239 @@ const openapiDoc = {
             name: 'userShowId',
             in: 'path',
             required: true,
-            schema: { type: 'string', format: 'uuid' }
-          }
+            schema: { type: 'string', format: 'uuid' },
+          },
         ],
         requestBody: {
           required: true,
           content: {
             'application/json': {
-              schema: { $ref: '#/components/schemas/SetProviderRequest' }
-            }
-          }
+              schema: { $ref: '#/components/schemas/SetProviderRequest' },
+            },
+          },
         },
         responses: {
           '200': {
             description: 'Updated provider echo',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Provider' }
-              }
-            }
+                schema: { $ref: '#/components/schemas/Provider' },
+              },
+            },
           },
           '400': {
             description: 'Invalid request data',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
           },
           '401': {
             description: 'Missing or invalid JWT token',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
           },
           '403': {
             description: 'RLS policy denied access',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
           },
           '404': {
             description: 'User show not found',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
-          }
-        }
-      }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
+          },
+        },
+      },
     },
     '/api/watchlist/{userShowId}/status': {
       put: {
         summary: 'Update user show status',
         tags: ['watchlist'],
         parameters: [
-          { name: 'userShowId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }
+          {
+            name: 'userShowId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
         ],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateStatusRequest' } } }
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/UpdateStatusRequest' } },
+          },
         },
         responses: {
           '200': {
             description: 'Status updated',
-            content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' } } } } }
+            content: {
+              'application/json': {
+                schema: { type: 'object', properties: { success: { type: 'boolean' } } },
+              },
+            },
           },
           '400': {
             description: 'Invalid request data',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
           },
           '401': {
             description: 'Missing or invalid JWT token',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
           },
           '403': {
             description: 'RLS policy denied access',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
           },
           '404': {
             description: 'User show not found',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
-          }
-        }
-      }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
+          },
+        },
+      },
     },
     '/api/watchlist/{userShowId}/rating': {
       put: {
         summary: 'Rate a user show',
         tags: ['watchlist'],
         parameters: [
-          { name: 'userShowId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }
+          {
+            name: 'userShowId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string', format: 'uuid' },
+          },
         ],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateRatingRequest' } } }
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/UpdateRatingRequest' } },
+          },
         },
         responses: {
           '200': {
             description: 'Rating updated',
-            content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' } } } } }
+            content: {
+              'application/json': {
+                schema: { type: 'object', properties: { success: { type: 'boolean' } } },
+              },
+            },
           },
           '400': {
             description: 'Invalid request data',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
           },
           '401': {
             description: 'Missing or invalid JWT token',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
           },
           '403': {
             description: 'RLS policy denied access',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
           },
           '404': {
             description: 'User show not found',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
-          }
-        }
-      }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
+          },
+        },
+      },
     },
     '/api/watchlist/{tmdbId}/progress': {
       put: {
         summary: 'Update progress for a TMDB show id',
         tags: ['watchlist'],
-        parameters: [
-          { name: 'tmdbId', in: 'path', required: true, schema: { type: 'integer' } }
-        ],
+        parameters: [{ name: 'tmdbId', in: 'path', required: true, schema: { type: 'integer' } }],
         requestBody: {
           required: true,
-          content: { 'application/json': { schema: { $ref: '#/components/schemas/ProgressUpdateRequest' } } }
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/ProgressUpdateRequest' } },
+          },
         },
         responses: {
           '200': {
             description: 'Progress updated',
-            content: { 'application/json': { schema: { type: 'object', properties: { success: { type: 'boolean' } } } } }
+            content: {
+              'application/json': {
+                schema: { type: 'object', properties: { success: { type: 'boolean' } } },
+              },
+            },
           },
           '400': {
             description: 'Invalid request data',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
           },
           '401': {
             description: 'Missing or invalid JWT token',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
           },
           '403': {
             description: 'RLS policy denied access',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
           },
           '404': {
             description: 'User show not found',
             content: {
               'application/json': {
-                schema: { $ref: '#/components/schemas/Error' }
-              }
-            }
-          }
-        }
-      }
+                schema: { $ref: '#/components/schemas/Error' },
+              },
+            },
+          },
+        },
+      },
     },
   },
   components: {
@@ -652,8 +694,8 @@ const openapiDoc = {
       bearerAuth: {
         type: 'http',
         scheme: 'bearer',
-        bearerFormat: 'JWT'
-      }
+        bearerFormat: 'JWT',
+      },
     },
     schemas: {
       Error: {
@@ -662,8 +704,8 @@ const openapiDoc = {
         properties: {
           success: { type: 'boolean', example: false },
           error: { type: 'string' },
-          details: { type: 'string' }
-        }
+          details: { type: 'string' },
+        },
       },
       Provider: {
         type: 'object',
@@ -671,8 +713,8 @@ const openapiDoc = {
         properties: {
           id: { type: 'integer', description: 'TMDB provider id (numeric)' },
           name: { type: 'string' },
-          logo_path: { type: 'string', nullable: true }
-        }
+          logo_path: { type: 'string', nullable: true },
+        },
       },
       Progress: {
         type: 'object',
@@ -680,8 +722,8 @@ const openapiDoc = {
           watched_eps: { type: 'integer', minimum: 0 },
           total_eps: { type: 'integer', minimum: 0 },
           watched_eps_latest: { type: 'integer', minimum: 0 },
-          total_eps_latest: { type: 'integer', minimum: 0 }
-        }
+          total_eps_latest: { type: 'integer', minimum: 0 },
+        },
       },
       UserShowCard: {
         type: 'object',
@@ -693,30 +735,30 @@ const openapiDoc = {
           title: { type: 'string' },
           country_code: { type: 'string', nullable: true },
           streaming_provider: { $ref: '#/components/schemas/Provider' },
-          progress: { $ref: '#/components/schemas/Progress' }
-        }
+          progress: { $ref: '#/components/schemas/Progress' },
+        },
       },
       SetProviderRequest: {
         type: 'object',
         required: ['provider'],
         properties: {
           provider: { $ref: '#/components/schemas/Provider' },
-          country: { type: 'string', nullable: true, minLength: 2, maxLength: 2 }
-        }
+          country: { type: 'string', nullable: true, minLength: 2, maxLength: 2 },
+        },
       },
       UpdateStatusRequest: {
         type: 'object',
         required: ['status'],
         properties: {
-          status: { type: 'string', enum: ['watchlist', 'watching', 'completed'] }
-        }
+          status: { type: 'string', enum: ['watchlist', 'watching', 'completed'] },
+        },
       },
       UpdateRatingRequest: {
         type: 'object',
         required: ['rating'],
         properties: {
-          rating: { type: 'number', minimum: 0, maximum: 10, multipleOf: 0.5 }
-        }
+          rating: { type: 'number', minimum: 0, maximum: 10, multipleOf: 0.5 },
+        },
       },
       ProgressUpdateRequest: {
         type: 'object',
@@ -724,11 +766,11 @@ const openapiDoc = {
           state: { type: 'string', enum: ['watched', 'unwatched'] },
           progress: { type: 'integer', minimum: 0, maximum: 100 },
           started_watching_at: { type: 'string', format: 'date-time' },
-          watched_at: { type: 'string', format: 'date-time' }
-        }
+          watched_at: { type: 'string', format: 'date-time' },
+        },
       },
-    }
-  }
+    },
+  },
 } as const;
 
 // Serve the raw spec
@@ -777,7 +819,9 @@ app.listen(config.port, async () => {
 
   // Log configuration status
   const hasApiKey = config.streamingAvailabilityApiKey !== 'dev-key-placeholder';
-  console.log(`🎬 Streaming Availability API: ${hasApiKey ? 'Configured' : 'Not configured (using dev mode)'}`);
+  console.log(
+    `🎬 Streaming Availability API: ${hasApiKey ? 'Configured' : 'Not configured (using dev mode)'}`
+  );
 
   if (config.streamingApiDevMode) {
     console.log(`🔧 Streaming API Dev Mode: ENABLED (API calls will be mocked)`);
@@ -786,7 +830,9 @@ app.listen(config.port, async () => {
   // Log quota status
   try {
     const stats = await quotaTracker.getUsageStats();
-    console.log(`📈 API Quota: ${stats.callsUsed}/${stats.limit} calls used this month (${stats.percentUsed.toFixed(1)}%)`);
+    console.log(
+      `📈 API Quota: ${stats.callsUsed}/${stats.limit} calls used this month (${stats.percentUsed.toFixed(1)}%)`
+    );
 
     const isLowQuota = await quotaTracker.shouldWarnLowQuota();
     if (isLowQuota && !config.streamingApiDevMode) {

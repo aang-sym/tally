@@ -15,16 +15,17 @@ import { authenticateUser } from '../../middleware/user-identity.js';
 
 /**
  * RLS Integration Tests for user_shows table
- * 
+ *
  * Tests verify that Row-Level Security policies properly isolate user data:
  * 1. Authenticated users can access their own shows
- * 2. Authenticated users cannot access other users' shows  
+ * 2. Authenticated users cannot access other users' shows
  * 3. Unauthenticated requests are denied
- * 
+ *
  * These tests use real API endpoints to ensure end-to-end RLS enforcement.
  */
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-for-tally-security-tests-2025-9f8a7b6c5d';
+const JWT_SECRET =
+  process.env.JWT_SECRET || 'dev-secret-key-for-tally-security-tests-2025-9f8a7b6c5d';
 
 // Test user payloads
 const user1Payload = {
@@ -33,7 +34,7 @@ const user1Payload = {
   email: 'user1@test.com',
   displayName: 'Test User 1',
   aud: 'authenticated',
-  role: 'authenticated'
+  role: 'authenticated',
 };
 
 const user2Payload = {
@@ -42,7 +43,7 @@ const user2Payload = {
   email: 'user2@test.com',
   displayName: 'Test User 2',
   aud: 'authenticated',
-  role: 'authenticated'
+  role: 'authenticated',
 };
 
 // Generate JWT tokens for testing
@@ -57,20 +58,17 @@ beforeAll(() => {
   app.use(cors());
   app.use(morgan('tiny'));
   app.use(express.json());
-  
+
   // Use the real authentication middleware
   app.use('/api/watchlist', authenticateUser);
   app.use('/api/watchlist', watchlistRouter);
 });
 
 describe('RLS Integration Tests: user_shows table', () => {
-  
   describe('Authentication Requirements', () => {
     it('should deny unauthenticated requests to GET /api/watchlist', async () => {
-      const response = await request(app)
-        .get('/api/watchlist')
-        .expect(401);
-        
+      const response = await request(app).get('/api/watchlist').expect(401);
+
       expect(response.body).toHaveProperty('success', false);
       expect(response.body.error).toContain('token required');
     });
@@ -80,7 +78,7 @@ describe('RLS Integration Tests: user_shows table', () => {
         .get('/api/watchlist')
         .set('Authorization', 'Bearer invalid-token-format')
         .expect(401);
-        
+
       expect(response.body).toHaveProperty('success', false);
       expect(response.body.error).toContain('Invalid token');
     });
@@ -92,12 +90,12 @@ describe('RLS Integration Tests: user_shows table', () => {
         .get('/api/watchlist')
         .set('Authorization', `Bearer ${user1Token}`)
         .expect(200);
-        
+
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('data');
       expect(response.body.data).toHaveProperty('shows');
       expect(Array.isArray(response.body.data.shows)).toBe(true);
-      
+
       // All shows in response should belong to user1
       const shows = response.body.data.shows;
       shows.forEach((show: any) => {
@@ -112,7 +110,7 @@ describe('RLS Integration Tests: user_shows table', () => {
         .set('Authorization', `Bearer ${user1Token}`)
         .expect(200);
 
-      // Get user2's watchlist  
+      // Get user2's watchlist
       const user2Response = await request(app)
         .get('/api/watchlist')
         .set('Authorization', `Bearer ${user2Token}`)
@@ -120,12 +118,12 @@ describe('RLS Integration Tests: user_shows table', () => {
 
       const user1Shows = user1Response.body.data.shows;
       const user2Shows = user2Response.body.data.shows;
-      
+
       // Verify all shows belong to the correct user
       user1Shows.forEach((show: any) => {
         expect(show.user_id).toBe(user1Payload.userId);
       });
-      
+
       user2Shows.forEach((show: any) => {
         expect(show.user_id).toBe(user2Payload.userId);
       });
@@ -151,10 +149,8 @@ describe('RLS Integration Tests: user_shows table', () => {
     });
 
     it('should deny unauthenticated access to stats', async () => {
-      const response = await request(app)
-        .get('/api/watchlist/stats')
-        .expect(401);
-        
+      const response = await request(app).get('/api/watchlist/stats').expect(401);
+
       expect(response.body).toHaveProperty('success', false);
     });
   });
@@ -169,10 +165,10 @@ describe('RLS Integration Tests: user_shows table', () => {
         .set('Authorization', `Bearer ${user1Token}`)
         .send({
           tmdb_id: 999999,
-          status: 'watchlist'
+          status: 'watchlist',
         })
         .expect(201);
-      
+
       testShowId = createResponse.body.data.id;
     });
 
@@ -186,7 +182,7 @@ describe('RLS Integration Tests: user_shows table', () => {
       expect(response.body).toHaveProperty('success', true);
     });
 
-    it('should prevent user from updating another user\'s show', async () => {
+    it("should prevent user from updating another user's show", async () => {
       // Try to update user1's show using user2's token
       const response = await request(app)
         .put(`/api/watchlist/${testShowId}/status`)
@@ -219,10 +215,10 @@ describe('RLS Integration Tests: user_shows table', () => {
         .set('Authorization', `Bearer ${user1Token}`)
         .send({
           tmdb_id: 888888,
-          status: 'watchlist'
+          status: 'watchlist',
         })
         .expect(201);
-      
+
       user1ShowId = createResponse.body.data.id;
     });
 
@@ -235,7 +231,7 @@ describe('RLS Integration Tests: user_shows table', () => {
       expect(response.body).toHaveProperty('success', true);
     });
 
-    it('should prevent user from deleting another user\'s show', async () => {
+    it("should prevent user from deleting another user's show", async () => {
       // Try to delete user1's show using user2's token
       const response = await request(app)
         .delete(`/api/watchlist/${user1ShowId}`)

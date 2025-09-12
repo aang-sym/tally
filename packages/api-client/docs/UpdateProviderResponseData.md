@@ -1,12 +1,11 @@
 # UpdateProviderResponseData
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**provider** | [**SelectedProvider**](SelectedProvider.md) |  | [optional] [default to undefined]
-**message** | **string** |  | [optional] [default to undefined]
+| Name         | Type                                        | Description | Notes                             |
+| ------------ | ------------------------------------------- | ----------- | --------------------------------- |
+| **provider** | [**SelectedProvider**](SelectedProvider.md) |             | [optional] [default to undefined] |
+| **message**  | **string**                                  |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { UpdateProviderResponseData } from './api';
 
 const instance: UpdateProviderResponseData = {
-    provider,
-    message,
+  provider,
+  message,
 };
 ```
 

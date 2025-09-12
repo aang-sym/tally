@@ -14,7 +14,7 @@ const user1Payload = {
   email: 'user1@test.com',
   displayName: 'RLS Test User 1',
   aud: 'authenticated',
-  role: 'authenticated'
+  role: 'authenticated',
 };
 
 const user1Token = jwt.sign(user1Payload, JWT_SECRET, { expiresIn: '1d' });
@@ -29,21 +29,21 @@ async function debugApiCall(endpoint: string, options: RequestInit = {}) {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     headers: {
       'Content-Type': 'application/json',
-      ...options.headers
+      ...options.headers,
     },
-    ...options
+    ...options,
   });
-  
+
   let data;
   try {
     data = await response.json();
   } catch {
     data = await response.text();
   }
-  
+
   console.log(`Status: ${response.status}`);
   console.log(`Response:`, JSON.stringify(data, null, 2));
-  
+
   return { status: response.status, data };
 }
 
@@ -57,26 +57,26 @@ async function runDebugTests() {
     headers: { Authorization: `Bearer ${user1Token}` },
     body: JSON.stringify({
       tmdb_id: 123456,
-      status: 'watchlist'
-    })
+      status: 'watchlist',
+    }),
   });
 
   // Test 2: Get user's watchlist to find a show ID
   console.log('\n=== Test 2: Get user watchlist ===');
   const watchlistResult = await debugApiCall('/api/watchlist', {
-    headers: { Authorization: `Bearer ${user1Token}` }
+    headers: { Authorization: `Bearer ${user1Token}` },
   });
 
   if (watchlistResult.status === 200 && watchlistResult.data?.data?.shows?.length > 0) {
     const showId = watchlistResult.data.data.shows[0].id;
     console.log(`\n📝 Found show ID: ${showId}`);
-    
+
     // Test 3: Try to update show status
     console.log('\n=== Test 3: Update show status ===');
     await debugApiCall(`/api/watchlist/${showId}/status`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${user1Token}` },
-      body: JSON.stringify({ status: 'watching' })
+      body: JSON.stringify({ status: 'watching' }),
     });
   } else {
     console.log('\n⚠️ No shows found in watchlist to test updates');

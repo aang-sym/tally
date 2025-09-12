@@ -1,13 +1,12 @@
 # ErrorResponse
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**error** | **string** |  | [optional] [default to undefined]
-**details** | **string** |  | [optional] [default to undefined]
+| Name        | Type        | Description | Notes                             |
+| ----------- | ----------- | ----------- | --------------------------------- |
+| **success** | **boolean** |             | [optional] [default to undefined] |
+| **error**   | **string**  |             | [optional] [default to undefined] |
+| **details** | **string**  |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -15,9 +14,9 @@ Name | Type | Description | Notes
 import { ErrorResponse } from './api';
 
 const instance: ErrorResponse = {
-    success,
-    error,
-    details,
+  success,
+  error,
+  details,
 };
 ```
 

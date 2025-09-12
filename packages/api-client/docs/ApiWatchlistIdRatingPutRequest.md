@@ -1,11 +1,10 @@
 # ApiWatchlistIdRatingPutRequest
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**rating** | **number** |  | [default to undefined]
+| Name       | Type       | Description | Notes                  |
+| ---------- | ---------- | ----------- | ---------------------- |
+| **rating** | **number** |             | [default to undefined] |
 
 ## Example
 
@@ -13,7 +12,7 @@ Name | Type | Description | Notes
 import { ApiWatchlistIdRatingPutRequest } from './api';
 
 const instance: ApiWatchlistIdRatingPutRequest = {
-    rating,
+  rating,
 };
 ```
 

@@ -1,6 +1,6 @@
 /**
  * API Quota Tracker
- * 
+ *
  * Tracks API usage across months to ensure we stay within limits.
  * Uses simple JSON file storage for persistence in development.
  */
@@ -58,7 +58,7 @@ class QuotaTracker {
 
   private async save(): Promise<void> {
     if (!this.quotaData) return;
-    
+
     try {
       await fs.writeFile(this.quotaFilePath, JSON.stringify(this.quotaData, null, 2));
     } catch (error) {
@@ -69,7 +69,7 @@ class QuotaTracker {
   async getRemainingCalls(): Promise<number> {
     await this.initialize();
     if (!this.quotaData) return config.streamingApiMonthlyLimit;
-    
+
     return Math.max(0, config.streamingApiMonthlyLimit - this.quotaData.callsUsed);
   }
 
@@ -82,10 +82,10 @@ class QuotaTracker {
     lastReset: string;
   }> {
     await this.initialize();
-    
+
     const callsUsed = this.quotaData?.callsUsed || 0;
     const callsRemaining = await this.getRemainingCalls();
-    
+
     return {
       month: this.quotaData?.month || new Date().toISOString().substring(0, 7),
       callsUsed,
@@ -99,10 +99,10 @@ class QuotaTracker {
   async canMakeCall(): Promise<boolean> {
     // Always allow calls in dev mode
     if (config.streamingApiDevMode) return true;
-    
+
     // Always allow if no API key configured
     if (config.streamingAvailabilityApiKey === 'dev-key-placeholder') return true;
-    
+
     const remaining = await this.getRemainingCalls();
     return remaining > 0;
   }
@@ -116,10 +116,10 @@ class QuotaTracker {
   async recordCall(endpoint: string, success: boolean): Promise<void> {
     // Don't track calls in dev mode
     if (config.streamingApiDevMode) return;
-    
+
     // Don't track if no real API key
     if (config.streamingAvailabilityApiKey === 'dev-key-placeholder') return;
-    
+
     await this.initialize();
     if (!this.quotaData) return;
 
@@ -140,7 +140,9 @@ class QuotaTracker {
     // Log warnings
     const remaining = config.streamingApiMonthlyLimit - this.quotaData.callsUsed;
     if (remaining <= 10) {
-      console.warn(`⚠️  STREAMING API QUOTA CRITICAL: Only ${remaining} calls remaining this month!`);
+      console.warn(
+        `⚠️  STREAMING API QUOTA CRITICAL: Only ${remaining} calls remaining this month!`
+      );
     } else if (remaining <= 50) {
       console.warn(`⚠️  Streaming API quota running low: ${remaining} calls remaining this month`);
     }
@@ -149,7 +151,7 @@ class QuotaTracker {
   async getCallLog(limit: number = 20): Promise<QuotaData['callLog']> {
     await this.initialize();
     if (!this.quotaData) return [];
-    
+
     return this.quotaData.callLog.slice(-limit).reverse(); // Most recent first
   }
 

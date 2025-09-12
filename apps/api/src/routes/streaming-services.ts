@@ -1,6 +1,6 @@
 /**
  * Streaming Services API Routes
- * 
+ *
  * Provides endpoints for managing streaming services and their availability data.
  */
 
@@ -27,7 +27,7 @@ const router: Router = Router();
 /**
  * GET /api/streaming-services
  * Get all available streaming services
- * 
+ *
  * Supports optional query param ?country=XX to filter prices by country.
  * Requires the Postgres function get_streaming_services_with_price(country_code text).
  */
@@ -51,8 +51,9 @@ router.get('/', async (req: Request, res: Response) => {
     if (!country) country = 'US';
     country = country.toUpperCase();
 
-    const { data: services, error } = await supabase
-      .rpc('get_streaming_services_with_price', { country_code: country });
+    const { data: services, error } = await supabase.rpc('get_streaming_services_with_price', {
+      country_code: country,
+    });
 
     if (error) {
       throw error;
@@ -62,15 +63,15 @@ router.get('/', async (req: Request, res: Response) => {
       success: true,
       data: {
         services: services || [],
-        count: services?.length || 0
-      }
+        count: services?.length || 0,
+      },
     });
   } catch (error) {
     console.error('Failed to get streaming services:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to retrieve streaming services',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -96,22 +97,22 @@ router.get('/:id', async (req: Request, res: Response) => {
     if (!service) {
       return res.status(404).json({
         success: false,
-        error: 'Streaming service not found'
+        error: 'Streaming service not found',
       });
     }
 
     res.json({
       success: true,
       data: {
-        service
-      }
+        service,
+      },
     });
   } catch (error) {
     console.error('Failed to get streaming service:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to retrieve streaming service',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -124,7 +125,8 @@ router.get('/popular', async (req: Request, res: Response) => {
   try {
     const { data: services, error } = await supabase
       .from('streaming_services')
-      .select(`
+      .select(
+        `
         id,
         name,
         logo_path,
@@ -133,7 +135,8 @@ router.get('/popular', async (req: Request, res: Response) => {
           id,
           is_active
         )
-      `)
+      `
+      )
       .eq('user_streaming_subscriptions.is_active', true)
       .order('name');
 
@@ -142,30 +145,34 @@ router.get('/popular', async (req: Request, res: Response) => {
     }
 
     const popularServices =
-      (services as ServiceRow[] | null)?.map((service: ServiceRow) => ({
-        id: service.id,
-        name: service.name,
-        logo_path: service.logo_path ?? null,
-        homepage: service.homepage ?? null,
-        subscriber_count: Array.isArray(service.user_streaming_subscriptions)
-          ? service.user_streaming_subscriptions.length
-          : 0
-      }))
-      .sort((a: { subscriber_count: number }, b: { subscriber_count: number }) => b.subscriber_count - a.subscriber_count) || [];
+      (services as ServiceRow[] | null)
+        ?.map((service: ServiceRow) => ({
+          id: service.id,
+          name: service.name,
+          logo_path: service.logo_path ?? null,
+          homepage: service.homepage ?? null,
+          subscriber_count: Array.isArray(service.user_streaming_subscriptions)
+            ? service.user_streaming_subscriptions.length
+            : 0,
+        }))
+        .sort(
+          (a: { subscriber_count: number }, b: { subscriber_count: number }) =>
+            b.subscriber_count - a.subscriber_count
+        ) || [];
 
     res.json({
       success: true,
       data: {
         services: popularServices,
-        count: popularServices.length
-      }
+        count: popularServices.length,
+      },
     });
   } catch (error) {
     console.error('Failed to get popular streaming services:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to retrieve popular streaming services',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -173,7 +180,7 @@ router.get('/popular', async (req: Request, res: Response) => {
 /**
  * POST /api/streaming-services/backfill
  * Backfill streaming services from TMDB provider list
- * 
+ *
  * Body: { regions?: string[] } (optional, defaults to ['US'])
  */
 router.post('/backfill', async (req: Request, res: Response) => {
@@ -184,7 +191,7 @@ router.post('/backfill', async (req: Request, res: Response) => {
     if (!Array.isArray(regions) || regions.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'Regions must be a non-empty array of country codes'
+        error: 'Regions must be a non-empty array of country codes',
       });
     }
 
@@ -193,7 +200,7 @@ router.post('/backfill', async (req: Request, res: Response) => {
       if (typeof region !== 'string' || region.length !== 2) {
         return res.status(400).json({
           success: false,
-          error: `Invalid region code: ${region}. Must be 2-letter country codes (e.g., 'US', 'GB')`
+          error: `Invalid region code: ${region}. Must be 2-letter country codes (e.g., 'US', 'GB')`,
         });
       }
     }
@@ -211,8 +218,8 @@ router.post('/backfill', async (req: Request, res: Response) => {
           totalFetched: result.totalFetched,
           newProviders: result.newProviders,
           updatedProviders: result.updatedProviders,
-          processedCount: result.providers.length
-        }
+          processedCount: result.providers.length,
+        },
       });
     }
 
@@ -224,20 +231,20 @@ router.post('/backfill', async (req: Request, res: Response) => {
         newProviders: result.newProviders,
         updatedProviders: result.updatedProviders,
         regions,
-        providers: result.providers.map(p => ({
+        providers: result.providers.map((p) => ({
           id: p.id,
           tmdb_provider_id: p.tmdb_provider_id,
           name: p.name,
-          logo_path: p.logo_path
-        }))
-      }
+          logo_path: p.logo_path,
+        })),
+      },
     });
   } catch (error) {
     console.error('Backfill streaming services failed:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to backfill streaming services',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -259,22 +266,22 @@ router.get('/regions', async (req: Request, res: Response) => {
       { code: 'JP', name: 'Japan' },
       { code: 'BR', name: 'Brazil' },
       { code: 'IN', name: 'India' },
-      { code: 'MX', name: 'Mexico' }
+      { code: 'MX', name: 'Mexico' },
     ];
 
     res.json({
       success: true,
       data: {
         regions: commonRegions,
-        count: commonRegions.length
-      }
+        count: commonRegions.length,
+      },
     });
   } catch (error) {
     console.error('Failed to get streaming regions:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to retrieve streaming regions',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });

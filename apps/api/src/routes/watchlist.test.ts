@@ -61,7 +61,9 @@ describe('Watchlist Routes with Streaming Availability', () => {
       };
 
       vi.mocked(streamingAvailabilityService.searchShows).mockResolvedValue(mockSearchResults);
-      vi.mocked(streamingAvailabilityService.getContentAvailability).mockResolvedValue(mockAvailability);
+      vi.mocked(streamingAvailabilityService.getContentAvailability).mockResolvedValue(
+        mockAvailability
+      );
       vi.mocked(watchlistStore.addItem).mockResolvedValue(mockWatchlistItem);
 
       const response = await request(app)
@@ -76,7 +78,7 @@ describe('Watchlist Routes with Streaming Availability', () => {
 
       expect(response.status).toBe(201);
       expect(response.body).toEqual(mockWatchlistItem);
-      
+
       expect(streamingAvailabilityService.searchShows).toHaveBeenCalledWith(
         'Stranger Things',
         'us',
@@ -89,9 +91,7 @@ describe('Watchlist Routes with Streaming Availability', () => {
     });
 
     it('should handle API errors gracefully', async () => {
-      vi.mocked(streamingAvailabilityService.searchShows).mockRejectedValue(
-        new Error('API Error')
-      );
+      vi.mocked(streamingAvailabilityService.searchShows).mockRejectedValue(new Error('API Error'));
 
       const mockWatchlistItem = {
         id: 'watchlist-123',
@@ -174,7 +174,9 @@ describe('Watchlist Routes with Streaming Availability', () => {
       };
 
       vi.mocked(watchlistStore.getByUserId).mockResolvedValue([mockItem] as any);
-      vi.mocked(streamingAvailabilityService.getContentAvailability).mockResolvedValue(updatedAvailability);
+      vi.mocked(streamingAvailabilityService.getContentAvailability).mockResolvedValue(
+        updatedAvailability
+      );
       vi.mocked(watchlistStore.updateItem).mockResolvedValue(true);
 
       const response = await request(app)
@@ -183,7 +185,7 @@ describe('Watchlist Routes with Streaming Availability', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.availability.leavingSoon).toBe(true);
-      
+
       expect(streamingAvailabilityService.getContentAvailability).toHaveBeenCalledWith(
         'sa-123',
         'netflix'
@@ -203,8 +205,7 @@ describe('Watchlist Routes with Streaming Availability', () => {
 
   describe('Authentication', () => {
     it('should require authorization header', async () => {
-      const response = await request(app)
-        .get('/api/watchlist');
+      const response = await request(app).get('/api/watchlist');
 
       expect(response.status).toBe(500); // ValidationError gets converted to 500 by default error handler
       expect(response.body.error).toContain('Authorization token required');

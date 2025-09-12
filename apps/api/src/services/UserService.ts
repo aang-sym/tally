@@ -2,11 +2,11 @@ import { supabase } from '../db/supabase.js';
 
 export class UserService {
   /**
-   * Ensures a user exists in the database by calling the 
+   * Ensures a user exists in the database by calling the
    * `upsert_user` database function.
    * If the user does not exist, they are created.
    * If the user already exists, their last_seen_at timestamp is updated.
-   * 
+   *
    * @param userId - The ID of the user to upsert.
    */
   public static async upsertUser(userId: string): Promise<{ error: Error | null }> {

@@ -1,12 +1,11 @@
 # ProgressUpdateResponse
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | [**ProgressUpdateResponseData**](ProgressUpdateResponseData.md) |  | [optional] [default to undefined]
+| Name        | Type                                                            | Description | Notes                             |
+| ----------- | --------------------------------------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                                                     |             | [optional] [default to undefined] |
+| **data**    | [**ProgressUpdateResponseData**](ProgressUpdateResponseData.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { ProgressUpdateResponse } from './api';
 
 const instance: ProgressUpdateResponse = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

@@ -1,13 +1,12 @@
 # SubscriptionUpdateRequest
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**monthly_cost** | **number** |  | [optional] [default to undefined]
-**is_active** | **boolean** |  | [optional] [default to undefined]
-**tier** | **string** |  | [optional] [default to undefined]
+| Name             | Type        | Description | Notes                             |
+| ---------------- | ----------- | ----------- | --------------------------------- |
+| **monthly_cost** | **number**  |             | [optional] [default to undefined] |
+| **is_active**    | **boolean** |             | [optional] [default to undefined] |
+| **tier**         | **string**  |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -15,9 +14,9 @@ Name | Type | Description | Notes
 import { SubscriptionUpdateRequest } from './api';
 
 const instance: SubscriptionUpdateRequest = {
-    monthly_cost,
-    is_active,
-    tier,
+  monthly_cost,
+  is_active,
+  tier,
 };
 ```
 

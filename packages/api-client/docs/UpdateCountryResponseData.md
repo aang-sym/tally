@@ -1,12 +1,11 @@
 # UpdateCountryResponseData
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**countryCode** | **string** |  | [optional] [default to undefined]
-**message** | **string** |  | [optional] [default to undefined]
+| Name            | Type       | Description | Notes                             |
+| --------------- | ---------- | ----------- | --------------------------------- |
+| **countryCode** | **string** |             | [optional] [default to undefined] |
+| **message**     | **string** |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { UpdateCountryResponseData } from './api';
 
 const instance: UpdateCountryResponseData = {
-    countryCode,
-    message,
+  countryCode,
+  message,
 };
 ```
 

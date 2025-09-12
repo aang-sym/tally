@@ -1,6 +1,6 @@
 /**
  * Smart Recommendations API Routes
- * 
+ *
  * Handles intelligent subscription optimization recommendations,
  * cancellation suggestions, and subscription planning.
  */
@@ -42,54 +42,50 @@ router.get('/cancel', async (req: Request, res: Response) => {
 
     // Generate cancellation recommendations
     const recommendations = analysis.services
-      .filter(service => {
+      .filter((service) => {
         // Suggest cancellation if:
         // - No currently watching shows
         // - No watchlist shows
         // - Only completed shows
         return (
-          service.watchingCount === 0 &&
-          service.watchlistCount === 0 &&
-          service.completedCount > 0
+          service.watchingCount === 0 && service.watchlistCount === 0 && service.completedCount > 0
         );
       })
-      .map(service => ({
+      .map((service) => ({
         serviceId: service.service.id,
         serviceName: service.service.name,
         type: 'cancel' as const,
         reason: 'No active content - all shows completed',
         potentialSavings: {
           monthly: 15.99, // Would calculate based on service pricing
-          annual: 191.88
+          annual: 191.88,
         },
         confidence: 0.9,
         showsCompleted: service.completedCount,
         nextContent: null, // Would check for upcoming premieres
-        safeDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 1 week from now
+        safeDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week from now
       }));
 
     // Add pause recommendations for services with only watchlist content
     const pauseRecommendations = analysis.services
-      .filter(service => {
+      .filter((service) => {
         return (
-          service.watchingCount === 0 &&
-          service.watchlistCount > 0 &&
-          service.watchlistCount <= 2 // Few watchlist shows
+          service.watchingCount === 0 && service.watchlistCount > 0 && service.watchlistCount <= 2 // Few watchlist shows
         );
       })
-      .map(service => ({
+      .map((service) => ({
         serviceId: service.service.id,
         serviceName: service.service.name,
         type: 'pause' as const,
         reason: `Only ${service.watchlistCount} show(s) in watchlist`,
         potentialSavings: {
           monthly: 15.99,
-          shortTerm: 47.97 // 3 months
+          shortTerm: 47.97, // 3 months
         },
         confidence: 0.7,
         showsInWatchlist: service.watchlistCount,
         recommendation: "Consider pausing until you're ready to watch",
-        resumeWhen: "When you start watching your watchlist shows"
+        resumeWhen: 'When you start watching your watchlist shows',
       }));
 
     const allRecommendations = [...recommendations, ...pauseRecommendations];
@@ -103,14 +99,14 @@ router.get('/cancel', async (req: Request, res: Response) => {
           0
         ),
         servicesAnalyzed: analysis.totalServices,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     console.error('Failed to get cancellation recommendations:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to generate cancellation recommendations'
+      error: 'Failed to generate cancellation recommendations',
     });
   }
 });
@@ -124,10 +120,7 @@ router.get('/subscribe', async (req: Request, res: Response) => {
     const userId = (req as any).userId;
 
     // Get user's watchlist to see what they want to watch
-    const watchlist = await makeWatchlistService(req).getUserWatchlist(
-      userId,
-      'watchlist'
-    );
+    const watchlist = await makeWatchlistService(req).getUserWatchlist(userId, 'watchlist');
 
     // Get user's rating preferences
     const preferences = await ratingService.getUserRatingPreferences(userId);
@@ -157,7 +150,7 @@ router.get('/subscribe', async (req: Request, res: Response) => {
         shows: ['Stranger Things', 'The Crown', 'Ozark'],
         startDate: new Date().toISOString(),
         estimatedValue: 8.5,
-        confidence: 0.85
+        confidence: 0.85,
       },
       {
         serviceName: 'HBO Max',
@@ -165,12 +158,10 @@ router.get('/subscribe', async (req: Request, res: Response) => {
         reason: 'High-rated shows matching your preferences',
         monthlyPrice: 14.99,
         shows: ['House of the Dragon', 'The Last of Us'],
-        startDate: new Date(
-          Date.now() + 30 * 24 * 60 * 60 * 1000
-        ).toISOString(),
+        startDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         estimatedValue: 7.8,
-        confidence: 0.72
-      }
+        confidence: 0.72,
+      },
     ];
 
     res.json({
@@ -179,20 +170,20 @@ router.get('/subscribe', async (req: Request, res: Response) => {
         recommendations,
         userPreferences: {
           averageRatingThreshold: preferences.averageRatingThreshold,
-          isGenerousRater: preferences.ratingTrends.isGenerousRater
+          isGenerousRater: preferences.ratingTrends.isGenerousRater,
         },
         watchlistAnalysis: {
           totalShows: watchlist.length,
-          servicesNeeded: recommendations.length
+          servicesNeeded: recommendations.length,
         },
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     console.error('Failed to get subscription recommendations:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to generate subscription recommendations'
+      error: 'Failed to generate subscription recommendations',
     });
   }
 });
@@ -206,13 +197,10 @@ router.get('/optimization', async (req: Request, res: Response) => {
     const userId = (req as any).userId;
 
     // Get user's current subscriptions analysis
-    const currentAnalysis = await streamingService.getUserSubscriptionAnalysis(
-      userId
-    );
+    const currentAnalysis = await streamingService.getUserSubscriptionAnalysis(userId);
 
     // Get watchlist stats
-    const watchlistStats =
-      await makeWatchlistService(req).getUserWatchlistStats(userId);
+    const watchlistStats = await makeWatchlistService(req).getUserWatchlistStats(userId);
 
     // Generate optimization plan
     const currentMonthlyCost = currentAnalysis.services.length * 15.99; // Simplified
@@ -225,62 +213,58 @@ router.get('/optimization', async (req: Request, res: Response) => {
         utilization: {
           watching: watchlistStats.byStatus.watching,
           watchlist: watchlistStats.byStatus.watchlist,
-          completed: watchlistStats.byStatus.completed
-        }
+          completed: watchlistStats.byStatus.completed,
+        },
       },
       optimizedPlan: {
         recommendedServices: Math.max(1, currentAnalysis.services.length - 1),
         estimatedMonthlyCost: Math.max(15.99, currentMonthlyCost - 15.99),
-        estimatedAnnualSavings: Math.min(
-          191.88,
-          (currentMonthlyCost - 15.99) * 12
-        ),
+        estimatedAnnualSavings: Math.min(191.88, (currentMonthlyCost - 15.99) * 12),
         actions: [
-          ...currentAnalysis.recommendedCancellations.map(service => ({
+          ...currentAnalysis.recommendedCancellations.map((service) => ({
             action: 'cancel' as const,
             service,
             timing: 'immediate',
-            reason: 'No active content'
+            reason: 'No active content',
           })),
           {
             action: 'rotate' as const,
             explanation: 'Subscribe to services only when needed',
-            estimatedSavings: 47.97
-          }
-        ]
+            estimatedSavings: 47.97,
+          },
+        ],
       },
       timeline: [
         {
           month: 1,
           action: 'Cancel unused subscriptions',
           savings: 15.99,
-          reasoning: 'Remove services with no active content'
+          reasoning: 'Remove services with no active content',
         },
         {
           month: 2,
           action: 'Continue with reduced services',
           savings: 15.99,
-          reasoning: "Focus on shows you're actively watching"
+          reasoning: "Focus on shows you're actively watching",
         },
         {
           month: 3,
           action: 'Evaluate and rotate if needed',
           savings: 0,
-          reasoning:
-            'Assess if new content requires additional services'
-        }
-      ]
+          reasoning: 'Assess if new content requires additional services',
+        },
+      ],
     };
 
     res.json({
       success: true,
-      data: optimizationPlan
+      data: optimizationPlan,
     });
   } catch (error) {
     console.error('Failed to generate optimization recommendations:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to generate optimization recommendations'
+      error: 'Failed to generate optimization recommendations',
     });
   }
 });
@@ -311,18 +295,14 @@ router.get('/calendar', async (req: Request, res: Response) => {
 
     const currentDate = new Date();
     for (let i = 0; i < months; i++) {
-      const month = new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth() + i,
-        1
-      );
+      const month = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
 
       // This would analyze premieres, user's watchlist timing, etc.
       calendarRecommendations.push({
         month: month.toISOString(),
         monthName: month.toLocaleDateString('en-US', {
           month: 'long',
-          year: 'numeric'
+          year: 'numeric',
         }),
         recommendations: [
           {
@@ -332,26 +312,18 @@ router.get('/calendar', async (req: Request, res: Response) => {
               i === 0
                 ? 'Currently watching shows'
                 : i % 2 === 0
-                ? 'New season premieres'
-                : 'No new content',
-            shows:
-              i === 0
-                ? ['Ongoing shows']
-                : i % 2 === 0
-                ? ['New season starts']
-                : [],
-            cost: i % 2 === 0 ? 15.99 : 0
-          }
+                  ? 'New season premieres'
+                  : 'No new content',
+            shows: i === 0 ? ['Ongoing shows'] : i % 2 === 0 ? ['New season starts'] : [],
+            cost: i % 2 === 0 ? 15.99 : 0,
+          },
         ],
         totalMonthlyCost: i % 2 === 0 ? 31.98 : 15.99,
-        savings: i % 2 === 1 ? 15.99 : 0
+        savings: i % 2 === 1 ? 15.99 : 0,
       });
     }
 
-    const totalSavings = calendarRecommendations.reduce(
-      (sum, month) => sum + month.savings,
-      0
-    );
+    const totalSavings = calendarRecommendations.reduce((sum, month) => sum + month.savings, 0);
 
     res.json({
       success: true,
@@ -361,19 +333,17 @@ router.get('/calendar', async (req: Request, res: Response) => {
           totalMonths: months,
           estimatedSavings: totalSavings,
           averageMonthlyCost:
-            calendarRecommendations.reduce(
-              (sum, month) => sum + month.totalMonthlyCost,
-              0
-            ) / months
+            calendarRecommendations.reduce((sum, month) => sum + month.totalMonthlyCost, 0) /
+            months,
         },
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     console.error('Failed to generate calendar recommendations:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to generate calendar recommendations'
+      error: 'Failed to generate calendar recommendations',
     });
   }
 });
@@ -381,7 +351,7 @@ router.get('/calendar', async (req: Request, res: Response) => {
 /**
  * POST /api/recommendations/feedback
  * Provide feedback on recommendations to improve future suggestions
- * 
+ *
  * Body: {
  *   recommendationId: string,
  *   action: 'accepted' | 'rejected' | 'modified',
@@ -393,14 +363,10 @@ router.post('/feedback', async (req: Request, res: Response) => {
     const userId = (req as any).userId;
     const { recommendationId, action, feedback } = req.body;
 
-    if (
-      !recommendationId ||
-      !['accepted', 'rejected', 'modified'].includes(action)
-    ) {
+    if (!recommendationId || !['accepted', 'rejected', 'modified'].includes(action)) {
       return res.status(400).json({
         success: false,
-        error:
-          'Valid recommendationId and action (accepted/rejected/modified) required'
+        error: 'Valid recommendationId and action (accepted/rejected/modified) required',
       });
     }
 
@@ -410,7 +376,7 @@ router.post('/feedback', async (req: Request, res: Response) => {
       recommendationId,
       action,
       feedback,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     res.json({
@@ -418,14 +384,14 @@ router.post('/feedback', async (req: Request, res: Response) => {
       data: {
         message: 'Feedback recorded successfully',
         recommendationId,
-        action
-      }
+        action,
+      },
     });
   } catch (error) {
     console.error('Failed to record recommendation feedback:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to record feedback'
+      error: 'Failed to record feedback',
     });
   }
 });
@@ -445,7 +411,7 @@ router.get('/savings-simulator', async (req: Request, res: Response) => {
         monthlySavings: 47.97,
         annualSavings: 575.64,
         riskLevel: 'low',
-        effort: 'minimal'
+        effort: 'minimal',
       },
       {
         name: 'Rotation Strategy',
@@ -453,7 +419,7 @@ router.get('/savings-simulator', async (req: Request, res: Response) => {
         monthlySavings: 23.98,
         annualSavings: 287.76,
         riskLevel: 'minimal',
-        effort: 'moderate'
+        effort: 'moderate',
       },
       {
         name: 'Bundle Consolidation',
@@ -461,8 +427,8 @@ router.get('/savings-simulator', async (req: Request, res: Response) => {
         monthlySavings: 15.99,
         annualSavings: 191.88,
         riskLevel: 'minimal',
-        effort: 'low'
-      }
+        effort: 'low',
+      },
     ];
 
     res.json({
@@ -471,16 +437,16 @@ router.get('/savings-simulator', async (req: Request, res: Response) => {
         strategies,
         recommendations: {
           topStrategy: strategies[0],
-          balancedStrategy: strategies[1]
+          balancedStrategy: strategies[1],
         },
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     console.error('Failed to generate savings simulation:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to generate savings simulation'
+      error: 'Failed to generate savings simulation',
     });
   }
 });

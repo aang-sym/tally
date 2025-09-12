@@ -1,14 +1,13 @@
 # ProgressUpdateResponseData
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**updatedCount** | **number** |  | [optional] [default to undefined]
-**totalRequested** | **number** |  | [optional] [default to undefined]
-**status** | **string** |  | [optional] [default to undefined]
-**message** | **string** |  | [optional] [default to undefined]
+| Name               | Type       | Description | Notes                             |
+| ------------------ | ---------- | ----------- | --------------------------------- |
+| **updatedCount**   | **number** |             | [optional] [default to undefined] |
+| **totalRequested** | **number** |             | [optional] [default to undefined] |
+| **status**         | **string** |             | [optional] [default to undefined] |
+| **message**        | **string** |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -16,10 +15,10 @@ Name | Type | Description | Notes
 import { ProgressUpdateResponseData } from './api';
 
 const instance: ProgressUpdateResponseData = {
-    updatedCount,
-    totalRequested,
-    status,
-    message,
+  updatedCount,
+  totalRequested,
+  status,
+  message,
 };
 ```
 

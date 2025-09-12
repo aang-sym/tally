@@ -32,22 +32,26 @@ STREAMING_API_DEV_MODE=false
 ## Quota Management Features
 
 ### 📊 Automatic Tracking
+
 - Tracks API calls per month with automatic reset
 - Persistent storage in `streaming-api-quota.json`
 - Detailed call logging with success/failure status
 
 ### 🚨 Quota Protection
+
 - Pre-flight quota checking before each API call
 - Automatic rejection when quota exhausted
 - Low quota warnings (when < 10% or 50 calls remaining)
 
 ### 💾 Aggressive Caching
+
 - **Search results**: Cached for 24 hours
 - **Show details**: Cached for 24 hours
 - **Leaving soon**: Cached for 6 hours
 - **Newly added**: Cached for 12 hours
 
 ### 🎯 Smart API Usage
+
 - Skips availability check if search returns no results
 - Only enhances watchlist items when not in dev mode
 - Batch operations to minimize redundant calls
@@ -55,11 +59,13 @@ STREAMING_API_DEV_MODE=false
 ## API Endpoints
 
 ### Get Quota Status
+
 ```bash
 GET /api/streaming-quota
 ```
 
 Response:
+
 ```json
 {
   "month": "2025-08",
@@ -79,16 +85,19 @@ Response:
 ```
 
 ### Get Call Log
+
 ```bash
 GET /api/streaming-quota/log?limit=20
 ```
 
 ### Reset Quota (Development Only)
+
 ```bash
 POST /api/streaming-quota/reset
 ```
 
 ### Clear Cache
+
 ```bash
 POST /api/streaming-quota/clear-cache
 ```
@@ -96,6 +105,7 @@ POST /api/streaming-quota/clear-cache
 ## Usage Recommendations
 
 ### For Development
+
 ```bash
 # Set dev mode to avoid quota consumption
 STREAMING_API_DEV_MODE=true
@@ -103,6 +113,7 @@ STREAMING_API_MONTHLY_LIMIT=950
 ```
 
 ### For Testing with Real API
+
 ```bash
 # Use a lower limit for safety during testing
 STREAMING_API_DEV_MODE=false
@@ -110,6 +121,7 @@ STREAMING_API_MONTHLY_LIMIT=100
 ```
 
 ### For Production
+
 ```bash
 # Full quota with monitoring
 STREAMING_API_DEV_MODE=false
@@ -120,23 +132,28 @@ NODE_ENV=production
 ## Quota Conservation Strategies
 
 ### 1. **Use Development Mode**
+
 Enable `STREAMING_API_DEV_MODE=true` for:
+
 - Local development
 - Testing features
 - Frontend work
 - When API data isn't critical
 
 ### 2. **Cache-First Approach**
+
 - Data is cached for hours/days
 - Most requests served from cache
 - Manual cache clearing available
 
 ### 3. **Smart Enhancement**
+
 - Watchlist items only enhanced when necessary
 - Search failures don't trigger availability checks
 - Quota checked before each API call
 
 ### 4. **Monitoring & Alerts**
+
 - Server startup shows quota status
 - Console warnings when quota is low
 - API returns 429 when quota exhausted
@@ -144,6 +161,7 @@ Enable `STREAMING_API_DEV_MODE=true` for:
 ## Error Handling
 
 ### Quota Exhausted
+
 ```json
 {
   "error": "QUOTA_EXHAUSTED",
@@ -157,6 +175,7 @@ Enable `STREAMING_API_DEV_MODE=true` for:
 ```
 
 ### Low Quota Warning
+
 ```
 ⚠️  API quota running low: 45/950 calls remaining. Consider enabling dev mode.
 ```
@@ -172,7 +191,7 @@ Enable `STREAMING_API_DEV_MODE=true` for:
 ## File Locations
 
 - **Config**: `/apps/api/src/config/index.ts`
-- **Quota Tracker**: `/apps/api/src/services/quota-tracker.ts` 
+- **Quota Tracker**: `/apps/api/src/services/quota-tracker.ts`
 - **Service Layer**: `/apps/api/src/services/streaming-availability.ts`
 - **Quota Data**: `streaming-api-quota.json` (auto-generated)
 - **Environment**: `.env` (copy from `.env.example`)

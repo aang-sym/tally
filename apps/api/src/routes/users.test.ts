@@ -16,22 +16,16 @@ app.use(identifyUser);
 app.use('/users', usersDbRouter);
 
 describe('GET /users/:id/profile', () => {
-
   afterAll(async () => {
     // Clean up the user created during the test
-    const { error } = await supabase
-      .from('users')
-      .delete()
-      .eq('id', TEST_USER_ID);
+    const { error } = await supabase.from('users').delete().eq('id', TEST_USER_ID);
     if (error) {
       console.error('Failed to clean up test user', error);
     }
   });
 
   it('should return 404 for a user that does not exist and no header is provided', async () => {
-    await request(app)
-      .get(`/users/non-existent-user`)
-      .expect(404);
+    await request(app).get(`/users/non-existent-user`).expect(404);
   });
 
   it('should create a new user and return their profile on the first request', async () => {

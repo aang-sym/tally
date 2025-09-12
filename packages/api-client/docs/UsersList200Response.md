@@ -1,12 +1,11 @@
 # UsersList200Response
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | [**UsersList200ResponseData**](UsersList200ResponseData.md) |  | [optional] [default to undefined]
+| Name        | Type                                                        | Description | Notes                             |
+| ----------- | ----------------------------------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                                                 |             | [optional] [default to undefined] |
+| **data**    | [**UsersList200ResponseData**](UsersList200ResponseData.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { UsersList200Response } from './api';
 
 const instance: UsersList200Response = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

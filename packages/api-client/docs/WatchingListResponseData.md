@@ -1,12 +1,11 @@
 # WatchingListResponseData
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**shows** | [**Array&lt;WatchingListResponseDataShowsInner&gt;**](WatchingListResponseDataShowsInner.md) |  | [optional] [default to undefined]
-**totalCount** | **number** |  | [optional] [default to undefined]
+| Name           | Type                                                                                         | Description | Notes                             |
+| -------------- | -------------------------------------------------------------------------------------------- | ----------- | --------------------------------- |
+| **shows**      | [**Array&lt;WatchingListResponseDataShowsInner&gt;**](WatchingListResponseDataShowsInner.md) |             | [optional] [default to undefined] |
+| **totalCount** | **number**                                                                                   |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { WatchingListResponseData } from './api';
 
 const instance: WatchingListResponseData = {
-    shows,
-    totalCount,
+  shows,
+  totalCount,
 };
 ```
 

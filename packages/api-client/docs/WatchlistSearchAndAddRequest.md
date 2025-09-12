@@ -1,13 +1,12 @@
 # WatchlistSearchAndAddRequest
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**query** | **string** |  | [optional] [default to undefined]
-**tmdbId** | **number** |  | [optional] [default to undefined]
-**status** | **string** |  | [optional] [default to StatusEnum_Watchlist]
+| Name       | Type       | Description | Notes                                        |
+| ---------- | ---------- | ----------- | -------------------------------------------- |
+| **query**  | **string** |             | [optional] [default to undefined]            |
+| **tmdbId** | **number** |             | [optional] [default to undefined]            |
+| **status** | **string** |             | [optional] [default to StatusEnum_Watchlist] |
 
 ## Example
 
@@ -15,9 +14,9 @@ Name | Type | Description | Notes
 import { WatchlistSearchAndAddRequest } from './api';
 
 const instance: WatchlistSearchAndAddRequest = {
-    query,
-    tmdbId,
-    status,
+  query,
+  tmdbId,
+  status,
 };
 ```
 

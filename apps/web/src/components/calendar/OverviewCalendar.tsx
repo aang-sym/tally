@@ -82,7 +82,9 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
           setEpisodeDataCache(processedCache);
         }
       }
-    } catch {}
+    } catch {
+      // Ignore cache loading errors
+    }
   }, []);
 
   useEffect(() => {
@@ -135,7 +137,9 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
         const next = { ...prev, [tmdbId]: episodeData } as EpisodeDataCache;
         try {
           localStorage.setItem('episode_data_cache_v1', JSON.stringify(next));
-        } catch {}
+        } catch {
+          // Ignore localStorage errors
+        }
         return next;
       });
 
@@ -190,7 +194,9 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
             return; // Fresh cache hit
           }
         }
-      } catch {}
+      } catch {
+        // Ignore cache reading errors
+      }
 
       if ((userShows?.length || 0) === 0) {
         // No shows available, show empty state
@@ -213,52 +219,15 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
           providersLegend,
         };
         localStorage.setItem(cacheKey, JSON.stringify(payload));
-      } catch {}
+      } catch {
+        // Ignore localStorage errors
+      }
     } catch (error) {
       console.error('OverviewCalendar - Failed to generate calendar data:', error);
       setCalendarData([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  const generateCalendarData = (apiData: any[]): CalendarDay[] => {
-    const data: CalendarDay[] = [];
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const today = new Date();
-
-      // Find relevant month data from API
-      const monthData = apiData.find((m) => {
-        const monthDate = new Date(m.month);
-        return monthDate.getMonth() === month && monthDate.getFullYear() === year;
-      });
-
-      const activeServices =
-        monthData?.recommendations.map((rec: any) => ({
-          serviceId: rec.service.toLowerCase().replace(' ', '-'),
-          serviceName: rec.service,
-          intensity: rec.action === 'keep' ? 0.8 : rec.action === 'subscribe' ? 0.6 : 0.2,
-          userShows: rec.shows || [],
-          allShows: rec.shows || [],
-          cost: rec.cost || 0,
-        })) || [];
-
-      data.push({
-        date: dateStr,
-        day,
-        isCurrentMonth: true,
-        isToday: dateStr === today.toISOString().split('T')[0],
-        activeServices,
-        savings: monthData?.savings || 0,
-      });
-    }
-
-    return data;
   };
 
   const generateUserBasedCalendarData = async (): Promise<{
@@ -580,72 +549,6 @@ const OverviewCalendar: React.FC<OverviewCalendarProps> = ({
       'Paramount+': 'bg-orange-500',
     };
     return colors[providerName] || 'bg-gray-400';
-  };
-
-  const generateMockCalendarData = (): CalendarDay[] => {
-    const data: CalendarDay[] = [];
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const today = new Date();
-
-      // Mock streaming service activity
-      const activeServices = [];
-
-      // Netflix - active most days
-      if (Math.random() > 0.3) {
-        activeServices.push({
-          serviceId: 'netflix',
-          serviceName: 'Netflix',
-          intensity: 0.6 + Math.random() * 0.4,
-          userShows: ['Stranger Things', 'The Crown'],
-          allShows: ['Stranger Things', 'The Crown', 'Ozark'],
-          cost: 15.99,
-        });
-      }
-
-      // HBO Max - active some days
-      if (Math.random() > 0.6) {
-        activeServices.push({
-          serviceId: 'hbo-max',
-          serviceName: 'HBO Max',
-          intensity: 0.4 + Math.random() * 0.6,
-          userShows: ['House of the Dragon'],
-          allShows: ['House of the Dragon', 'The Last of Us'],
-          cost: 14.99,
-        });
-      }
-
-      // Disney+ - active occasionally
-      if (Math.random() > 0.8) {
-        activeServices.push({
-          serviceId: 'disney-plus',
-          serviceName: 'Disney Plus',
-          intensity: 0.3 + Math.random() * 0.4,
-          userShows: ['The Mandalorian'],
-          allShows: ['The Mandalorian', 'Loki'],
-          cost: 12.99,
-        });
-      }
-
-      data.push({
-        date: dateStr,
-        day,
-        isCurrentMonth: true,
-        isToday: dateStr === today.toISOString().split('T')[0],
-        activeServices,
-        savings: Math.random() > 0.7 ? Math.random() * 30 : 0,
-        recommendations:
-          Math.random() > 0.9
-            ? [{ type: 'optimization', message: 'Consider pausing service' }]
-            : [],
-      });
-    }
-
-    return data;
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {

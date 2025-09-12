@@ -497,7 +497,9 @@ const MyShows: React.FC = () => {
             },
           }));
         }
-      } catch {}
+      } catch {
+        // Ignore episode count errors
+      }
 
       // Set default selected season to latest
       if (data.analysis?.seasonInfo?.length > 0) {

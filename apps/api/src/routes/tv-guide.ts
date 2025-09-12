@@ -9,14 +9,14 @@ const router = express.Router();
 // Helper: color map for known services
 function getServiceColor(serviceName: string): string {
   const colorMap: Record<string, string> = {
-    'Netflix': '#E50914',
-    'HBO Max': '#9B59B6', 
+    Netflix: '#E50914',
+    'HBO Max': '#9B59B6',
     'Disney+': '#113CCF',
     'Amazon Prime Video': '#00A8E1',
     'Apple TV+': '#000000',
     'Paramount+': '#0064FF',
-    'Hulu': '#1CE783',
-    'Peacock': '#F74C4C'
+    Hulu: '#1CE783',
+    Peacock: '#F74C4C',
   };
   return colorMap[serviceName] || '#6B7280';
 }
@@ -78,7 +78,15 @@ interface TVGuideResponse {
 }
 
 // Utility: compute active window and upcoming from TMDB analysis
-async function buildShowFromTMDB(tmdbId: number, title: string, provider: any, start: Date, end: Date, country = 'US', bufferDays?: number): Promise<TVGuideShow | null> {
+async function buildShowFromTMDB(
+  tmdbId: number,
+  title: string,
+  provider: any,
+  start: Date,
+  end: Date,
+  country = 'US',
+  bufferDays?: number
+): Promise<TVGuideShow | null> {
   if (!tmdbService.isAvailable) return null;
   try {
     const analysis = await tmdbService.analyzeShow(tmdbId, country);
@@ -91,7 +99,7 @@ async function buildShowFromTMDB(tmdbId: number, title: string, provider: any, s
         title: ep.title || `Episode ${ep.episodeNumber}`,
         overview: ep.overview || undefined,
         isWatched: false,
-        tmdbId
+        tmdbId,
       })) as TVGuideEpisode[];
 
     if (!episodes.length) return null;
@@ -102,7 +110,7 @@ async function buildShowFromTMDB(tmdbId: number, title: string, provider: any, s
     const lastAir = new Date(episodes[episodes.length - 1].airDate);
 
     // Filter upcoming episodes within requested range
-    const upcoming = episodes.filter(ep => {
+    const upcoming = episodes.filter((ep) => {
       const d = new Date(ep.airDate);
       return d >= start && d <= end;
     });
@@ -118,18 +126,22 @@ async function buildShowFromTMDB(tmdbId: number, title: string, provider: any, s
       poster,
       overview: analysis?.showDetails?.overview || undefined,
       status: analysis?.showDetails?.status || undefined,
-      streamingServices: provider ? [{
-        id: provider.id,
-        name: provider.name,
-        logo: provider.logo_path,
-        color: getServiceColor(provider.name),
-        textColor: '#FFFFFF'
-      }] : [],
+      streamingServices: provider
+        ? [
+            {
+              id: provider.id,
+              name: provider.name,
+              logo: provider.logo_path,
+              color: getServiceColor(provider.name),
+              textColor: '#FFFFFF',
+            },
+          ]
+        : [],
       nextEpisodeDate: upcoming[0]?.airDate,
       activeWindow: { start: format(barStart, 'yyyy-MM-dd'), end: format(lastAir, 'yyyy-MM-dd') },
       upcomingEpisodes: upcoming,
       bufferDays,
-      country
+      country,
     };
   } catch (e) {
     console.error('TMDB analyze failed for', tmdbId, e);
@@ -143,7 +155,10 @@ async function buildShowFromTMDB(tmdbId: number, title: string, provider: any, s
  */
 router.get('/', async (req, res) => {
   try {
-    const { startDate = format(new Date(), 'yyyy-MM-dd'), endDate = format(addDays(new Date(), 30), 'yyyy-MM-dd') } = req.query;
+    const {
+      startDate = format(new Date(), 'yyyy-MM-dd'),
+      endDate = format(addDays(new Date(), 30), 'yyyy-MM-dd'),
+    } = req.query;
     const headerUser = (req.headers['x-user-id'] as string) || '';
     const userId = headerUser || (req.query.userId as string) || 'user-1';
 
@@ -165,11 +180,13 @@ router.get('/', async (req, res) => {
 
       const { data: userShows } = await supabase
         .from('user_shows')
-        .select(`
+        .select(
+          `
           id, status, buffer_days, country_code, selected_service_id,
           shows:show_id ( tmdb_id, title ),
           service:selected_service_id ( name, logo_path )
-        `)
+        `
+        )
         .eq('user_id', userId)
         .in('status', ['watching', 'watchlist']);
 
@@ -177,22 +194,34 @@ router.get('/', async (req, res) => {
       for (const row of userShows || []) {
         const tmdbId = row.shows?.tmdb_id;
         const title = row.shows?.title || '';
-        const provider = row.service ? {
-          id: row.selected_service_id,
-          name: row.service.name,
-          logo_path: row.service.logo_path ? `https://image.tmdb.org/t/p/w92${row.service.logo_path}` : ''
-        } : null;
+        const provider = row.service
+          ? {
+              id: row.selected_service_id,
+              name: row.service.name,
+              logo_path: row.service.logo_path
+                ? `https://image.tmdb.org/t/p/w92${row.service.logo_path}`
+                : '',
+            }
+          : null;
         const country = row.country_code || defaultCountry;
         const bufferDays = row.buffer_days || 0;
         if (tmdbId) {
-          const show = await buildShowFromTMDB(tmdbId, title, provider, start, end, country, bufferDays);
+          const show = await buildShowFromTMDB(
+            tmdbId,
+            title,
+            provider,
+            start,
+            end,
+            country,
+            bufferDays
+          );
           if (show) tvGuideShows.push(show);
         }
       }
 
-      const serviceShowMap = new Map<string, {service: any, shows: TVGuideShow[]}>();
-      tvGuideShows.forEach(show => {
-        show.streamingServices.forEach(service => {
+      const serviceShowMap = new Map<string, { service: any; shows: TVGuideShow[] }>();
+      tvGuideShows.forEach((show) => {
+        show.streamingServices.forEach((service) => {
           const key = `${service.id}-${service.name}`;
           if (!serviceShowMap.has(key)) serviceShowMap.set(key, { service, shows: [] });
           serviceShowMap.get(key)!.shows.push(show);
@@ -203,7 +232,7 @@ router.get('/', async (req, res) => {
         services: Array.from(serviceShowMap.values()),
         dateRange: { startDate: startDate as string, endDate: endDate as string },
         totalShows: tvGuideShows.length,
-        totalEpisodes: tvGuideShows.reduce((t, s) => t + s.upcomingEpisodes.length, 0)
+        totalEpisodes: tvGuideShows.reduce((t, s) => t + s.upcomingEpisodes.length, 0),
       };
 
       return res.json({ success: true, data: response });
@@ -218,11 +247,11 @@ router.get('/', async (req, res) => {
           services: [],
           dateRange: {
             startDate: startDate as string,
-            endDate: endDate as string
+            endDate: endDate as string,
           },
           totalShows: 0,
-          totalEpisodes: 0
-        }
+          totalEpisodes: 0,
+        },
       });
     }
     // Build TV guide from real TMDB analysis for each watchlist item
@@ -231,20 +260,28 @@ router.get('/', async (req, res) => {
 
     for (const item of userWatchlist) {
       const provider = item.streamingProvider || null;
-      const show = await buildShowFromTMDB(item.tmdbId, item.title, provider, start, end, item.country || country, item.bufferDays);
+      const show = await buildShowFromTMDB(
+        item.tmdbId,
+        item.title,
+        provider,
+        start,
+        end,
+        item.country || country,
+        item.bufferDays
+      );
       if (show) tvGuideShows.push(show);
     }
 
     // Group by selected provider per show
-    const serviceShowMap = new Map<string, {service: any, shows: TVGuideShow[]}>();
-    
-    tvGuideShows.forEach(show => {
-      show.streamingServices.forEach(service => {
+    const serviceShowMap = new Map<string, { service: any; shows: TVGuideShow[] }>();
+
+    tvGuideShows.forEach((show) => {
+      show.streamingServices.forEach((service) => {
         const key = `${service.id}-${service.name}`;
         if (!serviceShowMap.has(key)) {
           serviceShowMap.set(key, {
             service,
-            shows: []
+            shows: [],
           });
         }
         serviceShowMap.get(key)!.shows.push(show);
@@ -255,23 +292,22 @@ router.get('/', async (req, res) => {
       services: Array.from(serviceShowMap.values()),
       dateRange: {
         startDate: startDate as string,
-        endDate: endDate as string
+        endDate: endDate as string,
       },
       totalShows: tvGuideShows.length,
-      totalEpisodes: tvGuideShows.reduce((total, show) => total + show.upcomingEpisodes.length, 0)
+      totalEpisodes: tvGuideShows.reduce((total, show) => total + show.upcomingEpisodes.length, 0),
     };
 
     res.json({
       success: true,
-      data: response
+      data: response,
     });
-
   } catch (error) {
     console.error('TV Guide API error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to load TV guide data',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -283,7 +319,11 @@ router.get('/', async (req, res) => {
 router.get('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const { startDate = format(new Date(), 'yyyy-MM-dd'), endDate = format(addDays(new Date(), 30), 'yyyy-MM-dd'), country = 'US' } = req.query as any;
+    const {
+      startDate = format(new Date(), 'yyyy-MM-dd'),
+      endDate = format(addDays(new Date(), 30), 'yyyy-MM-dd'),
+      country = 'US',
+    } = req.query as any;
 
     const start = parseISO(startDate as string);
     const end = parseISO(endDate as string);
@@ -291,13 +331,20 @@ router.get('/user/:userId', async (req, res) => {
     const watchlist = watchlistStorageService.getUserWatchlist(userId);
     const shows: TVGuideShow[] = [];
     for (const item of watchlist) {
-      const show = await buildShowFromTMDB(item.tmdbId, item.title, item.streamingProvider, start, end, country);
+      const show = await buildShowFromTMDB(
+        item.tmdbId,
+        item.title,
+        item.streamingProvider,
+        start,
+        end,
+        country
+      );
       if (show) shows.push(show);
     }
 
-    const serviceShowMap = new Map<string, {service: any, shows: TVGuideShow[]}>();
-    shows.forEach(show => {
-      show.streamingServices.forEach(service => {
+    const serviceShowMap = new Map<string, { service: any; shows: TVGuideShow[] }>();
+    shows.forEach((show) => {
+      show.streamingServices.forEach((service) => {
         const key = `${service.id}-${service.name}`;
         if (!serviceShowMap.has(key)) serviceShowMap.set(key, { service, shows: [] });
         serviceShowMap.get(key)!.shows.push(show);
@@ -308,17 +355,16 @@ router.get('/user/:userId', async (req, res) => {
       services: Array.from(serviceShowMap.values()),
       dateRange: { startDate: startDate as string, endDate: endDate as string },
       totalShows: shows.length,
-      totalEpisodes: shows.reduce((t, s) => t + s.upcomingEpisodes.length, 0)
+      totalEpisodes: shows.reduce((t, s) => t + s.upcomingEpisodes.length, 0),
     };
 
     res.json({ success: true, data: response });
-
   } catch (error) {
     console.error('User TV Guide API error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to load user TV guide data',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });

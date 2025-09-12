@@ -1,13 +1,12 @@
 # WatchlistListResponseData
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**shows** | [**Array&lt;WatchlistRow&gt;**](WatchlistRow.md) |  | [optional] [default to undefined]
-**totalCount** | **number** |  | [optional] [default to undefined]
-**statusFilter** | **string** |  | [optional] [default to undefined]
+| Name             | Type                                             | Description | Notes                             |
+| ---------------- | ------------------------------------------------ | ----------- | --------------------------------- |
+| **shows**        | [**Array&lt;WatchlistRow&gt;**](WatchlistRow.md) |             | [optional] [default to undefined] |
+| **totalCount**   | **number**                                       |             | [optional] [default to undefined] |
+| **statusFilter** | **string**                                       |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -15,9 +14,9 @@ Name | Type | Description | Notes
 import { WatchlistListResponseData } from './api';
 
 const instance: WatchlistListResponseData = {
-    shows,
-    totalCount,
-    statusFilter,
+  shows,
+  totalCount,
+  statusFilter,
 };
 ```
 

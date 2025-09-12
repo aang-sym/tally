@@ -57,7 +57,6 @@ const Recommendations: React.FC = () => {
     action: 'accepted' | 'rejected'
   ) => {
     try {
-      const token = localStorage.getItem('authToken') || undefined;
       await apiRequest(`${API_ENDPOINTS.recommendations}/feedback`, {
         method: 'POST',
         headers: {

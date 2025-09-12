@@ -2,11 +2,7 @@ const { ESLint } = require('eslint');
 
 module.exports = {
   parser: '@typescript-eslint/parser',
-  extends: [
-    'eslint:recommended',
-    'plugin:@typescript-eslint/recommended',
-    'prettier',
-  ],
+  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended', 'prettier'],
   plugins: ['@typescript-eslint', 'prettier'],
   parserOptions: {
     ecmaVersion: 2022,

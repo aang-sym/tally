@@ -1,13 +1,12 @@
 # LoginResponse
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**token** | **string** |  | [optional] [default to undefined]
-**user** | [**UserProfile**](UserProfile.md) |  | [optional] [default to undefined]
+| Name        | Type                              | Description | Notes                             |
+| ----------- | --------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                       |             | [optional] [default to undefined] |
+| **token**   | **string**                        |             | [optional] [default to undefined] |
+| **user**    | [**UserProfile**](UserProfile.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -15,9 +14,9 @@ Name | Type | Description | Notes
 import { LoginResponse } from './api';
 
 const instance: LoginResponse = {
-    success,
-    token,
-    user,
+  success,
+  token,
+  user,
 };
 ```
 

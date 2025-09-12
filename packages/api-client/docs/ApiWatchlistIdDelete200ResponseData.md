@@ -1,11 +1,10 @@
 # ApiWatchlistIdDelete200ResponseData
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**message** | **string** |  | [optional] [default to undefined]
+| Name        | Type       | Description | Notes                             |
+| ----------- | ---------- | ----------- | --------------------------------- |
+| **message** | **string** |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -13,7 +12,7 @@ Name | Type | Description | Notes
 import { ApiWatchlistIdDelete200ResponseData } from './api';
 
 const instance: ApiWatchlistIdDelete200ResponseData = {
-    message,
+  message,
 };
 ```
 

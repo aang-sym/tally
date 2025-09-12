@@ -1,13 +1,12 @@
 # ApiWatchlistTmdbIdProgressPutRequest
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**seasonNumber** | **number** |  | [default to undefined]
-**episodeNumber** | **number** |  | [default to undefined]
-**status** | **string** |  | [default to undefined]
+| Name              | Type       | Description | Notes                  |
+| ----------------- | ---------- | ----------- | ---------------------- |
+| **seasonNumber**  | **number** |             | [default to undefined] |
+| **episodeNumber** | **number** |             | [default to undefined] |
+| **status**        | **string** |             | [default to undefined] |
 
 ## Example
 
@@ -15,9 +14,9 @@ Name | Type | Description | Notes
 import { ApiWatchlistTmdbIdProgressPutRequest } from './api';
 
 const instance: ApiWatchlistTmdbIdProgressPutRequest = {
-    seasonNumber,
-    episodeNumber,
-    status,
+  seasonNumber,
+  episodeNumber,
+  status,
 };
 ```
 

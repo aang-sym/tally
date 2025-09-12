@@ -1,12 +1,11 @@
 # SubscriptionsEnvelope
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | [**SubscriptionsEnvelopeData**](SubscriptionsEnvelopeData.md) |  | [optional] [default to undefined]
+| Name        | Type                                                          | Description | Notes                             |
+| ----------- | ------------------------------------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                                                   |             | [optional] [default to undefined] |
+| **data**    | [**SubscriptionsEnvelopeData**](SubscriptionsEnvelopeData.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { SubscriptionsEnvelope } from './api';
 
 const instance: SubscriptionsEnvelope = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

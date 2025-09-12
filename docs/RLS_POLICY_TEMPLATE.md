@@ -1,5 +1,3 @@
-
-
 # Row-Level Security (RLS) Policy Template
 
 ## 1. Purpose

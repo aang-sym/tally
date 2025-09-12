@@ -1,13 +1,12 @@
 # SelectedProvider
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**id** | **number** | TMDB provider id | [default to undefined]
-**name** | **string** |  | [default to undefined]
-**logo_path** | **string** |  | [default to undefined]
+| Name          | Type       | Description      | Notes                  |
+| ------------- | ---------- | ---------------- | ---------------------- |
+| **id**        | **number** | TMDB provider id | [default to undefined] |
+| **name**      | **string** |                  | [default to undefined] |
+| **logo_path** | **string** |                  | [default to undefined] |
 
 ## Example
 
@@ -15,9 +14,9 @@ Name | Type | Description | Notes
 import { SelectedProvider } from './api';
 
 const instance: SelectedProvider = {
-    id,
-    name,
-    logo_path,
+  id,
+  name,
+  logo_path,
 };
 ```
 

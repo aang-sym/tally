@@ -1,6 +1,6 @@
 /**
  * Episode Progress API Routes
- * 
+ *
  * Handles episode watch progress tracking with live statistics,
  * auto-completion features, and bulk operations.
  */
@@ -14,7 +14,7 @@ const router = Router();
 // Middleware to extract userId (stub implementation)
 const authenticateUser = (req: Request, res: Response, next: any) => {
   // TODO: Replace with proper JWT authentication
-  const userId = req.headers['x-user-id'] as string || 'user-1';
+  const userId = (req.headers['x-user-id'] as string) || 'user-1';
   (req as any).userId = userId;
   next();
 };
@@ -28,11 +28,11 @@ router.use(authenticateUser);
 router.get('/:showId', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { showId } = req.params;
@@ -43,42 +43,42 @@ router.get('/:showId', async (req: Request, res: Response) => {
     if (!showDetails) {
       return res.status(404).json({
         success: false,
-        error: 'Show not found'
+        error: 'Show not found',
       });
     }
 
     // Get all episode IDs for this show
-    const allEpisodeIds = showDetails.seasons.flatMap(season => 
-      season.episodes.map(episode => episode.id)
+    const allEpisodeIds = showDetails.seasons.flatMap((season) =>
+      season.episodes.map((episode) => episode.id)
     );
 
     // Get progress for all episodes
     const episodesWithProgress = await episodeProgressService.getEpisodesWithProgress(
-      userId, 
-      allEpisodeIds, 
+      userId,
+      allEpisodeIds,
       includeLiveStats
     );
 
     // Group episodes back into seasons
-    const seasonsWithProgress = showDetails.seasons.map(season => ({
+    const seasonsWithProgress = showDetails.seasons.map((season) => ({
       ...season,
-      episodes: season.episodes.map(episode => {
-        const episodeWithProgress = episodesWithProgress.find(ep => ep.id === episode.id);
+      episodes: season.episodes.map((episode) => {
+        const episodeWithProgress = episodesWithProgress.find((ep) => ep.id === episode.id);
         return {
           ...episode,
           progress: episodeWithProgress?.progress,
-          liveStats: episodeWithProgress?.liveStats
+          liveStats: episodeWithProgress?.liveStats,
         };
-      })
+      }),
     }));
 
     // Calculate overall progress
     const totalEpisodes = allEpisodeIds.length;
-    const watchedEpisodes = episodesWithProgress.filter(ep => 
-      ep.progress?.status === 'watched'
+    const watchedEpisodes = episodesWithProgress.filter(
+      (ep) => ep.progress?.status === 'watched'
     ).length;
-    const currentlyWatching = episodesWithProgress.filter(ep => 
-      ep.progress?.status === 'watching'
+    const currentlyWatching = episodesWithProgress.filter(
+      (ep) => ep.progress?.status === 'watching'
     ).length;
 
     res.json({
@@ -90,17 +90,16 @@ router.get('/:showId', async (req: Request, res: Response) => {
           totalEpisodes,
           watchedEpisodes,
           currentlyWatching,
-          completionPercentage: totalEpisodes > 0 
-            ? Math.round((watchedEpisodes / totalEpisodes) * 100) 
-            : 0
-        }
-      }
+          completionPercentage:
+            totalEpisodes > 0 ? Math.round((watchedEpisodes / totalEpisodes) * 100) : 0,
+        },
+      },
     });
   } catch (error) {
     console.error('Failed to get show progress:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve show progress'
+      error: 'Failed to retrieve show progress',
     });
   }
 });
@@ -112,11 +111,11 @@ router.get('/:showId', async (req: Request, res: Response) => {
 router.post('/episode/:episodeId/watching', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { episodeId } = req.params;
@@ -126,7 +125,7 @@ router.post('/episode/:episodeId/watching', async (req: Request, res: Response) 
     if (!progress) {
       return res.status(400).json({
         success: false,
-        error: 'Failed to mark episode as watching'
+        error: 'Failed to mark episode as watching',
       });
     }
 
@@ -138,14 +137,14 @@ router.post('/episode/:episodeId/watching', async (req: Request, res: Response) 
       data: {
         progress,
         liveStats,
-        message: 'Episode marked as currently watching'
-      }
+        message: 'Episode marked as currently watching',
+      },
     });
   } catch (error) {
     console.error('Failed to mark episode as watching:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to mark episode as watching'
+      error: 'Failed to mark episode as watching',
     });
   }
 });
@@ -157,11 +156,11 @@ router.post('/episode/:episodeId/watching', async (req: Request, res: Response) 
 router.post('/episode/:episodeId/watched', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { episodeId } = req.params;
@@ -171,7 +170,7 @@ router.post('/episode/:episodeId/watched', async (req: Request, res: Response) =
     if (!progress) {
       return res.status(400).json({
         success: false,
-        error: 'Failed to mark episode as watched'
+        error: 'Failed to mark episode as watched',
       });
     }
 
@@ -183,14 +182,14 @@ router.post('/episode/:episodeId/watched', async (req: Request, res: Response) =
       data: {
         progress,
         liveStats,
-        message: 'Episode marked as watched'
-      }
+        message: 'Episode marked as watched',
+      },
     });
   } catch (error) {
     console.error('Failed to mark episode as watched:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to mark episode as watched'
+      error: 'Failed to mark episode as watched',
     });
   }
 });
@@ -198,20 +197,20 @@ router.post('/episode/:episodeId/watched', async (req: Request, res: Response) =
 /**
  * POST /api/progress/bulk-update
  * Bulk update multiple episodes
- * 
- * Body: { 
- *   episodeIds: string[], 
+ *
+ * Body: {
+ *   episodeIds: string[],
  *   status: 'watched' | 'unwatched'
  * }
  */
 router.post('/bulk-update', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { episodeIds, status } = req.body;
@@ -219,22 +218,18 @@ router.post('/bulk-update', async (req: Request, res: Response) => {
     if (!Array.isArray(episodeIds) || episodeIds.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'episodeIds must be a non-empty array'
+        error: 'episodeIds must be a non-empty array',
       });
     }
 
     if (!['watched', 'unwatched'].includes(status)) {
       return res.status(400).json({
         success: false,
-        error: 'status must be either "watched" or "unwatched"'
+        error: 'status must be either "watched" or "unwatched"',
       });
     }
 
-    const updates = await episodeProgressService.bulkUpdateEpisodes(
-      userId, 
-      episodeIds, 
-      status
-    );
+    const updates = await episodeProgressService.bulkUpdateEpisodes(userId, episodeIds, status);
 
     res.json({
       success: true,
@@ -242,14 +237,14 @@ router.post('/bulk-update', async (req: Request, res: Response) => {
         updatedCount: updates.length,
         totalRequested: episodeIds.length,
         updates,
-        message: `Bulk updated ${updates.length} episodes to ${status}`
-      }
+        message: `Bulk updated ${updates.length} episodes to ${status}`,
+      },
     });
   } catch (error) {
     console.error('Failed to bulk update episodes:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to bulk update episodes'
+      error: 'Failed to bulk update episodes',
     });
   }
 });
@@ -257,17 +252,17 @@ router.post('/bulk-update', async (req: Request, res: Response) => {
 /**
  * PUT /api/progress/episode/:episodeId/rating
  * Rate an episode
- * 
+ *
  * Body: { rating: number } (0.0-10.0)
  */
 router.put('/episode/:episodeId/rating', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { episodeId } = req.params;
@@ -276,7 +271,7 @@ router.put('/episode/:episodeId/rating', async (req: Request, res: Response) => 
     if (typeof rating !== 'number' || rating < 0 || rating > 10) {
       return res.status(400).json({
         success: false,
-        error: 'Rating must be a number between 0.0 and 10.0'
+        error: 'Rating must be a number between 0.0 and 10.0',
       });
     }
 
@@ -285,7 +280,7 @@ router.put('/episode/:episodeId/rating', async (req: Request, res: Response) => 
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: 'Failed to rate episode'
+        error: 'Failed to rate episode',
       });
     }
 
@@ -297,14 +292,14 @@ router.put('/episode/:episodeId/rating', async (req: Request, res: Response) => 
       data: {
         rating,
         liveStats,
-        message: `Episode rated ${rating}/10`
-      }
+        message: `Episode rated ${rating}/10`,
+      },
     });
   } catch (error) {
     console.error('Failed to rate episode:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to rate episode'
+      error: 'Failed to rate episode',
     });
   }
 });
@@ -316,11 +311,11 @@ router.put('/episode/:episodeId/rating', async (req: Request, res: Response) => 
 router.get('/user/stats', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
 
@@ -328,13 +323,13 @@ router.get('/user/stats', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: stats
+      data: stats,
     });
   } catch (error) {
     console.error('Failed to get user watch stats:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve user watch statistics'
+      error: 'Failed to retrieve user watch statistics',
     });
   }
 });
@@ -354,14 +349,14 @@ router.get('/episode/:episodeId/stats', async (req: Request, res: Response) => {
       data: {
         episodeId,
         ...liveStats,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     console.error('Failed to get episode stats:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve episode statistics'
+      error: 'Failed to retrieve episode statistics',
     });
   }
 });
@@ -373,11 +368,11 @@ router.get('/episode/:episodeId/stats', async (req: Request, res: Response) => {
 router.post('/season/:seasonId/mark-watched', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { seasonId } = req.params;
@@ -391,13 +386,13 @@ router.post('/season/:seasonId/mark-watched', async (req: Request, res: Response
 
     res.status(501).json({
       success: false,
-      error: 'Season marking not yet implemented - use bulk-update with episode IDs instead'
+      error: 'Season marking not yet implemented - use bulk-update with episode IDs instead',
     });
   } catch (error) {
     console.error('Failed to mark season as watched:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to mark season as watched'
+      error: 'Failed to mark season as watched',
     });
   }
 });
@@ -409,11 +404,11 @@ router.post('/season/:seasonId/mark-watched', async (req: Request, res: Response
 router.get('/episodes/currently-watching', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
 
@@ -424,14 +419,14 @@ router.get('/episodes/currently-watching', async (req: Request, res: Response) =
       data: {
         episodes: [],
         totalCount: 0,
-        message: 'Currently watching episodes endpoint - implementation pending'
-      }
+        message: 'Currently watching episodes endpoint - implementation pending',
+      },
     });
   } catch (error) {
     console.error('Failed to get currently watching episodes:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve currently watching episodes'
+      error: 'Failed to retrieve currently watching episodes',
     });
   }
 });

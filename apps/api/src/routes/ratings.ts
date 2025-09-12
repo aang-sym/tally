@@ -1,6 +1,6 @@
 /**
  * Rating API Routes
- * 
+ *
  * Handles rating operations for shows, seasons, and episodes,
  * including aggregate ratings and rating-based recommendations.
  */
@@ -13,7 +13,7 @@ const router = Router();
 // Middleware to extract userId (stub implementation)
 const authenticateUser = (req: Request, res: Response, next: any) => {
   // TODO: Replace with proper JWT authentication
-  const userId = req.headers['x-user-id'] as string || 'user-1';
+  const userId = (req.headers['x-user-id'] as string) || 'user-1';
   (req as any).userId = userId;
   next();
 };
@@ -23,17 +23,17 @@ router.use(authenticateUser);
 /**
  * POST /api/ratings/show/:userShowId
  * Rate a show (0.0-10.0)
- * 
+ *
  * Body: { rating: number }
  */
 router.post('/show/:userShowId', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { userShowId } = req.params;
@@ -42,7 +42,7 @@ router.post('/show/:userShowId', async (req: Request, res: Response) => {
     if (typeof rating !== 'number' || rating < 0 || rating > 10) {
       return res.status(400).json({
         success: false,
-        error: 'Rating must be a number between 0.0 and 10.0'
+        error: 'Rating must be a number between 0.0 and 10.0',
       });
     }
 
@@ -51,7 +51,7 @@ router.post('/show/:userShowId', async (req: Request, res: Response) => {
     if (!success) {
       return res.status(404).json({
         success: false,
-        error: 'Show not found or access denied'
+        error: 'Show not found or access denied',
       });
     }
 
@@ -59,14 +59,14 @@ router.post('/show/:userShowId', async (req: Request, res: Response) => {
       success: true,
       data: {
         rating,
-        message: `Show rated ${rating}/10`
-      }
+        message: `Show rated ${rating}/10`,
+      },
     });
   } catch (error) {
     console.error('Failed to rate show:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to rate show'
+      error: 'Failed to rate show',
     });
   }
 });
@@ -74,17 +74,17 @@ router.post('/show/:userShowId', async (req: Request, res: Response) => {
 /**
  * POST /api/ratings/season/:seasonId
  * Rate a season (0.0-10.0)
- * 
+ *
  * Body: { rating: number }
  */
 router.post('/season/:seasonId', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { seasonId } = req.params;
@@ -93,7 +93,7 @@ router.post('/season/:seasonId', async (req: Request, res: Response) => {
     if (typeof rating !== 'number' || rating < 0 || rating > 10) {
       return res.status(400).json({
         success: false,
-        error: 'Rating must be a number between 0.0 and 10.0'
+        error: 'Rating must be a number between 0.0 and 10.0',
       });
     }
 
@@ -102,7 +102,7 @@ router.post('/season/:seasonId', async (req: Request, res: Response) => {
     if (!ratingRecord) {
       return res.status(400).json({
         success: false,
-        error: 'Failed to rate season'
+        error: 'Failed to rate season',
       });
     }
 
@@ -114,14 +114,14 @@ router.post('/season/:seasonId', async (req: Request, res: Response) => {
       data: {
         rating,
         aggregateRating,
-        message: `Season rated ${rating}/10`
-      }
+        message: `Season rated ${rating}/10`,
+      },
     });
   } catch (error) {
     console.error('Failed to rate season:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to rate season'
+      error: 'Failed to rate season',
     });
   }
 });
@@ -129,17 +129,17 @@ router.post('/season/:seasonId', async (req: Request, res: Response) => {
 /**
  * POST /api/ratings/episode/:episodeId
  * Rate an episode (0.0-10.0)
- * 
+ *
  * Body: { rating: number }
  */
 router.post('/episode/:episodeId', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { episodeId } = req.params;
@@ -148,7 +148,7 @@ router.post('/episode/:episodeId', async (req: Request, res: Response) => {
     if (typeof rating !== 'number' || rating < 0 || rating > 10) {
       return res.status(400).json({
         success: false,
-        error: 'Rating must be a number between 0.0 and 10.0'
+        error: 'Rating must be a number between 0.0 and 10.0',
       });
     }
 
@@ -157,7 +157,7 @@ router.post('/episode/:episodeId', async (req: Request, res: Response) => {
     if (!success) {
       return res.status(400).json({
         success: false,
-        error: 'Failed to rate episode'
+        error: 'Failed to rate episode',
       });
     }
 
@@ -169,14 +169,14 @@ router.post('/episode/:episodeId', async (req: Request, res: Response) => {
       data: {
         rating,
         aggregateRating,
-        message: `Episode rated ${rating}/10`
-      }
+        message: `Episode rated ${rating}/10`,
+      },
     });
   } catch (error) {
     console.error('Failed to rate episode:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to rate episode'
+      error: 'Failed to rate episode',
     });
   }
 });
@@ -196,14 +196,14 @@ router.get('/show/:showId/aggregate', async (req: Request, res: Response) => {
       data: {
         showId,
         ...aggregateRating,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     console.error('Failed to get show aggregate rating:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve show aggregate rating'
+      error: 'Failed to retrieve show aggregate rating',
     });
   }
 });
@@ -223,14 +223,14 @@ router.get('/season/:seasonId/aggregate', async (req: Request, res: Response) =>
       data: {
         seasonId,
         ...aggregateRating,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     console.error('Failed to get season aggregate rating:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve season aggregate rating'
+      error: 'Failed to retrieve season aggregate rating',
     });
   }
 });
@@ -250,14 +250,14 @@ router.get('/episode/:episodeId/aggregate', async (req: Request, res: Response) 
       data: {
         episodeId,
         ...aggregateRating,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     console.error('Failed to get episode aggregate rating:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve episode aggregate rating'
+      error: 'Failed to retrieve episode aggregate rating',
     });
   }
 });
@@ -269,11 +269,11 @@ router.get('/episode/:episodeId/aggregate', async (req: Request, res: Response) 
 router.get('/user/stats', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
 
@@ -281,13 +281,13 @@ router.get('/user/stats', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: stats
+      data: stats,
     });
   } catch (error) {
     console.error('Failed to get user rating stats:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve user rating statistics'
+      error: 'Failed to retrieve user rating statistics',
     });
   }
 });
@@ -299,11 +299,11 @@ router.get('/user/stats', async (req: Request, res: Response) => {
 router.get('/user/preferences', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
 
@@ -311,13 +311,13 @@ router.get('/user/preferences', async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: preferences
+      data: preferences,
     });
   } catch (error) {
     console.error('Failed to get user rating preferences:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve user rating preferences'
+      error: 'Failed to retrieve user rating preferences',
     });
   }
 });
@@ -337,14 +337,14 @@ router.get('/top-rated', async (req: Request, res: Response) => {
       data: {
         shows: topRatedShows,
         totalCount: topRatedShows.length,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   } catch (error) {
     console.error('Failed to get top-rated shows:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve top-rated shows'
+      error: 'Failed to retrieve top-rated shows',
     });
   }
 });
@@ -352,7 +352,7 @@ router.get('/top-rated', async (req: Request, res: Response) => {
 /**
  * POST /api/ratings/batch
  * Batch rate multiple items at once
- * 
+ *
  * Body: {
  *   ratings: Array<{
  *     type: 'show' | 'season' | 'episode',
@@ -364,11 +364,11 @@ router.get('/top-rated', async (req: Request, res: Response) => {
 router.post('/batch', async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
-    
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { ratings } = req.body;
@@ -376,7 +376,7 @@ router.post('/batch', async (req: Request, res: Response) => {
     if (!Array.isArray(ratings) || ratings.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'ratings must be a non-empty array'
+        error: 'ratings must be a non-empty array',
       });
     }
 
@@ -385,14 +385,14 @@ router.post('/batch', async (req: Request, res: Response) => {
       if (!['show', 'season', 'episode'].includes(rating.type)) {
         return res.status(400).json({
           success: false,
-          error: `Invalid rating type: ${rating.type}. Must be 'show', 'season', or 'episode'`
+          error: `Invalid rating type: ${rating.type}. Must be 'show', 'season', or 'episode'`,
         });
       }
 
       if (typeof rating.rating !== 'number' || rating.rating < 0 || rating.rating > 10) {
         return res.status(400).json({
           success: false,
-          error: `Invalid rating value: ${rating.rating}. Must be between 0.0 and 10.0`
+          error: `Invalid rating value: ${rating.rating}. Must be between 0.0 and 10.0`,
         });
       }
     }
@@ -421,7 +421,7 @@ router.post('/batch', async (req: Request, res: Response) => {
           type: rating.type,
           id: rating.id,
           rating: rating.rating,
-          success
+          success,
         });
       } catch (error) {
         results.push({
@@ -429,12 +429,12 @@ router.post('/batch', async (req: Request, res: Response) => {
           id: rating.id,
           rating: rating.rating,
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     }
 
-    const successCount = results.filter(r => r.success).length;
+    const successCount = results.filter((r) => r.success).length;
 
     res.json({
       success: true,
@@ -442,14 +442,14 @@ router.post('/batch', async (req: Request, res: Response) => {
         results,
         successCount,
         totalCount: ratings.length,
-        message: `Successfully processed ${successCount}/${ratings.length} ratings`
-      }
+        message: `Successfully processed ${successCount}/${ratings.length} ratings`,
+      },
     });
   } catch (error) {
     console.error('Failed to process batch ratings:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to process batch ratings'
+      error: 'Failed to process batch ratings',
     });
   }
 });
@@ -470,14 +470,14 @@ router.get('/analytics', async (req: Request, res: Response) => {
       data: {
         topRatedShows,
         timestamp: new Date().toISOString(),
-        message: 'Basic analytics - full implementation pending'
-      }
+        message: 'Basic analytics - full implementation pending',
+      },
     });
   } catch (error) {
     console.error('Failed to get rating analytics:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve rating analytics'
+      error: 'Failed to retrieve rating analytics',
     });
   }
 });

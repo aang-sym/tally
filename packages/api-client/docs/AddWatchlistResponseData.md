@@ -1,14 +1,13 @@
 # AddWatchlistResponseData
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**userShow** | [**UserShow**](UserShow.md) |  | [optional] [default to undefined]
-**show** | [**ShowSummary**](ShowSummary.md) |  | [optional] [default to undefined]
-**availability** | [**Array&lt;AddWatchlistResponseDataAvailabilityInner&gt;**](AddWatchlistResponseDataAvailabilityInner.md) |  | [optional] [default to undefined]
-**message** | **string** |  | [optional] [default to undefined]
+| Name             | Type                                                                                                       | Description | Notes                             |
+| ---------------- | ---------------------------------------------------------------------------------------------------------- | ----------- | --------------------------------- |
+| **userShow**     | [**UserShow**](UserShow.md)                                                                                |             | [optional] [default to undefined] |
+| **show**         | [**ShowSummary**](ShowSummary.md)                                                                          |             | [optional] [default to undefined] |
+| **availability** | [**Array&lt;AddWatchlistResponseDataAvailabilityInner&gt;**](AddWatchlistResponseDataAvailabilityInner.md) |             | [optional] [default to undefined] |
+| **message**      | **string**                                                                                                 |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -16,10 +15,10 @@ Name | Type | Description | Notes
 import { AddWatchlistResponseData } from './api';
 
 const instance: AddWatchlistResponseData = {
-    userShow,
-    show,
-    availability,
-    message,
+  userShow,
+  show,
+  availability,
+  message,
 };
 ```
 

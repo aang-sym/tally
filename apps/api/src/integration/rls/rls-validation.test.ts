@@ -3,20 +3,21 @@ import jwt from 'jsonwebtoken';
 
 /**
  * RLS Validation Tests - Live API Server
- * 
+ *
  * These tests validate Row-Level Security policies by testing against
  * the running API server (http://localhost:4000).
- * 
+ *
  * Tests verify that:
  * 1. Authenticated users can access only their own data
  * 2. Authenticated users cannot access other users' data
  * 3. Unauthenticated requests are properly rejected
- * 
+ *
  * This approach tests RLS enforcement end-to-end through real API calls.
  */
 
 const API_BASE = 'http://localhost:4000';
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-for-tally-security-tests-2025-9f8a7b6c5d';
+const JWT_SECRET =
+  process.env.JWT_SECRET || 'dev-secret-key-for-tally-security-tests-2025-9f8a7b6c5d';
 
 // Test user configurations
 const testUsers = {
@@ -27,19 +28,19 @@ const testUsers = {
       email: 'user1@test.com',
       displayName: 'RLS Test User 1',
       aud: 'authenticated',
-      role: 'authenticated'
-    }
+      role: 'authenticated',
+    },
   },
   user2: {
     payload: {
-      sub: '22222222-2222-2222-2222-222222222222', 
+      sub: '22222222-2222-2222-2222-222222222222',
       userId: '22222222-2222-2222-2222-222222222222',
       email: 'user2@test.com',
       displayName: 'RLS Test User 2',
       aud: 'authenticated',
-      role: 'authenticated'
-    }
-  }
+      role: 'authenticated',
+    },
+  },
 };
 
 // Generate JWT tokens
@@ -50,23 +51,22 @@ async function apiCall(endpoint: string, options: RequestInit = {}): Promise<any
   const response = await fetch(`${API_BASE}${endpoint}`, {
     headers: {
       'Content-Type': 'application/json',
-      ...options.headers
+      ...options.headers,
     },
-    ...options
+    ...options,
   });
-  
+
   let data;
   try {
     data = await response.json();
   } catch {
     data = await response.text();
   }
-  
+
   return { status: response.status, data };
 }
 
 describe('RLS Integration Tests - Live API Server', () => {
-  
   beforeAll(async () => {
     // Verify API server is running
     try {
@@ -87,14 +87,14 @@ describe('RLS Integration Tests - Live API Server', () => {
 
     it('should allow authenticated users to access their watchlist', async () => {
       const result = await apiCall('/api/watchlist', {
-        headers: { Authorization: `Bearer ${user1Token}` }
+        headers: { Authorization: `Bearer ${user1Token}` },
       });
-      
+
       expect(result.status).toBe(200);
       expect(result.data.success).toBe(true);
       expect(result.data.data).toHaveProperty('shows');
       expect(Array.isArray(result.data.data.shows)).toBe(true);
-      
+
       // All returned shows should belong to user1
       result.data.data.shows.forEach((show: any) => {
         expect(show.user_id).toBe(testUsers.user1.payload.userId);
@@ -104,11 +104,11 @@ describe('RLS Integration Tests - Live API Server', () => {
     it('should return different data for different users (data isolation)', async () => {
       const [user1Result, user2Result] = await Promise.all([
         apiCall('/api/watchlist', {
-          headers: { Authorization: `Bearer ${user1Token}` }
+          headers: { Authorization: `Bearer ${user1Token}` },
         }),
         apiCall('/api/watchlist', {
-          headers: { Authorization: `Bearer ${user2Token}` }
-        })
+          headers: { Authorization: `Bearer ${user2Token}` },
+        }),
       ]);
 
       expect(user1Result.status).toBe(200);
@@ -121,7 +121,7 @@ describe('RLS Integration Tests - Live API Server', () => {
       user1Shows.forEach((show: any) => {
         expect(show.user_id).toBe(testUsers.user1.payload.userId);
       });
-      
+
       user2Shows.forEach((show: any) => {
         expect(show.user_id).toBe(testUsers.user2.payload.userId);
       });
@@ -142,9 +142,9 @@ describe('RLS Integration Tests - Live API Server', () => {
 
     it('should return user-specific statistics', async () => {
       const result = await apiCall('/api/watchlist/stats', {
-        headers: { Authorization: `Bearer ${user1Token}` }
+        headers: { Authorization: `Bearer ${user1Token}` },
       });
-      
+
       expect(result.status).toBe(200);
       expect(result.data.success).toBe(true);
       expect(result.data.data).toHaveProperty('totalShows');
@@ -155,11 +155,11 @@ describe('RLS Integration Tests - Live API Server', () => {
     it('should return different stats for different users', async () => {
       const [user1Stats, user2Stats] = await Promise.all([
         apiCall('/api/watchlist/stats', {
-          headers: { Authorization: `Bearer ${user1Token}` }
+          headers: { Authorization: `Bearer ${user1Token}` },
         }),
         apiCall('/api/watchlist/stats', {
-          headers: { Authorization: `Bearer ${user2Token}` }
-        })
+          headers: { Authorization: `Bearer ${user2Token}` },
+        }),
       ]);
 
       expect(user1Stats.status).toBe(200);
@@ -180,8 +180,8 @@ describe('RLS Integration Tests - Live API Server', () => {
         method: 'POST',
         body: JSON.stringify({
           tmdb_id: 999999,
-          status: 'watchlist'
-        })
+          status: 'watchlist',
+        }),
       });
 
       expect(result.status).toBe(401);
@@ -194,13 +194,13 @@ describe('RLS Integration Tests - Live API Server', () => {
         headers: { Authorization: `Bearer ${user1Token}` },
         body: JSON.stringify({
           tmdbId: 123456,
-          status: 'watchlist'
-        })
+          status: 'watchlist',
+        }),
       });
 
       // Should either succeed (201) or return existing record (200/409)
       expect([200, 201, 409]).toContain(result.status);
-      
+
       if (result.status === 201) {
         expect(result.data.success).toBe(true);
         expect(result.data.data).toHaveProperty('id');
@@ -214,9 +214,9 @@ describe('RLS Integration Tests - Live API Server', () => {
     beforeAll(async () => {
       // First, get user1's shows to find a show ID to test with
       const user1Watchlist = await apiCall('/api/watchlist', {
-        headers: { Authorization: `Bearer ${user1Token}` }
+        headers: { Authorization: `Bearer ${user1Token}` },
       });
-      
+
       if (user1Watchlist.status === 200 && user1Watchlist.data.data.shows.length > 0) {
         user1ShowId = user1Watchlist.data.data.shows[0].id;
       } else {
@@ -226,17 +226,17 @@ describe('RLS Integration Tests - Live API Server', () => {
           headers: { Authorization: `Bearer ${user1Token}` },
           body: JSON.stringify({
             tmdbId: 777777,
-            status: 'watchlist'
-          })
+            status: 'watchlist',
+          }),
         });
-        
+
         if ([200, 201].includes(createResult.status)) {
           user1ShowId = createResult.data.data.id;
         }
       }
     });
 
-    it('should prevent users from modifying other users\' shows', async () => {
+    it("should prevent users from modifying other users' shows", async () => {
       if (!user1ShowId) {
         console.warn('⚠️ Skipping cross-user access test - no show ID available');
         return;
@@ -246,7 +246,7 @@ describe('RLS Integration Tests - Live API Server', () => {
       const result = await apiCall(`/api/watchlist/${user1ShowId}/status`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${user2Token}` },
-        body: JSON.stringify({ status: 'completed' })
+        body: JSON.stringify({ status: 'completed' }),
       });
 
       // Should return 404 (RLS makes row invisible) or 403 (access denied)
@@ -264,7 +264,7 @@ describe('RLS Integration Tests - Live API Server', () => {
       const result = await apiCall(`/api/watchlist/${user1ShowId}/status`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${user1Token}` },
-        body: JSON.stringify({ status: 'completed' })
+        body: JSON.stringify({ status: 'completed' }),
       });
 
       expect(result.status).toBe(200);

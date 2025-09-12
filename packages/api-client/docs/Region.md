@@ -1,12 +1,11 @@
 # Region
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**code** | **string** |  | [optional] [default to undefined]
-**name** | **string** |  | [optional] [default to undefined]
+| Name     | Type       | Description | Notes                             |
+| -------- | ---------- | ----------- | --------------------------------- |
+| **code** | **string** |             | [optional] [default to undefined] |
+| **name** | **string** |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { Region } from './api';
 
 const instance: Region = {
-    code,
-    name,
+  code,
+  name,
 };
 ```
 

@@ -1,11 +1,7 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import {
-  RegisterRequestSchema,
-  LoginRequestSchema,
-  AuthResponseSchema,
-} from '@tally/types';
+import { RegisterRequestSchema, LoginRequestSchema, AuthResponseSchema } from '@tally/types';
 import { supabase, serviceSupabase } from '../db/supabase.js';
 import { ValidationError } from '../middleware/errorHandler.js';
 

@@ -1,12 +1,11 @@
 # ApiWatchlistPostRequest
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**tmdbId** | **number** |  | [default to undefined]
-**status** | **string** |  | [optional] [default to StatusEnum_Watchlist]
+| Name       | Type       | Description | Notes                                        |
+| ---------- | ---------- | ----------- | -------------------------------------------- |
+| **tmdbId** | **number** |             | [default to undefined]                       |
+| **status** | **string** |             | [optional] [default to StatusEnum_Watchlist] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { ApiWatchlistPostRequest } from './api';
 
 const instance: ApiWatchlistPostRequest = {
-    tmdbId,
-    status,
+  tmdbId,
+  status,
 };
 ```
 

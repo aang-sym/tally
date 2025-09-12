@@ -1,11 +1,10 @@
 # ApiWatchlistIdProviderPutRequest
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**provider** | [**SelectedProvider**](SelectedProvider.md) |  | [default to undefined]
+| Name         | Type                                        | Description | Notes                  |
+| ------------ | ------------------------------------------- | ----------- | ---------------------- |
+| **provider** | [**SelectedProvider**](SelectedProvider.md) |             | [default to undefined] |
 
 ## Example
 
@@ -13,7 +12,7 @@ Name | Type | Description | Notes
 import { ApiWatchlistIdProviderPutRequest } from './api';
 
 const instance: ApiWatchlistIdProviderPutRequest = {
-    provider,
+  provider,
 };
 ```
 

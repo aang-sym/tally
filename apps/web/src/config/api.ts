@@ -89,7 +89,7 @@ export const getAuthHeaders = (token?: string) => {
   const headers = { ...DEFAULT_HEADERS };
 
   if (token) {
-    // @ts-ignore
+    // @ts-expect-error - headers is a mutable object
     headers.Authorization = `Bearer ${token}`;
   }
 

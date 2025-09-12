@@ -1,15 +1,14 @@
 # PopularService
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**id** | **string** |  | [optional] [default to undefined]
-**name** | **string** |  | [optional] [default to undefined]
-**logo_path** | **string** |  | [optional] [default to undefined]
-**homepage** | **string** |  | [optional] [default to undefined]
-**subscriber_count** | **number** |  | [optional] [default to undefined]
+| Name                 | Type       | Description | Notes                             |
+| -------------------- | ---------- | ----------- | --------------------------------- |
+| **id**               | **string** |             | [optional] [default to undefined] |
+| **name**             | **string** |             | [optional] [default to undefined] |
+| **logo_path**        | **string** |             | [optional] [default to undefined] |
+| **homepage**         | **string** |             | [optional] [default to undefined] |
+| **subscriber_count** | **number** |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -17,11 +16,11 @@ Name | Type | Description | Notes
 import { PopularService } from './api';
 
 const instance: PopularService = {
-    id,
-    name,
-    logo_path,
-    homepage,
-    subscriber_count,
+  id,
+  name,
+  logo_path,
+  homepage,
+  subscriber_count,
 };
 ```
 

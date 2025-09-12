@@ -1,12 +1,11 @@
 # WatchlistStatsResponse
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | **object** | Implementation-defined stats from WatchlistService.getUserWatchlistStats | [optional] [default to undefined]
+| Name        | Type        | Description                                                              | Notes                             |
+| ----------- | ----------- | ------------------------------------------------------------------------ | --------------------------------- |
+| **success** | **boolean** |                                                                          | [optional] [default to undefined] |
+| **data**    | **object**  | Implementation-defined stats from WatchlistService.getUserWatchlistStats | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { WatchlistStatsResponse } from './api';
 
 const instance: WatchlistStatsResponse = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

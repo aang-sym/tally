@@ -18,7 +18,7 @@ import { WatchlistApi, Configuration } from '@tally/api-client';
 // Configure with JWT authentication
 const config = new Configuration({
   basePath: 'http://localhost:4000', // or your API base URL
-  accessToken: 'your-jwt-token' // Bearer token from authentication
+  accessToken: 'your-jwt-token', // Bearer token from authentication
 });
 
 const watchlistApi = new WatchlistApi(config);
@@ -32,10 +32,7 @@ const stats = await watchlistApi.apiWatchlistStatsGet();
 console.log(stats.data.data); // { totalShows, byStatus, averageRating }
 
 // Update show status
-await watchlistApi.apiWatchlistUserShowIdStatusPut(
-  'show-uuid',
-  { status: 'completed' }
-);
+await watchlistApi.apiWatchlistUserShowIdStatusPut('show-uuid', { status: 'completed' });
 ```
 
 ## Features
@@ -69,9 +66,9 @@ const config = new Configuration({
   baseOptions: {
     timeout: 10000,
     headers: {
-      'Custom-Header': 'value'
-    }
-  }
+      'Custom-Header': 'value',
+    },
+  },
 });
 ```
 

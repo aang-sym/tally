@@ -1,12 +1,11 @@
 # UserProfileResponse
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | [**UserProfile**](UserProfile.md) |  | [optional] [default to undefined]
+| Name        | Type                              | Description | Notes                             |
+| ----------- | --------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                       |             | [optional] [default to undefined] |
+| **data**    | [**UserProfile**](UserProfile.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { UserProfileResponse } from './api';
 
 const instance: UserProfileResponse = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

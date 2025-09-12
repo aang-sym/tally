@@ -43,37 +43,37 @@ paths:
                     success: true
                     data:
                       subscriptions:
-                        - id: "23fd0b2a-5c8a-4a5e-9e6a-1b2c3d4e5f60"
-                          service_id: "c38c74f5-b020-4292-9aba-6342ba529485"
+                        - id: '23fd0b2a-5c8a-4a5e-9e6a-1b2c3d4e5f60'
+                          service_id: 'c38c74f5-b020-4292-9aba-6342ba529485'
                           monthly_cost: 14.99
                           is_active: true
-                          started_date: "2025-09-01"
+                          started_date: '2025-09-01'
                           ended_date: null
-                          tier: "Standard"
+                          tier: 'Standard'
                           service:
-                            id: "c38c74f5-b020-4292-9aba-6342ba529485"
+                            id: 'c38c74f5-b020-4292-9aba-6342ba529485'
                             tmdb_provider_id: 1899
-                            name: "HBO Max"
-                            logo_path: "https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg"
-                            homepage: "https://www.max.com/"
+                            name: 'HBO Max'
+                            logo_path: 'https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg'
+                            homepage: 'https://www.max.com/'
                             prices:
-                              - tier: "Standard"
+                              - tier: 'Standard'
                                 amount: 14.99
-                                currency: "USD"
-                                billing_frequency: "monthly"
+                                currency: 'USD'
+                                billing_frequency: 'monthly'
                                 active: true
-                                provider_name: "HBO Max"
-                              - tier: "Premium"
+                                provider_name: 'HBO Max'
+                              - tier: 'Premium'
                                 amount: 19.99
-                                currency: "USD"
-                                billing_frequency: "monthly"
+                                currency: 'USD'
+                                billing_frequency: 'monthly'
                                 active: true
-                                provider_name: "HBO Max"
+                                provider_name: 'HBO Max'
                             default_price:
-                              tier: "Standard"
+                              tier: 'Standard'
                               amount: 14.99
-                              currency: "USD"
-                              billing_frequency: "monthly"
+                              currency: 'USD'
+                              billing_frequency: 'monthly'
                               active: true
         '401':
           $ref: '#/components/responses/Unauthorized'
@@ -96,9 +96,9 @@ paths:
             examples:
               add:
                 value:
-                  service_id: "c38c74f5-b020-4292-9aba-6342ba529485"
+                  service_id: 'c38c74f5-b020-4292-9aba-6342ba529485'
                   monthly_cost: 14.99
-                  tier: "Standard"
+                  tier: 'Standard'
                   is_active: true
       responses:
         '200':
@@ -132,7 +132,7 @@ paths:
             examples:
               tierOnly:
                 value:
-                  tier: "Premium"
+                  tier: 'Premium'
               costAndActive:
                 value:
                   monthly_cost: 19.99
@@ -206,7 +206,7 @@ components:
             unauthorized:
               value:
                 success: false
-                error: "Unauthorized"
+                error: 'Unauthorized'
     NotFound:
       description: Resource not found
       content:
@@ -217,7 +217,7 @@ components:
             notFound:
               value:
                 success: false
-                error: "Not Found"
+                error: 'Not Found'
     BadRequest:
       description: Bad request
       content:
@@ -228,7 +228,7 @@ components:
             bad:
               value:
                 success: false
-                error: "Invalid input"
+                error: 'Invalid input'
     ServerError:
       description: Server error
       content:
@@ -239,8 +239,8 @@ components:
             boom:
               value:
                 success: false
-                error: "Failed to retrieve user subscriptions"
-                details: "Unknown error"
+                error: 'Failed to retrieve user subscriptions'
+                details: 'Unknown error'
 
   schemas:
     ErrorResponse:

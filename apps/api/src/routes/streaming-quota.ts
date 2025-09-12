@@ -10,7 +10,7 @@ router.get('/', async (req, res, next) => {
   try {
     const stats = await quotaTracker.getUsageStats();
     const isLowQuota = await quotaTracker.shouldWarnLowQuota();
-    
+
     res.json({
       ...stats,
       isLowQuota,
@@ -28,7 +28,7 @@ router.get('/log', async (req, res, next) => {
   try {
     const limit = parseInt(req.query.limit as string) || 20;
     const log = await quotaTracker.getCallLog(limit);
-    
+
     res.json({
       calls: log,
       totalCalls: log.length,
@@ -51,7 +51,7 @@ router.post('/reset', async (req, res, next) => {
 
     await quotaTracker.resetQuota();
     streamingAvailabilityService.clearCache();
-    
+
     res.json({
       success: true,
       message: 'Quota reset successfully',
@@ -65,7 +65,7 @@ router.post('/reset', async (req, res, next) => {
 router.post('/clear-cache', async (req, res, next) => {
   try {
     streamingAvailabilityService.clearCache();
-    
+
     res.json({
       success: true,
       message: 'Cache cleared successfully',

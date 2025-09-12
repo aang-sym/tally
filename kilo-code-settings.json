@@ -1,1 +1,182 @@
-{"providerProfiles":{"currentApiConfigName":"sonnet-4","apiConfigs":{"default":{"kilocodeToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnYiOiJwcm9kdWN0aW9uIiwia2lsb1VzZXJJZCI6IjFkM2RlNGU3LTZmYWUtNDhmYy1iYzgzLWJiNGE3M2ZjNTA2NyIsImFwaVRva2VuUGVwcGVyIjpudWxsLCJ2ZXJzaW9uIjozLCJpYXQiOjE3NTY5NjYyNTIsImV4cCI6MTkxNDc1NDI1Mn0.LgFsrw6e34k_AJdGlBOwK0yYitcM4_yiYoGfwpb5HoU","apiProvider":"kilocode","id":"tz1n4lowxrq"},"gpt-5-medium":{"reasoningEffort":"medium","kilocodeToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnYiOiJwcm9kdWN0aW9uIiwia2lsb1VzZXJJZCI6IjFkM2RlNGU3LTZmYWUtNDhmYy1iYzgzLWJiNGE3M2ZjNTA2NyIsImFwaVRva2VuUGVwcGVyIjpudWxsLCJ2ZXJzaW9uIjozLCJpYXQiOjE3NTY5NjYyNTIsImV4cCI6MTkxNDc1NDI1Mn0.LgFsrw6e34k_AJdGlBOwK0yYitcM4_yiYoGfwpb5HoU","kilocodeModel":"openai/gpt-5","apiProvider":"kilocode","id":"kvrxtl8fvsk"},"gpt-5-low":{"reasoningEffort":"low","kilocodeToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnYiOiJwcm9kdWN0aW9uIiwia2lsb1VzZXJJZCI6IjFkM2RlNGU3LTZmYWUtNDhmYy1iYzgzLWJiNGE3M2ZjNTA2NyIsImFwaVRva2VuUGVwcGVyIjpudWxsLCJ2ZXJzaW9uIjozLCJpYXQiOjE3NTY5NjYyNTIsImV4cCI6MTkxNDc1NDI1Mn0.LgFsrw6e34k_AJdGlBOwK0yYitcM4_yiYoGfwpb5HoU","kilocodeModel":"openai/gpt-5","apiProvider":"kilocode","id":"kagemhewufh"},"gpt-5-high":{"reasoningEffort":"high","kilocodeToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnYiOiJwcm9kdWN0aW9uIiwia2lsb1VzZXJJZCI6IjFkM2RlNGU3LTZmYWUtNDhmYy1iYzgzLWJiNGE3M2ZjNTA2NyIsImFwaVRva2VuUGVwcGVyIjpudWxsLCJ2ZXJzaW9uIjozLCJpYXQiOjE3NTY5NjYyNTIsImV4cCI6MTkxNDc1NDI1Mn0.LgFsrw6e34k_AJdGlBOwK0yYitcM4_yiYoGfwpb5HoU","kilocodeModel":"openai/gpt-5","apiProvider":"kilocode","id":"59xbufi6f6q"},"gemini-2.5-pro":{"reasoningEffort":"high","kilocodeToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnYiOiJwcm9kdWN0aW9uIiwia2lsb1VzZXJJZCI6IjFkM2RlNGU3LTZmYWUtNDhmYy1iYzgzLWJiNGE3M2ZjNTA2NyIsImFwaVRva2VuUGVwcGVyIjpudWxsLCJ2ZXJzaW9uIjozLCJpYXQiOjE3NTY5NjYyNTIsImV4cCI6MTkxNDc1NDI1Mn0.LgFsrw6e34k_AJdGlBOwK0yYitcM4_yiYoGfwpb5HoU","kilocodeModel":"google/gemini-2.5-pro","apiProvider":"kilocode","id":"ztzumcb76p8"},"sonnet-4":{"reasoningEffort":"high","kilocodeToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnYiOiJwcm9kdWN0aW9uIiwia2lsb1VzZXJJZCI6IjFkM2RlNGU3LTZmYWUtNDhmYy1iYzgzLWJiNGE3M2ZjNTA2NyIsImFwaVRva2VuUGVwcGVyIjpudWxsLCJ2ZXJzaW9uIjozLCJpYXQiOjE3NTY5NjYyNTIsImV4cCI6MTkxNDc1NDI1Mn0.LgFsrw6e34k_AJdGlBOwK0yYitcM4_yiYoGfwpb5HoU","kilocodeModel":"anthropic/claude-sonnet-4","apiProvider":"kilocode","id":"zosp6ojctxo"},"gemini-flash":{"reasoningEffort":"high","kilocodeToken":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnYiOiJwcm9kdWN0aW9uIiwia2lsb1VzZXJJZCI6IjFkM2RlNGU3LTZmYWUtNDhmYy1iYzgzLWJiNGE3M2ZjNTA2NyIsImFwaVRva2VuUGVwcGVyIjpudWxsLCJ2ZXJzaW9uIjozLCJpYXQiOjE3NTY5NjYyNTIsImV4cCI6MTkxNDc1NDI1Mn0.LgFsrw6e34k_AJdGlBOwK0yYitcM4_yiYoGfwpb5HoU","kilocodeModel":"google/gemini-2.5-flash","apiProvider":"kilocode","id":"0scp0ijkygx"}},"modeApiConfigs":{"architect":"zosp6ojctxo","code":"0scp0ijkygx","ask":"kagemhewufh","debug":"kagemhewufh","orchestrator":"zosp6ojctxo"},"migrations":{"rateLimitSecondsMigrated":true,"diffSettingsMigrated":true,"openAiHeadersMigrated":true,"consecutiveMistakeLimitMigrated":true,"todoListEnabledMigrated":true,"morphApiKeyMigrated":true}},"globalSettings":{"condensingApiConfigId":"","customCondensingPrompt":"","alwaysAllowReadOnly":true,"alwaysAllowReadOnlyOutsideWorkspace":true,"alwaysAllowWrite":true,"alwaysAllowWriteOutsideWorkspace":false,"alwaysAllowWriteProtected":false,"writeDelayMs":1000,"alwaysAllowBrowser":true,"alwaysApproveResubmit":false,"requestDelaySeconds":10,"alwaysAllowMcp":true,"alwaysAllowModeSwitch":true,"alwaysAllowSubtasks":true,"alwaysAllowExecute":true,"alwaysAllowFollowupQuestions":false,"followupAutoApproveTimeoutMs":60000,"alwaysAllowUpdateTodoList":true,"allowedCommands":["npm test","npm install","tsc","git log","git diff","git show","cd apps/api","curl -s http://localhost:4000/api/health","cd","curl"],"deniedCommands":[],"autoCondenseContext":true,"autoCondenseContextPercent":100,"maxConcurrentFileReads":5,"allowVeryLargeReads":false,"includeDiagnosticMessages":true,"maxDiagnosticMessages":50,"browserToolEnabled":true,"browserViewportSize":"900x600","showAutoApproveMenu":true,"showTaskTimeline":true,"globalWorkflowToggles":{},"screenshotQuality":75,"remoteBrowserEnabled":true,"enableCheckpoints":true,"ttsEnabled":false,"ttsSpeed":1,"soundEnabled":false,"soundVolume":0.5,"systemNotificationsEnabled":true,"maxOpenTabsContext":20,"maxWorkspaceFiles":200,"showRooIgnoredFiles":true,"maxReadFileLine":-1,"maxImageFileSize":5,"maxTotalImageSize":20,"terminalOutputLineLimit":500,"terminalOutputCharacterLimit":50000,"terminalShellIntegrationTimeout":5000,"terminalShellIntegrationDisabled":true,"terminalCommandDelay":0,"terminalPowershellCounter":false,"terminalZshClearEolMark":true,"terminalZshOhMy":false,"terminalZshP10k":false,"terminalZdotdir":false,"terminalCompressProgressBar":true,"experiments":{"morphFastApply":false,"powerSteering":false,"multiFileApplyDiff":false,"preventFocusDisruption":false},"codebaseIndexModels":{"openai":{"text-embedding-3-small":{"dimension":1536},"text-embedding-3-large":{"dimension":3072},"text-embedding-ada-002":{"dimension":1536}},"ollama":{"nomic-embed-text":{"dimension":768},"nomic-embed-code":{"dimension":3584},"mxbai-embed-large":{"dimension":1024},"all-minilm":{"dimension":384}},"openai-compatible":{"text-embedding-3-small":{"dimension":1536},"text-embedding-3-large":{"dimension":3072},"text-embedding-ada-002":{"dimension":1536},"nomic-embed-code":{"dimension":3584}},"gemini":{"text-embedding-004":{"dimension":768},"gemini-embedding-001":{"dimension":3072}},"mistral":{"codestral-embed-2505":{"dimension":1536}}},"language":"en","telemetrySetting":"enabled","mcpEnabled":true,"mode":"orchestrator","customModes":[],"customSupportPrompts":{},"dismissedNotificationIds":["grok-code-bonus"],"terminalCommandApiConfigId":"","ghostServiceSettings":{"enableQuickInlineTaskKeybinding":true,"enableSmartInlineTaskKeybinding":true},"includeTaskHistoryInEnhance":true,"profileThresholds":{}}}
+{
+  "providerProfiles": {
+    "currentApiConfigName": "sonnet-4",
+    "apiConfigs": {
+      "default": {
+        "kilocodeToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnYiOiJwcm9kdWN0aW9uIiwia2lsb1VzZXJJZCI6IjFkM2RlNGU3LTZmYWUtNDhmYy1iYzgzLWJiNGE3M2ZjNTA2NyIsImFwaVRva2VuUGVwcGVyIjpudWxsLCJ2ZXJzaW9uIjozLCJpYXQiOjE3NTY5NjYyNTIsImV4cCI6MTkxNDc1NDI1Mn0.LgFsrw6e34k_AJdGlBOwK0yYitcM4_yiYoGfwpb5HoU",
+        "apiProvider": "kilocode",
+        "id": "tz1n4lowxrq"
+      },
+      "gpt-5-medium": {
+        "reasoningEffort": "medium",
+        "kilocodeToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnYiOiJwcm9kdWN0aW9uIiwia2lsb1VzZXJJZCI6IjFkM2RlNGU3LTZmYWUtNDhmYy1iYzgzLWJiNGE3M2ZjNTA2NyIsImFwaVRva2VuUGVwcGVyIjpudWxsLCJ2ZXJzaW9uIjozLCJpYXQiOjE3NTY5NjYyNTIsImV4cCI6MTkxNDc1NDI1Mn0.LgFsrw6e34k_AJdGlBOwK0yYitcM4_yiYoGfwpb5HoU",
+        "kilocodeModel": "openai/gpt-5",
+        "apiProvider": "kilocode",
+        "id": "kvrxtl8fvsk"
+      },
+      "gpt-5-low": {
+        "reasoningEffort": "low",
+        "kilocodeToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnYiOiJwcm9kdWN0aW9uIiwia2lsb1VzZXJJZCI6IjFkM2RlNGU3LTZmYWUtNDhmYy1iYzgzLWJiNGE3M2ZjNTA2NyIsImFwaVRva2VuUGVwcGVyIjpudWxsLCJ2ZXJzaW9uIjozLCJpYXQiOjE3NTY5NjYyNTIsImV4cCI6MTkxNDc1NDI1Mn0.LgFsrw6e34k_AJdGlBOwK0yYitcM4_yiYoGfwpb5HoU",
+        "kilocodeModel": "openai/gpt-5",
+        "apiProvider": "kilocode",
+        "id": "kagemhewufh"
+      },
+      "gpt-5-high": {
+        "reasoningEffort": "high",
+        "kilocodeToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnYiOiJwcm9kdWN0aW9uIiwia2lsb1VzZXJJZCI6IjFkM2RlNGU3LTZmYWUtNDhmYy1iYzgzLWJiNGE3M2ZjNTA2NyIsImFwaVRva2VuUGVwcGVyIjpudWxsLCJ2ZXJzaW9uIjozLCJpYXQiOjE3NTY5NjYyNTIsImV4cCI6MTkxNDc1NDI1Mn0.LgFsrw6e34k_AJdGlBOwK0yYitcM4_yiYoGfwpb5HoU",
+        "kilocodeModel": "openai/gpt-5",
+        "apiProvider": "kilocode",
+        "id": "59xbufi6f6q"
+      },
+      "gemini-2.5-pro": {
+        "reasoningEffort": "high",
+        "kilocodeToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnYiOiJwcm9kdWN0aW9uIiwia2lsb1VzZXJJZCI6IjFkM2RlNGU3LTZmYWUtNDhmYy1iYzgzLWJiNGE3M2ZjNTA2NyIsImFwaVRva2VuUGVwcGVyIjpudWxsLCJ2ZXJzaW9uIjozLCJpYXQiOjE3NTY5NjYyNTIsImV4cCI6MTkxNDc1NDI1Mn0.LgFsrw6e34k_AJdGlBOwK0yYitcM4_yiYoGfwpb5HoU",
+        "kilocodeModel": "google/gemini-2.5-pro",
+        "apiProvider": "kilocode",
+        "id": "ztzumcb76p8"
+      },
+      "sonnet-4": {
+        "reasoningEffort": "high",
+        "kilocodeToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnYiOiJwcm9kdWN0aW9uIiwia2lsb1VzZXJJZCI6IjFkM2RlNGU3LTZmYWUtNDhmYy1iYzgzLWJiNGE3M2ZjNTA2NyIsImFwaVRva2VuUGVwcGVyIjpudWxsLCJ2ZXJzaW9uIjozLCJpYXQiOjE3NTY5NjYyNTIsImV4cCI6MTkxNDc1NDI1Mn0.LgFsrw6e34k_AJdGlBOwK0yYitcM4_yiYoGfwpb5HoU",
+        "kilocodeModel": "anthropic/claude-sonnet-4",
+        "apiProvider": "kilocode",
+        "id": "zosp6ojctxo"
+      },
+      "gemini-flash": {
+        "reasoningEffort": "high",
+        "kilocodeToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnYiOiJwcm9kdWN0aW9uIiwia2lsb1VzZXJJZCI6IjFkM2RlNGU3LTZmYWUtNDhmYy1iYzgzLWJiNGE3M2ZjNTA2NyIsImFwaVRva2VuUGVwcGVyIjpudWxsLCJ2ZXJzaW9uIjozLCJpYXQiOjE3NTY5NjYyNTIsImV4cCI6MTkxNDc1NDI1Mn0.LgFsrw6e34k_AJdGlBOwK0yYitcM4_yiYoGfwpb5HoU",
+        "kilocodeModel": "google/gemini-2.5-flash",
+        "apiProvider": "kilocode",
+        "id": "0scp0ijkygx"
+      }
+    },
+    "modeApiConfigs": {
+      "architect": "zosp6ojctxo",
+      "code": "0scp0ijkygx",
+      "ask": "kagemhewufh",
+      "debug": "kagemhewufh",
+      "orchestrator": "zosp6ojctxo"
+    },
+    "migrations": {
+      "rateLimitSecondsMigrated": true,
+      "diffSettingsMigrated": true,
+      "openAiHeadersMigrated": true,
+      "consecutiveMistakeLimitMigrated": true,
+      "todoListEnabledMigrated": true,
+      "morphApiKeyMigrated": true
+    }
+  },
+  "globalSettings": {
+    "condensingApiConfigId": "",
+    "customCondensingPrompt": "",
+    "alwaysAllowReadOnly": true,
+    "alwaysAllowReadOnlyOutsideWorkspace": true,
+    "alwaysAllowWrite": true,
+    "alwaysAllowWriteOutsideWorkspace": false,
+    "alwaysAllowWriteProtected": false,
+    "writeDelayMs": 1000,
+    "alwaysAllowBrowser": true,
+    "alwaysApproveResubmit": false,
+    "requestDelaySeconds": 10,
+    "alwaysAllowMcp": true,
+    "alwaysAllowModeSwitch": true,
+    "alwaysAllowSubtasks": true,
+    "alwaysAllowExecute": true,
+    "alwaysAllowFollowupQuestions": false,
+    "followupAutoApproveTimeoutMs": 60000,
+    "alwaysAllowUpdateTodoList": true,
+    "allowedCommands": [
+      "npm test",
+      "npm install",
+      "tsc",
+      "git log",
+      "git diff",
+      "git show",
+      "cd apps/api",
+      "curl -s http://localhost:4000/api/health",
+      "cd",
+      "curl"
+    ],
+    "deniedCommands": [],
+    "autoCondenseContext": true,
+    "autoCondenseContextPercent": 100,
+    "maxConcurrentFileReads": 5,
+    "allowVeryLargeReads": false,
+    "includeDiagnosticMessages": true,
+    "maxDiagnosticMessages": 50,
+    "browserToolEnabled": true,
+    "browserViewportSize": "900x600",
+    "showAutoApproveMenu": true,
+    "showTaskTimeline": true,
+    "globalWorkflowToggles": {},
+    "screenshotQuality": 75,
+    "remoteBrowserEnabled": true,
+    "enableCheckpoints": true,
+    "ttsEnabled": false,
+    "ttsSpeed": 1,
+    "soundEnabled": false,
+    "soundVolume": 0.5,
+    "systemNotificationsEnabled": true,
+    "maxOpenTabsContext": 20,
+    "maxWorkspaceFiles": 200,
+    "showRooIgnoredFiles": true,
+    "maxReadFileLine": -1,
+    "maxImageFileSize": 5,
+    "maxTotalImageSize": 20,
+    "terminalOutputLineLimit": 500,
+    "terminalOutputCharacterLimit": 50000,
+    "terminalShellIntegrationTimeout": 5000,
+    "terminalShellIntegrationDisabled": true,
+    "terminalCommandDelay": 0,
+    "terminalPowershellCounter": false,
+    "terminalZshClearEolMark": true,
+    "terminalZshOhMy": false,
+    "terminalZshP10k": false,
+    "terminalZdotdir": false,
+    "terminalCompressProgressBar": true,
+    "experiments": {
+      "morphFastApply": false,
+      "powerSteering": false,
+      "multiFileApplyDiff": false,
+      "preventFocusDisruption": false
+    },
+    "codebaseIndexModels": {
+      "openai": {
+        "text-embedding-3-small": { "dimension": 1536 },
+        "text-embedding-3-large": { "dimension": 3072 },
+        "text-embedding-ada-002": { "dimension": 1536 }
+      },
+      "ollama": {
+        "nomic-embed-text": { "dimension": 768 },
+        "nomic-embed-code": { "dimension": 3584 },
+        "mxbai-embed-large": { "dimension": 1024 },
+        "all-minilm": { "dimension": 384 }
+      },
+      "openai-compatible": {
+        "text-embedding-3-small": { "dimension": 1536 },
+        "text-embedding-3-large": { "dimension": 3072 },
+        "text-embedding-ada-002": { "dimension": 1536 },
+        "nomic-embed-code": { "dimension": 3584 }
+      },
+      "gemini": {
+        "text-embedding-004": { "dimension": 768 },
+        "gemini-embedding-001": { "dimension": 3072 }
+      },
+      "mistral": { "codestral-embed-2505": { "dimension": 1536 } }
+    },
+    "language": "en",
+    "telemetrySetting": "enabled",
+    "mcpEnabled": true,
+    "mode": "orchestrator",
+    "customModes": [],
+    "customSupportPrompts": {},
+    "dismissedNotificationIds": ["grok-code-bonus"],
+    "terminalCommandApiConfigId": "",
+    "ghostServiceSettings": {
+      "enableQuickInlineTaskKeybinding": true,
+      "enableSmartInlineTaskKeybinding": true
+    },
+    "includeTaskHistoryInEnhance": true,
+    "profileThresholds": {}
+  }
+}

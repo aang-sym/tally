@@ -1,12 +1,11 @@
 # WatchingListResponse
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | [**WatchingListResponseData**](WatchingListResponseData.md) |  | [optional] [default to undefined]
+| Name        | Type                                                        | Description | Notes                             |
+| ----------- | ----------------------------------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                                                 |             | [optional] [default to undefined] |
+| **data**    | [**WatchingListResponseData**](WatchingListResponseData.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { WatchingListResponse } from './api';
 
 const instance: WatchingListResponse = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

@@ -111,7 +111,9 @@ const Subscriptions: React.FC = () => {
       // If subscriptions already loaded, compute suggestions now
       try {
         await computeSuggestions(services);
-      } catch {}
+      } catch {
+        // Ignore suggestion computation errors
+      }
     } catch (err) {
       console.error('Failed to load streaming services:', err);
     }

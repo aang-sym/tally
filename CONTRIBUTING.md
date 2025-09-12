@@ -5,11 +5,13 @@ Thank you for your interest in contributing to Tally! This guide covers the deve
 ## Development Setup
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - pnpm (recommended package manager)
 - Access to Supabase project for database
 
 ### Getting Started
+
 ```bash
 # Clone the repository
 git clone <repository-url>
@@ -27,9 +29,11 @@ pnpm run dev:web    # Web frontend only (:3000)
 ## Architecture & Security
 
 ### Row-Level Security (RLS) Policies
+
 All user-scoped database tables **must** implement standardized RLS policies to ensure proper data isolation.
 
 #### RLS Policy Template
+
 When adding new user-scoped tables (containing `user_id`), apply this template:
 
 ```sql
@@ -55,6 +59,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON your_table TO authenticated;
 ```
 
 #### Testing RLS Policies
+
 Before merging, **always** test RLS policies using the integration test suite:
 
 ```bash
@@ -66,6 +71,7 @@ pnpm test -- src/integration/rls/rls-summary.test.ts
 ```
 
 Tests must verify:
+
 - ✅ Authenticated users can access only their own data
 - ✅ Unauthenticated requests are denied (401)
 - ✅ Users cannot access other users' data
@@ -74,14 +80,17 @@ Tests must verify:
 ## API Development & OpenAPI
 
 ### OpenAPI Specification
+
 The API contract is maintained in `/apps/api/src/server.ts` as a live OpenAPI 3.0.3 specification.
 
 #### Security Requirements
+
 - **All user-scoped endpoints** must require `bearerAuth` (JWT authentication)
 - **Public endpoints** (like `/api/health`) must explicitly override with `security: []`
 - **Error responses** must include 401/403 for protected endpoints
 
 #### Adding New Endpoints
+
 1. **Add the route** in `/apps/api/src/routes/`
 2. **Update OpenAPI spec** in `server.ts`:
    ```javascript
@@ -119,9 +128,11 @@ The API contract is maintained in `/apps/api/src/server.ts` as a live OpenAPI 3.
 4. **Test the endpoint** with authentication and RLS validation
 
 ### API Client Generation
+
 The TypeScript API client is auto-generated from the OpenAPI specification.
 
 #### Workflow
+
 ```bash
 # 1. Update OpenAPI spec in server.ts
 # 2. Validate and regenerate client
@@ -132,12 +143,13 @@ pnpm test -- src/integration/
 ```
 
 #### Using the Generated Client
+
 ```typescript
 import { WatchlistApi, Configuration } from '@tally/api-client';
 
 const config = new Configuration({
   basePath: 'http://localhost:4000',
-  accessToken: 'your-jwt-token'
+  accessToken: 'your-jwt-token',
 });
 
 const api = new WatchlistApi(config);
@@ -149,6 +161,7 @@ const watchlist = await api.apiWatchlistGet();
 ## Testing Standards
 
 ### Integration Tests
+
 Critical for validating security policies:
 
 ```bash
@@ -163,6 +176,7 @@ pnpm test -- src/services/
 ```
 
 ### Test Requirements
+
 - **RLS tests** for any new user-scoped tables/endpoints
 - **Authentication tests** for protected endpoints
 - **Error handling tests** for 401/403 responses
@@ -171,6 +185,7 @@ pnpm test -- src/services/
 ## Code Quality
 
 ### Linting & Type Checking
+
 ```bash
 pnpm run lint        # ESLint
 pnpm run typecheck   # TypeScript validation
@@ -178,6 +193,7 @@ pnpm run format      # Prettier formatting
 ```
 
 ### Pre-commit Requirements
+
 - All tests must pass
 - No TypeScript errors
 - RLS integration tests must validate security
@@ -186,12 +202,14 @@ pnpm run format      # Prettier formatting
 ## Database Migrations
 
 ### Adding Migrations
+
 1. Create migration file in `/apps/api/src/db/migrations/`
 2. Use incremental numbering: `014_description.sql`
 3. **Always include RLS policies** for user-scoped tables
 4. Test migration with real data
 
 ### Migration Template
+
 ```sql
 -- Migration XXX: Description
 BEGIN;
@@ -211,10 +229,12 @@ COMMIT;
 ## Documentation
 
 ### API Documentation
+
 - Live OpenAPI spec: `http://localhost:4000/openapi.json`
 - Interactive docs: `http://localhost:4000/docs`
 
 ### Code Documentation
+
 - **Comment complex RLS policies**
 - **Document security decisions**
 - **Explain authentication flows**
@@ -222,16 +242,19 @@ COMMIT;
 ## Security Practices
 
 ### Authentication
+
 - All protected endpoints use JWT Bearer tokens
 - Tokens must contain valid `userId` claim
 - Use `authenticateUser` middleware for protected routes
 
 ### Data Access
+
 - **Never bypass RLS** with direct database queries
 - **Always test cross-user access prevention**
 - **Validate user ownership** in business logic
 
 ### Error Handling
+
 - **Don't expose internal errors** to API responses
 - **Use consistent error format**
 - **Log security violations** for monitoring
@@ -239,6 +262,7 @@ COMMIT;
 ## Release Process
 
 ### API Client Releases
+
 ```bash
 # Validate all changes
 pnpm run spec:validate

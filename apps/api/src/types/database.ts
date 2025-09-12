@@ -162,7 +162,17 @@ export interface Users {
   is_anonymous: boolean;
 }
 
-export type TableName = 'episodes' | 'seasons' | 'show_availability' | 'shows' | 'streaming_services' | 'user_episode_progress' | 'user_season_ratings' | 'user_shows' | 'user_streaming_subscriptions' | 'users';
+export type TableName =
+  | 'episodes'
+  | 'seasons'
+  | 'show_availability'
+  | 'shows'
+  | 'streaming_services'
+  | 'user_episode_progress'
+  | 'user_season_ratings'
+  | 'user_shows'
+  | 'user_streaming_subscriptions'
+  | 'users';
 
 export interface Database {
   episodes: Episodes;

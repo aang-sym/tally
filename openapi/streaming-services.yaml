@@ -42,23 +42,23 @@ paths:
                     success: true
                     data:
                       services:
-                        - id: "c38c74f5-b020-4292-9aba-6342ba529485"
+                        - id: 'c38c74f5-b020-4292-9aba-6342ba529485'
                           tmdb_provider_id: 1899
-                          name: "HBO Max"
-                          logo_path: "https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg"
-                          homepage: "https://www.max.com"
+                          name: 'HBO Max'
+                          logo_path: 'https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg'
+                          homepage: 'https://www.max.com'
                           prices:
-                            - tier: "Standard"
+                            - tier: 'Standard'
                               amount: 14.99
-                              currency: "USD"
-                              billing_frequency: "monthly"
+                              currency: 'USD'
+                              billing_frequency: 'monthly'
                               active: true
-                              provider_name: "HBO Max"
+                              provider_name: 'HBO Max'
                           default_price:
-                            tier: "Standard"
+                            tier: 'Standard'
                             amount: 14.99
-                            currency: "USD"
-                            billing_frequency: "monthly"
+                            currency: 'USD'
+                            billing_frequency: 'monthly'
                             active: true
                       count: 1
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -85,10 +85,10 @@ paths:
                     success: true
                     data:
                       service:
-                        id: "c38c74f5-b020-4292-9aba-6342ba529485"
-                        name: "HBO Max"
-                        logo_path: "https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg"
-                        homepage: "https://www.max.com"
+                        id: 'c38c74f5-b020-4292-9aba-6342ba529485'
+                        name: 'HBO Max'
+                        logo_path: 'https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg'
+                        homepage: 'https://www.max.com'
         '404': { $ref: '#/components/responses/NotFound' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/ServerError' }
@@ -109,10 +109,10 @@ paths:
                     success: true
                     data:
                       services:
-                        - id: "c38c74f5-b020-4292-9aba-6342ba529485"
-                          name: "HBO Max"
-                          logo_path: "https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg"
-                          homepage: "https://www.max.com"
+                        - id: 'c38c74f5-b020-4292-9aba-6342ba529485'
+                          name: 'HBO Max'
+                          logo_path: 'https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg'
+                          homepage: 'https://www.max.com'
                           subscriber_count: 42
                       count: 1
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -134,9 +134,9 @@ paths:
                     success: true
                     data:
                       regions:
-                        - { code: "US", name: "United States" }
-                        - { code: "AU", name: "Australia" }
-                        - { code: "GB", name: "United Kingdom" }
+                        - { code: 'US', name: 'United States' }
+                        - { code: 'AU', name: 'Australia' }
+                        - { code: 'GB', name: 'United Kingdom' }
                       count: 3
         '401': { $ref: '#/components/responses/Unauthorized' }
         '500': { $ref: '#/components/responses/ServerError' }

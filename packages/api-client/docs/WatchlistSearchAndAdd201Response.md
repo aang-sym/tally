@@ -1,12 +1,11 @@
 # WatchlistSearchAndAdd201Response
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | [**WatchlistSearchAndAdd201ResponseData**](WatchlistSearchAndAdd201ResponseData.md) |  | [optional] [default to undefined]
+| Name        | Type                                                                                | Description | Notes                             |
+| ----------- | ----------------------------------------------------------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                                                                         |             | [optional] [default to undefined] |
+| **data**    | [**WatchlistSearchAndAdd201ResponseData**](WatchlistSearchAndAdd201ResponseData.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { WatchlistSearchAndAdd201Response } from './api';
 
 const instance: WatchlistSearchAndAdd201Response = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

@@ -1,43 +1,37 @@
 # UsersApi
 
-All URIs are relative to *http://localhost:4000*
+All URIs are relative to _http://localhost:4000_
 
-|Method | HTTP request | Description|
-|------------- | ------------- | -------------|
-|[**usersGetProfile**](#usersgetprofile) | **GET** /api/users/{id}/profile | Get user profile|
-|[**usersList**](#userslist) | **GET** /api/users | List users (admin/test)|
-|[**usersLogin**](#userslogin) | **POST** /api/users/login | Log in|
-|[**usersSignup**](#userssignup) | **POST** /api/users/signup | Sign up|
-|[**usersUpdate**](#usersupdate) | **PATCH** /api/users/{id} | Update user (partial)|
+| Method                                  | HTTP request                    | Description             |
+| --------------------------------------- | ------------------------------- | ----------------------- |
+| [**usersGetProfile**](#usersgetprofile) | **GET** /api/users/{id}/profile | Get user profile        |
+| [**usersList**](#userslist)             | **GET** /api/users              | List users (admin/test) |
+| [**usersLogin**](#userslogin)           | **POST** /api/users/login       | Log in                  |
+| [**usersSignup**](#userssignup)         | **POST** /api/users/signup      | Sign up                 |
+| [**usersUpdate**](#usersupdate)         | **PATCH** /api/users/{id}       | Update user (partial)   |
 
 # **usersGetProfile**
-> UserProfileResponse usersGetProfile()
 
+> UserProfileResponse usersGetProfile()
 
 ### Example
 
 ```typescript
-import {
-    UsersApi,
-    Configuration
-} from './api';
+import { UsersApi, Configuration } from './api';
 
 const configuration = new Configuration();
 const apiInstance = new UsersApi(configuration);
 
 let id: string; // (default to undefined)
 
-const { status, data } = await apiInstance.usersGetProfile(
-    id
-);
+const { status, data } = await apiInstance.usersGetProfile(id);
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **id** | [**string**] |  | defaults to undefined|
-
+| Name   | Type         | Description | Notes                 |
+| ------ | ------------ | ----------- | --------------------- |
+| **id** | [**string**] |             | defaults to undefined |
 
 ### Return type
 
@@ -49,29 +43,26 @@ const { status, data } = await apiInstance.usersGetProfile(
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
+- **Content-Type**: Not defined
+- **Accept**: application/json
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** | OK |  -  |
-|**404** | Not Found |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     | OK          | -                |
+| **404**     | Not Found   | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **usersList**
-> UsersList200Response usersList()
 
+> UsersList200Response usersList()
 
 ### Example
 
 ```typescript
-import {
-    UsersApi,
-    Configuration
-} from './api';
+import { UsersApi, Configuration } from './api';
 
 const configuration = new Configuration();
 const apiInstance = new UsersApi(configuration);
@@ -79,19 +70,15 @@ const apiInstance = new UsersApi(configuration);
 let limit: number; // (optional) (default to 50)
 let offset: number; // (optional) (default to 0)
 
-const { status, data } = await apiInstance.usersList(
-    limit,
-    offset
-);
+const { status, data } = await apiInstance.usersList(limit, offset);
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **limit** | [**number**] |  | (optional) defaults to 50|
-| **offset** | [**number**] |  | (optional) defaults to 0|
-
+| Name       | Type         | Description | Notes                     |
+| ---------- | ------------ | ----------- | ------------------------- |
+| **limit**  | [**number**] |             | (optional) defaults to 50 |
+| **offset** | [**number**] |             | (optional) defaults to 0  |
 
 ### Return type
 
@@ -103,46 +90,39 @@ const { status, data } = await apiInstance.usersList(
 
 ### HTTP request headers
 
- - **Content-Type**: Not defined
- - **Accept**: application/json
-
+- **Content-Type**: Not defined
+- **Accept**: application/json
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** | OK |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     | OK          | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **usersLogin**
-> LoginResponse usersLogin(loginRequest)
 
+> LoginResponse usersLogin(loginRequest)
 
 ### Example
 
 ```typescript
-import {
-    UsersApi,
-    Configuration,
-    LoginRequest
-} from './api';
+import { UsersApi, Configuration, LoginRequest } from './api';
 
 const configuration = new Configuration();
 const apiInstance = new UsersApi(configuration);
 
 let loginRequest: LoginRequest; //
 
-const { status, data } = await apiInstance.usersLogin(
-    loginRequest
-);
+const { status, data } = await apiInstance.usersLogin(loginRequest);
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **loginRequest** | **LoginRequest**|  | |
-
+| Name             | Type             | Description | Notes |
+| ---------------- | ---------------- | ----------- | ----- |
+| **loginRequest** | **LoginRequest** |             |       |
 
 ### Return type
 
@@ -154,47 +134,40 @@ const { status, data } = await apiInstance.usersLogin(
 
 ### HTTP request headers
 
- - **Content-Type**: application/json
- - **Accept**: application/json
-
+- **Content-Type**: application/json
+- **Accept**: application/json
 
 ### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** | OK |  -  |
-|**401** | Unauthorized |  -  |
+
+| Status code | Description  | Response headers |
+| ----------- | ------------ | ---------------- |
+| **200**     | OK           | -                |
+| **401**     | Unauthorized | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **usersSignup**
-> UserProfileResponse usersSignup(signUpRequest)
 
+> UserProfileResponse usersSignup(signUpRequest)
 
 ### Example
 
 ```typescript
-import {
-    UsersApi,
-    Configuration,
-    SignUpRequest
-} from './api';
+import { UsersApi, Configuration, SignUpRequest } from './api';
 
 const configuration = new Configuration();
 const apiInstance = new UsersApi(configuration);
 
 let signUpRequest: SignUpRequest; //
 
-const { status, data } = await apiInstance.usersSignup(
-    signUpRequest
-);
+const { status, data } = await apiInstance.usersSignup(signUpRequest);
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **signUpRequest** | **SignUpRequest**|  | |
-
+| Name              | Type              | Description | Notes |
+| ----------------- | ----------------- | ----------- | ----- |
+| **signUpRequest** | **SignUpRequest** |             |       |
 
 ### Return type
 
@@ -206,31 +179,27 @@ const { status, data } = await apiInstance.usersSignup(
 
 ### HTTP request headers
 
- - **Content-Type**: application/json
- - **Accept**: application/json
-
+- **Content-Type**: application/json
+- **Accept**: application/json
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**201** | Created |  -  |
-|**400** | Bad Request |  -  |
-|**409** | Conflict |  -  |
+| ----------- | ----------- | ---------------- |
+| **201**     | Created     | -                |
+| **400**     | Bad Request | -                |
+| **409**     | Conflict    | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **usersUpdate**
-> UserProfileResponse usersUpdate(userUpdateRequest)
 
+> UserProfileResponse usersUpdate(userUpdateRequest)
 
 ### Example
 
 ```typescript
-import {
-    UsersApi,
-    Configuration,
-    UserUpdateRequest
-} from './api';
+import { UsersApi, Configuration, UserUpdateRequest } from './api';
 
 const configuration = new Configuration();
 const apiInstance = new UsersApi(configuration);
@@ -238,19 +207,15 @@ const apiInstance = new UsersApi(configuration);
 let id: string; // (default to undefined)
 let userUpdateRequest: UserUpdateRequest; //
 
-const { status, data } = await apiInstance.usersUpdate(
-    id,
-    userUpdateRequest
-);
+const { status, data } = await apiInstance.usersUpdate(id, userUpdateRequest);
 ```
 
 ### Parameters
 
-|Name | Type | Description  | Notes|
-|------------- | ------------- | ------------- | -------------|
-| **userUpdateRequest** | **UserUpdateRequest**|  | |
-| **id** | [**string**] |  | defaults to undefined|
-
+| Name                  | Type                  | Description | Notes                 |
+| --------------------- | --------------------- | ----------- | --------------------- |
+| **userUpdateRequest** | **UserUpdateRequest** |             |                       |
+| **id**                | [**string**]          |             | defaults to undefined |
 
 ### Return type
 
@@ -262,16 +227,15 @@ const { status, data } = await apiInstance.usersUpdate(
 
 ### HTTP request headers
 
- - **Content-Type**: application/json
- - **Accept**: application/json
-
+- **Content-Type**: application/json
+- **Accept**: application/json
 
 ### HTTP response details
+
 | Status code | Description | Response headers |
-|-------------|-------------|------------------|
-|**200** | OK |  -  |
-|**400** | Bad Request |  -  |
-|**404** | Not Found |  -  |
+| ----------- | ----------- | ---------------- |
+| **200**     | OK          | -                |
+| **400**     | Bad Request | -                |
+| **404**     | Not Found   | -                |
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
-

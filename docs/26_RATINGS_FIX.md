@@ -4,11 +4,11 @@
 
 Fix `PUT /api/watchlist/:userShowId/rating` returning `PGRST301: No suitable key or wrong key type` by:
 
-1. Sending the **Supabase access token** from the web app to the API  
-2. Forwarding that token to Supabase in the API on a **per-request** client  
-3. Updating the rating route to **filter by (id AND user_id)** and log structured probes  
-4. Verifying direct PostgREST queries work with the same token  
-5. Forcing a **PostgREST schema reload** if metadata is stale  
+1. Sending the **Supabase access token** from the web app to the API
+2. Forwarding that token to Supabase in the API on a **per-request** client
+3. Updating the rating route to **filter by (id AND user_id)** and log structured probes
+4. Verifying direct PostgREST queries work with the same token
+5. Forcing a **PostgREST schema reload** if metadata is stale
 
 ---
 
@@ -32,10 +32,10 @@ If you don’t have a Supabase client helper on the web yet, create `apps/web/sr
 -import { Configuration } from '@tally/api-client';
 +import { Configuration } from '@tally/api-client';
 +import { supabase } from './supabaseClient'; // ensure this exists on web
- 
+
  // Centralized API base
  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
- 
+
  export const apiConfig = new Configuration({
    basePath: API_BASE,
 -  middleware: [],
@@ -108,18 +108,21 @@ NOTIFY pgrst, 'reload schema';
 Instead of the original Supabase token approach, we discovered our system uses **custom JWTs** (not Supabase-issued tokens), requiring a different solution:
 
 #### 🔧 Key Architecture Decision
+
 - **Used Supabase Service Key** to bypass RLS entirely
-- **Manual Security Filtering** by explicitly including `user_id` in all queries  
+- **Manual Security Filtering** by explicitly including `user_id` in all queries
 - **Maintained Custom JWT System** rather than switching to Supabase auth
 
 #### 📝 Changes Made
 
 **Web Client (`apps/web/src/services/apiClient.ts`)**:
+
 - ✅ Updated `getSupabaseAccessToken()` to prioritize `localStorage.authToken` (our custom JWT)
 - ✅ Maintained fallback compatibility with other token sources
 - ✅ Added debug logging for token resolution
 
-**API Server (`apps/api/src/server.ts`)**:  
+**API Server (`apps/api/src/server.ts`)**:
+
 - ✅ Updated `getSupabaseForRequest()` to use `SUPABASE_SERVICE_KEY` instead of anon key
 - ✅ Enhanced PUT rating endpoint with ownership verification before updates
 - ✅ Added explicit `user_id` filtering for security when using service key
@@ -127,6 +130,7 @@ Instead of the original Supabase token approach, we discovered our system uses *
 - ✅ Removed unused `getSupabaseForRequestMinimal()` function
 
 #### 🧪 Testing Results
+
 - ✅ Rating updates work correctly (tested: 7.0, 8.5, 9.2, 10)
 - ✅ Validation properly rejects invalid ratings (e.g., 15 > max allowed 10)
 - ✅ Security verified through user ownership checks
@@ -141,12 +145,14 @@ Instead of the original Supabase token approach, we discovered our system uses *
 ### 🏗️ Architecture Notes
 
 **Why Service Key Approach**:
+
 1. Maintains existing custom JWT authentication system
-2. Avoids major refactoring to Supabase auth  
+2. Avoids major refactoring to Supabase auth
 3. Provides same security through explicit filtering
 4. Simpler than token exchange mechanisms
 
 **Security Considerations**:
+
 - All queries MUST include explicit `user_id` filters when using service key
 - Ownership verification required before sensitive operations
 - Service key usage isolated to authenticated endpoints only
@@ -154,6 +160,6 @@ Instead of the original Supabase token approach, we discovered our system uses *
 ## ✅ Original Expected Outcome (Modified)
 
 - ✅ Web client attaches valid auth token (custom JWT, not Supabase token)
-- ✅ API uses service key with proper user filtering (not token forwarding)  
-- ✅ Rating updates succeed with `.eq('id', userShowId).eq('user_id', userId)`  
+- ✅ API uses service key with proper user filtering (not token forwarding)
+- ✅ Rating updates succeed with `.eq('id', userShowId).eq('user_id', userId)`
 - ✅ No more `PGRST301` errors

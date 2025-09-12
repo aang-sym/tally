@@ -51,11 +51,9 @@ beforeEach(() => {
 });
 
 const tokenFor = (userId: string) =>
-  jwt.sign(
-    { userId, email: `${userId}@test.dev`, displayName: 'Tester' },
-    TEST_JWT_SECRET,
-    { expiresIn: '1d' }
-  );
+  jwt.sign({ userId, email: `${userId}@test.dev`, displayName: 'Tester' }, TEST_JWT_SECRET, {
+    expiresIn: '1d',
+  });
 
 describe('GET /api/users/:id/subscriptions', () => {
   const app = buildApp();
@@ -103,7 +101,13 @@ describe('GET /api/users/:id/subscriptions', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         streaming_services: [
-          { id: 'netflix', name: 'Netflix', logo_path: '/n.png', base_url: 'https://netflix.com', country_code: 'US' },
+          {
+            id: 'netflix',
+            name: 'Netflix',
+            logo_path: '/n.png',
+            base_url: 'https://netflix.com',
+            country_code: 'US',
+          },
         ],
       },
       {
@@ -115,7 +119,13 @@ describe('GET /api/users/:id/subscriptions', () => {
         ended_date: '2024-03-01',
         created_at: '2024-02-01T00:00:00Z',
         updated_at: '2024-03-01T00:00:00Z',
-        streaming_services: { id: 'disney', name: 'Disney+', logo_path: '/d.png', base_url: 'https://disneyplus.com', country_code: 'US' },
+        streaming_services: {
+          id: 'disney',
+          name: 'Disney+',
+          logo_path: '/d.png',
+          base_url: 'https://disneyplus.com',
+          country_code: 'US',
+        },
       },
     ];
     chain.order.mockResolvedValue({ data: rows, error: null });

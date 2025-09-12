@@ -1,11 +1,10 @@
 # SubscriptionsEnvelopeData
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**subscriptions** | [**Array&lt;UserSubscription&gt;**](UserSubscription.md) |  | [optional] [default to undefined]
+| Name              | Type                                                     | Description | Notes                             |
+| ----------------- | -------------------------------------------------------- | ----------- | --------------------------------- |
+| **subscriptions** | [**Array&lt;UserSubscription&gt;**](UserSubscription.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -13,7 +12,7 @@ Name | Type | Description | Notes
 import { SubscriptionsEnvelopeData } from './api';
 
 const instance: SubscriptionsEnvelopeData = {
-    subscriptions,
+  subscriptions,
 };
 ```
 

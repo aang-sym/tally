@@ -1,13 +1,12 @@
 # UserUpdateRequest
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**display_name** | **string** |  | [optional] [default to undefined]
-**avatar_url** | **string** |  | [optional] [default to undefined]
-**country_code** | **string** |  | [optional] [default to undefined]
+| Name             | Type       | Description | Notes                             |
+| ---------------- | ---------- | ----------- | --------------------------------- |
+| **display_name** | **string** |             | [optional] [default to undefined] |
+| **avatar_url**   | **string** |             | [optional] [default to undefined] |
+| **country_code** | **string** |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -15,9 +14,9 @@ Name | Type | Description | Notes
 import { UserUpdateRequest } from './api';
 
 const instance: UserUpdateRequest = {
-    display_name,
-    avatar_url,
-    country_code,
+  display_name,
+  avatar_url,
+  country_code,
 };
 ```
 

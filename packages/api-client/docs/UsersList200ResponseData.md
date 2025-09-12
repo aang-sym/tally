@@ -1,11 +1,10 @@
 # UsersList200ResponseData
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**users** | [**Array&lt;UserProfile&gt;**](UserProfile.md) |  | [optional] [default to undefined]
+| Name      | Type                                           | Description | Notes                             |
+| --------- | ---------------------------------------------- | ----------- | --------------------------------- |
+| **users** | [**Array&lt;UserProfile&gt;**](UserProfile.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -13,7 +12,7 @@ Name | Type | Description | Notes
 import { UsersList200ResponseData } from './api';
 
 const instance: UsersList200ResponseData = {
-    users,
+  users,
 };
 ```
 

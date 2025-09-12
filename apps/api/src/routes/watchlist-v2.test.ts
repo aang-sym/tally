@@ -156,9 +156,7 @@ describe('watchlist PUT endpoints', () => {
   });
 
   it('PUT /:id/buffer - 401 when no token', async () => {
-    const res = await request(app)
-      .put(`/api/watchlist/${showId}/buffer`)
-      .send({ bufferDays: 7 });
+    const res = await request(app).put(`/api/watchlist/${showId}/buffer`).send({ bufferDays: 7 });
 
     expect(res.status).toBe(401);
   });
@@ -239,7 +237,11 @@ describe('watchlist PUT endpoints', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.provider).toEqual(provider);
-    expect(mockWatchlistService.updateStreamingProvider).toHaveBeenCalledWith(userId, showId, provider);
+    expect(mockWatchlistService.updateStreamingProvider).toHaveBeenCalledWith(
+      userId,
+      showId,
+      provider
+    );
   });
 
   it('PUT /:id/country - 200 and returns updated countryCode', async () => {
@@ -307,7 +309,13 @@ describe('watchlist GET :tmdbId/progress - fixed response shape', () => {
           show_id: 'show-123',
           season_number: 2,
           episodes: [
-            { id: 'e3', season_id: 'season-2', tmdb_episode_id: 0, episode_number: 1, name: 'S2E1' },
+            {
+              id: 'e3',
+              season_id: 'season-2',
+              tmdb_episode_id: 0,
+              episode_number: 1,
+              name: 'S2E1',
+            },
           ],
         },
       ],
@@ -393,7 +401,10 @@ describe('watchlist PUT /:id/provider - null provider clears value', () => {
 
     const res = await request(app)
       .put(`/api/watchlist/${showId}/provider`)
-      .set('Authorization', `Bearer ${jwt.sign({ userId, email: 'x@test.dev', displayName: 'X' }, process.env.JWT_SECRET!, { expiresIn: '1d' })}`)
+      .set(
+        'Authorization',
+        `Bearer ${jwt.sign({ userId, email: 'x@test.dev', displayName: 'X' }, process.env.JWT_SECRET!, { expiresIn: '1d' })}`
+      )
       .send({ provider: null });
 
     expect(res.status).toBe(200);

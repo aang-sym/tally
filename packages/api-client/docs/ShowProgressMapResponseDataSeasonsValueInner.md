@@ -1,12 +1,11 @@
 # ShowProgressMapResponseDataSeasonsValueInner
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**episodeNumber** | **number** |  | [optional] [default to undefined]
-**status** | **string** |  | [optional] [default to undefined]
+| Name              | Type       | Description | Notes                             |
+| ----------------- | ---------- | ----------- | --------------------------------- |
+| **episodeNumber** | **number** |             | [optional] [default to undefined] |
+| **status**        | **string** |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { ShowProgressMapResponseDataSeasonsValueInner } from './api';
 
 const instance: ShowProgressMapResponseDataSeasonsValueInner = {
-    episodeNumber,
-    status,
+  episodeNumber,
+  status,
 };
 ```
 

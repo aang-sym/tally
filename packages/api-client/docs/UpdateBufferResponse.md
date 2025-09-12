@@ -1,12 +1,11 @@
 # UpdateBufferResponse
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | [**UpdateBufferResponseData**](UpdateBufferResponseData.md) |  | [optional] [default to undefined]
+| Name        | Type                                                        | Description | Notes                             |
+| ----------- | ----------------------------------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                                                 |             | [optional] [default to undefined] |
+| **data**    | [**UpdateBufferResponseData**](UpdateBufferResponseData.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { UpdateBufferResponse } from './api';
 
 const instance: UpdateBufferResponse = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

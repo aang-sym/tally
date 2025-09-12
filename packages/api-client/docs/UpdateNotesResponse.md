@@ -1,12 +1,11 @@
 # UpdateNotesResponse
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | [**UpdateNotesResponseData**](UpdateNotesResponseData.md) |  | [optional] [default to undefined]
+| Name        | Type                                                      | Description | Notes                             |
+| ----------- | --------------------------------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                                               |             | [optional] [default to undefined] |
+| **data**    | [**UpdateNotesResponseData**](UpdateNotesResponseData.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { UpdateNotesResponse } from './api';
 
 const instance: UpdateNotesResponse = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

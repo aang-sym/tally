@@ -1,6 +1,6 @@
 /**
  * Supabase Database Client
- * 
+ *
  * Provides the main Supabase client instance for database operations
  * with connection validation and error handling.
  */
@@ -35,7 +35,9 @@ if (!supabaseServiceKey) {
  *  - 'x-supabase-access-token': '<jwt>'
  *  - 'authorization': 'Bearer <jwt>'
  */
-export function getUserJwtFromHeaders(headers: Record<string, string | string[] | undefined>): string | undefined {
+export function getUserJwtFromHeaders(
+  headers: Record<string, string | string[] | undefined>
+): string | undefined {
   // Normalize header keys to lowercase
   const lower: Record<string, string | string[] | undefined> = {};
   for (const [k, v] of Object.entries(headers || {})) lower[k.toLowerCase()] = v;
@@ -61,11 +63,15 @@ export function getSupabaseForToken(userJwtToken?: string): SupabaseClient {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
-      detectSessionInUrl: false
+      detectSessionInUrl: false,
     },
     ...(userJwtToken
-      ? { global: { headers: { Authorization: `Bearer ${userJwtToken}` } as Record<string, string> } }
-      : {})
+      ? {
+          global: {
+            headers: { Authorization: `Bearer ${userJwtToken}` } as Record<string, string>,
+          },
+        }
+      : {}),
   };
   return createClient(supabaseUrl, supabaseApiKey, opts);
 }
@@ -73,7 +79,9 @@ export function getSupabaseForToken(userJwtToken?: string): SupabaseClient {
 /**
  * Convenience: build a per-request client from raw request headers.
  */
-export function getSupabaseForRequestHeaders(headers: Record<string, string | string[] | undefined>): SupabaseClient {
+export function getSupabaseForRequestHeaders(
+  headers: Record<string, string | string[] | undefined>
+): SupabaseClient {
   const jwt = getUserJwtFromHeaders(headers);
   return getSupabaseForToken(jwt);
 }
@@ -83,8 +91,8 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseApiKey
   auth: {
     persistSession: false,
     autoRefreshToken: false,
-    detectSessionInUrl: false
-  }
+    detectSessionInUrl: false,
+  },
 });
 
 // Create a service role client (bypasses RLS for admin operations like user creation)
@@ -92,8 +100,8 @@ export const serviceSupabase: SupabaseClient = createClient(supabaseUrl, supabas
   auth: {
     persistSession: false,
     autoRefreshToken: false,
-    detectSessionInUrl: false
-  }
+    detectSessionInUrl: false,
+  },
 });
 
 /**
@@ -109,10 +117,7 @@ export const createUserClient = (userJwtToken: string): SupabaseClient => {
  */
 export async function testConnection(): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data, error } = await supabase
-      .from('users')
-      .select('count')
-      .limit(1);
+    const { data, error } = await supabase.from('users').select('count').limit(1);
 
     if (error) {
       return { success: false, error: error.message };
@@ -120,9 +125,9 @@ export async function testConnection(): Promise<{ success: boolean; error?: stri
 
     return { success: true };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 }
@@ -142,7 +147,7 @@ export async function getDatabaseHealth(): Promise<{
       return {
         connected: false,
         tables: {},
-        error: connectionTest.error || 'Connection failed'
+        error: connectionTest.error || 'Connection failed',
       };
     }
 
@@ -155,10 +160,19 @@ export async function getDatabaseHealth(): Promise<{
       supabase.from('user_shows').select('*', { count: 'exact', head: true }),
       supabase.from('user_episode_progress').select('*', { count: 'exact', head: true }),
       supabase.from('streaming_services').select('*', { count: 'exact', head: true }),
-      supabase.from('show_availability').select('*', { count: 'exact', head: true })
+      supabase.from('show_availability').select('*', { count: 'exact', head: true }),
     ]);
 
-    const tableNames = ['users', 'shows', 'seasons', 'episodes', 'user_shows', 'user_episode_progress', 'streaming_services', 'show_availability'];
+    const tableNames = [
+      'users',
+      'shows',
+      'seasons',
+      'episodes',
+      'user_shows',
+      'user_episode_progress',
+      'streaming_services',
+      'show_availability',
+    ];
     const tables: Record<string, number> = {};
 
     tableQueries.forEach((result, index) => {
@@ -174,13 +188,13 @@ export async function getDatabaseHealth(): Promise<{
 
     return {
       connected: true,
-      tables
+      tables,
     };
   } catch (error) {
     return {
       connected: false,
       tables: {},
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 }

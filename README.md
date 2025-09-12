@@ -17,33 +17,38 @@ This is the foundational backend API and web landing page for Tally, designed to
 ## How to Run
 
 ### Prerequisites
+
 - Node.js 18+ and npm 9+
 - Copy `.env.example` to `.env` (defaults work for local dev)
 
 ### Quick Start
+
 ```bash
 # Install all dependencies
 npm install
 
-# Run both API (port 4000) and web (port 3000)  
+# Run both API (port 4000) and web (port 3000)
 npm run dev
 ```
 
 Visit:
+
 - **Web app**: http://localhost:3000
 - **API health**: http://localhost:4000/api/health
 
 ### Individual Services
+
 ```bash
 npm run dev:api    # Just the backend API
 npm run dev:web    # Just the web frontend
 ```
 
 ### Other Commands
+
 ```bash
 npm run build      # Build all packages
 npm run test       # Run all tests
-npm run lint       # Lint all packages  
+npm run lint       # Lint all packages
 npm run typecheck  # TypeScript checking
 npm run format     # Format with Prettier
 ```
@@ -53,19 +58,21 @@ npm run format     # Format with Prettier
 Tally provides a fully-typed TypeScript API client that's auto-generated from the OpenAPI specification:
 
 ### Installation
+
 ```bash
 # Install the generated client
 npm install @tally/api-client
 ```
 
 ### Basic Usage
+
 ```typescript
 import { WatchlistApi, Configuration } from '@tally/api-client';
 
 // Configure with JWT authentication
 const config = new Configuration({
   basePath: 'http://localhost:4000',
-  accessToken: 'your-jwt-token' // Bearer token from authentication
+  accessToken: 'your-jwt-token', // Bearer token from authentication
 });
 
 const watchlistApi = new WatchlistApi(config);
@@ -79,13 +86,11 @@ const stats = await watchlistApi.apiWatchlistStatsGet();
 console.log(stats.data.data); // { totalShows, byStatus, averageRating }
 
 // Update show status
-await watchlistApi.apiWatchlistUserShowIdStatusPut(
-  'show-uuid',
-  { status: 'completed' }
-);
+await watchlistApi.apiWatchlistUserShowIdStatusPut('show-uuid', { status: 'completed' });
 ```
 
 ### Authentication
+
 All user-scoped endpoints require JWT authentication. Generate a test token:
 
 ```bash
@@ -95,6 +100,7 @@ node src/utils/generate-test-token.js
 ```
 
 ### API Documentation
+
 - **Live OpenAPI Spec**: http://localhost:4000/openapi.json
 - **Interactive Docs**: http://localhost:4000/docs (Swagger UI)
 
@@ -130,7 +136,7 @@ curl -X PUT http://localhost:4000/api/watchlist/SHOW_ID/status \
   /api        # Express backend (TypeScript)
   /web        # React landing page only (TypeScript + Vite)
   /ios        # Main iOS app (Swift - not implemented yet)
-/packages  
+/packages
   /types      # Shared Zod schemas & TypeScript types
   /core       # Business logic (planning, savings)
   /config     # Shared configs (ESLint, TypeScript)
@@ -142,7 +148,7 @@ See `CLAUDE.md` for detailed stack decisions and next steps. Key areas for expan
 
 1. **Build the iOS app** in `/apps/ios` (the main user-facing app)
 2. Replace mocked data with real streaming APIs
-3. Implement proper authentication and database storage  
+3. Implement proper authentication and database storage
 4. Build sophisticated savings calculation algorithms
 
 ---

@@ -1,11 +1,10 @@
 # ApiWatchlistIdCountryPutRequest
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**countryCode** | **string** |  | [default to undefined]
+| Name            | Type       | Description | Notes                  |
+| --------------- | ---------- | ----------- | ---------------------- |
+| **countryCode** | **string** |             | [default to undefined] |
 
 ## Example
 
@@ -13,7 +12,7 @@ Name | Type | Description | Notes
 import { ApiWatchlistIdCountryPutRequest } from './api';
 
 const instance: ApiWatchlistIdCountryPutRequest = {
-    countryCode,
+  countryCode,
 };
 ```
 

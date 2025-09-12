@@ -2,12 +2,12 @@ name: API Client Release
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'apps/api/src/server.ts'  # OpenAPI spec changes
-      - 'openapi/**'              # OpenAPI specification files
-      - 'packages/api-client/**'  # Direct client changes
-  workflow_dispatch:              # Manual trigger
+      - 'apps/api/src/server.ts' # OpenAPI spec changes
+      - 'openapi/**' # OpenAPI specification files
+      - 'packages/api-client/**' # Direct client changes
+  workflow_dispatch: # Manual trigger
     inputs:
       release_type:
         description: 'Release type'
@@ -35,7 +35,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch full history for version detection
+          fetch-depth: 0 # Fetch full history for version detection
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -87,24 +87,24 @@ jobs:
       - name: Run basic API client validation
         run: |
           echo "🧪 Validating API client structure..."
-          
+
           # Check that expected files exist
           if [ ! -f "packages/api-client/apis/WatchlistApi.ts" ]; then
             echo "❌ WatchlistApi.ts not generated"
             exit 1
           fi
-          
+
           if [ ! -f "packages/api-client/models/index.ts" ]; then
             echo "❌ Model index file not generated"
             exit 1
           fi
-          
+
           # Check package.json exists
           if [ ! -f "packages/api-client/package.json" ]; then
             echo "❌ API client package.json missing"
             exit 1
           fi
-          
+
           echo "✅ API client structure validation passed"
 
       - name: Determine version
@@ -118,19 +118,19 @@ jobs:
             # Automatic prerelease for OpenAPI changes
             RELEASE_TYPE="prerelease"
           fi
-          
+
           # Get current version and calculate next version
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           echo "Current version: $CURRENT_VERSION"
-          
+
           # For simplicity, we'll use npm version to calculate the next version
           # This is a dry run to see what the version would be
           NEXT_VERSION=$(npm version $RELEASE_TYPE --no-git-tag-version --preid=beta --dry-run | tail -1)
           echo "Next version would be: $NEXT_VERSION"
-          
+
           # Reset the version change from dry run
           git checkout -- package.json 2>/dev/null || true
-          
+
           echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
           echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
 
@@ -172,26 +172,26 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           cd packages/api-client
-          
+
           # Determine release type
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             RELEASE_TYPE="${{ github.event.inputs.release_type }}"
           else
             RELEASE_TYPE="prerelease"
           fi
-          
+
           echo "🏷️  Creating $RELEASE_TYPE version..."
-          
+
           # Update version
           if [ "$RELEASE_TYPE" = "prerelease" ]; then
             npm version prerelease --preid=beta --no-git-tag-version
           else
             npm version $RELEASE_TYPE --no-git-tag-version
           fi
-          
+
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "🆕 New version: $NEW_VERSION"
-          
+
           # Publish to npm
           if [ "$RELEASE_TYPE" = "prerelease" ]; then
             echo "📦 Publishing prerelease to npm with 'beta' tag..."
@@ -200,7 +200,7 @@ jobs:
             echo "📦 Publishing stable release to npm..."
             npm publish --access public
           fi
-          
+
           echo "✅ Published @tally/api-client@$NEW_VERSION"
 
       - name: Create GitHub release
@@ -213,29 +213,29 @@ jobs:
           release_name: API Client v${{ needs.validate-and-build.outputs.version }}
           body: |
             ## API Client Release v${{ needs.validate-and-build.outputs.version }}
-            
+
             ### Changes
             - Generated from OpenAPI specification
             - Updated TypeScript definitions
             - RLS-compliant authentication support
-            
+
             ### Installation
             ```bash
             npm install @tally/api-client@${{ needs.validate-and-build.outputs.version }}
             ```
-            
+
             ### Usage
             ```typescript
             import { WatchlistApi, Configuration } from '@tally/api-client';
-            
+
             const config = new Configuration({
               basePath: 'https://api.tally.app',
               accessToken: 'your-jwt-token'
             });
-            
+
             const watchlistApi = new WatchlistApi(config);
             ```
-            
+
             See [documentation](../docs/README.md) for full usage examples.
           draft: false
           prerelease: ${{ github.event.inputs.release_type == 'prerelease' }}

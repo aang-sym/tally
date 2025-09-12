@@ -1,12 +1,11 @@
 # ApiWatchlistIdDelete200Response
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | [**ApiWatchlistIdDelete200ResponseData**](ApiWatchlistIdDelete200ResponseData.md) |  | [optional] [default to undefined]
+| Name        | Type                                                                              | Description | Notes                             |
+| ----------- | --------------------------------------------------------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                                                                       |             | [optional] [default to undefined] |
+| **data**    | [**ApiWatchlistIdDelete200ResponseData**](ApiWatchlistIdDelete200ResponseData.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { ApiWatchlistIdDelete200Response } from './api';
 
 const instance: ApiWatchlistIdDelete200Response = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

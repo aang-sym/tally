@@ -1,14 +1,13 @@
 # WatchlistRow
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**id** | **string** |  | [optional] [default to undefined]
-**status** | **string** |  | [optional] [default to undefined]
-**show** | [**ShowSummary**](ShowSummary.md) |  | [optional] [default to undefined]
-**streaming_provider** | [**SelectedProvider**](SelectedProvider.md) |  | [optional] [default to undefined]
+| Name                   | Type                                        | Description | Notes                             |
+| ---------------------- | ------------------------------------------- | ----------- | --------------------------------- |
+| **id**                 | **string**                                  |             | [optional] [default to undefined] |
+| **status**             | **string**                                  |             | [optional] [default to undefined] |
+| **show**               | [**ShowSummary**](ShowSummary.md)           |             | [optional] [default to undefined] |
+| **streaming_provider** | [**SelectedProvider**](SelectedProvider.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -16,10 +15,10 @@ Name | Type | Description | Notes
 import { WatchlistRow } from './api';
 
 const instance: WatchlistRow = {
-    id,
-    status,
-    show,
-    streaming_provider,
+  id,
+  status,
+  show,
+  streaming_provider,
 };
 ```
 

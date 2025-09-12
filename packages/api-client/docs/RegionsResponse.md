@@ -1,12 +1,11 @@
 # RegionsResponse
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | [**RegionsResponseData**](RegionsResponseData.md) |  | [optional] [default to undefined]
+| Name        | Type                                              | Description | Notes                             |
+| ----------- | ------------------------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                                       |             | [optional] [default to undefined] |
+| **data**    | [**RegionsResponseData**](RegionsResponseData.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { RegionsResponse } from './api';
 
 const instance: RegionsResponse = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

@@ -1,6 +1,6 @@
 /**
  * Enhanced Watchlist API Routes
- * 
+ *
  * Comprehensive RESTful API for watchlist and show tracking functionality
  * with support for detailed progress tracking and live statistics.
  */
@@ -41,13 +41,13 @@ router.get('/', async (req: Request, res: Response) => {
       tokenStart: token ? token.substring(0, 20) + '...' : 'none',
       userId: req.userId,
       status: req.query.status || 'all',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const status = req.query.status as string;
@@ -60,7 +60,10 @@ router.get('/', async (req: Request, res: Response) => {
       sampleKeys: watchlist && watchlist[0] ? Object.keys(watchlist[0]) : [],
       hasShowKey: watchlist && watchlist[0] ? 'show' in watchlist[0] : false,
       hasShowsKey: watchlist && watchlist[0] ? 'shows' in watchlist[0] : false,
-      showKeys: watchlist && watchlist[0] && (watchlist[0] as any).show ? Object.keys((watchlist[0] as any).show) : [],
+      showKeys:
+        watchlist && watchlist[0] && (watchlist[0] as any).show
+          ? Object.keys((watchlist[0] as any).show)
+          : [],
     });
 
     // Normalize poster paths and attach selected streaming provider for each row
@@ -81,12 +84,14 @@ router.get('/', async (req: Request, res: Response) => {
       } else {
         for (const p of providers || []) {
           const logo_path = p.logo_path
-            ? (p.logo_path.startsWith('http') ? p.logo_path : `https://image.tmdb.org/t/p/w45${p.logo_path}`)
+            ? p.logo_path.startsWith('http')
+              ? p.logo_path
+              : `https://image.tmdb.org/t/p/w45${p.logo_path}`
             : null;
           providerByUuid.set(p.id, {
             id: p.tmdb_provider_id,
             name: p.name,
-            logo_path: logo_path || ''
+            logo_path: logo_path || '',
           });
         }
       }
@@ -95,23 +100,31 @@ router.get('/', async (req: Request, res: Response) => {
     const normalized = (watchlist || []).map((item: any) => {
       // Supabase returns show data under 'show' (singular). Keep a defensive fallback.
       const show = { ...(item.show ?? item.shows) };
-      if (show && show.poster_path && typeof show.poster_path === 'string' && show.poster_path.startsWith('/')) {
+      if (
+        show &&
+        show.poster_path &&
+        typeof show.poster_path === 'string' &&
+        show.poster_path.startsWith('/')
+      ) {
         show.poster_path = `https://image.tmdb.org/t/p/w500${show.poster_path}`;
       }
 
       const selectedUuid = item.selected_service_id as string | null;
-      const streaming_provider = selectedUuid ? providerByUuid.get(selectedUuid) ?? null : null;
+      const streaming_provider = selectedUuid ? (providerByUuid.get(selectedUuid) ?? null) : null;
 
       return { ...item, show, streaming_provider };
     });
 
-    res.json({ success: true, data: { shows: normalized, totalCount: normalized.length, statusFilter: status || 'all' } });
+    res.json({
+      success: true,
+      data: { shows: normalized, totalCount: normalized.length, statusFilter: status || 'all' },
+    });
   } catch (error) {
     console.error('Failed to get watchlist:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to retrieve watchlist',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -127,7 +140,7 @@ router.get('/stats', async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const watchlistService = new WatchlistService(getUserToken(req));
@@ -137,7 +150,7 @@ router.get('/stats', async (req: Request, res: Response) => {
     console.error('Failed to get watchlist stats:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve watchlist statistics'
+      error: 'Failed to retrieve watchlist statistics',
     });
   }
 });
@@ -145,7 +158,7 @@ router.get('/stats', async (req: Request, res: Response) => {
 /**
  * POST /api/watchlist
  * Add show to watchlist
- * 
+ *
  * Body: { tmdbId: number, status?: 'watchlist' | 'watching' }
  */
 router.post('/', async (req: Request, res: Response) => {
@@ -156,14 +169,16 @@ router.post('/', async (req: Request, res: Response) => {
       userId,
       body: req.body,
       hasAuthHeader: !!req.headers.authorization,
-      authHeaderStart: req.headers.authorization ? req.headers.authorization.substring(0, 20) + '...' : 'none',
-      timestamp: new Date().toISOString()
+      authHeaderStart: req.headers.authorization
+        ? req.headers.authorization.substring(0, 20) + '...'
+        : 'none',
+      timestamp: new Date().toISOString(),
     });
 
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { tmdbId, status = 'watchlist' } = req.body;
@@ -171,7 +186,7 @@ router.post('/', async (req: Request, res: Response) => {
     if (!tmdbId) {
       return res.status(400).json({
         success: false,
-        error: 'TMDB ID is required'
+        error: 'TMDB ID is required',
       });
     }
 
@@ -181,7 +196,7 @@ router.post('/', async (req: Request, res: Response) => {
       userId,
       hasUserToken: !!userToken,
       userTokenLength: userToken?.length || 0,
-      userTokenStart: userToken ? userToken.substring(0, 30) + '...' : 'none'
+      userTokenStart: userToken ? userToken.substring(0, 30) + '...' : 'none',
     });
 
     const watchlistService = new WatchlistService(userToken);
@@ -190,7 +205,7 @@ router.post('/', async (req: Request, res: Response) => {
       userId,
       tmdbId,
       status,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     const userShow = await watchlistService.addToWatchlist(userId, tmdbId, status);
@@ -201,11 +216,11 @@ router.post('/', async (req: Request, res: Response) => {
         tmdbId,
         status,
         userToken: userToken ? `${userToken.substring(0, 20)}...` : 'none',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       return res.status(400).json({
         success: false,
-        error: 'Failed to add show to watchlist - service returned null'
+        error: 'Failed to add show to watchlist - service returned null',
       });
     }
 
@@ -213,7 +228,7 @@ router.post('/', async (req: Request, res: Response) => {
       userShowId: userShow.id,
       showId: userShow.show_id,
       status: userShow.status,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
     // Get show details for response
@@ -228,8 +243,8 @@ router.post('/', async (req: Request, res: Response) => {
         userShow,
         show: showDetails?.show,
         availability: availability.normalized,
-        message: `Added to ${status}`
-      }
+        message: `Added to ${status}`,
+      },
     });
   } catch (error) {
     const { tmdbId, status = 'watchlist' } = req.body;
@@ -245,7 +260,7 @@ router.post('/', async (req: Request, res: Response) => {
       errorHint: (error as any)?.hint,
       errorStack: (error as any)?.stack?.substring(0, 500) + '...',
       timestamp: new Date().toISOString(),
-      isPGRST301: (error as any)?.code === 'PGRST301'
+      isPGRST301: (error as any)?.code === 'PGRST301',
     });
 
     // Special handling for PGRST301 errors
@@ -256,14 +271,14 @@ router.post('/', async (req: Request, res: Response) => {
         details: (error as any)?.details,
         userId: req.userId,
         tmdbId,
-        userToken: getUserToken(req) ? 'present' : 'missing'
+        userToken: getUserToken(req) ? 'present' : 'missing',
       });
     }
 
     res.status(500).json({
       success: false,
       error: `Failed to add show to watchlist: ${(error as any)?.code || 'UNKNOWN_ERROR'}`,
-      details: (error as Error)?.message
+      details: (error as Error)?.message,
     });
   }
 });
@@ -271,7 +286,7 @@ router.post('/', async (req: Request, res: Response) => {
 /**
  * PUT /api/watchlist/:id/status
  * Update show status (watchlist -> watching -> completed, etc.)
- * 
+ *
  * Body: { status: 'watchlist' | 'watching' | 'completed' | 'dropped' }
  */
 router.put('/:id/status', async (req: Request, res: Response) => {
@@ -281,7 +296,7 @@ router.put('/:id/status', async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { id } = req.params;
@@ -290,17 +305,24 @@ router.put('/:id/status', async (req: Request, res: Response) => {
     }
     const { status } = req.body;
     if (!['watchlist', 'watching', 'completed', 'dropped'].includes(status)) {
-      return res.status(400).json({ success: false, error: 'Invalid status. Must be one of: watchlist, watching, completed, dropped' });
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid status. Must be one of: watchlist, watching, completed, dropped',
+      });
     }
     const watchlistService = new WatchlistService(getUserToken(req));
     const updatedShow = await watchlistService.updateShowStatus(userId, id, status);
-    if (!updatedShow) return res.status(404).json({ success: false, error: 'Show not found or access denied' });
-    res.json({ success: true, data: { userShow: updatedShow, message: `Status updated to ${status}` } });
+    if (!updatedShow)
+      return res.status(404).json({ success: false, error: 'Show not found or access denied' });
+    res.json({
+      success: true,
+      data: { userShow: updatedShow, message: `Status updated to ${status}` },
+    });
   } catch (error) {
     console.error('Failed to update show status:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to update show status'
+      error: 'Failed to update show status',
     });
   }
 });
@@ -308,7 +330,7 @@ router.put('/:id/status', async (req: Request, res: Response) => {
 /**
  * PUT /api/watchlist/:id/rating
  * Rate a show
- * 
+ *
  * Body: { rating: number } (0.0-10.0)
  */
 router.put('/:id/rating', async (req: Request, res: Response) => {
@@ -318,7 +340,7 @@ router.put('/:id/rating', async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { id } = req.params;
@@ -328,17 +350,20 @@ router.put('/:id/rating', async (req: Request, res: Response) => {
     const { rating } = req.body;
 
     if (typeof rating !== 'number' || rating < 0 || rating > 10) {
-      return res.status(400).json({ success: false, error: 'Rating must be a number between 0.0 and 10.0' });
+      return res
+        .status(400)
+        .json({ success: false, error: 'Rating must be a number between 0.0 and 10.0' });
     }
     const watchlistService = new WatchlistService(getUserToken(req));
     const ok = await watchlistService.rateShow(userId, id, rating);
-    if (!ok) return res.status(404).json({ success: false, error: 'Show not found or access denied' });
+    if (!ok)
+      return res.status(404).json({ success: false, error: 'Show not found or access denied' });
     res.json({ success: true, data: { rating, message: `Show rated ${rating}/10` } });
   } catch (error) {
     console.error('Failed to rate show:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to rate show'
+      error: 'Failed to rate show',
     });
   }
 });
@@ -346,7 +371,7 @@ router.put('/:id/rating', async (req: Request, res: Response) => {
 /**
  * PUT /api/watchlist/:id/notes
  * Update show notes
- * 
+ *
  * Body: { notes: string }
  */
 router.put('/:id/notes', async (req: Request, res: Response) => {
@@ -356,7 +381,7 @@ router.put('/:id/notes', async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { id } = req.params;
@@ -368,7 +393,7 @@ router.put('/:id/notes', async (req: Request, res: Response) => {
     if (typeof notes !== 'string') {
       return res.status(400).json({
         success: false,
-        error: 'Notes must be a string'
+        error: 'Notes must be a string',
       });
     }
     const watchlistService = new WatchlistService(getUserToken(req));
@@ -377,7 +402,7 @@ router.put('/:id/notes', async (req: Request, res: Response) => {
     if (!success) {
       return res.status(404).json({
         success: false,
-        error: 'Show not found or access denied'
+        error: 'Show not found or access denied',
       });
     }
 
@@ -385,14 +410,14 @@ router.put('/:id/notes', async (req: Request, res: Response) => {
       success: true,
       data: {
         notes,
-        message: 'Notes updated successfully'
-      }
+        message: 'Notes updated successfully',
+      },
     });
   } catch (error) {
     console.error('Failed to update show notes:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to update show notes'
+      error: 'Failed to update show notes',
     });
   }
 });
@@ -416,8 +441,15 @@ router.put('/:id/provider', async (req: Request, res: Response) => {
     const { provider } = req.body;
 
     // Validate provider structure if not null
-    if (provider !== null && (typeof provider !== 'object' || !provider.id || !provider.name || !provider.logo_path)) {
-      return res.status(400).json({ success: false, error: 'Invalid provider object. Expected { id: number, name: string, logo_path: string } or null.' });
+    if (
+      provider !== null &&
+      (typeof provider !== 'object' || !provider.id || !provider.name || !provider.logo_path)
+    ) {
+      return res.status(400).json({
+        success: false,
+        error:
+          'Invalid provider object. Expected { id: number, name: string, logo_path: string } or null.',
+      });
     }
 
     const watchlistService = new WatchlistService(getUserToken(req));
@@ -427,7 +459,10 @@ router.put('/:id/provider', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Show not found or access denied' });
     }
 
-    res.json({ success: true, data: { provider, message: 'Streaming provider updated successfully' } });
+    res.json({
+      success: true,
+      data: { provider, message: 'Streaming provider updated successfully' },
+    });
   } catch (error) {
     console.error('Failed to update streaming provider:', error);
     res.status(500).json({ success: false, error: 'Failed to update streaming provider' });
@@ -453,7 +488,9 @@ router.put('/:id/country', async (req: Request, res: Response) => {
     const { countryCode } = req.body;
 
     if (countryCode !== null && typeof countryCode !== 'string') {
-      return res.status(400).json({ success: false, error: 'Invalid countryCode. Expected string or null.' });
+      return res
+        .status(400)
+        .json({ success: false, error: 'Invalid countryCode. Expected string or null.' });
     }
 
     const watchlistService = new WatchlistService(getUserToken(req));
@@ -463,7 +500,10 @@ router.put('/:id/country', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Show not found or access denied' });
     }
 
-    res.json({ success: true, data: { countryCode, message: 'Country code updated successfully' } });
+    res.json({
+      success: true,
+      data: { countryCode, message: 'Country code updated successfully' },
+    });
   } catch (error) {
     console.error('Failed to update country code:', error);
     res.status(500).json({ success: false, error: 'Failed to update country code' });
@@ -489,7 +529,9 @@ router.put('/:id/buffer', async (req: Request, res: Response) => {
     const { bufferDays } = req.body;
 
     if (typeof bufferDays !== 'number' || bufferDays < 0) {
-      return res.status(400).json({ success: false, error: 'Invalid bufferDays. Expected a non-negative number.' });
+      return res
+        .status(400)
+        .json({ success: false, error: 'Invalid bufferDays. Expected a non-negative number.' });
     }
 
     const watchlistService = new WatchlistService(getUserToken(req));
@@ -517,7 +559,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { id } = req.params;
@@ -526,13 +568,14 @@ router.delete('/:id', async (req: Request, res: Response) => {
     }
     const watchlistService = new WatchlistService(getUserToken(req));
     const success = await watchlistService.removeFromWatchlist(userId, id);
-    if (!success) return res.status(404).json({ success: false, error: 'Show not found or access denied' });
+    if (!success)
+      return res.status(404).json({ success: false, error: 'Show not found or access denied' });
     res.json({ success: true, data: { message: 'Show removed from watchlist' } });
   } catch (error) {
     console.error('Failed to remove show from watchlist:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to remove show from watchlist'
+      error: 'Failed to remove show from watchlist',
     });
   }
 });
@@ -548,7 +591,7 @@ router.get('/watching', async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const watchlistService = new WatchlistService(getUserToken(req));
@@ -558,7 +601,7 @@ router.get('/watching', async (req: Request, res: Response) => {
     console.error('Failed to get watching shows:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve currently watching shows'
+      error: 'Failed to retrieve currently watching shows',
     });
   }
 });
@@ -574,7 +617,7 @@ router.get('/watching/:showId', async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { showId } = req.params;
@@ -588,7 +631,7 @@ router.get('/watching/:showId', async (req: Request, res: Response) => {
     if (!showDetails) {
       return res.status(404).json({
         success: false,
-        error: 'Show not found'
+        error: 'Show not found',
       });
     }
 
@@ -600,16 +643,17 @@ router.get('/watching/:showId', async (req: Request, res: Response) => {
         progress,
         totalEpisodes: progress.totalEpisodes,
         watchedEpisodes: progress.watchedEpisodes,
-        completionPercentage: progress.totalEpisodes > 0
-          ? Math.round((progress.watchedEpisodes / progress.totalEpisodes) * 100)
-          : 0
-      }
+        completionPercentage:
+          progress.totalEpisodes > 0
+            ? Math.round((progress.watchedEpisodes / progress.totalEpisodes) * 100)
+            : 0,
+      },
     });
   } catch (error) {
     console.error('Failed to get show progress:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve show progress'
+      error: 'Failed to retrieve show progress',
     });
   }
 });
@@ -617,7 +661,7 @@ router.get('/watching/:showId', async (req: Request, res: Response) => {
 /**
  * POST /api/watchlist/search-and-add
  * Search TMDB and add show in one step
- * 
+ *
  * Body: { query: string, tmdbId?: number, status?: 'watchlist' | 'watching' }
  */
 router.post('/search-and-add', async (req: Request, res: Response) => {
@@ -627,7 +671,7 @@ router.post('/search-and-add', async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
     const { query, tmdbId, status = 'watchlist' } = req.body;
@@ -640,7 +684,7 @@ router.post('/search-and-add', async (req: Request, res: Response) => {
       if (searchResults.length === 0) {
         return res.status(404).json({
           success: false,
-          error: 'No shows found for the given query'
+          error: 'No shows found for the given query',
         });
       }
 
@@ -651,7 +695,7 @@ router.post('/search-and-add', async (req: Request, res: Response) => {
     if (!showId) {
       return res.status(400).json({
         success: false,
-        error: 'Either query or tmdbId is required'
+        error: 'Either query or tmdbId is required',
       });
     }
     const watchlistService = new WatchlistService(getUserToken(req));
@@ -660,7 +704,7 @@ router.post('/search-and-add', async (req: Request, res: Response) => {
     if (!userShow) {
       return res.status(400).json({
         success: false,
-        error: 'Failed to add show to watchlist'
+        error: 'Failed to add show to watchlist',
       });
     }
 
@@ -668,14 +712,14 @@ router.post('/search-and-add', async (req: Request, res: Response) => {
       success: true,
       data: {
         userShow,
-        message: `Show added to ${status}`
-      }
+        message: `Show added to ${status}`,
+      },
     });
   } catch (error) {
     console.error('Failed to search and add show:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to search and add show'
+      error: 'Failed to search and add show',
     });
   }
 });
@@ -696,7 +740,7 @@ router.get('/:tmdbId/progress', async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
 
@@ -740,15 +784,15 @@ router.get('/:tmdbId/progress', async (req: Request, res: Response) => {
     }
 
     // Collect all episode IDs
-    const episodes = details.seasons.flatMap(season =>
-      season.episodes.map(ep => ({
+    const episodes = details.seasons.flatMap((season) =>
+      season.episodes.map((ep) => ({
         id: ep.id,
         season_number: season.season_number,
-        episode_number: ep.episode_number
+        episode_number: ep.episode_number,
       }))
     );
 
-    const episodeIds = episodes.map(e => e.id);
+    const episodeIds = episodes.map((e) => e.id);
     if (episodeIds.length === 0) {
       return res.json({ success: true, data: { showProgress: [] } });
     }
@@ -768,31 +812,33 @@ router.get('/:tmdbId/progress', async (req: Request, res: Response) => {
 
     // Map episodeId -> state and return only those with a recorded state (frontend filters for "watched")
     const stateByEpisodeId = new Map<string, string>(
-      (progressRows || []).map(r => [r.episode_id, r.state])
+      (progressRows || []).map((r) => [r.episode_id, r.state])
     );
 
     const showProgress = episodes
-      .map(ep => {
+      .map((ep) => {
         const state = stateByEpisodeId.get(ep.id);
         if (!state) return null;
         return {
           seasonNumber: ep.season_number,
           episodeNumber: ep.episode_number,
-          status: state
+          status: state,
         };
       })
       .filter(Boolean);
 
-    const seasonsGrouped: { [seasonNumber: number]: Array<{ episodeNumber: number; status: string }> } = {};
+    const seasonsGrouped: {
+      [seasonNumber: number]: Array<{ episodeNumber: number; status: string }>;
+    } = {};
 
-    (showProgress as Array<NonNullable<typeof showProgress[number]>>).forEach(ep => {
+    (showProgress as Array<NonNullable<(typeof showProgress)[number]>>).forEach((ep) => {
       if (!ep) return;
       if (!seasonsGrouped[ep.seasonNumber]) {
         seasonsGrouped[ep.seasonNumber] = [];
       }
       seasonsGrouped[ep.seasonNumber]!.push({
         episodeNumber: ep.episodeNumber,
-        status: ep.status
+        status: ep.status,
       });
     });
 
@@ -801,7 +847,7 @@ router.get('/:tmdbId/progress', async (req: Request, res: Response) => {
     console.error('Failed to get show episode progress:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to retrieve episode progress'
+      error: 'Failed to retrieve episode progress',
     });
   }
 });
@@ -818,7 +864,7 @@ router.put('/:tmdbId/progress', async (req: Request, res: Response) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'User not authenticated'
+        error: 'User not authenticated',
       });
     }
 
@@ -837,7 +883,8 @@ router.put('/:tmdbId/progress', async (req: Request, res: Response) => {
     ) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid body. Expect { seasonNumber:number, episodeNumber:number, status:"watched"|"unwatched"|"watching" }'
+        error:
+          'Invalid body. Expect { seasonNumber:number, episodeNumber:number, status:"watched"|"unwatched"|"watching" }',
       });
     }
 
@@ -846,7 +893,7 @@ router.put('/:tmdbId/progress', async (req: Request, res: Response) => {
       tmdbId,
       seasonNumber,
       episodeNumber,
-      status
+      status,
     });
 
     // Ensure show exists; create if needed
@@ -880,34 +927,36 @@ router.put('/:tmdbId/progress', async (req: Request, res: Response) => {
     }
 
     const targetEpisodes = details.seasons
-      .filter(season => season.season_number < seasonNumber || season.season_number === seasonNumber)
-      .flatMap(season => {
+      .filter(
+        (season) => season.season_number < seasonNumber || season.season_number === seasonNumber
+      )
+      .flatMap((season) => {
         const limit = season.season_number < seasonNumber ? Infinity : episodeNumber;
         return season.episodes
-          .filter(ep => ep.episode_number <= limit)
-          .map(ep => ({
+          .filter((ep) => ep.episode_number <= limit)
+          .map((ep) => ({
             id: ep.id,
             season_number: season.season_number,
-            episode_number: ep.episode_number
+            episode_number: ep.episode_number,
           }));
       });
 
     if (targetEpisodes.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'No episodes found for the requested range'
+        error: 'No episodes found for the requested range',
       });
     }
 
     // Batch upsert progress using service role (bypasses RLS safely on server)
     const progressValue = status === 'watched' ? 100 : status === 'watching' ? 50 : 0;
 
-    const rows = targetEpisodes.map(ep => ({
+    const rows = targetEpisodes.map((ep) => ({
       user_id: userId,
       show_id: showId!,
       episode_id: ep.id,
       state: status,
-      progress: progressValue
+      progress: progressValue,
     }));
 
     const { error: upsertError } = await serviceSupabase
@@ -926,7 +975,7 @@ router.put('/:tmdbId/progress', async (req: Request, res: Response) => {
       tmdbId,
       requestedEpisodes: targetEpisodes.length,
       updatedCount,
-      status
+      status,
     });
 
     return res.json({
@@ -940,14 +989,14 @@ router.put('/:tmdbId/progress', async (req: Request, res: Response) => {
             ? `Marked ${updatedCount}/${targetEpisodes.length} episodes as watched`
             : status === 'unwatched'
               ? `Marked ${updatedCount}/${targetEpisodes.length} episodes as unwatched`
-              : `Marked ${updatedCount}/${targetEpisodes.length} episodes as watching`
-      }
+              : `Marked ${updatedCount}/${targetEpisodes.length} episodes as watching`,
+      },
     });
   } catch (error) {
     console.error('Failed to set episode progress:', error);
     return res.status(500).json({
       success: false,
-      error: 'Failed to set episode progress'
+      error: 'Failed to set episode progress',
     });
   }
 });

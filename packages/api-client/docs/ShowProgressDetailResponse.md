@@ -1,12 +1,11 @@
 # ShowProgressDetailResponse
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | [**ShowProgressDetailResponseData**](ShowProgressDetailResponseData.md) |  | [optional] [default to undefined]
+| Name        | Type                                                                    | Description | Notes                             |
+| ----------- | ----------------------------------------------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                                                             |             | [optional] [default to undefined] |
+| **data**    | [**ShowProgressDetailResponseData**](ShowProgressDetailResponseData.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { ShowProgressDetailResponse } from './api';
 
 const instance: ShowProgressDetailResponse = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

@@ -16,6 +16,8 @@
     "lint:fix": "pnpm -r lint:fix",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "test:unit": "pnpm -r run test --exclude=**/integration/**",
+    "test:integration": "pnpm --filter @tally/api run test --config vitest.config.integration.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky install",

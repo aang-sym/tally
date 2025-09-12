@@ -127,24 +127,24 @@ typescript
 
 // New enhanced detection logic
 function detectReleasePattern(episodes: Episode[]): PatternResult {
-  const intervals = calculateIntervals(episodes);
-  const stats = calculateStats(intervals);
-  
-  // Check for binge (all within 1 day)
-  if (stats.max <= 1) return { pattern: 'binge', confidence: 0.95 };
-  
-  // Check for premiere pattern (2+ episodes day 1, then weekly)
-  if (hasPremierePattern(episodes)) return { pattern: 'premiere_weekly', confidence: 0.9 };
-  
-  // Check for consistent weekly (6-8 days, low variance)
-  if (stats.avg >= 6 && stats.avg <= 8 && stats.stdDev < 2) {
-    return { pattern: 'weekly', confidence: 0.85 };
-  }
-  
-  // Check for multi-episode weekly (multiple eps every ~7 days)
-  if (hasMultiWeeklyPattern(episodes)) return { pattern: 'multi_weekly', confidence: 0.8 };
-  
-  // Additional mixed patterns...
+const intervals = calculateIntervals(episodes);
+const stats = calculateStats(intervals);
+
+// Check for binge (all within 1 day)
+if (stats.max <= 1) return { pattern: 'binge', confidence: 0.95 };
+
+// Check for premiere pattern (2+ episodes day 1, then weekly)
+if (hasPremierePattern(episodes)) return { pattern: 'premiere_weekly', confidence: 0.9 };
+
+// Check for consistent weekly (6-8 days, low variance)
+if (stats.avg >= 6 && stats.avg <= 8 && stats.stdDev < 2) {
+return { pattern: 'weekly', confidence: 0.85 };
+}
+
+// Check for multi-episode weekly (multiple eps every ~7 days)
+if (hasMultiWeeklyPattern(episodes)) return { pattern: 'multi_weekly', confidence: 0.8 };
+
+// Additional mixed patterns...
 }
 
 Testing Strategy:
@@ -159,16 +159,19 @@ TMDB Endpoints for Dynamic Testing:
 bash
 
 # Get currently airing shows
+
 GET /tv/airing_today
 GET /tv/on_the_air
 
-# Get popular shows  
+# Get popular shows
+
 GET /tv/popular
 
 # For each show discovered:
-GET /tv/{show_id}  # Get show details
-GET /tv/{show_id}/season/{season_number}  # Get episode air dates
-GET /tv/{show_id}/watch/providers  # Test watch providers
+
+GET /tv/{show_id} # Get show details
+GET /tv/{show_id}/season/{season_number} # Get episode air dates
+GET /tv/{show_id}/watch/providers # Test watch providers
 
 Status Tracking
 
@@ -240,4 +243,3 @@ When each task is completed:
     Test with actual TMDB data
     Verify all test cases pass
     Update overall STATUS when all tasks done
-

@@ -86,9 +86,7 @@
           "tsType": "number"
         }
       ],
-      "primaryKeys": [
-        null
-      ],
+      "primaryKeys": [null],
       "foreignKeys": [
         {
           "column": "season_id",
@@ -99,10 +97,7 @@
       "uniqueConstraints": [
         {
           "name": "episodes_season_id_episode_number_key",
-          "columns": [
-            null,
-            null
-          ]
+          "columns": [null, null]
         }
       ],
       "indexes": []
@@ -201,9 +196,7 @@
           "tsType": "string"
         }
       ],
-      "primaryKeys": [
-        null
-      ],
+      "primaryKeys": [null],
       "foreignKeys": [
         {
           "column": "show_id",
@@ -214,10 +207,7 @@
       "uniqueConstraints": [
         {
           "name": "seasons_show_id_season_number_key",
-          "columns": [
-            null,
-            null
-          ]
+          "columns": [null, null]
         }
       ],
       "indexes": []
@@ -316,9 +306,7 @@
           "tsType": "string"
         }
       ],
-      "primaryKeys": [
-        null
-      ],
+      "primaryKeys": [null],
       "foreignKeys": [
         {
           "column": "show_id",
@@ -334,12 +322,7 @@
       "uniqueConstraints": [
         {
           "name": "show_availability_show_id_service_id_country_code_availabil_key",
-          "columns": [
-            null,
-            null,
-            null,
-            null
-          ]
+          "columns": [null, null, null, null]
         }
       ],
       "indexes": []
@@ -498,16 +481,12 @@
           "tsType": "string"
         }
       ],
-      "primaryKeys": [
-        null
-      ],
+      "primaryKeys": [null],
       "foreignKeys": [],
       "uniqueConstraints": [
         {
           "name": "shows_tmdb_id_key",
-          "columns": [
-            null
-          ]
+          "columns": [null]
         }
       ],
       "indexes": []
@@ -566,16 +545,12 @@
           "tsType": "string"
         }
       ],
-      "primaryKeys": [
-        null
-      ],
+      "primaryKeys": [null],
       "foreignKeys": [],
       "uniqueConstraints": [
         {
           "name": "streaming_services_tmdb_provider_id_key",
-          "columns": [
-            null
-          ]
+          "columns": [null]
         }
       ],
       "indexes": []
@@ -674,9 +649,7 @@
           "tsType": "number"
         }
       ],
-      "primaryKeys": [
-        null
-      ],
+      "primaryKeys": [null],
       "foreignKeys": [
         {
           "column": "user_id",
@@ -697,18 +670,11 @@
       "uniqueConstraints": [
         {
           "name": "user_episode_progress_user_id_episode_id_key",
-          "columns": [
-            null,
-            null
-          ]
+          "columns": [null, null]
         },
         {
           "name": "user_episode_progress_user_show_episode_key",
-          "columns": [
-            null,
-            null,
-            null
-          ]
+          "columns": [null, null, null]
         }
       ],
       "indexes": []
@@ -767,9 +733,7 @@
           "tsType": "string"
         }
       ],
-      "primaryKeys": [
-        null
-      ],
+      "primaryKeys": [null],
       "foreignKeys": [
         {
           "column": "user_id",
@@ -785,10 +749,7 @@
       "uniqueConstraints": [
         {
           "name": "user_season_ratings_user_id_season_id_key",
-          "columns": [
-            null,
-            null
-          ]
+          "columns": [null, null]
         }
       ],
       "indexes": []
@@ -927,9 +888,7 @@
           "tsType": "string"
         }
       ],
-      "primaryKeys": [
-        null
-      ],
+      "primaryKeys": [null],
       "foreignKeys": [
         {
           "column": "user_id",
@@ -955,17 +914,11 @@
       "uniqueConstraints": [
         {
           "name": "user_shows_user_show_unique",
-          "columns": [
-            null,
-            null
-          ]
+          "columns": [null, null]
         },
         {
           "name": "user_shows_user_id_show_id_key",
-          "columns": [
-            null,
-            null
-          ]
+          "columns": [null, null]
         }
       ],
       "indexes": []
@@ -1064,9 +1017,7 @@
           "tsType": "string"
         }
       ],
-      "primaryKeys": [
-        null
-      ],
+      "primaryKeys": [null],
       "foreignKeys": [
         {
           "column": "user_id",
@@ -1082,10 +1033,7 @@
       "uniqueConstraints": [
         {
           "name": "user_streaming_subscriptions_user_id_service_id_key",
-          "columns": [
-            null,
-            null
-          ]
+          "columns": [null, null]
         }
       ],
       "indexes": []
@@ -1554,16 +1502,12 @@
           "tsType": "boolean"
         }
       ],
-      "primaryKeys": [
-        null
-      ],
+      "primaryKeys": [null],
       "foreignKeys": [],
       "uniqueConstraints": [
         {
           "name": "users_email_key",
-          "columns": [
-            null
-          ]
+          "columns": [null]
         }
       ],
       "indexes": []

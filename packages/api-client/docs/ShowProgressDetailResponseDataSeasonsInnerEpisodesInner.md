@@ -1,12 +1,11 @@
 # ShowProgressDetailResponseDataSeasonsInnerEpisodesInner
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**id** | **string** |  | [optional] [default to undefined]
-**episode_number** | **number** |  | [optional] [default to undefined]
+| Name               | Type       | Description | Notes                             |
+| ------------------ | ---------- | ----------- | --------------------------------- |
+| **id**             | **string** |             | [optional] [default to undefined] |
+| **episode_number** | **number** |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { ShowProgressDetailResponseDataSeasonsInnerEpisodesInner } from './api';
 
 const instance: ShowProgressDetailResponseDataSeasonsInnerEpisodesInner = {
-    id,
-    episode_number,
+  id,
+  episode_number,
 };
 ```
 

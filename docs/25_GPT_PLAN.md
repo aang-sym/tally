@@ -1,6 +1,7 @@
 # Dev Console vs iOS App Strategy
 
 ## What to keep in the web app (dev console)
+
 - Auth + user switcher (impersonate test users).
 - A few golden flows to validate backend logic:
   - Manage watchlist and progress.
@@ -11,6 +12,7 @@
 **Branch:** `feature/dev-console-core-flows`
 
 ## Where to double down
+
 - **API contracts**: lock them with an OpenAPI spec, generate a TypeScript client, and share that between web and iOS. Add examples for each response state.  
   **Branch:** `feature/api-contracts-openapi`
   - Progress:
@@ -41,9 +43,10 @@
 - **Price strategy**: since TMDB doesn’t give prices, decide on your source:
   - Manual `streaming_service_prices` with tiers (good enough for v1).
   - Optional scraper or partner feed later; design the table to accept multiple sources + effective dates.  
-  **Branch:** `feature/streaming-service-prices`
+    **Branch:** `feature/streaming-service-prices`
 
 ## iOS-first workflow
+
 - Ship the iOS app using the same OpenAPI-generated client.  
   **Branch:** `feature/ios-client`
 
@@ -51,11 +54,12 @@
   **Branch:** `chore/web-console-lite`
 
 ## Code quality & automation (later)
+
 - [ ] **ESLint/Prettier baseline**: unify lint/format across apps and packages; wire `lint-staged` + `husky` pre-commit.  
-  **Branch:** `chore/eslint-prettier-baseline`
+       **Branch:** `chore/eslint-prettier-baseline`
 - [ ] **ESLint 9 migration**: upgrade to ESLint v9 and align `@typescript-eslint` + configs; fix/relax breaking rules project-wide.  
-  **Branch:** `feat/eslint9-migration`
+       **Branch:** `feat/eslint9-migration`
 - [ ] **Deprecations sweep**: replace deprecated packages (e.g., `supertest@6`, legacy glob) with maintained alternatives or upgraded majors; record decisions in CHANGELOG.  
-  **Branch:** `chore/deps-deprecations`
+       **Branch:** `chore/deps-deprecations`
 - [ ] **CI gates**: add `pnpm run spec:lint`, `pnpm -r typecheck`, and lint/format checks to CI; cache pnpm store for speed.  
-  **Branch:** `chore/ci-quality-gates`
+       **Branch:** `chore/ci-quality-gates`

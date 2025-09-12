@@ -1,12 +1,11 @@
 # UserShowStatusResponse
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | [**WatchlistSearchAndAdd201ResponseData**](WatchlistSearchAndAdd201ResponseData.md) |  | [optional] [default to undefined]
+| Name        | Type                                                                                | Description | Notes                             |
+| ----------- | ----------------------------------------------------------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                                                                         |             | [optional] [default to undefined] |
+| **data**    | [**WatchlistSearchAndAdd201ResponseData**](WatchlistSearchAndAdd201ResponseData.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { UserShowStatusResponse } from './api';
 
 const instance: UserShowStatusResponse = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

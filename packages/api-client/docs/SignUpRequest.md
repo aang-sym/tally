@@ -1,13 +1,12 @@
 # SignUpRequest
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**email** | **string** |  | [default to undefined]
-**password** | **string** |  | [default to undefined]
-**display_name** | **string** |  | [default to undefined]
+| Name             | Type       | Description | Notes                  |
+| ---------------- | ---------- | ----------- | ---------------------- |
+| **email**        | **string** |             | [default to undefined] |
+| **password**     | **string** |             | [default to undefined] |
+| **display_name** | **string** |             | [default to undefined] |
 
 ## Example
 
@@ -15,9 +14,9 @@ Name | Type | Description | Notes
 import { SignUpRequest } from './api';
 
 const instance: SignUpRequest = {
-    email,
-    password,
-    display_name,
+  email,
+  password,
+  display_name,
 };
 ```
 

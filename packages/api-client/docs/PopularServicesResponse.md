@@ -1,12 +1,11 @@
 # PopularServicesResponse
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | [**PopularServicesResponseData**](PopularServicesResponseData.md) |  | [optional] [default to undefined]
+| Name        | Type                                                              | Description | Notes                             |
+| ----------- | ----------------------------------------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                                                       |             | [optional] [default to undefined] |
+| **data**    | [**PopularServicesResponseData**](PopularServicesResponseData.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { PopularServicesResponse } from './api';
 
 const instance: PopularServicesResponse = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

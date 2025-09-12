@@ -1,12 +1,11 @@
 # ServicesResponseData
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**services** | [**Array&lt;Service&gt;**](Service.md) |  | [optional] [default to undefined]
-**count** | **number** |  | [optional] [default to undefined]
+| Name         | Type                                   | Description | Notes                             |
+| ------------ | -------------------------------------- | ----------- | --------------------------------- |
+| **services** | [**Array&lt;Service&gt;**](Service.md) |             | [optional] [default to undefined] |
+| **count**    | **number**                             |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { ServicesResponseData } from './api';
 
 const instance: ServicesResponseData = {
-    services,
-    count,
+  services,
+  count,
 };
 ```
 

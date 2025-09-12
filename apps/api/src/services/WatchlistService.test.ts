@@ -39,13 +39,19 @@ describe('WatchlistService update field methods', () => {
     userClient.from.mockReturnValue(q);
     q.single.mockResolvedValue({ data: { id: 'xyz' }, error: null });
 
-    const ok = await service.updateStreamingProvider('user-1', 'user-show-1', { id: 8, name: 'Netflix', logo_path: '/logo.png' });
+    const ok = await service.updateStreamingProvider('user-1', 'user-show-1', {
+      id: 8,
+      name: 'Netflix',
+      logo_path: '/logo.png',
+    });
 
     expect(ok).toBe(true);
     expect(userClient.from).toHaveBeenCalledWith('user_shows');
-    expect(q.update).toHaveBeenCalledWith(expect.objectContaining({
-      streaming_provider_id: 8,
-    }));
+    expect(q.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        streaming_provider_id: 8,
+      })
+    );
     // RLS enforcement by user_id scope
     expect(q.eq).toHaveBeenNthCalledWith(1, 'id', 'user-show-1');
     expect(q.eq).toHaveBeenNthCalledWith(2, 'user_id', 'user-1');
@@ -56,7 +62,11 @@ describe('WatchlistService update field methods', () => {
     userClient.from.mockReturnValue(q);
     q.single.mockRejectedValue(new Error('update failed'));
 
-    const ok = await service.updateStreamingProvider('user-1', 'user-show-1', { id: 100, name: 'X', logo_path: '/x.png' });
+    const ok = await service.updateStreamingProvider('user-1', 'user-show-1', {
+      id: 100,
+      name: 'X',
+      logo_path: '/x.png',
+    });
     expect(ok).toBe(false);
   });
 

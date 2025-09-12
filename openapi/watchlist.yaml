@@ -28,13 +28,13 @@ paths:
             enum: [watchlist, watching, completed, dropped, all]
             default: all
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/WatchlistListResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "500": { $ref: "#/components/responses/ServerError" }
+              schema: { $ref: '#/components/schemas/WatchlistListResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
 
     post:
       summary: Add a show to the user's watchlist
@@ -54,32 +54,32 @@ paths:
                   enum: [watchlist, watching]
                   default: watchlist
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/AddWatchlistResponse" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "500": { $ref: "#/components/responses/ServerError" }
+              schema: { $ref: '#/components/schemas/AddWatchlistResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
 
   /api/watchlist/stats:
     get:
       summary: Get user's watchlist statistics
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/WatchlistStatsResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "500": { $ref: "#/components/responses/ServerError" }
+              schema: { $ref: '#/components/schemas/WatchlistStatsResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
 
   /api/watchlist/{id}/status:
     put:
       summary: Update a show's status
       parameters:
-        - $ref: "#/components/parameters/UserShowIdParam"
+        - $ref: '#/components/parameters/UserShowIdParam'
       requestBody:
         required: true
         content:
@@ -92,21 +92,21 @@ paths:
                   type: string
                   enum: [watchlist, watching, completed, dropped]
       responses:
-        "200":
+        '200':
           description: Updated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/UserShowStatusResponse" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "500": { $ref: "#/components/responses/ServerError" }
+              schema: { $ref: '#/components/schemas/UserShowStatusResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
 
   /api/watchlist/{id}/rating:
     put:
       summary: Rate a show
       parameters:
-        - $ref: "#/components/parameters/UserShowIdParam"
+        - $ref: '#/components/parameters/UserShowIdParam'
       requestBody:
         required: true
         content:
@@ -121,21 +121,21 @@ paths:
                   maximum: 10
                   multipleOf: 0.5
       responses:
-        "200":
+        '200':
           description: Rated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/RateShowResponse" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "500": { $ref: "#/components/responses/ServerError" }
+              schema: { $ref: '#/components/schemas/RateShowResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
 
   /api/watchlist/{id}/notes:
     put:
       summary: Update show notes
       parameters:
-        - $ref: "#/components/parameters/UserShowIdParam"
+        - $ref: '#/components/parameters/UserShowIdParam'
       requestBody:
         required: true
         content:
@@ -146,15 +146,15 @@ paths:
               properties:
                 notes: { type: string }
       responses:
-        "200":
+        '200':
           description: Updated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/UpdateNotesResponse" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "500": { $ref: "#/components/responses/ServerError" }
+              schema: { $ref: '#/components/schemas/UpdateNotesResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
 
   /api/watchlist/{id}/provider:
     put:
@@ -162,7 +162,7 @@ paths:
       description: |
         Set or clear (`null`) the provider. Expects `{ id, name, logo_path }` when not null.
       parameters:
-        - $ref: "#/components/parameters/UserShowIdParam"
+        - $ref: '#/components/parameters/UserShowIdParam'
       requestBody:
         required: true
         content:
@@ -173,18 +173,18 @@ paths:
               properties:
                 provider:
                   oneOf:
-                    - $ref: "#/components/schemas/SelectedProvider"
-                    - type: "null"
+                    - $ref: '#/components/schemas/SelectedProvider'
+                    - type: 'null'
       responses:
-        "200":
+        '200':
           description: Updated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/UpdateProviderResponse" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "500": { $ref: "#/components/responses/ServerError" }
+              schema: { $ref: '#/components/schemas/UpdateProviderResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
 
   /api/watchlist/{id}/country:
     put:
@@ -192,7 +192,7 @@ paths:
       description: |
         Set a per-show `countryCode` (e.g., AU) or clear it with `null`.
       parameters:
-        - $ref: "#/components/parameters/UserShowIdParam"
+        - $ref: '#/components/parameters/UserShowIdParam'
       requestBody:
         required: true
         content:
@@ -204,23 +204,23 @@ paths:
                 countryCode:
                   oneOf:
                     - { type: string, minLength: 2, maxLength: 2 }
-                    - { type: "null" }
+                    - { type: 'null' }
       responses:
-        "200":
+        '200':
           description: Updated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/UpdateCountryResponse" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "500": { $ref: "#/components/responses/ServerError" }
+              schema: { $ref: '#/components/schemas/UpdateCountryResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
 
   /api/watchlist/{id}/buffer:
     put:
       summary: Update buffer days for a show
       parameters:
-        - $ref: "#/components/parameters/UserShowIdParam"
+        - $ref: '#/components/parameters/UserShowIdParam'
       requestBody:
         required: true
         content:
@@ -233,23 +233,23 @@ paths:
                   type: number
                   minimum: 0
       responses:
-        "200":
+        '200':
           description: Updated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/UpdateBufferResponse" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "500": { $ref: "#/components/responses/ServerError" }
+              schema: { $ref: '#/components/schemas/UpdateBufferResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
 
   /api/watchlist/{id}:
     delete:
       summary: Remove show from watchlist
       parameters:
-        - $ref: "#/components/parameters/UserShowIdParam"
+        - $ref: '#/components/parameters/UserShowIdParam'
       responses:
-        "200":
+        '200':
           description: Removed
           content:
             application/json:
@@ -260,22 +260,22 @@ paths:
                   data:
                     type: object
                     properties:
-                      message: { type: string, example: "Show removed from watchlist" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "500": { $ref: "#/components/responses/ServerError" }
+                      message: { type: string, example: 'Show removed from watchlist' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
 
   /api/watchlist/watching:
     get:
       summary: List currently watching shows
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/WatchingListResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "500": { $ref: "#/components/responses/ServerError" }
+              schema: { $ref: '#/components/schemas/WatchingListResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
 
   /api/watchlist/watching/{showId}:
     get:
@@ -286,14 +286,14 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ShowProgressDetailResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "500": { $ref: "#/components/responses/ServerError" }
+              schema: { $ref: '#/components/schemas/ShowProgressDetailResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
 
   /api/watchlist/search-and-add:
     post:
@@ -316,7 +316,7 @@ paths:
                 - required: [query]
                 - required: [tmdbId]
       responses:
-        "201":
+        '201':
           description: Created
           content:
             application/json:
@@ -327,12 +327,12 @@ paths:
                   data:
                     type: object
                     properties:
-                      userShow: { $ref: "#/components/schemas/UserShow" }
+                      userShow: { $ref: '#/components/schemas/UserShow' }
                       message: { type: string }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "500": { $ref: "#/components/responses/ServerError" }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
 
   /api/watchlist/{tmdbId}/progress:
     get:
@@ -343,14 +343,14 @@ paths:
           required: true
           schema: { type: integer }
       responses:
-        "200":
+        '200':
           description: OK
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ShowProgressMapResponse" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "500": { $ref: "#/components/responses/ServerError" }
+              schema: { $ref: '#/components/schemas/ShowProgressMapResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
 
     put:
       summary: Set episode progress up to an episode (inclusive) for a show (by TMDB ID)
@@ -375,15 +375,15 @@ paths:
                   type: string
                   enum: [watched, unwatched, watching]
       responses:
-        "200":
+        '200':
           description: Updated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ProgressUpdateResponse" }
-        "400": { $ref: "#/components/responses/BadRequest" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
-        "500": { $ref: "#/components/responses/ServerError" }
+              schema: { $ref: '#/components/schemas/ProgressUpdateResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
 
 components:
   securitySchemes:
@@ -402,22 +402,22 @@ components:
       description: Bad request
       content:
         application/json:
-          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
     Unauthorized:
       description: Unauthorized
       content:
         application/json:
-          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
     NotFound:
       description: Not found
       content:
         application/json:
-          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
     ServerError:
       description: Server error
       content:
         application/json:
-          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
 
   schemas:
     ErrorResponse:
@@ -431,7 +431,7 @@ components:
       type: object
       required: [id, name, logo_path]
       properties:
-        id: { type: integer, description: "TMDB provider id" }
+        id: { type: integer, description: 'TMDB provider id' }
         name: { type: string }
         logo_path: { type: string }
 
@@ -472,11 +472,11 @@ components:
       properties:
         id: { type: string, format: uuid }
         status: { type: string, enum: [watchlist, watching, completed, dropped] }
-        show: { $ref: "#/components/schemas/ShowSummary" }
+        show: { $ref: '#/components/schemas/ShowSummary' }
         streaming_provider:
           oneOf:
-            - $ref: "#/components/schemas/SelectedProvider"
-            - { type: "null" }
+            - $ref: '#/components/schemas/SelectedProvider'
+            - { type: 'null' }
 
     WatchlistListResponse:
       type: object
@@ -487,7 +487,7 @@ components:
           properties:
             shows:
               type: array
-              items: { $ref: "#/components/schemas/WatchlistRow" }
+              items: { $ref: '#/components/schemas/WatchlistRow' }
             totalCount: { type: integer }
             statusFilter: { type: string }
 
@@ -498,10 +498,10 @@ components:
         data:
           type: object
           properties:
-            userShow: { $ref: "#/components/schemas/UserShow" }
+            userShow: { $ref: '#/components/schemas/UserShow' }
             show:
               allOf:
-                - $ref: "#/components/schemas/ShowSummary"
+                - $ref: '#/components/schemas/ShowSummary'
             availability:
               type: array
               items:
@@ -531,7 +531,7 @@ components:
         data:
           type: object
           properties:
-            userShow: { $ref: "#/components/schemas/UserShow" }
+            userShow: { $ref: '#/components/schemas/UserShow' }
             message: { type: string }
 
     RateShowResponse:
@@ -563,8 +563,8 @@ components:
           properties:
             provider:
               oneOf:
-                - $ref: "#/components/schemas/SelectedProvider"
-                - { type: "null" }
+                - $ref: '#/components/schemas/SelectedProvider'
+                - { type: 'null' }
             message: { type: string }
 
     UpdateCountryResponse:
@@ -577,7 +577,7 @@ components:
             countryCode:
               oneOf:
                 - { type: string }
-                - { type: "null" }
+                - { type: 'null' }
             message: { type: string }
 
     UpdateBufferResponse:
@@ -602,7 +602,7 @@ components:
               items:
                 # service returns raw rows here; keep flexible
                 anyOf:
-                  - $ref: "#/components/schemas/WatchlistRow"
+                  - $ref: '#/components/schemas/WatchlistRow'
                   - { type: object, additionalProperties: true }
             totalCount: { type: integer }
 
@@ -613,7 +613,7 @@ components:
         data:
           type: object
           properties:
-            show: { $ref: "#/components/schemas/ShowSummary" }
+            show: { $ref: '#/components/schemas/ShowSummary' }
             seasons:
               type: array
               items:

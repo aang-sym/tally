@@ -17,11 +17,13 @@ The codebase is functional but contains **critical security vulnerabilities** th
 ## 1. Insecure Authentication System
 
 ### Problem
+
 - **File:** `apps/api/src/middleware/user-identity.ts`
 - **Issue:** Authentication relies on client-provided `x-user-id` header with no validation
 - **Impact:** Any user can impersonate any other user by simply changing the header value
 
 ### Current Implementation
+
 ```typescript
 // This allows complete user impersonation
 const userId = req.headers['x-user-id'] as string;
@@ -29,6 +31,7 @@ req.userId = userId || 'anonymous';
 ```
 
 ### Action Plan
+
 1. **Install JWT library:** `npm install jsonwebtoken @types/jsonwebtoken`
 2. **Add environment variable:** `JWT_SECRET` to `.env` files
 3. **Update `apps/api/src/routes/users.ts`:**
@@ -43,18 +46,21 @@ req.userId = userId || 'anonymous';
 ## 2. Database Security Bypass
 
 ### Problem
+
 - **File:** `apps/api/src/db/supabase.ts`
 - **Issue:** Uses `SUPABASE_SERVICE_KEY` (admin privileges) instead of `SUPABASE_ANON_KEY`
 - **Issue:** Row Level Security policies are disabled with `USING (true)` clauses
 - **Impact:** Complete bypass of all database security, any operation can access any data
 
 ### Current Implementation
+
 ```typescript
 // This bypasses ALL security policies
 const supabase = createClient(url, serviceKey);
 ```
 
 ### Action Plan
+
 1. **Update `apps/api/src/db/supabase.ts`:**
    - Change to use `SUPABASE_ANON_KEY` instead of `SUPABASE_SERVICE_KEY`
    - Pass user JWT to Supabase client for each request
@@ -66,11 +72,13 @@ const supabase = createClient(url, serviceKey);
 ## 3. API Authorization Gaps
 
 ### Problem
+
 - **Files:** All API routes in `apps/api/src/routes/`
 - **Issue:** No authorization checks on protected endpoints
 - **Impact:** Even with proper authentication, there are no route-level protections
 
 ### Action Plan
+
 1. **Add authorization middleware** that verifies user permissions for specific operations
 2. **Audit all API endpoints** and add appropriate auth checks
 3. **Implement user session management** to handle token refresh and logout
@@ -114,7 +122,7 @@ const supabase = createClient(url, serviceKey);
 
 ### 1. Consolidate Redundant API Routes
 
-- **Files:** 
+- **Files:**
   - `apps/api/src/routes/watchlist.ts` vs `apps/api/src/routes/watchlist-v2.ts` vs `apps/api/src/routes/watchlist-v2-simple.ts`
   - `apps/api/src/routes/users.ts` vs `apps/api/src/routes/users-simple.ts`
 - **Action Plan:**

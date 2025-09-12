@@ -1,12 +1,11 @@
 # ServiceResponse
 
-
 ## Properties
 
-Name | Type | Description | Notes
------------- | ------------- | ------------- | -------------
-**success** | **boolean** |  | [optional] [default to undefined]
-**data** | [**ServiceResponseData**](ServiceResponseData.md) |  | [optional] [default to undefined]
+| Name        | Type                                              | Description | Notes                             |
+| ----------- | ------------------------------------------------- | ----------- | --------------------------------- |
+| **success** | **boolean**                                       |             | [optional] [default to undefined] |
+| **data**    | [**ServiceResponseData**](ServiceResponseData.md) |             | [optional] [default to undefined] |
 
 ## Example
 
@@ -14,8 +13,8 @@ Name | Type | Description | Notes
 import { ServiceResponse } from './api';
 
 const instance: ServiceResponse = {
-    success,
-    data,
+  success,
+  data,
 };
 ```
 

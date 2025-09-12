@@ -92,8 +92,9 @@ const Calendar: React.FC = () => {
       console.error('Failed to load user data:', err);
       setError('Failed to load your data. Please check your connection.');
     } finally {
-      if (aliveFlag === false) return;
-      setLoading(false);
+      if (aliveFlag !== false) {
+        setLoading(false);
+      }
     }
   };
 
