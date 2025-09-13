@@ -21,8 +21,7 @@ app.use((err: Error, req: express.Request, res: express.Response, _next: express
   res.status((err as any).statusCode || 500).json({ error: err.message });
 });
 
-const TEST_JWT_SECRET =
-  'tally_super_secret_jwt_key_2025_production_ready_secure_token_12345';
+const TEST_JWT_SECRET = 'tally_super_secret_jwt_key_2025_production_ready_secure_token_12345';
 
 const signToken = (payload: { userId: string; email?: string; displayName?: string }) =>
   jwt.sign(

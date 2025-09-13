@@ -42,8 +42,14 @@ const hoisted = vi.hoisted(() => {
         if (idFilters && idFilters.length > 0) {
           const id = idFilters[idFilters.length - 1];
           if (store.user && store.user.id === id) {
-            const { id: uid, email, display_name, avatar_url, is_test_user, created_at } =
-              store.user;
+            const {
+              id: uid,
+              email,
+              display_name,
+              avatar_url,
+              is_test_user,
+              created_at,
+            } = store.user;
             return {
               data: { id: uid, email, display_name, avatar_url, is_test_user, created_at },
               error: null,
@@ -87,7 +93,6 @@ const hoisted = vi.hoisted(() => {
     // Return shapes used by route code
     chain.select.mockReturnValue(chain);
     chain.single.mockResolvedValue({ data: null, error: null });
-
 
     // Terminal execution for select().eq().single() on different tables in GET /users/:id/profile
     chain.then = undefined; // not a Promise
@@ -191,11 +196,9 @@ app.use('/users', usersDbRouter);
 const tokenFor = (userId: string) => {
   // Ensure our mock DB aligns inserted id with the token's user id
   hoisted.state.currentUserId = userId;
-  return jwt.sign(
-    { userId, email: `${userId}@test.dev`, displayName: 'Tester' },
-    TEST_JWT_SECRET,
-    { expiresIn: '1d' }
-  );
+  return jwt.sign({ userId, email: `${userId}@test.dev`, displayName: 'Tester' }, TEST_JWT_SECRET, {
+    expiresIn: '1d',
+  });
 };
 
 describe('GET /users/:id/profile', () => {

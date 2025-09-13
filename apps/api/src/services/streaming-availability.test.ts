@@ -56,7 +56,7 @@ describe('StreamingAvailabilityService', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await vi.resetModules(); // ensure singleton service re-initializes per test
-  
+
     // Create a mock client instance
     mockClient = {
       search: vi.fn(),
@@ -67,7 +67,7 @@ describe('StreamingAvailabilityService', () => {
       getExpirationDate: vi.fn(),
       isLeavingSoon: vi.fn(),
     };
-  
+
     // Make the constructor return our mock
     (StreamingAvailabilityClient as any).mockImplementation(() => mockClient);
   });

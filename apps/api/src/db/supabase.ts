@@ -119,18 +119,63 @@ export const serviceSupabase: SupabaseClient =
 
 // Mock client for test environment
 function createTestMockClient(): SupabaseClient {
-  const createChainableMock = (): any => {
+  interface ChainableMock {
+    select: (...args: string[]) => ChainableMock;
+    insert: (data: Record<string, unknown>) => ChainableMock;
+    update: () => ChainableMock;
+    delete: () => ChainableMock;
+    eq: () => ChainableMock;
+    neq: () => ChainableMock;
+    gt: () => ChainableMock;
+    gte: () => ChainableMock;
+    lt: () => ChainableMock;
+    lte: () => ChainableMock;
+    like: () => ChainableMock;
+    ilike: () => ChainableMock;
+    is: () => ChainableMock;
+    in: () => ChainableMock;
+    contains: () => ChainableMock;
+    containedBy: () => ChainableMock;
+    rangeGt: () => ChainableMock;
+    rangeGte: () => ChainableMock;
+    rangeLt: () => ChainableMock;
+    rangeLte: () => ChainableMock;
+    rangeAdjacent: () => ChainableMock;
+    overlaps: () => ChainableMock;
+    textSearch: () => ChainableMock;
+    match: () => ChainableMock;
+    not: () => ChainableMock;
+    or: () => ChainableMock;
+    filter: () => ChainableMock;
+    order: () => ChainableMock;
+    limit: () => ChainableMock;
+    range: () => ChainableMock;
+    single: () => Promise<{ data: unknown; error: unknown }>;
+    maybeSingle: () => Promise<{ data: unknown; error: unknown }>;
+    then: <TResult1 = { data: unknown; error: unknown }, TResult2 = never>(
+      onfullfilled?:
+        | ((value: { data: unknown; error: unknown }) => TResult1 | PromiseLike<TResult1>)
+        | undefined
+        | null,
+      onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | undefined | null
+    ) => Promise<TResult1 | TResult2>;
+  }
+
+  const createChainableMock = (): ChainableMock => {
     let hasInsert = false;
     let hasSelect = false;
     let selectFields: string | undefined = undefined;
-    
+
     const chainable = {
-      select: (...args: any[]) => { 
-        hasSelect = true; 
+      select: (...args: string[]) => {
+        hasSelect = true;
         selectFields = args[0];
-        return chainable; 
+        return chainable;
       },
-      insert: (...args: any[]) => { hasInsert = true; return chainable; },
+      insert: (_data: Record<string, unknown>) => {
+        hasInsert = true;
+        return chainable;
+      },
       update: () => chainable,
       delete: () => chainable,
       eq: () => chainable,
@@ -162,74 +207,86 @@ function createTestMockClient(): SupabaseClient {
       single: () => {
         // If this is an insert operation with select, return user data
         if (hasInsert && hasSelect) {
-          return Promise.resolve({ 
-            data: { 
-              id: 'test-user-id', 
-              email: 'test@example.com', 
+          return Promise.resolve({
+            data: {
+              id: 'test-user-id',
+              email: 'test@example.com',
               display_name: 'Test User',
               avatar_url: null,
               is_test_user: true,
-              created_at: new Date().toISOString()
-            }, 
-            error: null 
+              created_at: new Date().toISOString(),
+            },
+            error: null,
           });
         }
         // If this is a select with full user profile fields (for profile lookup), return user data
         if (hasSelect && selectFields && selectFields.includes('display_name')) {
-          return Promise.resolve({ 
-            data: { 
-              id: 'test-user-id', 
-              email: 'test@example.com', 
+          return Promise.resolve({
+            data: {
+              id: 'test-user-id',
+              email: 'test@example.com',
               display_name: 'Test User',
               avatar_url: null,
               is_test_user: true,
-              created_at: new Date().toISOString()
-            }, 
-            error: null 
+              created_at: new Date().toISOString(),
+            },
+            error: null,
           });
         }
         // Otherwise return null (for existence checks like "select id")
-        return Promise.resolve({ 
+        return Promise.resolve({
           data: null,
-          error: null 
+          error: null,
         });
       },
-      maybeSingle: () => Promise.resolve({ 
-        data: { 
-          id: 'test-user-id', 
-          email: 'test@example.com', 
-          display_name: 'Test User' 
-        }, 
-        error: null 
-      }),
-      then: (resolve: any) => {
+      maybeSingle: () =>
+        Promise.resolve({
+          data: {
+            id: 'test-user-id',
+            email: 'test@example.com',
+            display_name: 'Test User',
+          },
+          error: null,
+        }),
+      then: <TResult1 = { data: unknown; error: unknown }, TResult2 = never>(
+        onfullfilled?:
+          | ((value: { data: unknown; error: unknown }) => TResult1 | PromiseLike<TResult1>)
+          | undefined
+          | null,
+        _onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | undefined | null
+      ): Promise<TResult1 | TResult2> => {
+        let result: { data: unknown; error: unknown };
+
         // For regular queries without single(), return an array (for watchlist stats)
         if (hasSelect && !hasInsert && selectFields === 'status') {
-          return resolve({ 
-            data: [
-              { status: 'watchlist' },
-              { status: 'watching' },
-              { status: 'completed' }
-            ], 
-            error: null 
-          });
+          result = {
+            data: [{ status: 'watchlist' }, { status: 'watching' }, { status: 'completed' }],
+            error: null,
+          };
         }
         // For insert operations, return the created user
-        if (hasInsert) {
-          return resolve({ 
-            data: { 
-              id: 'test-user-id', 
-              email: 'test@example.com', 
+        else if (hasInsert) {
+          result = {
+            data: {
+              id: 'test-user-id',
+              email: 'test@example.com',
               display_name: 'Test User',
               avatar_url: null,
               is_test_user: true,
-              created_at: new Date().toISOString()
-            }, 
-            error: null 
-          });
+              created_at: new Date().toISOString(),
+            },
+            error: null,
+          };
         }
         // Default to empty array for other queries
-        return resolve({ data: [], error: null });
+        else {
+          result = { data: [], error: null };
+        }
+
+        if (onfullfilled) {
+          return Promise.resolve(onfullfilled(result));
+        }
+        return Promise.resolve(result as TResult1);
       },
     };
     return chainable;
@@ -244,7 +301,7 @@ function createTestMockClient(): SupabaseClient {
       signUp: () => Promise.resolve({ data: null, error: null }),
       signOut: () => Promise.resolve({ error: null }),
     },
-  } as any as SupabaseClient;
+  } as unknown as SupabaseClient;
   return mockClient;
 }
 
