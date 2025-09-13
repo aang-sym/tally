@@ -10,7 +10,10 @@
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:unit": "pnpm run build:deps && vitest run --config vitest.config.unit.ts",
+    "build:deps": "pnpm --filter @tally/types build && pnpm --filter @tally/core build",
+    "test:integration": "vitest run --config vitest.config.integration.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.7",
