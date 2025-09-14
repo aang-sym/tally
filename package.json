@@ -14,7 +14,7 @@
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "lint:fix": "pnpm -r lint:fix",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm -r build && pnpm -r typecheck",
     "test": "pnpm -r test",
     "test:unit": "pnpm -r build && pnpm --filter @tally/api run test:unit",
     "test:integration": "pnpm --filter @tally/api run test --config vitest.config.integration.ts",

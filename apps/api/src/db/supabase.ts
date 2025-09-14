@@ -122,6 +122,10 @@ function createTestMockClient(): SupabaseClient {
   interface ChainableMock {
     select: (...args: string[]) => ChainableMock;
     insert: (data: Record<string, unknown>) => ChainableMock;
+    upsert: (
+      data: Record<string, unknown> | Record<string, unknown>[],
+      options?: Record<string, unknown>
+    ) => ChainableMock;
     update: () => ChainableMock;
     delete: () => ChainableMock;
     eq: () => ChainableMock;
@@ -163,6 +167,7 @@ function createTestMockClient(): SupabaseClient {
 
   const createChainableMock = (): ChainableMock => {
     let hasInsert = false;
+    let hasUpsert = false;
     let hasSelect = false;
     let selectFields: string | undefined = undefined;
 
@@ -174,6 +179,14 @@ function createTestMockClient(): SupabaseClient {
       },
       insert: (_data: Record<string, unknown>) => {
         hasInsert = true;
+        return chainable;
+      },
+      upsert: (
+        _data: Record<string, unknown> | Record<string, unknown>[],
+        _options?: Record<string, unknown>
+      ) => {
+        hasInsert = true;
+        hasUpsert = true;
         return chainable;
       },
       update: () => chainable,
@@ -205,8 +218,23 @@ function createTestMockClient(): SupabaseClient {
       limit: () => chainable,
       range: () => chainable,
       single: () => {
-        // If this is an insert operation with select, return user data
-        if (hasInsert && hasSelect) {
+        // If this is an upsert operation with select (show creation), return show data
+        if (hasUpsert && hasSelect) {
+          return Promise.resolve({
+            data: {
+              id: 'test-show-id',
+              tmdb_id: 999999,
+              title: 'Test Show',
+              overview: 'Test show for RLS testing',
+              status: 'Airing',
+              is_popular: false,
+              created_at: new Date().toISOString(),
+            },
+            error: null,
+          });
+        }
+        // If this is an insert operation with select (user creation), return user data
+        if (hasInsert && hasSelect && !hasUpsert) {
           return Promise.resolve({
             data: {
               id: 'test-user-id',
@@ -228,6 +256,20 @@ function createTestMockClient(): SupabaseClient {
               display_name: 'Test User',
               avatar_url: null,
               is_test_user: true,
+              created_at: new Date().toISOString(),
+            },
+            error: null,
+          });
+        }
+        // If this is a select on user_shows table, return user show data
+        if (hasSelect && !hasInsert && !hasUpsert) {
+          return Promise.resolve({
+            data: {
+              id: 'test-user-show-id',
+              user_id: '11111111-1111-1111-1111-111111111111',
+              show_id: 'test-show-id',
+              status: 'watchlist',
+              added_at: new Date().toISOString(),
               created_at: new Date().toISOString(),
             },
             error: null,
@@ -264,15 +306,30 @@ function createTestMockClient(): SupabaseClient {
             error: null,
           };
         }
-        // For insert operations, return the created user
+        // For upsert operations (show creation), return show data
+        else if (hasUpsert) {
+          result = {
+            data: {
+              id: 'test-show-id',
+              tmdb_id: 999999,
+              title: 'Test Show',
+              overview: 'Test show for RLS testing',
+              status: 'Airing',
+              is_popular: false,
+              created_at: new Date().toISOString(),
+            },
+            error: null,
+          };
+        }
+        // For insert operations on user_shows, return user show data
         else if (hasInsert) {
           result = {
             data: {
-              id: 'test-user-id',
-              email: 'test@example.com',
-              display_name: 'Test User',
-              avatar_url: null,
-              is_test_user: true,
+              id: 'test-user-show-id',
+              user_id: '11111111-1111-1111-1111-111111111111',
+              show_id: 'test-show-id',
+              status: 'watchlist',
+              added_at: new Date().toISOString(),
               created_at: new Date().toISOString(),
             },
             error: null,

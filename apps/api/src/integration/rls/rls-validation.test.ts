@@ -179,7 +179,7 @@ describe('RLS Integration Tests - Live API Server', () => {
       const result = await apiCall('/api/watchlist', {
         method: 'POST',
         body: JSON.stringify({
-          tmdb_id: 999999,
+          tmdbId: 999999,
           status: 'watchlist',
         }),
       });
@@ -189,13 +189,17 @@ describe('RLS Integration Tests - Live API Server', () => {
     });
 
     it('should allow authenticated users to add shows to their watchlist', async () => {
+      const requestBody = {
+        tmdbId: 123456,
+        status: 'watchlist',
+      };
       const result = await apiCall('/api/watchlist', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${user1Token}` },
-        body: JSON.stringify({
-          tmdbId: 123456,
-          status: 'watchlist',
-        }),
+        headers: {
+          Authorization: `Bearer ${user1Token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
       });
 
       // Should either succeed (201) or return existing record (200/409)
@@ -203,7 +207,8 @@ describe('RLS Integration Tests - Live API Server', () => {
 
       if (result.status === 201) {
         expect(result.data.success).toBe(true);
-        expect(result.data.data).toHaveProperty('id');
+        expect(result.data.data).toHaveProperty('userShow');
+        expect(result.data.data.userShow).toHaveProperty('id');
       }
     });
   });
@@ -217,21 +222,38 @@ describe('RLS Integration Tests - Live API Server', () => {
         headers: { Authorization: `Bearer ${user1Token}` },
       });
 
+      console.log('🔍 User1 watchlist response:', {
+        status: user1Watchlist.status,
+        showCount: user1Watchlist.data?.data?.shows?.length,
+      });
+
       if (user1Watchlist.status === 200 && user1Watchlist.data.data.shows.length > 0) {
         user1ShowId = user1Watchlist.data.data.shows[0].id;
+        console.log('✅ Found existing show for user1:', user1ShowId);
       } else {
         // Create a show for user1 if none exists
+        console.log('📝 Creating new show for user1...');
         const createResult = await apiCall('/api/watchlist', {
           method: 'POST',
-          headers: { Authorization: `Bearer ${user1Token}` },
+          headers: {
+            Authorization: `Bearer ${user1Token}`,
+            'Content-Type': 'application/json',
+          },
           body: JSON.stringify({
             tmdbId: 777777,
             status: 'watchlist',
           }),
         });
 
+        console.log('📝 Create result:', {
+          status: createResult.status,
+          hasData: !!createResult.data?.data,
+        });
         if ([200, 201].includes(createResult.status)) {
-          user1ShowId = createResult.data.data.id;
+          user1ShowId = createResult.data.data.userShow.id;
+          console.log('✅ Created show for user1:', user1ShowId);
+        } else {
+          console.error('❌ Failed to create show:', createResult);
         }
       }
     });
@@ -245,7 +267,10 @@ describe('RLS Integration Tests - Live API Server', () => {
       // Try to update user1's show using user2's token
       const result = await apiCall(`/api/watchlist/${user1ShowId}/status`, {
         method: 'PUT',
-        headers: { Authorization: `Bearer ${user2Token}` },
+        headers: {
+          Authorization: `Bearer ${user2Token}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ status: 'completed' }),
       });
 
@@ -260,10 +285,15 @@ describe('RLS Integration Tests - Live API Server', () => {
         return;
       }
 
+      console.log('🔍 Using show ID for user1:', user1ShowId);
+
       // User1 should be able to update their own show
       const result = await apiCall(`/api/watchlist/${user1ShowId}/status`, {
         method: 'PUT',
-        headers: { Authorization: `Bearer ${user1Token}` },
+        headers: {
+          Authorization: `Bearer ${user1Token}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ status: 'completed' }),
       });
 

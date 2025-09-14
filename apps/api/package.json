@@ -4,9 +4,9 @@
   "description": "Tally backend API",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "pnpm run build:deps && tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "pnpm run build:deps && node dist/server.js",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "typecheck": "tsc --noEmit",

@@ -127,8 +127,9 @@ describe('RLS Tests: user_episode_progress table', () => {
       const result = await apiCall(`/api/watchlist/${TEST_TMDB_ID}/progress`, {
         method: 'PUT',
         body: JSON.stringify({
-          state: 'watched',
-          progress: 50,
+          seasonNumber: 1,
+          episodeNumber: 1,
+          status: 'watched',
         }),
       });
 
@@ -141,8 +142,9 @@ describe('RLS Tests: user_episode_progress table', () => {
         method: 'PUT',
         headers: { Authorization: `Bearer ${user1Token}` },
         body: JSON.stringify({
-          state: 'watched',
-          progress: 75,
+          seasonNumber: 1,
+          episodeNumber: 1,
+          status: 'watched',
         }),
       });
 
