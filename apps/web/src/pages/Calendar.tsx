@@ -15,7 +15,7 @@ interface UserSubscription {
   service: {
     id: string;
     name: string;
-    logo_url?: string;
+    logo_path?: string;
   };
 }
 
@@ -26,7 +26,7 @@ interface UserShow {
   streaming_provider?: {
     id: number;
     name: string;
-    logo_url: string;
+    logo_path: string;
   } | null;
   show: {
     title: string;
@@ -51,7 +51,9 @@ const Calendar: React.FC = () => {
     (async () => {
       await loadUserData(alive);
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const loadUserData = async (aliveFlag?: boolean) => {
@@ -90,23 +92,37 @@ const Calendar: React.FC = () => {
       console.error('Failed to load user data:', err);
       setError('Failed to load your data. Please check your connection.');
     } finally {
-      if (aliveFlag === false) return;
-      setLoading(false);
+      if (aliveFlag !== false) {
+        setLoading(false);
+      }
     }
   };
 
   const views = [
-    { id: 'overview' as const, name: 'Overview', icon: '📊', description: 'Multi-service overview' },
+    {
+      id: 'overview' as const,
+      name: 'Overview',
+      icon: '📊',
+      description: 'Multi-service overview',
+    },
     { id: 'savings' as const, name: 'Savings', icon: '💰', description: 'Financial optimization' },
-    { id: 'provider' as const, name: 'Provider', icon: '📺', description: 'Single service detailed view' },
-    { id: 'personal' as const, name: 'Personal', icon: '👤', description: 'Your shows timeline' }
+    {
+      id: 'provider' as const,
+      name: 'Provider',
+      icon: '📺',
+      description: 'Single service detailed view',
+    },
+    { id: 'personal' as const, name: 'Personal', icon: '👤', description: 'Your shows timeline' },
   ];
 
-  const viewProps = useMemo(() => ({
-    useUserData: userSubscriptions.length > 0 || userShows.length > 0,
-    userSubscriptions,
-    userShows,
-  }), [userSubscriptions, userShows]);
+  const viewProps = useMemo(
+    () => ({
+      useUserData: userSubscriptions.length > 0 || userShows.length > 0,
+      userSubscriptions,
+      userShows,
+    }),
+    [userSubscriptions, userShows]
+  );
 
   const renderCurrentView = () => {
     switch (currentView) {
@@ -130,15 +146,23 @@ const Calendar: React.FC = () => {
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Your Shows Timeline</h3>
             <div className="space-y-3">
               {userShows.slice(0, 10).map((userShow) => (
-                <div key={userShow.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                <div
+                  key={userShow.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded"
+                >
                   <div>
                     <span className="font-medium">{userShow.show.title}</span>
-                    <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                      userShow.status === 'watching' ? 'bg-green-100 text-green-800' :
-                      userShow.status === 'completed' ? 'bg-purple-100 text-purple-800' :
-                      userShow.status === 'watchlist' ? 'bg-blue-100 text-blue-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span
+                      className={`ml-2 px-2 py-1 rounded text-xs ${
+                        userShow.status === 'watching'
+                          ? 'bg-green-100 text-green-800'
+                          : userShow.status === 'completed'
+                            ? 'bg-purple-100 text-purple-800'
+                            : userShow.status === 'watchlist'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
                       {userShow.status}
                     </span>
                   </div>
@@ -182,7 +206,8 @@ const Calendar: React.FC = () => {
             <div className="flex flex-col items-end space-y-2">
               <div className="mt-1">
                 <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700">
-                  Country/Region: <span className="ml-1 font-medium">{UserManager.getCountry?.() || 'US'}</span>
+                  Country/Region:{' '}
+                  <span className="ml-1 font-medium">{UserManager.getCountry?.() || 'US'}</span>
                 </span>
                 <a
                   href="/my-shows"
@@ -216,7 +241,7 @@ const Calendar: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           {/* User Data Status */}
           <div className="flex items-center justify-end">
             <div className="text-sm">
@@ -232,7 +257,11 @@ const Calendar: React.FC = () => {
         {/* Error Message */}
         {error && (
           <div className="mt-4">
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4" role="alert" aria-live="polite">
+            <div
+              className="bg-yellow-50 border-l-4 border-yellow-400 p-4"
+              role="alert"
+              aria-live="polite"
+            >
               <div className="flex">
                 <div className="flex-shrink-0">
                   <span className="text-yellow-400 text-xl">⚠️</span>
@@ -244,21 +273,19 @@ const Calendar: React.FC = () => {
             </div>
           </div>
         )}
-        
+
         {/* View Description removed per request */}
       </div>
 
       {/* Current View Content */}
-      <ErrorBoundary>
-        {renderCurrentView()}
-      </ErrorBoundary>
+      <ErrorBoundary>{renderCurrentView()}</ErrorBoundary>
 
       {/* Quick Actions */}
       <div className="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <button
-            onClick={() => window.location.href = '/recommendations'}
+            onClick={() => (window.location.href = '/recommendations')}
             aria-label="Get Recommendations – optimization suggestions"
             className="flex items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
           >
@@ -268,9 +295,9 @@ const Calendar: React.FC = () => {
               <div className="text-sm text-gray-600">View optimization suggestions</div>
             </div>
           </button>
-          
+
           <button
-            onClick={() => window.location.href = '/my-shows'}
+            onClick={() => (window.location.href = '/my-shows')}
             aria-label="Manage Shows – update your watchlist"
             className="flex items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"
           >
@@ -280,7 +307,7 @@ const Calendar: React.FC = () => {
               <div className="text-sm text-gray-600">Update your watchlist</div>
             </div>
           </button>
-          
+
           <button
             aria-label="Export Calendar – add to your calendar app"
             className="flex items-center p-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow"

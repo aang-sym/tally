@@ -1,6 +1,6 @@
 /**
  * Streaming Availability API Client
- * 
+ *
  * Integrates with RapidAPI's Streaming Availability service to get real-time
  * data about content availability across streaming platforms.
  */
@@ -87,12 +87,9 @@ export class StreamingAvailabilityClient {
     this.apiKey = apiKey;
   }
 
-  private async makeRequest<T>(
-    endpoint: string,
-    params: Record<string, string> = {}
-  ): Promise<T> {
+  private async makeRequest<T>(endpoint: string, params: Record<string, string> = {}): Promise<T> {
     const url = new URL(`${this.baseUrl}${endpoint}`);
-    
+
     // Add query parameters
     Object.entries(params).forEach(([key, value]) => {
       url.searchParams.append(key, value);
@@ -109,12 +106,8 @@ export class StreamingAvailabilityClient {
     if (response.status === 429) {
       const resetTime = response.headers.get('X-RateLimit-Reset');
       const resetMs = resetTime ? parseInt(resetTime) * 1000 - Date.now() : this.rateLimitDelay;
-      
-      throw new StreamingAvailabilityError(
-        'Rate limit exceeded',
-        429,
-        resetMs
-      );
+
+      throw new StreamingAvailabilityError('Rate limit exceeded', 429, resetMs);
     }
 
     if (!response.ok) {
@@ -199,7 +192,7 @@ export class StreamingAvailabilityClient {
       '/changes/leaving',
       params
     );
-    
+
     return result.shows;
   }
 
@@ -228,7 +221,7 @@ export class StreamingAvailabilityClient {
       '/changes/added',
       params
     );
-    
+
     return result.shows;
   }
 
@@ -239,7 +232,7 @@ export class StreamingAvailabilityClient {
     const result = await this.makeRequest<StreamingService[]>('/services', {
       country,
     });
-    
+
     return result;
   }
 
@@ -252,7 +245,7 @@ export class StreamingAvailabilityClient {
     country: string = 'us'
   ): StreamingOption | null {
     const countryOptions = availability.streamingOptions[country] || [];
-    return countryOptions.find(option => option.service.id === serviceId) || null;
+    return countryOptions.find((option) => option.service.id === serviceId) || null;
   }
 
   /**
@@ -286,22 +279,19 @@ export class StreamingAvailabilityClient {
   /**
    * Get episodes for a TV series with full metadata
    */
-  async getShowEpisodes(
-    id: string,
-    country: string = 'us'
-  ): Promise<Episode[]> {
+  async getShowEpisodes(id: string, country: string = 'us'): Promise<Episode[]> {
     const show = await this.getShow(id, country, true);
-    
+
     // Return episodes if available directly on the show
     if (show.episodes?.length) {
       return show.episodes;
     }
-    
+
     // Otherwise extract from seasons
     if (show.seasons?.length) {
-      return show.seasons.flatMap(season => season.episodes || []);
+      return show.seasons.flatMap((season) => season.episodes || []);
     }
-    
+
     return [];
   }
 
@@ -310,8 +300,8 @@ export class StreamingAvailabilityClient {
    */
   convertToEpisodeMetadata(episodes: Episode[]): import('../types.js').EpisodeMetadata[] {
     return episodes
-      .filter(ep => ep.air_date) // Only include episodes with air dates
-      .map(episode => ({
+      .filter((ep) => ep.air_date) // Only include episodes with air dates
+      .map((episode) => ({
         id: episode.id,
         seasonNumber: episode.season_number,
         episodeNumber: episode.episode_number,

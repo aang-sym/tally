@@ -4,7 +4,7 @@ create or replace function public.get_streaming_services_with_price(country_code
 returns table (
   id uuid,
   name text,
-  logo_url text,
+  logo_path text,
   homepage text,
   tmdb_provider_id integer,
   prices jsonb,         -- array of tiers for the country
@@ -21,7 +21,7 @@ as $$
         when ss.logo_path is null then null
         when ss.logo_path ilike 'http%' then ss.logo_path
         else 'https://image.tmdb.org/t/p/w45' || ss.logo_path
-      end as logo_url,
+      end as logo_path,
       ss.homepage,
       ss.tmdb_provider_id
     from public.streaming_services ss
@@ -54,7 +54,7 @@ as $$
   select
     t.id,
     t.name,
-    t.logo_url,
+    t.logo_path,
     t.homepage,
     t.tmdb_provider_id,
     -- array of all active or defined tiers
@@ -73,6 +73,6 @@ as $$
       limit 1
     ) as default_price
   from tiered t
-  group by t.id, t.name, t.logo_url, t.homepage, t.tmdb_provider_id
+  group by t.id, t.name, t.logo_path, t.homepage, t.tmdb_provider_id
   order by t.name;
 $$;

@@ -1,11 +1,15 @@
 /**
  * Streaming Availability Service
- * 
+ *
  * Service layer wrapper around the Streaming Availability API client
  * with caching, rate limiting, and error handling specific to our API.
  */
 
-import { StreamingAvailabilityClient, StreamingAvailabilityError, type StreamingAvailability } from '@tally/core';
+import {
+  StreamingAvailabilityClient,
+  StreamingAvailabilityError,
+  type StreamingAvailability,
+} from '@tally/core';
 import { config } from '../config/index.js';
 import { quotaTracker } from './quota-tracker.js';
 
@@ -22,9 +26,11 @@ class StreamingAvailabilityService {
 
   constructor() {
     // Only initialize client if we have an API key and not in dev mode
-    if (config.streamingAvailabilityApiKey && 
-        config.streamingAvailabilityApiKey !== 'dev-key-placeholder' &&
-        !config.streamingApiDevMode) {
+    if (
+      config.streamingAvailabilityApiKey &&
+      config.streamingAvailabilityApiKey !== 'dev-key-placeholder' &&
+      !config.streamingApiDevMode
+    ) {
       this.client = new StreamingAvailabilityClient(config.streamingAvailabilityApiKey);
     }
   }
@@ -46,57 +52,60 @@ class StreamingAvailabilityService {
     return entry.data as T;
   }
 
-  private setCache<T>(key: string, data: T, ttlMinutes: number = 1440): void { // Default 24 hours
-    const expiresAt = Date.now() + (ttlMinutes * 60 * 1000);
+  private setCache<T>(key: string, data: T, ttlMinutes: number = 1440): void {
+    // Default 24 hours
+    const expiresAt = Date.now() + ttlMinutes * 60 * 1000;
     this.cache.set(key, { data, expiresAt });
   }
 
-  private async withRateLimit<T>(
-    operation: () => Promise<T>, 
-    endpoint: string
-  ): Promise<T> {
+  private async withRateLimit<T>(operation: () => Promise<T>, endpoint: string): Promise<T> {
     if (!this.isEnabled()) {
-      throw new Error('Streaming Availability service is not configured. Please set STREAMING_AVAILABILITY_API_KEY environment variable.');
+      throw new Error(
+        'Streaming Availability service is not configured. Please set STREAMING_AVAILABILITY_API_KEY environment variable.'
+      );
     }
 
     // Check quota before making the call
     const canMakeCall = await quotaTracker.canMakeCall();
     if (!canMakeCall) {
       const stats = await quotaTracker.getUsageStats();
-      throw new Error(`Monthly API quota exhausted. Used ${stats.callsUsed}/${stats.limit} calls this month.`);
+      throw new Error(
+        `Monthly API quota exhausted. Used ${stats.callsUsed}/${stats.limit} calls this month.`
+      );
     }
 
     // Check if quota is running low and warn
     const shouldWarn = await quotaTracker.shouldWarnLowQuota();
-    if (shouldWarn && endpoint !== 'quota-check') { // Avoid infinite loops
+    if (shouldWarn && endpoint !== 'quota-check') {
+      // Avoid infinite loops
       const stats = await quotaTracker.getUsageStats();
-      console.warn(`⚠️  API quota running low: ${stats.callsRemaining}/${stats.limit} calls remaining. Consider enabling dev mode.`);
+      console.warn(
+        `⚠️  API quota running low: ${stats.callsRemaining}/${stats.limit} calls remaining. Consider enabling dev mode.`
+      );
     }
 
     const now = Date.now();
     const timeSinceLastRequest = now - this.lastRequestTime;
-    
+
     if (timeSinceLastRequest < this.rateLimitDelay) {
       const delay = this.rateLimitDelay - timeSinceLastRequest;
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
 
-    let success = false;
     try {
       const result = await operation();
-      success = true;
       this.lastRequestTime = Date.now();
-      
+
       return result;
-    } catch (error) {
+    } catch (error: any) {
       this.lastRequestTime = Date.now();
-      
+
       if (error instanceof StreamingAvailabilityError && error.statusCode === 429) {
         // If we hit rate limit, wait before the next request
         const resetDelay = error.rateLimitReset || this.rateLimitDelay * 2;
         this.rateLimitDelay = Math.min(resetDelay, 30000); // Max 30 seconds
       }
-      
+
       throw error;
     }
   }
@@ -111,13 +120,13 @@ class StreamingAvailabilityService {
   ): Promise<StreamingAvailability[]> {
     const cacheKey = this.getCacheKey('search', { title, country, showType });
     const cached = this.getFromCache<StreamingAvailability[]>(cacheKey);
-    
+
     if (cached) {
       return cached;
     }
 
-    const result = await this.withRateLimit(() =>
-      this.client!.search(title, country, showType, 10), 
+    const result = await this.withRateLimit(
+      () => this.client!.search(title, country, showType, 10),
       'search'
     );
     await quotaTracker.recordCall('search', true);
@@ -130,32 +139,29 @@ class StreamingAvailabilityService {
   /**
    * Get detailed show information with caching
    */
-  async getShowDetails(
-    id: string,
-    country: string = 'us'
-  ): Promise<StreamingAvailability | null> {
+  async getShowDetails(id: string, country: string = 'us'): Promise<StreamingAvailability | null> {
     const cacheKey = this.getCacheKey('getShow', { id, country });
     const cached = this.getFromCache<StreamingAvailability>(cacheKey);
-    
+
     if (cached) {
       console.log(`♻️ Using cached details for ID "${id}"`);
       return cached;
     }
 
     try {
-      const result = await this.withRateLimit(() =>
-        this.client!.getShow(id, country),
-        'getShow'
-      );
-      
+      const result = await this.withRateLimit(() => this.client!.getShow(id, country), 'getShow');
+
       // Only record successful API calls
       await quotaTracker.recordCall('getShow', true);
 
       console.log(`📺 Show details for ID "${id}":`, JSON.stringify(result, null, 2));
       this.setCache(cacheKey, result, 1440);
       return result;
-    } catch (error) {
-      console.log(`❌ Failed to get show details for ID "${id}":`, error instanceof StreamingAvailabilityError ? error.message : error);
+    } catch (error: any) {
+      console.log(
+        `❌ Failed to get show details for ID "${id}":`,
+        error instanceof StreamingAvailabilityError ? error.message : error
+      );
       if (error instanceof StreamingAvailabilityError && error.statusCode === 404) {
         return null;
       }
@@ -172,15 +178,15 @@ class StreamingAvailabilityService {
   ): Promise<StreamingAvailability[]> {
     const cacheKey = this.getCacheKey('leavingSoon', { country, service });
     const cached = this.getFromCache<StreamingAvailability[]>(cacheKey);
-    
+
     if (cached) {
       return cached;
     }
 
-    const result = await this.withRateLimit(() =>
-      this.client!.getLeavingSoon(country, service, 50),
+    const result = (await this.withRateLimit(
+      () => this.client!.getLeavingSoon(country, service, 50),
       'getLeavingSoon'
-    );
+    )) as StreamingAvailability[];
 
     this.setCache(cacheKey, result, 360); // Cache for 6 hours
     return result;
@@ -195,15 +201,15 @@ class StreamingAvailabilityService {
   ): Promise<StreamingAvailability[]> {
     const cacheKey = this.getCacheKey('newlyAdded', { country, service });
     const cached = this.getFromCache<StreamingAvailability[]>(cacheKey);
-    
+
     if (cached) {
       return cached;
     }
 
-    const result = await this.withRateLimit(() =>
-      this.client!.getNewlyAdded(country, service, 50),
+    const result = (await this.withRateLimit(
+      () => this.client!.getNewlyAdded(country, service, 50),
       'getNewlyAdded'
-    );
+    )) as StreamingAvailability[];
 
     this.setCache(cacheKey, result, 720); // Cache for 12 hours
     return result;
@@ -218,13 +224,13 @@ class StreamingAvailabilityService {
     country: string = 'us'
   ): Promise<{ available: boolean; expiresOn?: string; leavingSoon: boolean }> {
     const show = await this.getShowDetails(showId, country);
-    
+
     if (!show) {
       return { available: false, leavingSoon: false };
     }
 
     const option = this.client!.isAvailableOnService(show, serviceId, country);
-    
+
     if (!option) {
       return { available: false, leavingSoon: false };
     }
@@ -251,7 +257,7 @@ class StreamingAvailabilityService {
     const canMakeCall = await quotaTracker.canMakeCall();
     const isLowQuota = await quotaTracker.shouldWarnLowQuota();
     const remaining = await quotaTracker.getRemainingCalls();
-    
+
     return {
       canMakeCall,
       isLowQuota,

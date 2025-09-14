@@ -29,7 +29,6 @@ vi.mock('../db/supabase.js', () => {
 
 // Now import after mocks
 import usersRouter from './users.js';
-import { authenticateUser } from '../middleware/user-identity.js';
 
 const buildApp = () => {
   const app = express();
@@ -51,11 +50,9 @@ beforeEach(() => {
 });
 
 const tokenFor = (userId: string) =>
-  jwt.sign(
-    { userId, email: `${userId}@test.dev`, displayName: 'Tester' },
-    TEST_JWT_SECRET,
-    { expiresIn: '1d' }
-  );
+  jwt.sign({ userId, email: `${userId}@test.dev`, displayName: 'Tester' }, TEST_JWT_SECRET, {
+    expiresIn: '1d',
+  });
 
 describe('GET /api/users/:id/subscriptions', () => {
   const app = buildApp();
@@ -63,6 +60,12 @@ describe('GET /api/users/:id/subscriptions', () => {
   it('403 when requesting another user subscriptions', async () => {
     const me = 'user-a';
     const other = 'user-b';
+
+    // Ensure country lookup does not fail before auth check
+    const chain = hoisted.mkChain();
+    hoisted.serviceFrom.mockReturnValue(chain);
+    chain.single.mockResolvedValue({ data: { country_code: 'US' }, error: null });
+
     const res = await request(app)
       .get(`/api/users/${other}/subscriptions`)
       .set('Authorization', `Bearer ${tokenFor(me)}`);
@@ -75,6 +78,10 @@ describe('GET /api/users/:id/subscriptions', () => {
     const me = 'user-a';
     const chain = hoisted.mkChain();
     hoisted.serviceFrom.mockReturnValue(chain);
+
+    // Country lookup succeeds
+    chain.single.mockResolvedValue({ data: { country_code: 'US' }, error: null });
+    // Subscriptions query returns empty
     chain.order.mockResolvedValue({ data: [], error: null });
 
     const res = await request(app)
@@ -92,6 +99,9 @@ describe('GET /api/users/:id/subscriptions', () => {
     const chain = hoisted.mkChain();
     hoisted.serviceFrom.mockReturnValue(chain);
 
+    // Country lookup succeeds
+    chain.single.mockResolvedValue({ data: { country_code: 'US' }, error: null });
+
     const rows = [
       {
         id: 'sub-1',
@@ -103,7 +113,13 @@ describe('GET /api/users/:id/subscriptions', () => {
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
         streaming_services: [
-          { id: 'netflix', name: 'Netflix', logo_path: '/n.png', base_url: 'https://netflix.com', country_code: 'US' },
+          {
+            id: 'netflix',
+            name: 'Netflix',
+            logo_path: '/n.png',
+            base_url: 'https://netflix.com',
+            country_code: 'US',
+          },
         ],
       },
       {
@@ -115,7 +131,13 @@ describe('GET /api/users/:id/subscriptions', () => {
         ended_date: '2024-03-01',
         created_at: '2024-02-01T00:00:00Z',
         updated_at: '2024-03-01T00:00:00Z',
-        streaming_services: { id: 'disney', name: 'Disney+', logo_path: '/d.png', base_url: 'https://disneyplus.com', country_code: 'US' },
+        streaming_services: {
+          id: 'disney',
+          name: 'Disney+',
+          logo_path: '/d.png',
+          base_url: 'https://disneyplus.com',
+          country_code: 'US',
+        },
       },
     ];
     chain.order.mockResolvedValue({ data: rows, error: null });
@@ -141,6 +163,9 @@ describe('GET /api/users/:id/subscriptions', () => {
     const me = 'user-a';
     const chain = hoisted.mkChain();
     hoisted.serviceFrom.mockReturnValue(chain);
+
+    // Country lookup ok; subscriptions query fails
+    chain.single.mockResolvedValue({ data: { country_code: 'US' }, error: null });
     chain.order.mockResolvedValue({ data: null, error: { message: 'db down' } });
 
     const res = await request(app)

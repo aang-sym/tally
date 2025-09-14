@@ -1,6 +1,6 @@
 /**
  * Episode Progress Service
- * 
+ *
  * Handles episode watch progress tracking with auto-completion features,
  * live statistics, and intelligent state management.
  */
@@ -46,7 +46,10 @@ export class EpisodeProgressService {
   /**
    * Mark episode as currently watching
    */
-  async markEpisodeWatching(userId: string, episodeId: string): Promise<UserEpisodeProgress | null> {
+  async markEpisodeWatching(
+    userId: string,
+    episodeId: string
+  ): Promise<UserEpisodeProgress | null> {
     try {
       // Get or create progress record
       const { data: existing, error: fetchError } = await supabase
@@ -56,7 +59,8 @@ export class EpisodeProgressService {
         .eq('episode_id', episodeId)
         .single();
 
-      if (fetchError && fetchError.code !== 'PGRST116') { // Not found is OK
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        // Not found is OK
         throw fetchError;
       }
 
@@ -64,7 +68,7 @@ export class EpisodeProgressService {
         user_id: userId,
         episode_id: episodeId,
         status: 'watching' as const,
-        started_watching_at: new Date().toISOString()
+        started_watching_at: new Date().toISOString(),
       };
 
       let result;
@@ -75,7 +79,7 @@ export class EpisodeProgressService {
           .from('user_episode_progress')
           .update({
             status: 'watching',
-            started_watching_at: existing.started_watching_at || new Date().toISOString()
+            started_watching_at: existing.started_watching_at || new Date().toISOString(),
           })
           .eq('id', existing.id)
           .select()
@@ -130,7 +134,7 @@ export class EpisodeProgressService {
         episode_id: episodeId,
         status: 'watched' as const,
         watched_at: new Date().toISOString(),
-        started_watching_at: existing?.started_watching_at || new Date().toISOString()
+        started_watching_at: existing?.started_watching_at || new Date().toISOString(),
       };
 
       let result;
@@ -141,7 +145,7 @@ export class EpisodeProgressService {
           .from('user_episode_progress')
           .update({
             status: 'watched',
-            watched_at: new Date().toISOString()
+            watched_at: new Date().toISOString(),
           })
           .eq('id', existing.id)
           .select()
@@ -175,8 +179,8 @@ export class EpisodeProgressService {
    * Bulk update multiple episodes (mark range as watched)
    */
   async bulkUpdateEpisodes(
-    userId: string, 
-    episodeIds: string[], 
+    userId: string,
+    episodeIds: string[],
     status: 'watched' | 'unwatched'
   ): Promise<UserEpisodeProgress[]> {
     try {
@@ -207,30 +211,34 @@ export class EpisodeProgressService {
    * Get episode progress for multiple episodes
    */
   async getEpisodesWithProgress(
-    userId: string, 
-    episodeIds: string[], 
+    userId: string,
+    episodeIds: string[],
     includeLiveStats: boolean = true
   ): Promise<EpisodeWithProgress[]> {
     try {
       // Get episodes with user progress
       const { data: episodes, error: episodesError } = await supabase
         .from('episodes')
-        .select(`
+        .select(
+          `
           *,
           user_episode_progress!left (
             *
           )
-        `)
+        `
+        )
         .in('id', episodeIds)
         .eq('user_episode_progress.user_id', userId);
 
       if (episodesError) throw episodesError;
 
       if (!includeLiveStats) {
-        return episodes?.map(ep => ({
-          ...ep,
-          progress: ep.user_episode_progress?.[0] || null
-        })) || [];
+        return (
+          episodes?.map((ep) => ({
+            ...ep,
+            progress: ep.user_episode_progress?.[0] || null,
+          })) || []
+        );
       }
 
       // Get live stats for all episodes
@@ -240,7 +248,7 @@ export class EpisodeProgressService {
           return {
             ...episode,
             progress: episode.user_episode_progress?.[0] || null,
-            liveStats
+            liveStats,
           };
         })
       );
@@ -288,25 +296,32 @@ export class EpisodeProgressService {
 
       if (ratingsError) throw ratingsError;
 
-      let averageRating = undefined;
+      let averageRating = undefined as number | undefined;
       if (ratings && ratings.length > 0) {
-        const validRatings = ratings.map(r => r.episode_rating).filter(r => r !== null);
+        const validRatings = ratings.map((r) => r.episode_rating).filter((r) => r !== null);
         if (validRatings.length > 0) {
-          averageRating = validRatings.reduce((sum, rating) => sum + rating, 0) / validRatings.length;
-          averageRating = Math.round(averageRating * 10) / 10; // Round to 1 decimal
+          const avg = validRatings.reduce((sum, rating) => sum + rating, 0) / validRatings.length;
+          averageRating = Math.round(avg * 10) / 10; // Round to 1 decimal
         }
       }
 
-      return {
+      const result: {
+        currentlyWatching: number;
+        totalWatched: number;
+        averageRating?: number;
+      } = {
         currentlyWatching: watching?.length || 0,
         totalWatched: watched?.length || 0,
-        averageRating
       };
+      if (averageRating !== undefined) {
+        result.averageRating = averageRating;
+      }
+      return result;
     } catch (error) {
       console.error(`Failed to get live stats for episode ${episodeId}:`, error);
       return {
         currentlyWatching: 0,
-        totalWatched: 0
+        totalWatched: 0,
       };
     }
   }
@@ -343,14 +358,14 @@ export class EpisodeProgressService {
         if (updateError) throw updateError;
       } else {
         // Create new record with rating
-        const { error: createError } = await supabase
-          .from('user_episode_progress')
-          .insert([{
+        const { error: createError } = await supabase.from('user_episode_progress').insert([
+          {
             user_id: userId,
             episode_id: episodeId,
             status: 'unwatched',
-            episode_rating: rating
-          }]);
+            episode_rating: rating,
+          },
+        ]);
 
         if (createError) throw createError;
       }
@@ -375,40 +390,41 @@ export class EpisodeProgressService {
     try {
       const { data: progress, error } = await supabase
         .from('user_episode_progress')
-        .select(`
+        .select(
+          `
           status,
           episode_rating,
           episodes!inner (
             runtime
           )
-        `)
+        `
+        )
         .eq('user_id', userId);
 
       if (error) throw error;
 
       const stats = {
         totalEpisodes: progress?.length || 0,
-        watchedEpisodes: progress?.filter(p => p.status === 'watched').length || 0,
-        currentlyWatching: progress?.filter(p => p.status === 'watching').length || 0,
+        watchedEpisodes: progress?.filter((p) => p.status === 'watched').length || 0,
+        currentlyWatching: progress?.filter((p) => p.status === 'watching').length || 0,
         totalWatchTime: 0,
-        averageEpisodeRating: 0
+        averageEpisodeRating: 0,
       };
 
       // Calculate total watch time
-      const watchedWithRuntime = progress?.filter(p => 
-        p.status === 'watched' && p.episodes.runtime
-      ) || [];
+      const getRuntime = (p: any): number =>
+        Array.isArray(p.episodes) ? (p.episodes[0]?.runtime ?? 0) : (p.episodes?.runtime ?? 0);
 
-      stats.totalWatchTime = watchedWithRuntime.reduce((total, p) => 
-        total + (p.episodes.runtime || 0), 0
-      );
+      const watchedWithRuntime =
+        progress?.filter((p) => p.status === 'watched' && getRuntime(p) > 0) || [];
+
+      stats.totalWatchTime = watchedWithRuntime.reduce((total, p) => total + getRuntime(p), 0);
 
       // Calculate average rating
-      const validRatings = progress?.filter(p => p.episode_rating !== null) || [];
+      const validRatings = progress?.filter((p) => p.episode_rating !== null) || [];
       if (validRatings.length > 0) {
-        stats.averageEpisodeRating = validRatings.reduce((sum, p) => 
-          sum + (p.episode_rating || 0), 0
-        ) / validRatings.length;
+        stats.averageEpisodeRating =
+          validRatings.reduce((sum, p) => sum + (p.episode_rating || 0), 0) / validRatings.length;
         stats.averageEpisodeRating = Math.round(stats.averageEpisodeRating * 10) / 10;
       }
 
@@ -420,7 +436,7 @@ export class EpisodeProgressService {
         watchedEpisodes: 0,
         currentlyWatching: 0,
         totalWatchTime: 0,
-        averageEpisodeRating: 0
+        averageEpisodeRating: 0,
       };
     }
   }
@@ -437,13 +453,11 @@ export class EpisodeProgressService {
         .eq('id', episodeId)
         .single();
 
-      if (error || !episode?.runtime) {
-        // Default to 45 minutes if no runtime available
-        episode.runtime = 45;
-      }
+      // Determine runtime safely with a default
+      const runtime = !error && episode?.runtime ? episode.runtime : 45;
 
       // Schedule auto-complete for runtime + 30 minutes buffer
-      const delayMs = (episode.runtime + 30) * 60 * 1000; // Convert to milliseconds
+      const delayMs = (runtime + 30) * 60 * 1000; // Convert to milliseconds
 
       // Cancel any existing timer
       this.cancelAutoComplete(userId, episodeId);
@@ -459,7 +473,7 @@ export class EpisodeProgressService {
       this.autoCompletionTimers.set(`${userId}:${episodeId}`, {
         userId,
         episodeId,
-        timeoutId
+        timeoutId,
       });
     } catch (error) {
       console.error('Failed to schedule auto-completion:', error);
@@ -472,7 +486,7 @@ export class EpisodeProgressService {
   private cancelAutoComplete(userId: string, episodeId: string): void {
     const key = `${userId}:${episodeId}`;
     const timer = this.autoCompletionTimers.get(key);
-    
+
     if (timer) {
       clearTimeout(timer.timeoutId);
       this.autoCompletionTimers.delete(key);
@@ -487,11 +501,13 @@ export class EpisodeProgressService {
       // Get the show ID for this episode
       const { data: episode, error: episodeError } = await supabase
         .from('episodes')
-        .select(`
+        .select(
+          `
           seasons!inner (
             show_id
           )
-        `)
+        `
+        )
         .eq('id', episodeId)
         .single();
 
@@ -499,14 +515,21 @@ export class EpisodeProgressService {
         return;
       }
 
-      const showId = episode.seasons.show_id;
+      const showId =
+        Array.isArray((episode as any).seasons) && (episode as any).seasons.length > 0
+          ? (episode as any).seasons[0]?.show_id
+          : (episode as any).seasons?.show_id;
+
+      if (!showId) {
+        return;
+      }
 
       // Update user_shows with last watched episode
       await supabase
         .from('user_shows')
         .update({
           last_episode_watched_id: episodeId,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('user_id', userId)
         .eq('show_id', showId);

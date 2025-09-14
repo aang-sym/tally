@@ -1,14 +1,23 @@
 /**
  * TMDB Integration Service
- * 
+ *
  * Service layer that wraps TMDB API functionality and provides
  * enhanced integration for watchlist items.
  */
 
 import { TMDBClient, TMDBError } from '@tally/core';
-import type { ReleasePattern, TMDBWatchProvider } from '@tally/types';
+import type { ReleasePattern } from '@tally/types';
 import { config } from '../config/index.js';
 import { providerNormalizer, type ProviderVariant } from './provider-normalizer.js';
+
+// Local fallback type to avoid dependency on build artifacts from @tally/types
+// Matches TMDBWatchProviderSchema shape
+interface TMDBWatchProvider {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string;
+  display_priority: number;
+}
 
 export interface TMDBEnhancedWatchlistItem {
   tmdbShowId?: number;
@@ -31,12 +40,21 @@ export class TMDBService {
   async getBasicShow(showId: number, country: string = 'US'): Promise<any | null> {
     if (!this.client) return null;
     try {
-      const languageMap: Record<string, string> = { US: 'en-US', GB: 'en-GB', AU: 'en-AU', CA: 'en-CA' };
+      const languageMap: Record<string, string> = {
+        US: 'en-US',
+        GB: 'en-GB',
+        AU: 'en-AU',
+        CA: 'en-CA',
+      };
       const language = languageMap[(country || 'US').toUpperCase()] || 'en-US';
       const showDetails = await this.client.getTVShow(showId, language);
       if (!showDetails) return null;
       let providers: any[] = [];
-      try { providers = await this.getWatchProviders(showId, country); } catch { providers = []; }
+      try {
+        providers = await this.getWatchProviders(showId, country);
+      } catch {
+        providers = [];
+      }
       return {
         showDetails: {
           id: showId,
@@ -45,21 +63,32 @@ export class TMDBService {
           status: showDetails.status,
           firstAirDate: showDetails.first_air_date,
           lastAirDate: showDetails.last_air_date,
-          poster: showDetails.poster_path ? `https://image.tmdb.org/t/p/w500${showDetails.poster_path}` : undefined
+          poster: showDetails.poster_path
+            ? `https://image.tmdb.org/t/p/w500${showDetails.poster_path}`
+            : undefined,
         },
         pattern: 'unknown',
         confidence: 0.5,
         episodeCount: 0,
-        seasonInfo: (showDetails.seasons || []).filter((s: any) => s.season_number >= 1).map((s: any) => ({
-          seasonNumber: s.season_number,
-          episodeCount: s.episode_count,
-          airDate: s.air_date
-        })),
+        seasonInfo: (showDetails.seasons || [])
+          .filter((s: any) => s.season_number >= 1)
+          .map((s: any) => ({
+            seasonNumber: s.season_number,
+            episodeCount: s.episode_count,
+            airDate: s.air_date,
+          })),
         reasoning: 'Basic show info (no episodes available)',
-        diagnostics: { intervals: [], avgInterval: 0, stdDev: 0, reasoning: 'No diagnostics', episodeDetails: [] },
+        diagnostics: {
+          intervals: [],
+          avgInterval: 0,
+          stdDev: 0,
+          reasoning: 'No diagnostics',
+          episodeDetails: [],
+        },
         watchProviders: this.normalizeWatchProviders(providers),
-        analyzedSeason: (showDetails.seasons || []).filter((s: any) => s.season_number >= 1).pop()?.season_number,
-        country
+        analyzedSeason: (showDetails.seasons || []).filter((s: any) => s.season_number >= 1).pop()
+          ?.season_number,
+        country,
       };
     } catch (e) {
       return null;
@@ -87,21 +116,25 @@ export class TMDBService {
 
     try {
       console.log(`Enhancing watchlist item with TMDB data: "${title}"`);
-      
+
       // Search for the show and detect release pattern
       const patternResult = await this.client.detectReleasePatternFromTitle(title);
-      
+
       if (!patternResult) {
         console.log(`No TMDB match found for: "${title}"`);
         return null;
       }
 
       const enhancement: TMDBEnhancedWatchlistItem = {};
-      
+
       if (patternResult.tmdbId) {
         enhancement.tmdbShowId = patternResult.tmdbId;
       }
-      enhancement.detectedReleasePattern = patternResult.pattern;
+      // Ensure detectedReleasePattern is a structured object (not a plain string)
+      enhancement.detectedReleasePattern =
+        typeof (patternResult as any).pattern === 'string'
+          ? { pattern: (patternResult as any).pattern, confidence: 0.5 }
+          : (patternResult as any).pattern;
 
       // Get watch providers if we have a TMDB ID
       if (patternResult.tmdbId) {
@@ -124,7 +157,7 @@ export class TMDBService {
       });
 
       return enhancement;
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof TMDBError) {
         console.warn(`TMDB API error for "${title}":`, error.message);
       } else {
@@ -146,7 +179,15 @@ export class TMDBService {
     }
 
     try {
-      return await this.client.detectReleasePatternFromTitle(title);
+      const result = await this.client.detectReleasePatternFromTitle(title);
+      if (!result) return null;
+
+      const pattern: ReleasePattern =
+        typeof (result as any).pattern === 'string'
+          ? { pattern: (result as any).pattern, confidence: 0.5 }
+          : (result as any).pattern;
+
+      return { pattern, tmdbId: (result as any).tmdbId };
     } catch (error) {
       console.warn(`Failed to get release pattern for "${title}":`, error);
       return null;
@@ -156,10 +197,7 @@ export class TMDBService {
   /**
    * Get watch providers for a show by TMDB ID
    */
-  async getWatchProviders(
-    tmdbId: number, 
-    country: string = 'US'
-  ): Promise<TMDBWatchProvider[]> {
+  async getWatchProviders(tmdbId: number, country: string = 'US'): Promise<TMDBWatchProvider[]> {
     if (!this.client) {
       return [];
     }
@@ -194,9 +232,9 @@ export class TMDBService {
         if (enhancement) {
           results.set(title, enhancement);
         }
-        
+
         // Small delay between requests to respect TMDB rate limits
-        await new Promise(resolve => setTimeout(resolve, 250));
+        await new Promise((resolve) => setTimeout(resolve, 250));
       } catch (error) {
         console.warn(`Failed to enhance "${title}":`, error);
         continue;
@@ -216,10 +254,15 @@ export class TMDBService {
     }
 
     try {
-      const languageMap: Record<string, string> = { US: 'en-US', GB: 'en-GB', AU: 'en-AU', CA: 'en-CA' };
+      const languageMap: Record<string, string> = {
+        US: 'en-US',
+        GB: 'en-GB',
+        AU: 'en-AU',
+        CA: 'en-CA',
+      };
       const language = languageMap[(country || 'US').toUpperCase()] || 'en-US';
       const searchResults = await this.client.searchTV(query, 1, language);
-      
+
       // Convert to our format for web interface
       return searchResults.results.map((show: any) => ({
         id: show.id,
@@ -228,7 +271,7 @@ export class TMDBService {
         poster: show.poster_path ? `https://image.tmdb.org/t/p/w500${show.poster_path}` : undefined,
         overview: show.overview || '',
         firstAirDate: show.first_air_date,
-        popularity: show.popularity
+        popularity: show.popularity,
       }));
     } catch (error) {
       console.error('Error searching TV shows:', error);
@@ -239,26 +282,35 @@ export class TMDBService {
   /**
    * Comprehensive show analysis for web interface
    */
-  async analyzeShow(showId: number, country: string = 'US', seasonNumber?: number): Promise<any | null> {
+  async analyzeShow(
+    showId: number,
+    country: string = 'US',
+    seasonNumber?: number
+  ): Promise<any | null> {
     if (!this.client) {
       return null;
     }
 
     try {
       // Get show details (use language mapped from country)
-      const languageMap: Record<string, string> = { US: 'en-US', GB: 'en-GB', AU: 'en-AU', CA: 'en-CA' };
+      const languageMap: Record<string, string> = {
+        US: 'en-US',
+        GB: 'en-GB',
+        AU: 'en-AU',
+        CA: 'en-CA',
+      };
       const language = languageMap[(country || 'US').toUpperCase()] || 'en-US';
       const showDetails = await this.client.getTVShow(showId, language);
       if (!showDetails) return null;
 
       // Determine which season to analyze
-      let realSeasons = showDetails.seasons?.filter((s: any) => s.season_number >= 1) || [];
+      const realSeasons = showDetails.seasons?.filter((s: any) => s.season_number >= 1) || [];
       // Ensure seasons are sorted by season_number ascending
       realSeasons.sort((a: any, b: any) => a.season_number - b.season_number);
       if (realSeasons.length === 0) return null;
 
       let targetSeason = seasonNumber || realSeasons[realSeasons.length - 1]?.season_number;
-      
+
       // Get season episodes (robust: search backwards to find a season with dated episodes)
       let episodes: any[] = [];
       const fetchSeasonEpisodes = async (sNum: number) => {
@@ -270,7 +322,7 @@ export class TMDBService {
             seasonNumber: sNum,
             episodeNumber: ep.episode_number,
             airDate: new Date(ep.air_date).toISOString(),
-            title: ep.name || `Episode ${ep.episode_number}`
+            title: ep.name || `Episode ${ep.episode_number}`,
           }));
       };
       try {
@@ -279,7 +331,9 @@ export class TMDBService {
         } else {
           // Try latest season, then walk back until we find dated episodes
           for (let i = realSeasons.length - 1; i >= 0; i--) {
-            const sNum = realSeasons[i].season_number;
+            const seasonEntry = realSeasons[i];
+            if (!seasonEntry) continue;
+            const sNum = seasonEntry.season_number;
             const eps = await fetchSeasonEpisodes(sNum);
             if (eps.length > 0) {
               episodes = eps;
@@ -289,7 +343,10 @@ export class TMDBService {
           }
         }
       } catch (e) {
-        console.error(`[analyzeShow] getSeason failed for id=${showId} season=${seasonNumber ?? 'auto'}:`, e);
+        console.error(
+          `[analyzeShow] getSeason failed for id=${showId} season=${seasonNumber ?? 'auto'}:`,
+          e
+        );
         episodes = [];
       }
 
@@ -298,7 +355,7 @@ export class TMDBService {
         const first = episodes[0];
         console.log(
           `[analyzeShow] id=${showId} country=${country} lang=${language} seasonParam=${seasonNumber ?? 'auto'} analyzedSeason=${targetSeason} eps=${episodes.length}` +
-          (first ? ` first=S${first.seasonNumber}E${first.episodeNumber}@${first.airDate}` : '')
+            (first ? ` first=S${first.seasonNumber}E${first.episodeNumber}@${first.airDate}` : '')
         );
       }
       if (!episodes.length) {
@@ -307,7 +364,7 @@ export class TMDBService {
         const seasonInfo = realSeasons.map((season: any) => ({
           seasonNumber: season.season_number,
           episodeCount: season.episode_count,
-          airDate: season.air_date
+          airDate: season.air_date,
         }));
         return {
           showDetails: {
@@ -317,17 +374,25 @@ export class TMDBService {
             status: showDetails.status,
             firstAirDate: showDetails.first_air_date,
             lastAirDate: showDetails.last_air_date,
-            poster: showDetails.poster_path ? `https://image.tmdb.org/t/p/w500${showDetails.poster_path}` : undefined
+            poster: showDetails.poster_path
+              ? `https://image.tmdb.org/t/p/w500${showDetails.poster_path}`
+              : undefined,
           },
           pattern: 'unknown',
           confidence: 0.5,
           episodeCount: 0,
           seasonInfo,
           reasoning: 'No episode schedule available for analysis',
-          diagnostics: { intervals: [], avgInterval: 0, stdDev: 0, reasoning: 'No diagnostics', episodeDetails: [] },
+          diagnostics: {
+            intervals: [],
+            avgInterval: 0,
+            stdDev: 0,
+            reasoning: 'No diagnostics',
+            episodeDetails: [],
+          },
           watchProviders: this.normalizeWatchProviders(providers),
           analyzedSeason: targetSeason,
-          country
+          country,
         };
       }
 
@@ -335,13 +400,15 @@ export class TMDBService {
       const { releasePatternService } = await import('@tally/core');
       const patternAnalysis = episodes.length
         ? releasePatternService.analyzeEpisodes(episodes)
-        : { pattern: 'unknown', confidence: 0.5 } as any;
+        : ({ pattern: 'unknown', confidence: 0.5 } as any);
 
       const finalPattern = patternAnalysis.pattern;
       const finalConfidence = patternAnalysis.confidence;
 
       // Build diagnostics (intervals, stats) for UI timeline
-      const sortedEpisodes = [...episodes].sort((a, b) => new Date(a.airDate).getTime() - new Date(b.airDate).getTime());
+      const sortedEpisodes = [...episodes].sort(
+        (a, b) => new Date(a.airDate).getTime() - new Date(b.airDate).getTime()
+      );
       const intervals: number[] = [];
       for (let i = 1; i < sortedEpisodes.length; i++) {
         const prev = new Date(sortedEpisodes[i - 1].airDate);
@@ -349,19 +416,22 @@ export class TMDBService {
         const diffDays = Math.round((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24));
         intervals.push(diffDays);
       }
-      const avgInterval = intervals.length ? intervals.reduce((s, d) => s + d, 0) / intervals.length : 0;
-      const stdDev = intervals.length
-        ? Math.sqrt(intervals.reduce((s, d) => s + Math.pow(d - avgInterval, 2), 0) / intervals.length)
+      const avgInterval = intervals.length
+        ? intervals.reduce((s, d) => s + d, 0) / intervals.length
         : 0;
-      const reasoning = (
+      const stdDev = intervals.length
+        ? Math.sqrt(
+            intervals.reduce((s, d) => s + Math.pow(d - avgInterval, 2), 0) / intervals.length
+          )
+        : 0;
+      const reasoning =
         finalPattern === 'weekly'
           ? `Detected weekly cadence (~${Math.round(avgInterval)} days)`
           : finalPattern === 'premiere_weekly'
-          ? `Detected premiere-weekly pattern: multiple episodes premiered, then weekly releases`
-          : finalPattern === 'binge'
-          ? 'Episodes released together or within 1 day'
-          : 'Insufficient signal for a clear pattern'
-      );
+            ? `Detected premiere-weekly pattern: multiple episodes premiered, then weekly releases`
+            : finalPattern === 'binge'
+              ? 'Episodes released together or within 1 day'
+              : 'Insufficient signal for a clear pattern';
 
       // Get watch providers
       let providers: any[] = [];
@@ -376,11 +446,11 @@ export class TMDBService {
       const seasonInfo = realSeasons.map((season: any) => {
         const isLatestSeason = season.season_number === latestSeasonNumber;
         const isAnalyzedSeason = season.season_number === targetSeason;
-        
+
         // For older seasons (not the latest), mark as 'binge' since they're fully released
         let seasonPattern = 'unknown';
         let seasonConfidence = 0.5;
-        
+
         if (isAnalyzedSeason) {
           seasonPattern = finalPattern;
           seasonConfidence = finalConfidence;
@@ -389,21 +459,21 @@ export class TMDBService {
           const seasonDate = new Date(season.air_date);
           const oneYearAgo = new Date();
           oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-          
+
           if (seasonDate < oneYearAgo) {
             seasonPattern = 'binge';
             seasonConfidence = 0.9;
           }
         }
-        
+
         return {
           seasonNumber: season.season_number,
           episodeCount: season.episode_count,
           airDate: season.air_date,
           ...(seasonPattern !== 'unknown' && {
             pattern: seasonPattern,
-            confidence: seasonConfidence
-          })
+            confidence: seasonConfidence,
+          }),
         };
       });
 
@@ -415,7 +485,9 @@ export class TMDBService {
           status: showDetails.status,
           firstAirDate: showDetails.first_air_date,
           lastAirDate: showDetails.last_air_date,
-          poster: showDetails.poster_path ? `https://image.tmdb.org/t/p/w500${showDetails.poster_path}` : undefined
+          poster: showDetails.poster_path
+            ? `https://image.tmdb.org/t/p/w500${showDetails.poster_path}`
+            : undefined,
         },
         pattern: finalPattern,
         confidence: finalConfidence,
@@ -427,15 +499,15 @@ export class TMDBService {
           avgInterval,
           stdDev,
           reasoning,
-          episodeDetails: sortedEpisodes.map(ep => ({
+          episodeDetails: sortedEpisodes.map((ep) => ({
             number: ep.episodeNumber,
             airDate: ep.airDate,
-            title: ep.title
-          }))
+            title: ep.title,
+          })),
         },
         watchProviders: this.normalizeWatchProviders(providers),
         analyzedSeason: targetSeason,
-        country
+        country,
       };
     } catch (error) {
       console.error(`Error analyzing show ${showId}:`, error);
@@ -448,7 +520,12 @@ export class TMDBService {
    */
   async getSeasonRaw(showId: number, seasonNumber: number, country: string = 'US') {
     if (!this.client) return { error: 'TMDB client unavailable' } as any;
-    const languageMap: Record<string, string> = { US: 'en-US', GB: 'en-GB', AU: 'en-AU', CA: 'en-CA' };
+    const languageMap: Record<string, string> = {
+      US: 'en-US',
+      GB: 'en-GB',
+      AU: 'en-AU',
+      CA: 'en-CA',
+    };
     const language = languageMap[(country || 'US').toUpperCase()] || 'en-US';
     const season = await this.client.getSeason(showId, seasonNumber, language);
     const episodes = season.episodes || [];
@@ -458,8 +535,10 @@ export class TMDBService {
       seasonNumber,
       episodeCount: episodes.length,
       datedCount: dated.length,
-      sample: dated.slice(0, 2).map((ep: any) => ({ n: ep.episode_number, date: ep.air_date, title: ep.name })),
-      season
+      sample: dated
+        .slice(0, 2)
+        .map((ep: any) => ({ n: ep.episode_number, date: ep.air_date, title: ep.name })),
+      season,
     };
   }
 
@@ -468,23 +547,23 @@ export class TMDBService {
    */
   private normalizeWatchProviders(providers: TMDBWatchProvider[]): any[] {
     // Convert TMDB providers to our format
-    const providerVariants: ProviderVariant[] = providers.map(provider => ({
+    const providerVariants: ProviderVariant[] = providers.map((provider) => ({
       id: provider.provider_id,
       name: provider.provider_name,
       logo: provider.logo_path ? `https://image.tmdb.org/t/p/w92${provider.logo_path}` : '',
-      type: 'subscription' // Simplified for now, could be enhanced based on TMDB data
+      type: 'subscription', // Simplified for now, could be enhanced based on TMDB data
     }));
 
     // Normalize using the provider normalizer
     const normalizedProviders = providerNormalizer.normalizeProviders(providerVariants);
 
     // Convert to simplified API format - just the consolidated providers
-    return normalizedProviders.map(normalized => ({
+    return normalizedProviders.map((normalized) => ({
       providerId: normalized.parentId,
       name: normalized.parentName,
       logo: normalized.logo,
       type: normalized.type,
-      deepLink: undefined // TMDB doesn't provide deep links directly
+      deepLink: undefined, // TMDB doesn't provide deep links directly
     }));
   }
 
@@ -499,7 +578,7 @@ export class TMDBService {
     if (!this.client) {
       return { providers: [], regions, total: 0 };
     }
-    
+
     return await this.client.getAllProviders(regions);
   }
 
@@ -510,7 +589,7 @@ export class TMDBService {
     if (!this.client) {
       return [];
     }
-    
+
     return await this.client.getWatchProvidersList(region);
   }
 
@@ -521,7 +600,7 @@ export class TMDBService {
     if (!this.client) {
       return [];
     }
-    
+
     return await this.client.getWatchProviderRegions();
   }
 
@@ -535,24 +614,24 @@ export class TMDBService {
       try {
         // Rate limiting - wait between requests
         if (index > 0) {
-          await new Promise(resolve => setTimeout(resolve, 250));
+          await new Promise((resolve) => setTimeout(resolve, 250));
         }
 
         console.log(`[${index + 1}/${showIds.length}] Analyzing show ${showId}...`);
-        
+
         const analysis = await this.analyzeShow(showId, country);
-        
+
         results.push({
           showId,
           success: !!analysis,
-          analysis
+          analysis,
         });
       } catch (error) {
         console.error(`Error in batch analysis for show ${showId}:`, error);
         results.push({
           showId,
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     }

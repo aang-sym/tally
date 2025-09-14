@@ -52,7 +52,10 @@ export const watchlistStore = {
     return watchlists.get(userId) || [];
   },
 
-  async addItem(userId: string, item: Omit<WatchlistItem, 'id' | 'createdAt'>): Promise<WatchlistItem> {
+  async addItem(
+    userId: string,
+    item: Omit<WatchlistItem, 'id' | 'createdAt'>
+  ): Promise<WatchlistItem> {
     const watchlistItem: WatchlistItem = {
       ...item,
       id: uuidv4(),
@@ -68,10 +71,10 @@ export const watchlistStore = {
 
   async updateItem(userId: string, itemId: string, updatedItem: WatchlistItem): Promise<boolean> {
     const userWatchlist = watchlists.get(userId) || [];
-    const index = userWatchlist.findIndex(item => item.id === itemId);
-    
+    const index = userWatchlist.findIndex((item) => item.id === itemId);
+
     if (index === -1) return false;
-    
+
     userWatchlist[index] = updatedItem;
     watchlists.set(userId, userWatchlist);
     return true;
@@ -79,10 +82,10 @@ export const watchlistStore = {
 
   async removeItem(userId: string, itemId: string): Promise<boolean> {
     const userWatchlist = watchlists.get(userId) || [];
-    const index = userWatchlist.findIndex(item => item.id === itemId);
-    
+    const index = userWatchlist.findIndex((item) => item.id === itemId);
+
     if (index === -1) return false;
-    
+
     userWatchlist.splice(index, 1);
     watchlists.set(userId, userWatchlist);
     return true;

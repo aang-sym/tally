@@ -90,7 +90,7 @@ Steps:
       <input placeholder="Search TV shows..." />
       <div className="results-grid">
         {results.map(show => (
-          <ShowCard 
+          <ShowCard
             key={show.id}
             show={show}
             onClick={() => analyzeShow(show.id)}
@@ -179,43 +179,43 @@ typescript
 
 // Example API flow
 /api/tmdb/search?query="stranger things"
-  → TMDB search API
-  → Return show results with posters
+→ TMDB search API
+→ Return show results with posters
 
 /api/tmdb/show/1399/analyze?country=US
-  → Get show details from TMDB
-  → Get season/episode data
-  → Run pattern detection
-  → Get watch providers
-  → Return comprehensive analysis
+→ Get show details from TMDB
+→ Get season/episode data
+→ Run pattern detection
+→ Get watch providers
+→ Return comprehensive analysis
 
 Component Hierarchy
 
 TMDBTester (main page)
 ├── SearchPanel
-│   ├── TMDBSearch
-│   └── TestPresets
+│ ├── TMDBSearch
+│ └── TestPresets
 ├── AnalysisPanel
-│   ├── ShowDetails
-│   ├── PatternAnalysis
-│   └── EpisodeTimeline
+│ ├── ShowDetails
+│ ├── PatternAnalysis
+│ └── EpisodeTimeline
 └── ProvidersPanel
-    ├── CountrySelector
-    ├── StreamingProviders
-    └── ProviderComparison
+├── CountrySelector
+├── StreamingProviders
+└── ProviderComparison
 
 State Management
 typescript
 
 interface TMDBTesterState {
-  selectedCountry: string;
-  searchQuery: string;
-  searchResults: TMDBShowResult[];
-  selectedShow: TMDBShowResult | null;
-  patternAnalysis: PatternAnalysis | null;
-  watchProviders: WatchProvider[];
-  loading: boolean;
-  error: string | null;
+selectedCountry: string;
+searchQuery: string;
+searchResults: TMDBShowResult[];
+selectedShow: TMDBShowResult | null;
+patternAnalysis: PatternAnalysis | null;
+watchProviders: WatchProvider[];
+loading: boolean;
+error: string | null;
 }
 
 Status Tracking
@@ -256,4 +256,3 @@ When each task is completed:
     Verify API endpoints work
     Check responsive design
     Update overall STATUS when all done
-

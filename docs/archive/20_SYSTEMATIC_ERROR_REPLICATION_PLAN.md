@@ -1,22 +1,27 @@
 # 20. Systematic Error Replication & Fix Plan
 
 ## Objective
+
 Replicate the exact user flow that produces watchlist errors, implement fixes, and verify complete resolution through identical replication.
 
 ## Error Replication Process
 
 ### Phase 1: Exact Error Replication
+
 **Goal**: Reproduce the exact same errors the user is experiencing
 
 #### Step 1: Reset Environment to Known State
+
 - [ ] Clear browser cache/localStorage
-- [ ] Ensure both API (port 3001) and Frontend (port 3002) are running
+- [ ] Ensure both API (port 4000) and Frontend (port 3002) are running
 - [ ] Check API logs are clean
 
 #### Step 2: Execute Exact User Flow
+
 **User Flow to Replicate:**
+
 1. Navigate to http://localhost:3002
-2. Go to Search page 
+2. Go to Search page
 3. Search for "alien"
 4. Click on "Alien: Earth" (or first search result)
 5. Observe any React console errors
@@ -24,7 +29,9 @@ Replicate the exact user flow that produces watchlist errors, implement fixes, a
 7. Document EXACT errors that occur
 
 #### Step 3: Document All Errors
+
 **Track these specific error types:**
+
 - [ ] React rendering errors (`Objects are not valid as a React child`)
 - [ ] API request failures (400, 500 status codes)
 - [ ] Watchlist addition failures ("service returned null")
@@ -33,19 +40,24 @@ Replicate the exact user flow that produces watchlist errors, implement fixes, a
 - [ ] Network request failures
 
 ### Phase 2: Root Cause Analysis
+
 Using the documented errors from Phase 1, identify:
+
 - [ ] Which API endpoints are being called
 - [ ] What data structures are being sent/received
 - [ ] Where the data flow breaks
 - [ ] What component is throwing the error
 
 ### Phase 3: Systematic Fix Implementation
+
 - [ ] Fix one error at a time
 - [ ] Test each fix with exact replication
 - [ ] Only proceed to next error when current one is 100% resolved
 
 ### Phase 4: Complete End-to-End Verification
+
 **Success Criteria:**
+
 - [ ] No React console errors when clicking shows
 - [ ] Pattern analysis displays properly
 - [ ] "Add to Watchlist" button works
@@ -56,11 +68,12 @@ Using the documented errors from Phase 1, identify:
 ## Detailed Replication Script
 
 ### Environment Setup Check
+
 ```bash
 # Terminal 1: API Server Status
-curl -s http://localhost:3001/api/health | head -20
+curl -s http://localhost:4000/api/health | head -20
 
-# Terminal 2: Frontend Status  
+# Terminal 2: Frontend Status
 curl -s http://localhost:3002 | head -10
 
 # Check browser console is clear
@@ -68,6 +81,7 @@ curl -s http://localhost:3002 | head -10
 ```
 
 ### Exact User Actions to Replicate
+
 1. **Browser Setup**
    - Open Chrome/Firefox
    - Clear all site data for localhost:3002
@@ -99,7 +113,9 @@ curl -s http://localhost:3002 | head -10
    - **Document exact error message shown to user**
 
 ### Error Documentation Template
+
 For each error found:
+
 ```
 ERROR #X:
 Type: [React/API/Network/Database]
@@ -114,11 +130,13 @@ Browser: [Chrome/Firefox/etc.]
 ## Tools for Investigation
 
 ### Browser Developer Tools
+
 - **Console**: React errors, JavaScript errors
 - **Network**: API calls, responses, status codes
 - **Application**: localStorage, session data
 
 ### API Server Monitoring
+
 ```bash
 # Monitor API logs in real-time
 cd apps/api && npx tsx src/server.ts | tee api-debug.log
@@ -128,6 +146,7 @@ tail -f api-debug.log | grep -E "(Error|Failed|CRITICAL|500|400)"
 ```
 
 ### Database Query Monitoring
+
 ```bash
 # Check for database constraint violations
 # Monitor for PGRST301 errors
@@ -135,7 +154,9 @@ tail -f api-debug.log | grep "PGRST301"
 ```
 
 ### Code Analysis with Gemini
+
 If needed, use Gemini CLI to analyze:
+
 - Watchlist data flow
 - API endpoint implementations
 - React component error boundaries
@@ -148,8 +169,9 @@ gemini -p "@apps/web/src/pages/SearchShows.tsx @apps/web/src/components/PatternA
 ## Success Verification Checklist
 
 ### ✅ Final Verification (Must All Pass)
+
 - [ ] User can search for shows without errors
-- [ ] User can click on search results without React errors  
+- [ ] User can click on search results without React errors
 - [ ] Pattern analysis displays correctly with proper data
 - [ ] "Add to Watchlist" button is functional
 - [ ] Show successfully adds to watchlist (API returns 201)
@@ -159,7 +181,9 @@ gemini -p "@apps/web/src/pages/SearchShows.tsx @apps/web/src/components/PatternA
 - [ ] User can repeat the flow multiple times without issues
 
 ### ✅ Regression Testing
+
 After fixes are complete, test these scenarios:
+
 - [ ] Different shows (not just "Alien: Earth")
 - [ ] Different user accounts
 - [ ] Multiple shows in sequence
@@ -178,6 +202,7 @@ After fixes are complete, test these scenarios:
 ## Expected Outcome
 
 By following this systematic process:
+
 1. All watchlist errors will be identified and documented
 2. Each error will be fixed individually and verified
 3. The complete user flow will work flawlessly

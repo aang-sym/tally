@@ -1,0 +1,347 @@
+.
+├── apps
+│   ├── api
+│   │   ├── check-all-rls-policies.sql
+│   │   ├── docs
+│   │   │   ├── DATABASE_SCHEMA.md
+│   │   │   └── database-schema.json
+│   │   ├── migrations
+│   │   │   ├── 20250909_get_services_by_price.sql
+│   │   │   ├── add_password_hash_column.sql
+│   │   │   └── schema
+│   │   │       ├── query_1.csv
+│   │   │       ├── query_2.csv
+│   │   │       └── query_3.csv
+│   │   ├── package.json
+│   │   ├── scripts
+│   │   │   ├── extract-schema.js
+│   │   │   ├── migrate-db.js
+│   │   │   └── process-schema-csvs.js
+│   │   ├── src
+│   │   │   ├── config
+│   │   │   │   └── index.ts
+│   │   │   ├── db
+│   │   │   │   ├── check-show-data.sql
+│   │   │   │   ├── complete-rls-fix.sql
+│   │   │   │   ├── fix-rls-shows.sql
+│   │   │   │   ├── fix-service-role-rls.sql
+│   │   │   │   ├── fix-user-shows-rls.sql
+│   │   │   │   ├── fix-users-rls.sql
+│   │   │   │   ├── migrations
+│   │   │   │   │   ├── 000_combined_for_supabase.sql
+│   │   │   │   │   ├── 001_initial_schema.sql
+│   │   │   │   │   ├── 002_user_enhancements.sql
+│   │   │   │   │   ├── 003_tv_guide_enhancements.sql
+│   │   │   │   │   ├── 004_add_user_upsert.sql
+│   │   │   │   │   ├── 006_fix_rls_for_services.sql
+│   │   │   │   │   ├── 007_add_exec_sql_function.sql
+│   │   │   │   │   ├── 008_add_rls_and_rpcs.sql
+│   │   │   │   │   ├── 009_fix_user_episode_progress_schema.sql
+│   │   │   │   │   ├── 010_comprehensive_rls_and_rpcs_fix.sql
+│   │   │   │   │   ├── 011_add_user_shows_fields.sql
+│   │   │   │   │   └── 011_add_user_shows_fields.test.ts
+│   │   │   │   ├── queries.sql
+│   │   │   │   ├── README.md
+│   │   │   │   ├── secure-rls-policies.sql
+│   │   │   │   ├── supabase.ts
+│   │   │   │   └── verify-progress.sql
+│   │   │   ├── integration
+│   │   │   │   └── streaming-availability.test.ts
+│   │   │   ├── middleware
+│   │   │   │   ├── errorHandler.ts
+│   │   │   │   ├── usage-tracker.ts
+│   │   │   │   └── user-identity.ts
+│   │   │   ├── routes
+│   │   │   │   ├── auth.ts
+│   │   │   │   ├── db-admin.ts
+│   │   │   │   ├── health.test.ts
+│   │   │   │   ├── health.ts
+│   │   │   │   ├── plan.ts
+│   │   │   │   ├── progress.ts
+│   │   │   │   ├── ratings.ts
+│   │   │   │   ├── recommendations.ts
+│   │   │   │   ├── shows.ts
+│   │   │   │   ├── streaming-quota.ts
+│   │   │   │   ├── streaming-services.ts
+│   │   │   │   ├── tmdb.ts
+│   │   │   │   ├── tv-guide.ts
+│   │   │   │   ├── usage-stats.ts
+│   │   │   │   ├── users.subscriptions.test.ts
+│   │   │   │   ├── users.test.ts
+│   │   │   │   ├── users.ts
+│   │   │   │   ├── waitlist.ts
+│   │   │   │   ├── watchlist-v2.test.ts
+│   │   │   │   ├── watchlist.test.ts
+│   │   │   │   └── watchlist.ts
+│   │   │   ├── server.ts
+│   │   │   ├── services
+│   │   │   │   ├── EpisodeProgressService.ts
+│   │   │   │   ├── provider-normalizer.ts
+│   │   │   │   ├── quota-tracker.ts
+│   │   │   │   ├── RatingService.ts
+│   │   │   │   ├── ShowService.ts
+│   │   │   │   ├── streaming-availability.test.ts
+│   │   │   │   ├── streaming-availability.ts
+│   │   │   │   ├── StreamingService.ts
+│   │   │   │   ├── tmdb.ts
+│   │   │   │   ├── UserService.ts
+│   │   │   │   ├── WatchlistService.test.ts
+│   │   │   │   └── WatchlistService.ts
+│   │   │   ├── storage
+│   │   │   │   ├── index.ts
+│   │   │   │   └── simple-watchlist.ts
+│   │   │   ├── types
+│   │   │   │   └── database.ts
+│   │   │   └── utils
+│   │   │       ├── apply-rls-fix.ts
+│   │   │       ├── comprehensive-auth-fix.ts
+│   │   │       ├── debug-watchlist-failure.ts
+│   │   │       ├── errorHandler.ts
+│   │   │       ├── execute-rls-fix-direct.ts
+│   │   │       ├── generate-test-token.js
+│   │   │       ├── test-public-shows-access.ts
+│   │   │       ├── test-real-api-flow.ts
+│   │   │       ├── test-rls-fix.ts
+│   │   │       ├── test-ui-flow.sh
+│   │   │       ├── test-ui-flow.ts
+│   │   │       ├── test-watchlist-flow.ts
+│   │   │       └── verify-database-state.ts
+│   │   ├── streaming-api-quota.json
+│   │   ├── tsconfig.json
+│   │   └── vitest.config.ts
+│   ├── ios
+│   │   └── README.md
+│   └── web
+│       ├── index.html
+│       ├── package.json
+│       ├── postcss.config.js
+│       ├── src
+│       │   ├── App.tsx
+│       │   ├── components
+│       │   │   ├── APIUsageWidget.tsx
+│       │   │   ├── Auth
+│       │   │   │   └── LoginModal.tsx
+│       │   │   ├── calendar
+│       │   │   │   ├── CalendarView.tsx
+│       │   │   │   ├── OverviewCalendar.tsx
+│       │   │   │   └── SavingsCalendar.tsx
+│       │   │   ├── ErrorBoundary.tsx
+│       │   │   ├── Layout.tsx
+│       │   │   ├── PatternAnalysis.tsx
+│       │   │   ├── RecommendationCard.tsx
+│       │   │   ├── StreamingProviders.tsx
+│       │   │   ├── TMDBSearch.tsx
+│       │   │   ├── TMDBTestingDashboard.tsx
+│       │   │   ├── tv-guide
+│       │   │   │   ├── ServiceRow.tsx
+│       │   │   │   ├── ShowBlock.tsx
+│       │   │   │   ├── tv-guide.types.ts
+│       │   │   │   ├── TVGuide.tsx
+│       │   │   │   └── TVGuideHeader.tsx
+│       │   │   └── UserSwitcher.tsx
+│       │   ├── config
+│       │   │   └── api.ts
+│       │   ├── context
+│       │   │   ├── AuthContext.tsx
+│       │   │   └── UserContext.tsx
+│       │   ├── index.css
+│       │   ├── main.tsx
+│       │   ├── pages
+│       │   │   ├── Admin.tsx
+│       │   │   ├── Calendar.tsx
+│       │   │   ├── Dashboard.tsx
+│       │   │   ├── LandingPage.tsx
+│       │   │   ├── MyShows.tsx
+│       │   │   ├── Recommendations.tsx
+│       │   │   ├── SearchShows.tsx
+│       │   │   ├── Subscriptions.tsx
+│       │   │   └── TVGuide.tsx
+│       │   ├── services
+│       │   │   ├── apiAdapter.ts
+│       │   │   ├── apiClient.ts
+│       │   │   └── UserManager.ts
+│       │   ├── types
+│       │   │   └── api.ts
+│       │   └── vite-env.d.ts
+│       ├── tailwind.config.js
+│       ├── tsconfig.json
+│       ├── tsconfig.node.json
+│       └── vite.config.ts
+├── CLAUDE.md
+├── dev.log
+├── docs
+│   ├── 25_GPT_PLAN.md
+│   └── archive
+│       ├── 01_CLAUDE_CODE_PLAN_v1.md
+│       ├── 02_CLAUDE_CODE_PLAN_v2.md
+│       ├── 03_CLAUDE_CODE_PLAN_v3.md
+│       ├── 04_CLAUDE_CODE_PLAN_v4.md
+│       ├── 05_CLAUDE_CODE_PLAN_v5.md
+│       ├── 06_CLAUDE_CODE_PLAN_v6.md
+│       ├── 07_CLAUDE_CODE_PLAN.md
+│       ├── 08_CODEX_CODE_PLAN.md
+│       ├── 09_CLAUDE_CODE_PLAN.md
+│       ├── 10_CODEX_CODE_PLAN.md
+│       ├── 11_CLAUDE_CODE_PLAN.md
+│       ├── 12_GEMINI_PLAN.md
+│       ├── 13_CLAUDE_CODE_REVIEW.md
+│       ├── 14_COPILOT_CODE.md
+│       ├── 15_AUTHENTICATION_SECURITY_RESOLUTION.md
+│       ├── 16_COMPLETE_AUTHENTICATION_FIX.md
+│       ├── 17_GEMINI_AUTH_FIX_PLAN.md
+│       ├── 18_COMPREHENSIVE_API_FIX_PLAN.md
+│       ├── 19_WATCHLIST_ADDITION_FIX.md
+│       ├── 20_SYSTEMATIC_ERROR_REPLICATION_PLAN.md
+│       ├── 21_PGRST301_RLS_FIX.md
+│       ├── 22_PGRST301_FIX_STATUS.md
+│       ├── 23_GPT_PLAN.md
+│       ├── 24_AUTHENTICATION_SECURITY_FIX_GUIDE.md
+│       ├── 3_sep_instructions.txt
+│       ├── fix-my-shows-and-calendar.md
+│       ├── PROGRESS_CHANGELOG.md
+│       └── SECURITY_VALIDATION_GUIDE.md
+├── file_list.txt
+├── kilo-code-settings.json
+├── openapi
+│   ├── bundled.yaml
+│   ├── index.yaml
+│   ├── streaming-services.yaml
+│   ├── subscriptions.yaml
+│   ├── users.yaml
+│   └── watchlist.yaml
+├── openapitools.json
+├── package.json
+├── packages
+│   ├── api-client
+│   │   ├── api.ts
+│   │   ├── apis
+│   │   │   ├── index.ts
+│   │   │   └── WatchlistApi.ts
+│   │   ├── base.ts
+│   │   ├── common.ts
+│   │   ├── configuration.ts
+│   │   ├── docs
+│   │   │   ├── AddWatchlistResponse.md
+│   │   │   ├── AddWatchlistResponseData.md
+│   │   │   ├── AddWatchlistResponseDataAvailabilityInner.md
+│   │   │   ├── ApiWatchlistIdBufferPutRequest.md
+│   │   │   ├── ApiWatchlistIdCountryPutRequest.md
+│   │   │   ├── ApiWatchlistIdDelete200Response.md
+│   │   │   ├── ApiWatchlistIdDelete200ResponseData.md
+│   │   │   ├── ApiWatchlistIdNotesPutRequest.md
+│   │   │   ├── ApiWatchlistIdProviderPutRequest.md
+│   │   │   ├── ApiWatchlistIdRatingPutRequest.md
+│   │   │   ├── ApiWatchlistIdStatusPutRequest.md
+│   │   │   ├── ApiWatchlistPostRequest.md
+│   │   │   ├── ApiWatchlistTmdbIdProgressPutRequest.md
+│   │   │   ├── DefaultApi.md
+│   │   │   ├── ErrorResponse.md
+│   │   │   ├── LoginRequest.md
+│   │   │   ├── LoginResponse.md
+│   │   │   ├── PopularService.md
+│   │   │   ├── PopularServicesResponse.md
+│   │   │   ├── PopularServicesResponseData.md
+│   │   │   ├── PriceTier.md
+│   │   │   ├── ProgressUpdateResponse.md
+│   │   │   ├── ProgressUpdateResponseData.md
+│   │   │   ├── RateShowResponse.md
+│   │   │   ├── RateShowResponseData.md
+│   │   │   ├── Region.md
+│   │   │   ├── RegionsResponse.md
+│   │   │   ├── RegionsResponseData.md
+│   │   │   ├── SchemasPriceTier.md
+│   │   │   ├── SelectedProvider.md
+│   │   │   ├── Service.md
+│   │   │   ├── ServiceResponse.md
+│   │   │   ├── ServiceResponseData.md
+│   │   │   ├── ServiceResponseDataService.md
+│   │   │   ├── ServicesResponse.md
+│   │   │   ├── ServicesResponseData.md
+│   │   │   ├── ShowProgressDetailResponse.md
+│   │   │   ├── ShowProgressDetailResponseData.md
+│   │   │   ├── ShowProgressDetailResponseDataSeasonsInner.md
+│   │   │   ├── ShowProgressDetailResponseDataSeasonsInnerEpisodesInner.md
+│   │   │   ├── ShowProgressMapResponse.md
+│   │   │   ├── ShowProgressMapResponseData.md
+│   │   │   ├── ShowProgressMapResponseDataSeasonsValueInner.md
+│   │   │   ├── ShowSummary.md
+│   │   │   ├── SignUpRequest.md
+│   │   │   ├── StreamingServiceSummary.md
+│   │   │   ├── SubscriptionCreateRequest.md
+│   │   │   ├── SubscriptionResponse.md
+│   │   │   ├── SubscriptionsEnvelope.md
+│   │   │   ├── SubscriptionsEnvelopeData.md
+│   │   │   ├── SubscriptionsResponse.md
+│   │   │   ├── SubscriptionUpdateRequest.md
+│   │   │   ├── UpdateBufferResponse.md
+│   │   │   ├── UpdateBufferResponseData.md
+│   │   │   ├── UpdateCountryResponse.md
+│   │   │   ├── UpdateCountryResponseData.md
+│   │   │   ├── UpdateNotesResponse.md
+│   │   │   ├── UpdateNotesResponseData.md
+│   │   │   ├── UpdateProviderResponse.md
+│   │   │   ├── UpdateProviderResponseData.md
+│   │   │   ├── UserProfile.md
+│   │   │   ├── UserProfileResponse.md
+│   │   │   ├── UsersApi.md
+│   │   │   ├── UserShow.md
+│   │   │   ├── UserShowStatusResponse.md
+│   │   │   ├── UsersList200Response.md
+│   │   │   ├── UsersList200ResponseData.md
+│   │   │   ├── UserSubscription.md
+│   │   │   ├── UserUpdateRequest.md
+│   │   │   ├── WatchingListResponse.md
+│   │   │   ├── WatchingListResponseData.md
+│   │   │   ├── WatchingListResponseDataShowsInner.md
+│   │   │   ├── WatchlistListResponse.md
+│   │   │   ├── WatchlistListResponseData.md
+│   │   │   ├── WatchlistRow.md
+│   │   │   ├── WatchlistSearchAndAdd201Response.md
+│   │   │   ├── WatchlistSearchAndAdd201ResponseData.md
+│   │   │   ├── WatchlistSearchAndAddRequest.md
+│   │   │   └── WatchlistStatsResponse.md
+│   │   ├── git_push.sh
+│   │   ├── index.ts
+│   │   ├── models
+│   │   │   ├── ApiWatchlistGet200Response.ts
+│   │   │   ├── index.ts
+│   │   │   ├── Progress.ts
+│   │   │   ├── Provider.ts
+│   │   │   ├── SetProviderRequest.ts
+│   │   │   └── UserShowCard.ts
+│   │   ├── package.json
+│   │   ├── runtime.ts
+│   │   └── tsconfig.json
+│   ├── config
+│   │   ├── eslint.config.js
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   ├── core
+│   │   ├── package.json
+│   │   ├── src
+│   │   │   ├── external
+│   │   │   │   ├── streaming-availability.ts
+│   │   │   │   └── tmdb.ts
+│   │   │   ├── index.test.ts
+│   │   │   ├── index.ts
+│   │   │   ├── services
+│   │   │   │   └── release-pattern.ts
+│   │   │   └── types.ts
+│   │   ├── tsconfig.json
+│   │   └── vitest.config.ts
+│   └── types
+│       ├── package.json
+│       ├── src
+│       │   └── index.ts
+│       └── tsconfig.json
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── README.md
+├── scripts
+│   ├── security-validation-tests-clean.sh
+│   ├── security-validation-tests.sh
+│   └── test-streaming-api.sh
+├── STREAMING_API_PROGRESS.md
+└── STREAMING_API_QUOTA.md
+
+46 directories, 299 files

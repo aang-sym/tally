@@ -8,7 +8,12 @@ export interface EpisodeSchedule extends Omit<TVGuideEpisode, 'airDate'> {
   airDate: Date;
 }
 
-export interface ShowSchedule extends Omit<TVGuideShow, 'nextEpisodeDate' | 'upcomingEpisodes'> {
+/**
+ * ShowSchedule adapts string date fields from TVGuideShow into concrete Date instances for UI.
+ * Important: also omit 'activeWindow' to avoid string vs Date type mismatch.
+ */
+export interface ShowSchedule
+  extends Omit<TVGuideShow, 'nextEpisodeDate' | 'upcomingEpisodes' | 'activeWindow'> {
   nextEpisodeDate?: Date;
   upcomingEpisodes: EpisodeSchedule[];
   activeWindow?: { start: Date; end: Date };
@@ -49,15 +54,15 @@ export interface ScrollState {
 }
 
 export const STREAMING_SERVICE_THEMES = {
-  'Netflix': { bg: '#E50914', text: '#FFFFFF' },
+  Netflix: { bg: '#E50914', text: '#FFFFFF' },
   'HBO Max': { bg: '#9B59B6', text: '#FFFFFF' },
   'Disney+': { bg: '#113CCF', text: '#FFFFFF' },
   'Paramount+': { bg: '#0064FF', text: '#FFFFFF' },
   'Amazon Prime Video': { bg: '#00A8E1', text: '#FFFFFF' },
   'Apple TV+': { bg: '#000000', text: '#FFFFFF' },
-  'Hulu': { bg: '#1CE783', text: '#000000' },
-  'Peacock': { bg: '#F74C4C', text: '#FFFFFF' },
-  'default': { bg: '#6B7280', text: '#FFFFFF' }
+  Hulu: { bg: '#1CE783', text: '#000000' },
+  Peacock: { bg: '#F74C4C', text: '#FFFFFF' },
+  default: { bg: '#6B7280', text: '#FFFFFF' },
 } as const;
 
 export const TV_GUIDE_CONSTANTS = {

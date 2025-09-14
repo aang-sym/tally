@@ -29,24 +29,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Check for existing auth token on app start
     const storedToken = localStorage.getItem('authToken');
     const storedUserId = localStorage.getItem('current_user_id');
-    
+
     if (storedToken && storedUserId) {
       // In a real app, you'd validate the token with the server
       // For now, we'll trust the stored data
       try {
-        const payload = JSON.parse(atob(storedToken.split('.')[1]));
-        setUser({
-          id: payload.userId || storedUserId,
-          email: payload.email || 'unknown@example.com'
-        });
-        setToken(storedToken);
+        const parts = storedToken.split('.');
+        const payloadPart = parts.length > 1 ? parts[1] : undefined;
+        if (typeof payloadPart === 'string' && payloadPart.length > 0) {
+          const json = atob(payloadPart);
+          const payload = JSON.parse(json);
+          setUser({
+            id: payload.userId || storedUserId,
+            email: payload.email || 'unknown@example.com',
+          });
+          setToken(storedToken);
+        } else {
+          throw new Error('Malformed JWT: missing payload segment');
+        }
       } catch (error) {
         console.warn('Invalid token found, clearing storage');
         localStorage.removeItem('authToken');
         localStorage.removeItem('current_user_id');
       }
     }
-    
+
     setIsLoading(false);
   }, []);
 
@@ -73,11 +80,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = (): AuthContextType => {

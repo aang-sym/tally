@@ -1,6 +1,6 @@
 /**
  * Rating Service
- * 
+ *
  * Handles comprehensive rating system for shows, seasons, and episodes.
  * Provides aggregate ratings, statistics, and rating-based recommendations.
  */
@@ -42,7 +42,7 @@ export class RatingService {
         .from('user_shows')
         .update({
           show_rating: rating,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', userShowId)
         .eq('user_id', userId);
@@ -59,7 +59,11 @@ export class RatingService {
   /**
    * Rate a season
    */
-  async rateSeason(userId: string, seasonId: string, rating: number): Promise<UserSeasonRating | null> {
+  async rateSeason(
+    userId: string,
+    seasonId: string,
+    rating: number
+  ): Promise<UserSeasonRating | null> {
     try {
       this.validateRating(rating);
 
@@ -90,12 +94,14 @@ export class RatingService {
         // Create new rating
         const { data: created, error: createError } = await supabase
           .from('user_season_ratings')
-          .insert([{
-            user_id: userId,
-            season_id: seasonId,
-            rating,
-            created_at: new Date().toISOString()
-          }])
+          .insert([
+            {
+              user_id: userId,
+              season_id: seasonId,
+              rating,
+              created_at: new Date().toISOString(),
+            },
+          ])
           .select()
           .single();
 
@@ -137,14 +143,14 @@ export class RatingService {
         if (updateError) throw updateError;
       } else {
         // Create new progress record with rating
-        const { error: createError } = await supabase
-          .from('user_episode_progress')
-          .insert([{
+        const { error: createError } = await supabase.from('user_episode_progress').insert([
+          {
             user_id: userId,
             episode_id: episodeId,
             status: 'unwatched',
-            episode_rating: rating
-          }]);
+            episode_rating: rating,
+          },
+        ]);
 
         if (createError) throw createError;
       }
@@ -170,7 +176,7 @@ export class RatingService {
       if (error) throw error;
 
       return this.calculateAggregateRating(
-        ratings?.map(r => r.show_rating).filter(r => r !== null) || []
+        ratings?.map((r) => r.show_rating).filter((r) => r !== null) || []
       );
     } catch (error) {
       console.error(`Failed to get show aggregate rating for ${showId}:`, error);
@@ -190,9 +196,7 @@ export class RatingService {
 
       if (error) throw error;
 
-      return this.calculateAggregateRating(
-        ratings?.map(r => r.rating) || []
-      );
+      return this.calculateAggregateRating(ratings?.map((r) => r.rating) || []);
     } catch (error) {
       console.error(`Failed to get season aggregate rating for ${seasonId}:`, error);
       return { averageRating: 0, totalRatings: 0, ratingDistribution: {} };
@@ -213,7 +217,7 @@ export class RatingService {
       if (error) throw error;
 
       return this.calculateAggregateRating(
-        ratings?.map(r => r.episode_rating).filter(r => r !== null) || []
+        ratings?.map((r) => r.episode_rating).filter((r) => r !== null) || []
       );
     } catch (error) {
       console.error(`Failed to get episode aggregate rating for ${episodeId}:`, error);
@@ -254,20 +258,22 @@ export class RatingService {
 
       // Combine all ratings
       const allRatings = [
-        ...(showRatings?.map(r => r.show_rating).filter(r => r !== null) || []),
-        ...(seasonRatings?.map(r => r.rating) || []),
-        ...(episodeRatings?.map(r => r.episode_rating).filter(r => r !== null) || [])
+        ...(showRatings?.map((r) => r.show_rating).filter((r) => r !== null) || []),
+        ...(seasonRatings?.map((r) => r.rating) || []),
+        ...(episodeRatings?.map((r) => r.episode_rating).filter((r) => r !== null) || []),
       ];
 
       // Calculate statistics
       const totalRatings = allRatings.length;
-      const averageRating = totalRatings > 0 
-        ? Math.round((allRatings.reduce((sum, rating) => sum + rating, 0) / totalRatings) * 10) / 10
-        : 0;
+      const averageRating =
+        totalRatings > 0
+          ? Math.round((allRatings.reduce((sum, rating) => sum + rating, 0) / totalRatings) * 10) /
+            10
+          : 0;
 
       // Rating distribution by score
       const ratingsByScore: Record<string, number> = {};
-      allRatings.forEach(rating => {
+      allRatings.forEach((rating) => {
         const scoreKey = Math.floor(rating).toString();
         ratingsByScore[scoreKey] = (ratingsByScore[scoreKey] || 0) + 1;
       });
@@ -278,7 +284,7 @@ export class RatingService {
         showRatings: showRatings?.length || 0,
         seasonRatings: seasonRatings?.length || 0,
         episodeRatings: episodeRatings?.length || 0,
-        ratingsByScore
+        ratingsByScore,
       };
     } catch (error) {
       console.error('Failed to get user rating stats:', error);
@@ -288,7 +294,7 @@ export class RatingService {
         showRatings: 0,
         seasonRatings: 0,
         episodeRatings: 0,
-        ratingsByScore: {}
+        ratingsByScore: {},
       };
     }
   }
@@ -296,16 +302,19 @@ export class RatingService {
   /**
    * Get top-rated shows globally
    */
-  async getTopRatedShows(limit: number = 10): Promise<Array<{
-    show: any;
-    averageRating: number;
-    totalRatings: number;
-  }>> {
+  async getTopRatedShows(limit: number = 10): Promise<
+    Array<{
+      show: any;
+      averageRating: number;
+      totalRatings: number;
+    }>
+  > {
     try {
       // This is a simplified version - in production you'd want proper aggregation
       const { data: showsWithRatings, error } = await supabase
         .from('user_shows')
-        .select(`
+        .select(
+          `
           show_id,
           show_rating,
           shows (
@@ -314,7 +323,8 @@ export class RatingService {
             poster_path,
             overview
           )
-        `)
+        `
+        )
         .not('show_rating', 'is', null)
         .order('show_rating', { ascending: false })
         .limit(limit * 5); // Get more to calculate proper averages
@@ -322,17 +332,20 @@ export class RatingService {
       if (error) throw error;
 
       // Group by show and calculate averages
-      const showRatingsMap = new Map<string, {
-        show: any;
-        ratings: number[];
-      }>();
+      const showRatingsMap = new Map<
+        string,
+        {
+          show: any;
+          ratings: number[];
+        }
+      >();
 
-      showsWithRatings?.forEach(item => {
+      showsWithRatings?.forEach((item) => {
         const showId = item.show_id;
         if (!showRatingsMap.has(showId)) {
           showRatingsMap.set(showId, {
             show: item.shows,
-            ratings: []
+            ratings: [],
           });
         }
         showRatingsMap.get(showId)!.ratings.push(item.show_rating);
@@ -342,10 +355,11 @@ export class RatingService {
       const topRatedShows = Array.from(showRatingsMap.values())
         .map(({ show, ratings }) => ({
           show,
-          averageRating: Math.round((ratings.reduce((sum, r) => sum + r, 0) / ratings.length) * 10) / 10,
-          totalRatings: ratings.length
+          averageRating:
+            Math.round((ratings.reduce((sum, r) => sum + r, 0) / ratings.length) * 10) / 10,
+          totalRatings: ratings.length,
         }))
-        .filter(item => item.totalRatings >= 2) // Minimum 2 ratings
+        .filter((item) => item.totalRatings >= 2) // Minimum 2 ratings
         .sort((a, b) => {
           // Sort by average rating, then by number of ratings
           if (Math.abs(a.averageRating - b.averageRating) < 0.1) {
@@ -377,37 +391,39 @@ export class RatingService {
       // Get user's show ratings with show genres
       const { data: showRatings, error } = await supabase
         .from('user_shows')
-        .select(`
+        .select(
+          `
           show_rating,
           shows (
             title,
             overview
           )
-        `)
+        `
+        )
         .eq('user_id', userId)
         .not('show_rating', 'is', null)
         .gte('show_rating', 7); // Focus on shows they liked
 
       if (error) throw error;
 
-      const ratings = showRatings?.map(r => r.show_rating) || [];
-      const averageRating = ratings.length > 0 
-        ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length 
-        : 0;
+      const ratings = showRatings?.map((r) => r.show_rating) || [];
+      const averageRating =
+        ratings.length > 0 ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length : 0;
 
       // Calculate consistency (how much ratings vary)
-      const variance = ratings.length > 1 
-        ? ratings.reduce((sum, r) => sum + Math.pow(r - averageRating, 2), 0) / ratings.length
-        : 0;
-      const consistencyScore = Math.max(0, 100 - (variance * 10)); // Scale to 0-100
+      const variance =
+        ratings.length > 1
+          ? ratings.reduce((sum, r) => sum + Math.pow(r - averageRating, 2), 0) / ratings.length
+          : 0;
+      const consistencyScore = Math.max(0, 100 - variance * 10); // Scale to 0-100
 
       return {
         favoriteGenres: [], // Would need genre data from TMDB integration
         averageRatingThreshold: Math.max(6.0, averageRating - 1.0), // Shows they might like
         ratingTrends: {
           isGenerousRater: averageRating > 7.5,
-          consistencyScore: Math.round(consistencyScore)
-        }
+          consistencyScore: Math.round(consistencyScore),
+        },
       };
     } catch (error) {
       console.error('Failed to get user rating preferences:', error);
@@ -416,8 +432,8 @@ export class RatingService {
         averageRatingThreshold: 6.0,
         ratingTrends: {
           isGenerousRater: false,
-          consistencyScore: 0
-        }
+          consistencyScore: 0,
+        },
       };
     }
   }
@@ -439,17 +455,16 @@ export class RatingService {
       return {
         averageRating: 0,
         totalRatings: 0,
-        ratingDistribution: {}
+        ratingDistribution: {},
       };
     }
 
-    const averageRating = Math.round(
-      (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length) * 10
-    ) / 10;
+    const averageRating =
+      Math.round((ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length) * 10) / 10;
 
     // Create rating distribution (rounded to 0.5 intervals)
     const ratingDistribution: Record<string, number> = {};
-    ratings.forEach(rating => {
+    ratings.forEach((rating) => {
       const rounded = Math.round(rating * 2) / 2; // Round to nearest 0.5
       const key = rounded.toString();
       ratingDistribution[key] = (ratingDistribution[key] || 0) + 1;
@@ -458,7 +473,7 @@ export class RatingService {
     return {
       averageRating,
       totalRatings: ratings.length,
-      ratingDistribution
+      ratingDistribution,
     };
   }
 }

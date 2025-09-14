@@ -11,7 +11,7 @@ interface UserSubscription {
   service: {
     id: string;
     name: string;
-    logo_url?: string;
+    logo_path?: string;
   };
 }
 
@@ -33,10 +33,10 @@ interface SavingsCalendarProps {
 
 // API base URL
 
-const SavingsCalendar: React.FC<SavingsCalendarProps> = ({ 
-  useUserData = false, 
-  userSubscriptions = [], 
-  userShows = [] 
+const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
+  useUserData = false,
+  userSubscriptions = [],
+  userShows = [],
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarData, setCalendarData] = useState<CalendarDay[]>([]);
@@ -50,56 +50,64 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
   const fetchSavingsData = async () => {
     try {
       setLoading(true);
-      
+
       if (useUserData && (userSubscriptions?.length || 0) === 0) {
         // No subscription data for savings calculation
         setCalendarData([]);
         setLoading(false);
         return;
       }
-      
+
       // Get user ID for API calls
-      
+
       // Create abort controller for timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
+
       try {
         // Fetch savings simulation data
         const token = localStorage.getItem('authToken') || undefined;
         const data = await apiRequest(
-          `${API_ENDPOINTS.recommendations}/savings-simulator`, 
-          { signal: controller.signal }, 
+          `${API_ENDPOINTS.recommendations}/savings-simulator`,
+          { signal: controller.signal },
           token
         );
-        
+
         clearTimeout(timeoutId);
         const strategies = data.data.strategies;
-        const selectedStrategyData = strategies.find((s: any) => 
+        const selectedStrategyData = strategies.find((s: any) =>
           s.name.toLowerCase().includes(selectedStrategy)
         );
-        
+
         // Generate calendar data based on selected strategy
         const transformedData = generateSavingsCalendarData(selectedStrategyData);
         setCalendarData(transformedData);
       } catch (fetchError) {
         clearTimeout(timeoutId);
         console.error('SavingsCalendar - Fetch error:', fetchError);
-        
+
         if (fetchError instanceof Error && fetchError.name === 'AbortError') {
           console.warn('SavingsCalendar - Request timed out after 10 seconds');
         }
-        
+
         // Fall back to mock data on fetch error
         setCalendarData(generateMockSavingsData());
       }
     } catch (error) {
       const currentUserId = UserManager.getCurrentUserId();
       console.error('SavingsCalendar - Failed to fetch savings data:', error);
-      console.error('SavingsCalendar - API URL was:', `${API_ENDPOINTS.recommendations}/savings-simulator`);
+      console.error(
+        'SavingsCalendar - API URL was:',
+        `${API_ENDPOINTS.recommendations}/savings-simulator`
+      );
       console.error('SavingsCalendar - User ID was:', currentUserId);
-      console.error('SavingsCalendar - useUserData:', useUserData, 'hasUserData:', (userSubscriptions?.length || 0) > 0);
-      
+      console.error(
+        'SavingsCalendar - useUserData:',
+        useUserData,
+        'hasUserData:',
+        (userSubscriptions?.length || 0) > 0
+      );
+
       // Fall back to mock data
       setCalendarData(generateMockSavingsData());
     } finally {
@@ -112,14 +120,14 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
+
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const today = new Date();
-      
+
       // Calculate daily savings based on strategy
       const dailySavings = strategyData ? strategyData.monthlySavings / 30 : 0;
-      
+
       // Simulate varied savings throughout the month
       let savings = 0;
       if (selectedStrategy === 'aggressive') {
@@ -132,17 +140,17 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
         // Bundle consolidation: steady moderate savings
         savings = dailySavings * 0.8;
       }
-      
+
       data.push({
         date: dateStr,
         day,
         isCurrentMonth: true,
         isToday: dateStr === today.toISOString().split('T')[0],
         activeServices: [], // Not needed for savings view
-        savings: parseFloat(savings.toFixed(2))
+        savings: parseFloat(savings.toFixed(2)),
       });
     }
-    
+
     return data;
   };
 
@@ -151,11 +159,11 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
+
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const today = new Date();
-      
+
       // Mock savings based on different patterns
       let savings = 0;
       if (selectedStrategy === 'aggressive') {
@@ -165,22 +173,22 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
       } else {
         savings = Math.random() * 5 + 2;
       }
-      
+
       data.push({
         date: dateStr,
         day,
         isCurrentMonth: true,
         isToday: dateStr === today.toISOString().split('T')[0],
         activeServices: [],
-        savings: parseFloat(savings.toFixed(2))
+        savings: parseFloat(savings.toFixed(2)),
       });
     }
-    
+
     return data;
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
-    setCurrentDate(prev => {
+    setCurrentDate((prev) => {
       const newDate = new Date(prev);
       if (direction === 'prev') {
         newDate.setMonth(newDate.getMonth() - 1);
@@ -194,14 +202,20 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
   const strategies = [
     { id: 'aggressive', name: 'Aggressive Optimization', color: 'bg-red-100 text-red-800' },
     { id: 'rotation', name: 'Rotation Strategy', color: 'bg-blue-100 text-blue-800' },
-    { id: 'bundle', name: 'Bundle Consolidation', color: 'bg-green-100 text-green-800' }
+    { id: 'bundle', name: 'Bundle Consolidation', color: 'bg-green-100 text-green-800' },
   ];
 
   const monthlyStats = {
-    totalSavings: calendarData.filter(d => d.savings && d.savings > 0).reduce((sum, d) => sum + (d.savings || 0), 0),
-    totalCosts: Math.abs(calendarData.filter(d => d.savings && d.savings < 0).reduce((sum, d) => sum + (d.savings || 0), 0)),
-    savingsDays: calendarData.filter(d => d.savings && d.savings > 0).length,
-    costDays: calendarData.filter(d => d.savings && d.savings < 0).length
+    totalSavings: calendarData
+      .filter((d) => d.savings && d.savings > 0)
+      .reduce((sum, d) => sum + (d.savings || 0), 0),
+    totalCosts: Math.abs(
+      calendarData
+        .filter((d) => d.savings && d.savings < 0)
+        .reduce((sum, d) => sum + (d.savings || 0), 0)
+    ),
+    savingsDays: calendarData.filter((d) => d.savings && d.savings > 0).length,
+    costDays: calendarData.filter((d) => d.savings && d.savings < 0).length,
   };
 
   if (loading) {
@@ -225,7 +239,7 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
             Visualize your potential savings with different optimization strategies
           </p>
         </div>
-        
+
         <div className="flex items-center space-x-4">
           {/* Strategy Selector */}
           <div className="flex space-x-2">
@@ -234,7 +248,7 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
                 key={strategy.id}
                 onClick={() => setSelectedStrategy(strategy.id)}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  selectedStrategy === strategy.id 
+                  selectedStrategy === strategy.id
                     ? strategy.color
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
@@ -243,7 +257,7 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
               </button>
             ))}
           </div>
-          
+
           {/* Navigation */}
           <div className="flex items-center space-x-2">
             <button
@@ -275,21 +289,17 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
             +${monthlyStats.totalSavings.toFixed(2)}
           </div>
           <div className="text-sm text-green-700">Total Savings</div>
-          <div className="text-xs text-green-600 mt-1">
-            {monthlyStats.savingsDays} savings days
-          </div>
+          <div className="text-xs text-green-600 mt-1">{monthlyStats.savingsDays} savings days</div>
         </div>
-        
+
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="text-2xl font-bold text-red-600">
             -${monthlyStats.totalCosts.toFixed(2)}
           </div>
           <div className="text-sm text-red-700">Active Costs</div>
-          <div className="text-xs text-red-600 mt-1">
-            {monthlyStats.costDays} active days
-          </div>
+          <div className="text-xs text-red-600 mt-1">{monthlyStats.costDays} active days</div>
         </div>
-        
+
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="text-2xl font-bold text-blue-600">
             ${(monthlyStats.totalSavings - monthlyStats.totalCosts).toFixed(2)}
@@ -297,7 +307,7 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
           <div className="text-sm text-blue-700">Net Savings</div>
           <div className="text-xs text-blue-600 mt-1">This month</div>
         </div>
-        
+
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
           <div className="text-2xl font-bold text-purple-600">
             ${((monthlyStats.totalSavings - monthlyStats.totalCosts) * 12).toFixed(0)}
@@ -318,9 +328,9 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
       {/* Strategy Information */}
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          {strategies.find(s => s.id === selectedStrategy)?.name} Strategy
+          {strategies.find((s) => s.id === selectedStrategy)?.name} Strategy
         </h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {selectedStrategy === 'aggressive' && (
             <>
@@ -338,13 +348,11 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <h4 className="font-medium text-gray-900">Effort Required</h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  Minimal - One-time cancellations
-                </p>
+                <p className="text-sm text-gray-600 mt-1">Minimal - One-time cancellations</p>
               </div>
             </>
           )}
-          
+
           {selectedStrategy === 'rotation' && (
             <>
               <div className="bg-gray-50 rounded-lg p-4">
@@ -367,7 +375,7 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
               </div>
             </>
           )}
-          
+
           {selectedStrategy === 'bundle' && (
             <>
               <div className="bg-gray-50 rounded-lg p-4">
@@ -384,9 +392,7 @@ const SavingsCalendar: React.FC<SavingsCalendarProps> = ({
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <h4 className="font-medium text-gray-900">Effort Required</h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  Low - One-time switch to bundled plans
-                </p>
+                <p className="text-sm text-gray-600 mt-1">Low - One-time switch to bundled plans</p>
               </div>
             </>
           )}

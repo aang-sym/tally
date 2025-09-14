@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { 
+import {
   generateActivationWindows,
   calculateSavingsEstimate,
   isValidStreamingService,
   getStreamingService,
-  STREAMING_SERVICES 
+  STREAMING_SERVICES,
 } from './index.js';
 
 describe('Core business logic', () => {
   describe('generateActivationWindows', () => {
     it('should return mock activation windows', () => {
       const windows = generateActivationWindows();
-      
+
       expect(windows).toHaveLength(2);
       expect(windows[0]).toMatchObject({
         serviceId: 'netflix',
@@ -23,10 +23,10 @@ describe('Core business logic', () => {
         serviceName: 'Disney+',
         reason: 'The Mandalorian Season 4 releases',
       });
-      
+
       // Verify dates are in the future
       const now = new Date();
-      windows.forEach(window => {
+      windows.forEach((window) => {
         expect(new Date(window.start).getTime()).toBeGreaterThan(now.getTime());
         expect(new Date(window.end).getTime()).toBeGreaterThan(new Date(window.start).getTime());
       });
@@ -36,7 +36,7 @@ describe('Core business logic', () => {
   describe('calculateSavingsEstimate', () => {
     it('should return realistic savings estimate', () => {
       const savings = calculateSavingsEstimate();
-      
+
       expect(savings.monthly).toBeGreaterThan(0);
       expect(savings.yearToDate).toBeGreaterThan(0);
       expect(savings.yearToDate).toBe(savings.monthly * 12);

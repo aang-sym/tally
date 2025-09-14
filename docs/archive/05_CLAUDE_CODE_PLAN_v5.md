@@ -1,28 +1,34 @@
 # COMPLETE USER SYSTEM IMPLEMENTATION PLAN
+
 **STATUS**: IN PROGRESS  
 **CREATED**: 2025-08-29  
 **ESTIMATED TOKENS**: ~80k for all features
 
 ## Overview
+
 Transform Tally from a demo app with mock data into a fully functional personal streaming optimizer with real user data, manual content management, and comprehensive user profiles.
 
 ## Current State Analysis
+
 - ✅ Basic watchlist API endpoints exist
 - ✅ Calendar components built but using mock data
 - ✅ Recommendations engine implemented
 - ❌ No user management (hardcoded `USER_ID = 'user-1'`)
-- ❌ Search has no "Add to Watchlist" functionality  
+- ❌ Search has no "Add to Watchlist" functionality
 - ❌ Calendar uses only dummy data
 - ❌ No streaming provider selection
 - ❌ No way to manually add custom shows/episodes
 
 ## Implementation Phases
 
-### **PHASE 1: USER MANAGEMENT FOUNDATION** 
-*Priority: HIGH - Required for all other features*
+### **PHASE 1: USER MANAGEMENT FOUNDATION**
+
+_Priority: HIGH - Required for all other features_
 
 #### Task 1.1: Test User System
+
 - **Database**: Add `user_profiles` table extension
+
   ```sql
   ALTER TABLE users ADD COLUMN display_name VARCHAR(100);
   ALTER TABLE users ADD COLUMN avatar_url VARCHAR(500);
@@ -30,7 +36,7 @@ Transform Tally from a demo app with mock data into a fully functional personal 
   ALTER TABLE users ADD COLUMN created_by VARCHAR(50) DEFAULT 'system';
   ```
 
-- **API Routes**: 
+- **API Routes**:
   - `GET /api/users` - List all test users
   - `POST /api/users` - Create new test user
   - `PUT /api/users/:id` - Update test user
@@ -44,17 +50,22 @@ Transform Tally from a demo app with mock data into a fully functional personal 
   - Update all existing API calls to use selected user
 
 #### Task 1.2: Pre-populate Test Users
+
 Create diverse test users for different scenarios:
+
 - **"Emma Chen"** - New user (empty watchlist, exploring)
 - **"Alex Rodriguez"** - Power user (15+ shows, 4 streaming services)
 - **"Sarah Johnson"** - Optimizer (completed shows, savings-focused)
 - **"Mike Thompson"** - Casual viewer (2-3 shows, Netflix only)
 
 ### **PHASE 2: MANUAL CONTENT MANAGEMENT**
-*Priority: HIGH - Enables custom data testing*
+
+_Priority: HIGH - Enables custom data testing_
 
 #### Task 2.1: Manual Show Entry System
+
 - **Database Extensions**:
+
   ```sql
   ALTER TABLE shows ADD COLUMN is_custom BOOLEAN DEFAULT false;
   ALTER TABLE shows ADD COLUMN created_by_user_id UUID REFERENCES users(id);
@@ -76,24 +87,28 @@ Create diverse test users for different scenarios:
   - Integration with existing show management
 
 #### Task 2.2: Episode Management Tools
+
 - **Bulk Episode Creation**: "Generate 10 episodes for Season 1"
 - **Individual Episode Editing**: Title, air date, duration, notes
 - **Progress Management**: Set watched/unwatched status
 - **Custom Air Dates**: Schedule future episodes for calendar
 
 ### **PHASE 3: SEARCH TO WATCHLIST INTEGRATION**
-*Priority: HIGH - Core user functionality*
+
+_Priority: HIGH - Core user functionality_
 
 #### Task 3.1: Transform TMDB Testing → Search Shows
+
 - **Route Change**: `/tmdb-testing` → `/search`
 - **Navigation Update**: "TMDB Testing" → "Search Shows" (move to main nav)
 - **Remove Development UI**: Hide JSON debug, API usage widgets
 - **Focus on Search**: Clean, user-friendly search interface
 
 #### Task 3.2: Add to Watchlist Functionality
+
 - **Search Result Cards**: Add action buttons to each result
   - "Add to Watchlist" button
-  - "Start Watching" button  
+  - "Start Watching" button
   - Quick preview on hover
 
 - **Add Show Modal**:
@@ -109,9 +124,11 @@ Create diverse test users for different scenarios:
   - Grayed out services user doesn't have
 
 ### **PHASE 4: USER SETTINGS & STREAMING PROVIDERS**
-*Priority: MEDIUM - Required for accurate recommendations*
+
+_Priority: MEDIUM - Required for accurate recommendations_
 
 #### Task 4.1: User Settings Page (`/settings`)
+
 - **Navigation Addition**: Add Settings to main navigation
 - **Tabbed Interface**:
   - **Profile**: Name, email, timezone, avatar
@@ -120,7 +137,9 @@ Create diverse test users for different scenarios:
   - **Data**: Export, delete account, usage stats
 
 #### Task 4.2: Streaming Service Management
-- **Database**: 
+
+- **Database**:
+
   ```sql
   CREATE TABLE user_streaming_subscriptions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -147,15 +166,19 @@ Create diverse test users for different scenarios:
   - Visual cost summary
 
 ### **PHASE 5: REAL CALENDAR DATA INTEGRATION**
-*Priority: MEDIUM - Makes calendar actually useful*
+
+_Priority: MEDIUM - Makes calendar actually useful_
 
 #### Task 5.1: Calendar Data Source Tabs
+
 - **Add Tab Interface** to Calendar page:
   - "Demo Data" tab (current mock data for showcasing)
   - "My Data" tab (based on user's actual watchlist)
-  
-#### Task 5.2: Real Data Calendar Implementation  
-- **API Enhancement**: 
+
+#### Task 5.2: Real Data Calendar Implementation
+
+- **API Enhancement**:
+
   ```typescript
   GET /api/calendar/:userId?mode=demo|real&month=2025-01
   ```
@@ -173,9 +196,11 @@ Create diverse test users for different scenarios:
   - Recommendations based on user's actual patterns
 
 ### **PHASE 6: ADMIN/DEV TOOLS INTERFACE**
-*Priority: LOW - Nice to have for development*
+
+_Priority: LOW - Nice to have for development_
 
 #### Task 6.1: Dev Tools Page (`/dev-tools`)
+
 - **User Management Section**:
   - Create/edit/delete test users
   - Bulk user creation with sample data
@@ -192,15 +217,18 @@ Create diverse test users for different scenarios:
   - Performance monitoring
 
 ### **PHASE 7: INTEGRATION & TESTING**
-*Priority: HIGH - Ensure everything works together*
+
+_Priority: HIGH - Ensure everything works together_
 
 #### Task 7.1: Cross-Component Integration
+
 - **User Context**: Ensure all components use selected user
 - **Data Consistency**: Watchlist ↔ Calendar ↔ Recommendations
 - **Navigation Flow**: Smooth transitions between features
 - **Error Handling**: Graceful fallbacks when data missing
 
 #### Task 7.2: User Experience Polish
+
 - **Loading States**: Proper loading indicators
 - **Empty States**: Helpful messages when no data
 - **Success Feedback**: Confirmation messages for actions
@@ -209,6 +237,7 @@ Create diverse test users for different scenarios:
 ## Technical Specifications
 
 ### Database Schema Changes
+
 ```sql
 -- User profiles enhancement
 ALTER TABLE users ADD COLUMN display_name VARCHAR(100);
@@ -231,12 +260,14 @@ CREATE TABLE user_streaming_subscriptions (
 ```
 
 ### API Endpoints to Add
+
 - User management: `/api/users/*`
 - Custom content: `/api/shows/custom`, `/api/episodes/custom`
 - Subscriptions: `/api/subscriptions/*`
 - Calendar data: `/api/calendar/:userId?mode=demo|real`
 
 ### New Frontend Components
+
 - `UserSwitcher` - Header dropdown for user selection
 - `UserSettings` - Settings page with tabs
 - `ManualShowForm` - Custom show creation
@@ -244,13 +275,15 @@ CREATE TABLE user_streaming_subscriptions (
 - `SubscriptionManager` - Streaming service selection
 - `DevTools` - Development utilities
 
-### Updated Components  
+### Updated Components
+
 - `SearchShows` (renamed from TMDBTesting)
 - `CalendarView` - Add data source tabs
 - `Layout` - Add user switcher and settings link
 - All API calls - Use dynamic user ID
 
 ## Success Metrics
+
 - ✅ Can create and switch between test users
 - ✅ Can manually add custom shows/episodes
 - ✅ Search results have functional "Add to Watchlist" buttons
@@ -260,6 +293,7 @@ CREATE TABLE user_streaming_subscriptions (
 - ✅ Smooth user experience across all features
 
 ## Future Enhancements (Post-Implementation)
+
 - Real user authentication system
 - Social features (sharing watchlists)
 - Advanced analytics and insights
@@ -269,9 +303,10 @@ CREATE TABLE user_streaming_subscriptions (
 ---
 
 **Implementation Priority Order:**
+
 1. User Management Foundation (Phase 1) - Required for everything else
 2. Manual Content Management (Phase 2) - Enables realistic testing
-3. Search Integration (Phase 3) - Core user functionality  
+3. Search Integration (Phase 3) - Core user functionality
 4. Settings & Providers (Phase 4) - Required for accurate data
 5. Real Calendar Data (Phase 5) - Makes calendar useful
 6. Dev Tools (Phase 6) - Nice to have

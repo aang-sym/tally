@@ -2,23 +2,23 @@
 
 **tl;dr**
 
-* Forcing `serviceSupabase` everywhere “works” but it’s a band‑aid. It’s only acceptable short term **and only** on server‑side code with the service key kept secret.
-* The right fix is to make RLS allow the operations you need (or route writes through a security‑definer RPC). Then revert UI flows to the regular authed client.
-* Rotate the service key if it was ever logged or exposed during debugging.
+- Forcing `serviceSupabase` everywhere “works” but it’s a band‑aid. It’s only acceptable short term **and only** on server‑side code with the service key kept secret.
+- The right fix is to make RLS allow the operations you need (or route writes through a security‑definer RPC). Then revert UI flows to the regular authed client.
+- Rotate the service key if it was ever logged or exposed during debugging.
 
 ---
 
 ## what happened
 
-* Tests used the admin client (`serviceSupabase`) for all ops → inserts passed.
-* UI mixed clients → RLS context changed mid‑flow and FK checks failed (`PGRST301`).
-* You switched the constructor to always use `serviceSupabase` → 400s became 201s. Symptom gone, root cause not addressed.
+- Tests used the admin client (`serviceSupabase`) for all ops → inserts passed.
+- UI mixed clients → RLS context changed mid‑flow and FK checks failed (`PGRST301`).
+- You switched the constructor to always use `serviceSupabase` → 400s became 201s. Symptom gone, root cause not addressed.
 
 ## why the band‑aid isn’t good enough
 
-* If any code path runs in the browser, the service key is a critical leak.
-* You bypass RLS guarantees and can accidentally write rows for the wrong user if you trust request bodies.
-* You still have logical inconsistencies because reads and writes aren’t aligned with the same auth context and filters.
+- If any code path runs in the browser, the service key is a critical leak.
+- You bypass RLS guarantees and can accidentally write rows for the wrong user if you trust request bodies.
+- You still have logical inconsistencies because reads and writes aren’t aligned with the same auth context and filters.
 
 ---
 
@@ -119,7 +119,12 @@ Client usage stays simple:
 ```ts
 await supabase.rpc('rpc_add_to_watchlist', { p_show_id: showId });
 await supabase.rpc('rpc_remove_from_watchlist', { p_show_id: showId });
-await supabase.rpc('rpc_set_episode_progress', { p_show_id: showId, p_episode_id: epId, p_state: 'watched', p_progress: 100 });
+await supabase.rpc('rpc_set_episode_progress', {
+  p_show_id: showId,
+  p_episode_id: epId,
+  p_state: 'watched',
+  p_progress: 100,
+});
 ```
 
 ---
@@ -134,19 +139,20 @@ Failed to remove <title>: Show not found in watchlist
 
 **Likely causes**
 
-* Row exists in `user_shows` but with a different `status` than your deletion filter expects (e.g. created as `watching`, trying to delete only `status = 'watchlist'`).
-* Mismatched identifiers: UI passes a TMDB/slug/id that doesn’t equal `shows.id` the backend expects.
-* Mixed clients: the row was inserted with admin context but the list/remove path queries with the user client and RLS hides the row.
+- Row exists in `user_shows` but with a different `status` than your deletion filter expects (e.g. created as `watching`, trying to delete only `status = 'watchlist'`).
+- Mismatched identifiers: UI passes a TMDB/slug/id that doesn’t equal `shows.id` the backend expects.
+- Mixed clients: the row was inserted with admin context but the list/remove path queries with the user client and RLS hides the row.
 
 **Fix**
 
-* Use a **single canonical key** end‑to‑end: `show_id` equals `shows.id` (uuid). Map external ids on the server only.
-* Make delete target the composite key, not human title:
+- Use a **single canonical key** end‑to‑end: `show_id` equals `shows.id` (uuid). Map external ids on the server only.
+- Make delete target the composite key, not human title:
 
   ```sql
   delete from user_shows where user_id = auth.uid() and show_id = $1;
   ```
-* Standardise `status` values and enforce with a CHECK or enum. If the UI doesn’t care about status for delete, drop the status predicate.
+
+- Standardise `status` values and enforce with a CHECK or enum. If the UI doesn’t care about status for delete, drop the status predicate.
 
 ### 2) set episode progress: `NOT_FOUND`
 
@@ -156,27 +162,27 @@ Failed to set progress for <title>: NOT_FOUND
 
 **Likely causes**
 
-* Progress table expects a parent `user_shows` row; it’s missing or not visible under the current auth context.
-* Upsert targets the wrong key (e.g. searching by title, or by external episode id not stored in `episodes.id`).
+- Progress table expects a parent `user_shows` row; it’s missing or not visible under the current auth context.
+- Upsert targets the wrong key (e.g. searching by title, or by external episode id not stored in `episodes.id`).
 
 **Fix**
 
-* Make the progress write an **upsert** on `(user_id, show_id, episode_id)` (see `rpc_set_episode_progress` above).
-* Before writing progress, ensure `user_shows` exists or create it idempotently.
+- Make the progress write an **upsert** on `(user_id, show_id, episode_id)` (see `rpc_set_episode_progress` above).
+- Before writing progress, ensure `user_shows` exists or create it idempotently.
 
 ### 3) ui shows counts but empty list
 
-* Dashboard displays counts (e.g. Total 2, Watching 2) but the list is empty.
+- Dashboard displays counts (e.g. Total 2, Watching 2) but the list is empty.
 
 **Likely causes**
 
-* Counts are computed via a different endpoint/client (admin) than the list (user client), so RLS hides rows in the list.
-* Filters differ (status/state/country). The list is scoped to `status='watchlist'` while the count aggregates any status.
+- Counts are computed via a different endpoint/client (admin) than the list (user client), so RLS hides rows in the list.
+- Filters differ (status/state/country). The list is scoped to `status='watchlist'` while the count aggregates any status.
 
 **Fix**
 
-* Ensure list and counters call the same backend and predicates.
-* Log the exact SQL (or Supabase query params) for both endpoints and diff them.
+- Ensure list and counters call the same backend and predicates.
+- Log the exact SQL (or Supabase query params) for both endpoints and diff them.
 
 ---
 
@@ -197,9 +203,9 @@ select id, show_id, season, episode from episodes where show_id = $SHOW limit 5;
 
 Check that:
 
-* `show_id` you send from the UI equals `shows.id`.
-* `status` matches what your delete/list filters use.
-* The same client/auth context is used across add/remove/list/progress.
+- `show_id` you send from the UI equals `shows.id`.
+- `status` matches what your delete/list filters use.
+- The same client/auth context is used across add/remove/list/progress.
 
 ---
 
@@ -215,17 +221,18 @@ Check that:
    update user_shows set status = 'watchlist' where status is null;
    delete from user_shows where show_id not in (select id from shows);
    ```
+
 5. Rotate the service key if it appeared in logs during the band‑aid period.
 
 ---
 
 ## verification checklist
 
-* [ ] Add `user_shows` select/insert/delete policies (or RPCs) and deploy.
-* [ ] Both counters and list return the **same** rows for a test user.
-* [ ] Add/remove cycle: add → appears in list → remove → row gone; no RLS errors.
-* [ ] Episode progress upserts correctly for the same show/episode id.
-* [ ] No admin client usage in browser bundles (check build output).
+- [ ] Add `user_shows` select/insert/delete policies (or RPCs) and deploy.
+- [ ] Both counters and list return the **same** rows for a test user.
+- [ ] Add/remove cycle: add → appears in list → remove → row gone; no RLS errors.
+- [ ] Episode progress upserts correctly for the same show/episode id.
+- [ ] No admin client usage in browser bundles (check build output).
 
 ---
 

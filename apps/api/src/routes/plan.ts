@@ -2,11 +2,9 @@ import { Router } from 'express';
 import { PlanResponseSchema, type ServiceWindow } from '@tally/types';
 import { generateActivationWindows, calculateSavingsEstimate } from '@tally/core';
 import { watchlistStore } from '../storage/index.js';
-import { streamingAvailabilityService } from '../services/streaming-availability.js';
-import { tmdbService } from '../services/tmdb.js';
 import { ValidationError } from '../middleware/errorHandler.js';
 
-const router = Router();
+const router: Router = Router();
 
 // Mock auth middleware - extracts user from stubbed token
 function extractUserId(req: any): string {
@@ -14,21 +12,21 @@ function extractUserId(req: any): string {
   if (!authHeader?.startsWith('Bearer ')) {
     throw new ValidationError('Authorization token required');
   }
-  
+
   const token = authHeader.substring(7);
   if (!token.startsWith('stub_token_')) {
     throw new ValidationError('Invalid token format');
   }
-  
+
   return token.substring(11); // Extract user ID from stub_token_{userId}
 }
 
 async function generateRealActivationWindows(userId: string): Promise<ServiceWindow[]> {
   const windows: ServiceWindow[] = [];
-  
+
   // Get user's watchlist
   const watchlist = await watchlistStore.getByUserId(userId);
-  
+
   if (watchlist.length === 0) {
     // Fallback to mock data if no watchlist items
     return generateActivationWindows();
@@ -47,13 +45,13 @@ async function generateRealActivationWindows(userId: string): Promise<ServiceWin
   // Generate windows for each service based on content availability
   for (const [serviceId, items] of serviceGroups) {
     const serviceName = items[0]?.serviceName || 'Unknown Service';
-    
+
     // Find items that are leaving soon
-    const leavingSoonItems = items.filter(item => item.availability?.leavingSoon);
-    
+    const leavingSoonItems = items.filter((item) => item.availability?.leavingSoon);
+
     // Find items with specific expiration dates
-    const itemsWithExpirationDates = items.filter(item => 
-      item.availability?.expiresOn && !item.availability.leavingSoon
+    const itemsWithExpirationDates = items.filter(
+      (item) => item.availability?.expiresOn && !item.availability.leavingSoon
     );
 
     if (leavingSoonItems.length > 0) {
@@ -64,7 +62,7 @@ async function generateRealActivationWindows(userId: string): Promise<ServiceWin
         serviceName,
         start: now.toISOString(),
         end: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 2 weeks
-        reason: `${leavingSoonItems.length} items leaving soon: ${leavingSoonItems.map(i => i.title).join(', ')}`,
+        reason: `${leavingSoonItems.length} items leaving soon: ${leavingSoonItems.map((i) => i.title).join(', ')}`,
       };
       windows.push(urgentWindow);
     }
@@ -75,7 +73,7 @@ async function generateRealActivationWindows(userId: string): Promise<ServiceWin
         if (item.availability?.expiresOn) {
           const expirationDate = new Date(item.availability.expiresOn);
           const startDate = new Date(expirationDate.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 days before
-          
+
           const window: ServiceWindow = {
             serviceId,
             serviceName,
@@ -91,7 +89,7 @@ async function generateRealActivationWindows(userId: string): Promise<ServiceWin
 
   // Sort windows by start date
   windows.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
-  
+
   // If no windows generated, fallback to mock data
   return windows.length > 0 ? windows : generateActivationWindows();
 }
@@ -102,7 +100,7 @@ router.post('/generate', async (req, res, next) => {
 
     // Generate activation windows based on user's watchlist
     const windows = await generateRealActivationWindows(userId);
-    
+
     // Calculate savings estimate (still using mock calculation for now)
     const savings = calculateSavingsEstimate();
 
@@ -121,21 +119,21 @@ router.post('/optimize', async (req, res, next) => {
   try {
     const userId = extractUserId(req);
     const { preferences = {} } = req.body;
-    
+
     const {
       maxSimultaneous = 2,
       watchDelay = 'P2D', // 2 days in ISO 8601 duration format
-      batchEpisodes = true
+      batchEpisodes = true,
     } = preferences;
 
     // Get user's watchlist
     const watchlist = await watchlistStore.getByUserId(userId);
-    
+
     if (watchlist.length === 0) {
       return res.json({
         optimizedPlan: [],
         savings: calculateSavingsEstimate(),
-        message: 'No watchlist items to optimize'
+        message: 'No watchlist items to optimize',
       });
     }
 
@@ -149,25 +147,30 @@ router.post('/optimize', async (req, res, next) => {
           serviceName: item.serviceName,
           items: [],
           weeklyShows: [],
-          bingeShows: []
+          bingeShows: [],
         });
       }
-      
+
       const group = serviceGroups.get(key);
       group.items.push(item);
-      
+
       // Categorize by release pattern - prioritize TMDB detected patterns
-      const releasePattern = item.detectedReleasePattern || item.releasePattern?.pattern;
-      if (releasePattern === 'weekly') {
+      const rp =
+        item.detectedReleasePattern?.pattern ??
+        // Back-compat fallback if older field exists on stored item
+        (item as any).releasePattern?.pattern ??
+        undefined;
+
+      if (rp === 'weekly') {
         group.weeklyShows.push(item);
-      } else if (releasePattern === 'binge') {
+      } else if (rp === 'binge') {
         group.bingeShows.push(item);
       }
     }
 
     // Generate optimized subscription windows
     const optimizedWindows = [];
-    
+
     for (const [, group] of serviceGroups) {
       if (group.weeklyShows.length > 0) {
         // For weekly shows, create longer subscription periods
@@ -179,7 +182,7 @@ router.post('/optimize', async (req, res, next) => {
           end: new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 3 months
           reason: `Weekly shows: ${group.weeklyShows.map((s: any) => s.title).join(', ')}`,
           type: 'weekly_content',
-          showCount: group.weeklyShows.length
+          showCount: group.weeklyShows.length,
         };
         optimizedWindows.push(weeklyWindow);
       }
@@ -188,7 +191,7 @@ router.post('/optimize', async (req, res, next) => {
         // For binge shows, create shorter, focused periods
         const batchStart = new Date();
         batchStart.setMonth(batchStart.getMonth() + 1); // Start next month
-        
+
         const bingeWindow = {
           serviceId: group.serviceId,
           serviceName: group.serviceName,
@@ -196,7 +199,7 @@ router.post('/optimize', async (req, res, next) => {
           end: new Date(batchStart.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 1 month
           reason: `Binge watching: ${group.bingeShows.map((s: any) => s.title).join(', ')}`,
           type: 'binge_content',
-          showCount: group.bingeShows.length
+          showCount: group.bingeShows.length,
         };
         optimizedWindows.push(bingeWindow);
       }
@@ -211,13 +214,13 @@ router.post('/optimize', async (req, res, next) => {
         }
         return b.showCount - a.showCount;
       });
-      
+
       // Keep only top priorities
       optimizedWindows.splice(maxSimultaneous);
     }
 
     const savings = calculateSavingsEstimate();
-    
+
     res.json({
       optimizedPlan: optimizedWindows,
       savings: {
@@ -227,14 +230,20 @@ router.post('/optimize', async (req, res, next) => {
       preferences: {
         maxSimultaneous,
         watchDelay,
-        batchEpisodes
+        batchEpisodes,
       },
       summary: {
         totalServices: serviceGroups.size,
-        weeklyShows: Array.from(serviceGroups.values()).reduce((sum, g) => sum + g.weeklyShows.length, 0),
-        bingeShows: Array.from(serviceGroups.values()).reduce((sum, g) => sum + g.bingeShows.length, 0),
-        optimizedWindows: optimizedWindows.length
-      }
+        weeklyShows: Array.from(serviceGroups.values()).reduce(
+          (sum, g) => sum + g.weeklyShows.length,
+          0
+        ),
+        bingeShows: Array.from(serviceGroups.values()).reduce(
+          (sum, g) => sum + g.bingeShows.length,
+          0
+        ),
+        optimizedWindows: optimizedWindows.length,
+      },
     });
   } catch (error) {
     next(error);

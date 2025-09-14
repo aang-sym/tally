@@ -3,30 +3,41 @@
   "version": "0.1.0",
   "description": "iOS-first app for smart streaming service management",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "packageManager": "pnpm@9.6.0",
   "scripts": {
-    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev": "concurrently \"pnpm --dir apps/api dev\" \"pnpm --dir apps/web dev\"",
     "dev:logged": "npm run dev 2>&1 | tee dev.log",
-    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:api": "pnpm --dir apps/api dev",
     "dev:api:logged": "npm run dev:api 2>&1 | tee api.log",
-    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:web": "pnpm --dir apps/web dev",
     "dev:web:logged": "npm run dev:web 2>&1 | tee web.log",
-    "build": "npm run build --workspaces",
-    "lint": "npm run lint --workspaces",
-    "lint:fix": "npm run lint:fix --workspaces",
-    "typecheck": "npm run typecheck --workspaces",
-    "test": "npm run test --workspaces",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "lint:fix": "pnpm -r lint:fix",
+    "typecheck": "pnpm -r build && pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:unit": "pnpm -r build && pnpm --filter @tally/api run test:unit",
+    "test:integration": "pnpm --filter @tally/api run test --config vitest.config.integration.ts",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "prepare": "husky install",
+    "spec:lint": "redocly lint openapi/**/*.yaml",
+    "spec:bundle": "redocly bundle openapi/index.yaml -o openapi/bundled.yaml",
+    "spec:preview": "redocly preview-docs openapi/index.yaml",
+    "spec:validate": "openapi-generator-cli validate -i openapi/bundled.yaml",
+    "client:generate": "openapi-generator-cli generate -i openapi/bundled.yaml -g typescript-axios -o packages/api-client",
+    "client:regen": "pnpm run spec:bundle && pnpm run spec:validate && pnpm openapi-generator-cli generate -i openapi/bundled.yaml -g typescript-axios -o packages/api-client"
   },
   "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.23.1",
+    "@redocly/cli": "^2.0.8",
     "@types/node": "^20.11.16",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
+    "ajv": "^8.12.0",
     "concurrently": "^8.2.2",
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10",
     "prettier": "^3.2.5",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
@@ -41,5 +52,71 @@
     "@types/jsonwebtoken": "^9.0.10",
     "bcrypt": "^6.0.0",
     "jsonwebtoken": "^9.0.2"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "es2023": true,
+      "node": true,
+      "browser": true
+    },
+    "extends": [
+      "eslint:recommended",
+      "plugin:@typescript-eslint/recommended",
+      "plugin:@typescript-eslint/stylistic",
+      "prettier"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+      "sourceType": "module",
+      "ecmaVersion": 2023
+    },
+    "plugins": [
+      "@typescript-eslint"
+    ],
+    "overrides": [
+      {
+        "files": [
+          "**/*.ts",
+          "**/*.tsx"
+        ],
+        "parserOptions": {
+          "project": false
+        },
+        "rules": {
+          "@typescript-eslint/no-unused-vars": [
+            "warn",
+            {
+              "argsIgnorePattern": "^_",
+              "varsIgnorePattern": "^_"
+            }
+          ]
+        }
+      }
+    ],
+    "ignorePatterns": [
+      "node_modules/",
+      "dist/",
+      "build/",
+      "coverage/",
+      "clients/",
+      "**/*.d.ts"
+    ]
+  },
+  "prettier": {
+    "semi": true,
+    "singleQuote": true,
+    "printWidth": 100,
+    "trailingComma": "es5",
+    "tabWidth": 2
+  },
+  "lint-staged": {
+    "**/*.{ts,tsx,js,jsx}": [
+      "eslint --fix --max-warnings=1000",
+      "prettier --write"
+    ],
+    "**/*.{json,md,css,scss,html}": [
+      "prettier --write"
+    ]
   }
 }

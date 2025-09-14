@@ -31,9 +31,10 @@ The Tally API and development environment has multiple critical issues preventin
 
 ## Fix Plan
 
-### 🎯 **Phase 1: Fix Package Structure & Dependencies** 
+### 🎯 **Phase 1: Fix Package Structure & Dependencies**
 
 #### Step 1.1: Fix packages/types/src/index.ts
+
 **Issue:** Missing `ReleasePatternSchema` import/definition
 
 ```typescript
@@ -54,6 +55,7 @@ export type ReleasePattern = z.infer<typeof ReleasePatternSchema>;
 ```
 
 #### Step 1.2: Fix packages/core/src/types.ts
+
 **Issue:** File appears empty/corrupted
 
 ```typescript
@@ -87,17 +89,21 @@ export interface ReleasePatternAnalysis {
 ```
 
 #### Step 1.3: Fix packages/core/src/index.ts
+
 **Issue:** Duplicate exports and function definitions
 
 **Remove duplicates:**
+
 - Remove lines 14-22 (duplicate export block)
 - Remove lines 160-180 (duplicate functions)
 
 **Keep only:**
-- Lines 4-11 (first export block) 
+
+- Lines 4-11 (first export block)
 - Lines 135-155 (first function definitions)
 
 #### Step 1.4: Build Package Dependencies
+
 ```bash
 # Clean all build artifacts
 rm -rf packages/*/dist
@@ -111,14 +117,17 @@ npm run build --workspace=packages/config
 ### 🎯 **Phase 2: Fix API Server Issues**
 
 #### Step 2.1: Verify Environment Variables
+
 Ensure all required environment variables are set:
+
 - `SUPABASE_URL`
-- `SUPABASE_API_KEY` 
+- `SUPABASE_API_KEY`
 - `SUPABASE_SERVICE_KEY`
 - `TMDB_API_KEY`
 - `STREAMING_AVAILABILITY_API_KEY`
 
 #### Step 2.2: Test Database Connectivity
+
 ```typescript
 // Add to apps/api/src/server.ts startup
 import { testConnection, getDatabaseHealth } from './db/supabase.js';
@@ -129,7 +138,7 @@ async function verifyDatabaseConnection() {
     console.error('❌ Database connection failed:', connection.error);
     process.exit(1);
   }
-  
+
   const health = await getDatabaseHealth();
   console.log('📊 Database health:', health);
 }
@@ -139,12 +148,14 @@ verifyDatabaseConnection();
 ```
 
 #### Step 2.3: Verify RLS Policies Applied
+
 The SQL script from previous session should be confirmed in Supabase:
+
 ```sql
 -- Verify these policies exist:
-SELECT schemaname, tablename, policyname, cmd, qual 
-FROM pg_policies 
-WHERE schemaname = 'public' 
+SELECT schemaname, tablename, policyname, cmd, qual
+FROM pg_policies
+WHERE schemaname = 'public'
   AND tablename IN ('shows', 'seasons', 'episodes')
   AND policyname LIKE '%Service%'
 ORDER BY tablename, policyname;
@@ -153,6 +164,7 @@ ORDER BY tablename, policyname;
 ### 🎯 **Phase 3: Fix User Authentication Issues**
 
 #### Step 3.1: Debug User Retrieval
+
 Add comprehensive logging to `apps/api/src/routes/users.ts`:
 
 ```typescript
@@ -161,19 +173,18 @@ app.get('/api/users', async (req, res) => {
   try {
     console.log('🔍 GET /api/users - Request headers:', {
       authorization: req.headers.authorization ? 'Bearer [REDACTED]' : 'none',
-      contentType: req.headers['content-type']
+      contentType: req.headers['content-type'],
     });
 
     // Your existing user retrieval logic here
-    
+
     console.log('✅ Users retrieved successfully, count:', users?.length || 0);
     res.json({ success: true, data: { users } });
-    
   } catch (error) {
     console.error('❌ User retrieval failed:', {
       error: error.message,
       stack: error.stack,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
     res.status(500).json({ success: false, error: error.message });
   }
@@ -181,6 +192,7 @@ app.get('/api/users', async (req, res) => {
 ```
 
 #### Step 3.2: Verify JWT Token Validation
+
 Ensure `apps/api/src/middleware/user-identity.ts` properly handles tokens:
 
 ```typescript
@@ -189,7 +201,7 @@ export const authenticateUser = (req: Request, res: Response, next: NextFunction
   try {
     const authHeader = req.headers.authorization;
     console.log('🔐 Auth middleware - Header present:', !!authHeader);
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log('❌ Auth middleware - No valid Bearer token');
       return res.status(401).json({ error: 'Authorization token required' });
@@ -197,12 +209,11 @@ export const authenticateUser = (req: Request, res: Response, next: NextFunction
 
     const token = authHeader.substring(7);
     console.log('🔍 Auth middleware - Token length:', token.length);
-    
+
     // Your existing JWT validation logic
-    
+
     console.log('✅ Auth middleware - User authenticated:', user.id);
     next();
-    
   } catch (error) {
     console.error('❌ Auth middleware failed:', error.message);
     res.status(401).json({ error: 'Invalid token' });
@@ -215,41 +226,46 @@ export const authenticateUser = (req: Request, res: Response, next: NextFunction
 #### Step 4.1: Systematic Testing Plan
 
 1. **Package Build Test**
+
 ```bash
 npm run build
 echo "Build status: $?"
 ```
 
-2. **API Server Start Test**  
+2. **API Server Start Test**
+
 ```bash
 npm run dev:api
 # Should start without module errors
 # Should show database connection success
-# Should show "🚀 Tally API server running on port 3001"
+# Should show "🚀 Tally API server running on port 4000"
 ```
 
 3. **Authentication Test**
+
 ```bash
 # Test user signup
-curl -X POST "http://localhost:3001/api/users/signup" \
+curl -X POST "http://localhost:4000/api/users/signup" \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"password123","displayName":"Test User"}'
 
 # Test user retrieval with token
 curl -H "Authorization: Bearer [TOKEN_FROM_SIGNUP]" \
-  "http://localhost:3001/api/users"
+  "http://localhost:4000/api/users"
 ```
 
 4. **Watchlist Test**
+
 ```bash
 # Test adding show to watchlist
-curl -X POST "http://localhost:3001/api/watchlist-v2" \
+curl -X POST "http://localhost:4000/api/watchlist-v2" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer [TOKEN]" \
   -d '{"tmdbId": 1399, "status": "watchlist"}'
 ```
 
 #### Step 4.2: Frontend Integration Test
+
 1. Start both servers: `npm run dev`
 2. Navigate to http://localhost:3000
 3. Create new user account
@@ -260,27 +276,34 @@ curl -X POST "http://localhost:3001/api/watchlist-v2" \
 ### 🎯 **Phase 5: Documentation Updates**
 
 #### Step 5.1: Update CLAUDE.md
+
 Add troubleshooting section:
+
 ```markdown
 ## Troubleshooting
 
 ### Build Issues
+
 - Run `rm -rf packages/*/dist && npm run build` to clean build
 - Ensure packages build in order: types → core → config
 
-### API Issues  
+### API Issues
+
 - Check environment variables are set
 - Verify database connection with health endpoint
 - Check RLS policies are applied correctly
 
 ### Authentication Issues
+
 - Verify JWT tokens are properly formatted
 - Check user-identity middleware logs
 - Ensure Supabase service key has correct permissions
 ```
 
 #### Step 5.2: Create Monitoring Dashboard
+
 Add to `apps/api/src/routes/health.ts`:
+
 ```typescript
 app.get('/api/system-status', async (req, res) => {
   const status = {
@@ -296,16 +319,16 @@ app.get('/api/system-status', async (req, res) => {
     packages: {
       typesBuilt: existsSync('./node_modules/@tally/types/dist'),
       coreBuilt: existsSync('./node_modules/@tally/core/dist'),
-    }
+    },
   };
-  
+
   res.json(status);
 });
 ```
 
 ## Implementation Checklist
 
-- [ ] Fix packages/types/src/index.ts (add ReleasePatternSchema)  
+- [ ] Fix packages/types/src/index.ts (add ReleasePatternSchema)
 - [ ] Fix packages/core/src/types.ts (restore type definitions)
 - [ ] Fix packages/core/src/index.ts (remove duplicates)
 - [ ] Clean and rebuild all packages
@@ -313,7 +336,7 @@ app.get('/api/system-status', async (req, res) => {
 - [ ] Add enhanced authentication logging
 - [ ] Test API server startup
 - [ ] Test user authentication flow
-- [ ] Test watchlist functionality  
+- [ ] Test watchlist functionality
 - [ ] Test full development environment
 - [ ] Update documentation
 - [ ] Add system status monitoring
@@ -330,7 +353,7 @@ app.get('/api/system-status', async (req, res) => {
 ## Risk Mitigation
 
 - **Backup current state before making changes**
-- **Apply fixes incrementally and test each step** 
+- **Apply fixes incrementally and test each step**
 - **Keep environment variables secure and documented**
 - **Monitor logs for any new issues during implementation**
 
@@ -339,19 +362,19 @@ app.get('/api/system-status', async (req, res) => {
 ## ✅ **RESOLUTION SUMMARY**
 
 **Status: COMPLETED** ✅  
-**Date Resolved:** 2025-09-04  
+**Date Resolved:** 2025-09-04
 
 ### **Issues Successfully Fixed:**
 
 1. **✅ Package Build Issues Fixed**
    - Added missing `ReleasePatternSchema` to packages/types/src/index.ts
-   - Restored missing types in packages/core/src/types.ts  
+   - Restored missing types in packages/core/src/types.ts
    - Created missing services/release-pattern.ts file
    - Removed duplicate exports and functions from packages/core/src/index.ts
 
-2. **✅ API Server Running Successfully** 
+2. **✅ API Server Running Successfully**
    - Used `npx tsx` to bypass TypeScript compilation issues
-   - Server running on port 3001 with all services operational
+   - Server running on port 4000 with all services operational
    - Database connectivity confirmed working
    - User authentication and retrieval working
 
@@ -362,24 +385,25 @@ app.get('/api/system-status', async (req, res) => {
 
 4. **✅ Frontend-Backend Connection Established**
    - Frontend running on http://localhost:3002
-   - API running on http://localhost:3001  
+   - API running on http://localhost:4000
    - CORS properly configured for cross-origin requests
    - User loading issues from screenshot are resolved
 
 ### **Final Working Configuration:**
 
-- **API Server:** `cd apps/api && npx tsx src/server.ts` (port 3001)
-- **Frontend:** `npm run dev:web` (auto-assigned to port 3002) 
+- **API Server:** `cd apps/api && npx tsx src/server.ts` (port 4000)
+- **Frontend:** `npm run dev:web` (auto-assigned to port 3002)
 - **CORS Origins:** localhost:3000, 3002, 127.0.0.1:3000, 3002
 - **Database:** Supabase with RLS policies working
 - **Authentication:** JWT tokens working with Bearer header
 
 ### **Quick Start Commands:**
+
 ```bash
 # Terminal 1 - Start API
 cd apps/api && npx tsx src/server.ts
 
-# Terminal 2 - Start Frontend  
+# Terminal 2 - Start Frontend
 npm run dev:web
 
 # Access at: http://localhost:3002

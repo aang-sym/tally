@@ -33,7 +33,7 @@ export interface CalendarProps {
   onDateClick?: (day: CalendarDay) => void;
   mode?: 'overview' | 'provider' | 'savings' | 'personal';
   selectedService?: string;
-  userProviders?: { serviceName: string; color: string; }[];
+  userProviders?: { serviceName: string; color: string }[];
   selectedDate?: string | undefined; // YYYY-MM-DD
   showHeader?: boolean;
 }
@@ -47,11 +47,21 @@ const CalendarView: React.FC<CalendarProps> = ({
   selectedService,
   userProviders = [],
   selectedDate,
-  showHeader = true
+  showHeader = true,
 }) => {
   const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   // Monday-first labels
@@ -74,13 +84,13 @@ const CalendarView: React.FC<CalendarProps> = ({
     const day = prevMonthLastDay - i;
     const prevMonthDate = new Date(year, month - 1, day);
     const dateStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const dayData = data.find(d => d.date === dateStr) || {
+    const dayData = data.find((d) => d.date === dateStr) || {
       date: dateStr,
       day,
       isCurrentMonth: false,
       isToday: false,
       activeServices: [],
-      savings: 0
+      savings: 0,
     };
     calendarDays.push(dayData);
   }
@@ -88,13 +98,13 @@ const CalendarView: React.FC<CalendarProps> = ({
   // Current month days
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const dayData = data.find(d => d.date === dateStr) || {
+    const dayData = data.find((d) => d.date === dateStr) || {
       date: dateStr,
       day,
       isCurrentMonth: true,
       isToday: false,
       activeServices: [],
-      savings: 0
+      savings: 0,
     };
     calendarDays.push(dayData);
   }
@@ -105,13 +115,13 @@ const CalendarView: React.FC<CalendarProps> = ({
   for (let i = 1; i <= nextMonthDaysToAdd; i++) {
     const nextMonthDate = new Date(year, month + 1, i);
     const dateStr = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-    const dayData = data.find(d => d.date === dateStr) || {
+    const dayData = data.find((d) => d.date === dateStr) || {
       date: dateStr,
       day: i,
       isCurrentMonth: false,
       isToday: false,
       activeServices: [],
-      savings: 0
+      savings: 0,
     };
     calendarDays.push(dayData);
   }
@@ -121,12 +131,12 @@ const CalendarView: React.FC<CalendarProps> = ({
       return (
         <div className="h-2 w-full">
           {dayData.savings !== undefined && dayData.savings > 0 ? (
-            <div 
+            <div
               className="h-full bg-green-500 rounded-sm"
               title={`Save $${dayData.savings.toFixed(2)}`}
             />
           ) : dayData.savings !== undefined && dayData.savings < 0 ? (
-            <div 
+            <div
               className="h-full bg-red-500 rounded-sm"
               title={`Cost $${Math.abs(dayData.savings).toFixed(2)}`}
             />
@@ -138,15 +148,17 @@ const CalendarView: React.FC<CalendarProps> = ({
     }
 
     if (mode === 'provider' && selectedService) {
-      const service = dayData.activeServices.find(s => s.serviceId === selectedService);
+      const service = dayData.activeServices.find((s) => s.serviceId === selectedService);
       if (service) {
         return (
           <div className="space-y-1">
-            <div 
+            <div
               className={`h-1 rounded-sm ${
-                service.intensity > 0.7 ? 'bg-green-500' : 
-                service.intensity > 0.3 ? 'bg-yellow-500' : 
-                'bg-gray-300'
+                service.intensity > 0.7
+                  ? 'bg-green-500'
+                  : service.intensity > 0.3
+                    ? 'bg-yellow-500'
+                    : 'bg-gray-300'
               }`}
             />
             <div className="flex space-x-1">
@@ -161,10 +173,11 @@ const CalendarView: React.FC<CalendarProps> = ({
     }
 
     // Overview mode – Stacked centered logos + subtle continuity pips
-    const logosToShow = dayData.activeServices
-      .filter((s) => s.displayType === 'logo')
-      .slice(0, 3);
-    const extraCount = Math.max(0, dayData.activeServices.filter(s => s.displayType === 'logo').length - 3);
+    const logosToShow = dayData.activeServices.filter((s) => s.displayType === 'logo').slice(0, 3);
+    const extraCount = Math.max(
+      0,
+      dayData.activeServices.filter((s) => s.displayType === 'logo').length - 3
+    );
     const pipServices = dayData.activeServices.filter((s) => s.displayType === 'bar');
 
     return (
@@ -177,7 +190,10 @@ const CalendarView: React.FC<CalendarProps> = ({
                 <div
                   key={`logo-${service.serviceId}-${idx}`}
                   className="logo relative rounded-full overflow-hidden ring-1 ring-gray-300 shadow"
-                  style={{ marginLeft: idx === 0 ? 0 : 'calc(var(--overlap) * -1)', zIndex: 10 + idx }}
+                  style={{
+                    marginLeft: idx === 0 ? 0 : 'calc(var(--overlap) * -1)',
+                    zIndex: 10 + idx,
+                  }}
                   title={service.serviceName}
                 >
                   {service.logoUrl ? (
@@ -190,11 +206,14 @@ const CalendarView: React.FC<CalendarProps> = ({
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
                         const parent = target.parentElement as HTMLElement;
-                        if (parent) parent.className = `logo relative rounded-full ${getServiceColor(service.serviceName, service.intensity)} flex items-center justify-center`;
+                        if (parent)
+                          parent.className = `logo relative rounded-full ${getServiceColor(service.serviceName, service.intensity)} flex items-center justify-center`;
                       }}
                     />
                   ) : (
-                    <div className={`w-full h-full ${getServiceColor(service.serviceName, service.intensity)}`} />
+                    <div
+                      className={`w-full h-full ${getServiceColor(service.serviceName, service.intensity)}`}
+                    />
                   )}
                   {(service.isStart || service.isEnd || service.isEndingSoon) && (
                     <span
@@ -209,8 +228,10 @@ const CalendarView: React.FC<CalendarProps> = ({
               {extraCount > 0 && (
                 <>
                   {/* Stacked mode: small circular plus */}
-                  <div className="plus-stacked ml-1 rounded-full bg-gray-200 text-gray-700 text-xs shadow-sm"
-                       style={{ zIndex: 10 + logosToShow.length }}>
+                  <div
+                    className="plus-stacked ml-1 rounded-full bg-gray-200 text-gray-700 text-xs shadow-sm"
+                    style={{ zIndex: 10 + logosToShow.length }}
+                  >
                     +
                   </div>
                   {/* Grid/narrow mode: show +N badge */}
@@ -231,8 +252,8 @@ const CalendarView: React.FC<CalendarProps> = ({
                 key={`pip-${s.serviceId}-${i}`}
                 className={`inline-block w-1.5 h-1.5 rounded-full opacity-80 ${getServiceColor(s.serviceName, s.intensity)}`}
                 title={`${s.serviceName}: ongoing`}
-              />)
-            )}
+              />
+            ))}
           </div>
         )}
       </>
@@ -241,26 +262,27 @@ const CalendarView: React.FC<CalendarProps> = ({
 
   const getServiceColor = (serviceName: string, intensity: number) => {
     const colors = {
-      'Netflix': intensity > 0.5 ? 'bg-red-500' : 'bg-red-300',
+      Netflix: intensity > 0.5 ? 'bg-red-500' : 'bg-red-300',
       'HBO Max': intensity > 0.5 ? 'bg-purple-500' : 'bg-purple-300',
       'Disney Plus': intensity > 0.5 ? 'bg-blue-500' : 'bg-blue-300',
       'Disney+': intensity > 0.5 ? 'bg-blue-500' : 'bg-blue-300',
-      'Hulu': intensity > 0.5 ? 'bg-green-500' : 'bg-green-300',
+      Hulu: intensity > 0.5 ? 'bg-green-500' : 'bg-green-300',
       'Amazon Prime Video': intensity > 0.5 ? 'bg-indigo-500' : 'bg-indigo-300',
       'Prime Video': intensity > 0.5 ? 'bg-indigo-500' : 'bg-indigo-300',
       'Apple TV Plus': intensity > 0.5 ? 'bg-gray-500' : 'bg-gray-300',
       'Apple TV+': intensity > 0.5 ? 'bg-gray-500' : 'bg-gray-300',
       'Paramount+ with Showtime': intensity > 0.5 ? 'bg-orange-500' : 'bg-orange-300',
-      'Paramount+': intensity > 0.5 ? 'bg-orange-500' : 'bg-orange-300'
+      'Paramount+': intensity > 0.5 ? 'bg-orange-500' : 'bg-orange-300',
     };
-    
+
     return colors[serviceName as keyof typeof colors] || 'bg-gray-400';
   };
 
   const getDayClasses = (dayData: CalendarDay | null) => {
     if (!dayData) return 'relative p-2 h-24 rounded-lg day-cq overflow-hidden';
 
-    let classes = 'relative p-2 h-24 rounded-lg border cursor-pointer group transition-colors day-cq overflow-hidden ';
+    let classes =
+      'relative p-2 h-24 rounded-lg border cursor-pointer group transition-colors day-cq overflow-hidden ';
 
     if (dayData.isToday) {
       classes += 'border-blue-400 ';
@@ -347,9 +369,7 @@ const CalendarView: React.FC<CalendarProps> = ({
                       <span className="text-xs text-orange-600">💡</span>
                     )}
                   </div>
-                  <div className="flex-1">
-                    {renderServiceBars(dayData)}
-                  </div>
+                  <div className="flex-1">{renderServiceBars(dayData)}</div>
                   {/* Hover price badge */}
                   {dayData.activeServices.length > 0 && (
                     <div className="absolute top-1 right-1 hidden group-hover:block">

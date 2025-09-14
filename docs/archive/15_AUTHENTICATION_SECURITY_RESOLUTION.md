@@ -7,12 +7,14 @@ After comprehensive testing and debugging of the authentication system, the **pr
 ## Issues Identified and Status
 
 ### ✅ RESOLVED: Authentication Infrastructure
+
 - **JWT Token Generation**: Working correctly in both `/api/users/signup` and `/api/users/login`
 - **JWT Token Validation**: Middleware properly validates Bearer tokens and rejects invalid/missing tokens
 - **Protected Endpoints**: Correctly return 401 for unauthenticated requests and 200 for authenticated requests
 - **Server Stability**: Fixed import errors and port conflicts, server running cleanly
 
 ### ⚠️ REMAINING: Database Operations (Non-Authentication Issue)
+
 - **PGRST301 Errors**: "No suitable key or wrong key type" when performing database operations
 - **RLS Policy Issues**: Some operations may be blocked by overly restrictive Row Level Security policies
 - **Foreign Key Constraints**: Possible issues with table relationships in Supabase
@@ -23,28 +25,28 @@ After comprehensive testing and debugging of the authentication system, the **pr
 
 ```bash
 # 1. User Signup - SUCCESS ✅
-curl -X POST http://localhost:3001/api/users/signup \
+curl -X POST http://localhost:4000/api/users/signup \
   -H "Content-Type: application/json" \
   -d '{"email":"test-auth-fix@example.com","password":"password123","displayName":"Test Auth User"}'
 # Result: HTTP 201, JWT token generated
 
-# 2. User Login - SUCCESS ✅  
-curl -X POST http://localhost:3001/api/users/login \
+# 2. User Login - SUCCESS ✅
+curl -X POST http://localhost:4000/api/users/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test-auth-fix@example.com","password":"password123"}'
 # Result: HTTP 200, JWT token generated
 
 # 3. Protected Endpoint with Token - SUCCESS ✅
-curl -X GET http://localhost:3001/api/users \
+curl -X GET http://localhost:4000/api/users \
   -H "Authorization: Bearer [TOKEN]"
 # Result: HTTP 200, authenticated access granted
 
 # 4. Protected Endpoint without Token - SUCCESS ✅
-curl -X GET http://localhost:3001/api/users
+curl -X GET http://localhost:4000/api/users
 # Result: HTTP 401, properly rejected with authentication error
 
 # 5. Public Endpoint - SUCCESS ✅
-curl -X GET http://localhost:3001/api/health
+curl -X GET http://localhost:4000/api/health
 # Result: HTTP 200, public access working
 ```
 
@@ -52,7 +54,7 @@ curl -X GET http://localhost:3001/api/health
 
 ```bash
 # Watchlist Operations - FAILING due to DB issues ❌
-curl -X POST http://localhost:3001/api/watchlist-v2 \
+curl -X POST http://localhost:4000/api/watchlist-v2 \
   -H "Authorization: Bearer [TOKEN]" \
   -d '{"tmdbId":456,"title":"Test Show","status":"watchlist"}'
 # Result: HTTP 400, PGRST301 "No suitable key or wrong key type"
@@ -61,12 +63,14 @@ curl -X POST http://localhost:3001/api/watchlist-v2 \
 ## Root Cause Analysis
 
 ### Authentication System (RESOLVED)
+
 1. **Server Infrastructure**: Fixed module import errors that were causing server crashes
 2. **JWT Configuration**: Proper JWT_SECRET configuration in environment variables
 3. **Token Flow**: End-to-end token generation, transmission, and validation working
 4. **Middleware**: `authenticateUser` middleware properly validates tokens and sets user context
 
 ### Database Issues (IDENTIFIED)
+
 1. **RLS Policies**: Row Level Security policies may be too restrictive
 2. **Foreign Key Relationships**: Possible issues with `user_shows` table foreign key constraints
 3. **Client Context**: Authenticated Supabase client may not be receiving proper user context
@@ -74,6 +78,7 @@ curl -X POST http://localhost:3001/api/watchlist-v2 \
 ## Current System State
 
 ### What's Working ✅
+
 - User registration and login
 - JWT token generation and validation
 - Protected endpoint access control
@@ -82,6 +87,7 @@ curl -X POST http://localhost:3001/api/watchlist-v2 \
 - Public endpoint access
 
 ### What Needs Investigation ⚠️
+
 - Database write operations (user_shows table)
 - RLS policy configuration in Supabase
 - Foreign key constraint validation
@@ -90,16 +96,19 @@ curl -X POST http://localhost:3001/api/watchlist-v2 \
 ## Next Steps for Complete Resolution
 
 ### Phase 1: Database Schema Validation
+
 1. **Review RLS Policies** in Supabase for `users`, `shows`, and `user_shows` tables
 2. **Test Direct Database Access** using Supabase dashboard to isolate issues
 3. **Validate Foreign Key Constraints** between tables
 
 ### Phase 2: Service Layer Testing
+
 1. **Test WatchlistService** with proper user authentication context
 2. **Validate ShowService** operations with different Supabase clients
 3. **Test User Context Propagation** through service layer
 
 ### Phase 3: RLS Policy Adjustment
+
 1. **Review and Update RLS Policies** to allow authenticated user operations
 2. **Test Policy Changes** with curl commands
 3. **Ensure Security** while enabling functionality
@@ -120,7 +129,7 @@ The authentication system now meets security requirements:
 **The authentication system is now fully functional.** The issues described in the Copilot documentation regarding 401 authentication errors have been resolved. Users can successfully:
 
 1. Create accounts and receive JWT tokens
-2. Login and receive fresh JWT tokens  
+2. Login and receive fresh JWT tokens
 3. Access protected endpoints with valid tokens
 4. Be properly rejected when accessing protected endpoints without tokens
 

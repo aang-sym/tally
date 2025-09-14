@@ -23,7 +23,7 @@ interface PriceTier {
 interface StreamingService {
   id: string;
   name: string;
-  logo_url?: string;
+  logo_path?: string;
   homepage?: string;
   country_code?: string;
   tmdb_provider_id?: number;
@@ -55,7 +55,7 @@ interface UserProfile {
   created_at: string;
 }
 
-const Settings: React.FC = () => {
+const Subscriptions: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [availableServices, setAvailableServices] = useState<StreamingService[]>([]);
   const [userSubscriptions, setUserSubscriptions] = useState<UserSubscription[]>([]);
@@ -91,7 +91,11 @@ const Settings: React.FC = () => {
     try {
       const token = localStorage.getItem('authToken') || undefined;
       const country = UserManager.getCountry?.() || 'US';
-      const data = await apiRequest(`${API_ENDPOINTS.streamingServices}?country=${country}`, {}, token);
+      const data = await apiRequest(
+        `${API_ENDPOINTS.streamingServices}?country=${country}`,
+        {},
+        token
+      );
       const services: StreamingService[] = data.data.services || [];
       setAvailableServices(services);
 
@@ -105,7 +109,11 @@ const Settings: React.FC = () => {
       if (Object.keys(defaults).length) setSelectedTierByService(defaults);
 
       // If subscriptions already loaded, compute suggestions now
-      try { await computeSuggestions(services); } catch { }
+      try {
+        await computeSuggestions(services);
+      } catch {
+        // Ignore suggestion computation errors
+      }
     } catch (err) {
       console.error('Failed to load streaming services:', err);
     }
@@ -117,7 +125,11 @@ const Settings: React.FC = () => {
       const userId = UserManager.getCurrentUserId();
       const token = localStorage.getItem('authToken') || undefined;
       const country = UserManager.getCountry?.() || 'US';
-      const data = await apiRequest(`${API_ENDPOINTS.users.subscriptions(userId)}?country=${country}`, {}, token);
+      const data = await apiRequest(
+        `${API_ENDPOINTS.users.subscriptions(userId)}?country=${country}`,
+        {},
+        token
+      );
       setUserSubscriptions(data.data.subscriptions || []);
       setError(null);
     } catch (err) {
@@ -172,30 +184,40 @@ const Settings: React.FC = () => {
 
       if (isActive) {
         // Add subscription (use selected tier if available)
-        await apiRequest(API_ENDPOINTS.users.subscriptions(userId), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
+        await apiRequest(
+          API_ENDPOINTS.users.subscriptions(userId),
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              service_id: service.id,
+              monthly_cost: (() => {
+                const chosenTier =
+                  selectedTierByService[service.id] || service.default_price?.tier || null;
+                const tierPrice = (service.prices || []).find((p) => p.tier === chosenTier);
+                const amount =
+                  tierPrice?.amount ?? service.default_price?.amount ?? service.price?.amount;
+                return amount ?? getDefaultMonthlyCost(service.name);
+              })(),
+              tier: selectedTierByService[service.id] || service.default_price?.tier || null,
+              is_active: true,
+            }),
           },
-          body: JSON.stringify({
-            service_id: service.id,
-            monthly_cost: (() => {
-              const chosenTier = selectedTierByService[service.id] || service.default_price?.tier || null;
-              const tierPrice = (service.prices || []).find(p => p.tier === chosenTier);
-              const amount = tierPrice?.amount ?? service.default_price?.amount ?? service.price?.amount;
-              return amount ?? getDefaultMonthlyCost(service.name);
-            })(),
-            tier: selectedTierByService[service.id] || service.default_price?.tier || null,
-            is_active: true
-          })
-        }, token);
+          token
+        );
       } else {
         // Remove subscription
-        const subscription = userSubscriptions.find(sub => sub.service_id === service.id);
+        const subscription = userSubscriptions.find((sub) => sub.service_id === service.id);
         if (subscription) {
-          await apiRequest(`${API_ENDPOINTS.users.subscriptions(userId)}/${subscription.id}`, {
-            method: 'DELETE'
-          }, token);
+          await apiRequest(
+            `${API_ENDPOINTS.users.subscriptions(userId)}/${subscription.id}`,
+            {
+              method: 'DELETE',
+            },
+            token
+          );
         }
       }
 
@@ -212,11 +234,15 @@ const Settings: React.FC = () => {
     try {
       const userId = UserManager.getCurrentUserId();
       const token = localStorage.getItem('authToken') || undefined;
-      await apiRequest(`${API_ENDPOINTS.users.subscriptions(userId)}/${subscriptionId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier: newTier })
-      }, token);
+      await apiRequest(
+        `${API_ENDPOINTS.users.subscriptions(userId)}/${subscriptionId}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tier: newTier }),
+        },
+        token
+      );
       await loadUserSubscriptions();
     } catch (err) {
       console.error('Failed to update tier:', err);
@@ -228,15 +254,19 @@ const Settings: React.FC = () => {
     try {
       const userId = UserManager.getCurrentUserId();
       const token = localStorage.getItem('authToken') || undefined;
-      await apiRequest(`${API_ENDPOINTS.users.subscriptions(userId)}/${subscriptionId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
+      await apiRequest(
+        `${API_ENDPOINTS.users.subscriptions(userId)}/${subscriptionId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            monthly_cost: newCost,
+          }),
         },
-        body: JSON.stringify({
-          monthly_cost: newCost
-        })
-      }, token);
+        token
+      );
 
       await loadUserSubscriptions();
     } catch (err) {
@@ -247,29 +277,29 @@ const Settings: React.FC = () => {
 
   const getDefaultMonthlyCost = (serviceName: string): number => {
     const costs: Record<string, number> = {
-      'Netflix': 15.99,
-      'Hulu': 12.99,
+      Netflix: 15.99,
+      Hulu: 12.99,
       'HBO Max': 14.99,
       'Disney Plus': 12.99,
       'Amazon Prime Video': 8.99,
       'Apple TV+': 6.99,
       'Paramount+': 9.99,
-      'Peacock': 4.99
+      Peacock: 4.99,
     };
     return costs[serviceName] || 9.99;
   };
 
   const isSubscribed = (serviceId: string): boolean => {
-    return userSubscriptions.some(sub => sub.service_id === serviceId && sub.is_active);
+    return userSubscriptions.some((sub) => sub.service_id === serviceId && sub.is_active);
   };
 
   const getSubscription = (serviceId: string): UserSubscription | undefined => {
-    return userSubscriptions.find(sub => sub.service_id === serviceId && sub.is_active);
+    return userSubscriptions.find((sub) => sub.service_id === serviceId && sub.is_active);
   };
 
   const getTotalMonthlyCost = (): number => {
     return userSubscriptions
-      .filter(sub => sub.is_active)
+      .filter((sub) => sub.is_active)
       .reduce((total, sub) => total + sub.monthly_cost, 0);
   };
 
@@ -328,7 +358,7 @@ const Settings: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">
-                  {userSubscriptions.filter(sub => sub.is_active).length}
+                  {userSubscriptions.filter((sub) => sub.is_active).length}
                 </div>
                 <div className="text-sm text-gray-500">Active Services</div>
               </div>
@@ -352,7 +382,8 @@ const Settings: React.FC = () => {
             <div className="p-6 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-900">Your Streaming Services</h2>
               <p className="text-gray-600 mt-1">
-                Select the streaming services you're subscribed to. This helps us show you relevant content and calculate your savings.
+                Select the streaming services you're subscribed to. This helps us show you relevant
+                content and calculate your savings.
               </p>
               {suggestedServiceIds.size > 0 && (
                 <div className="mt-3">
@@ -363,7 +394,7 @@ const Settings: React.FC = () => {
                       try {
                         setAddingAll(true);
                         for (const id of Array.from(suggestedServiceIds)) {
-                          const svc = availableServices.find(s => s.id === id);
+                          const svc = availableServices.find((s) => s.id === id);
                           if (!svc) continue;
                           if (!isSubscribed(svc.id)) {
                             await toggleSubscription(svc, true);
@@ -396,24 +427,30 @@ const Settings: React.FC = () => {
                     const subscription = getSubscription(service.id);
 
                     // Compute a chosen tier (for display) and price
-                    const chosenTier = selectedTierByService[service.id] || service.default_price?.tier || null;
-                    const tierPrice = (service.prices || []).find(p => p.tier === chosenTier);
-                    const displayAmount = tierPrice?.amount ?? service.default_price?.amount ?? service.price?.amount;
-                    const displayCurrency = tierPrice?.currency ?? service.default_price?.currency ?? service.price?.currency;
+                    const chosenTier =
+                      selectedTierByService[service.id] || service.default_price?.tier || null;
+                    const tierPrice = (service.prices || []).find((p) => p.tier === chosenTier);
+                    const displayAmount =
+                      tierPrice?.amount ?? service.default_price?.amount ?? service.price?.amount;
+                    const displayCurrency =
+                      tierPrice?.currency ??
+                      service.default_price?.currency ??
+                      service.price?.currency;
 
                     return (
                       <div
                         key={service.id}
-                        className={`p-4 border-2 rounded-lg transition-all ${subscribed
+                        className={`p-4 border-2 rounded-lg transition-all ${
+                          subscribed
                             ? 'border-green-200 bg-green-50'
                             : 'border-gray-200 hover:border-gray-300'
-                          }`}
+                        }`}
                       >
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center space-x-3">
-                            {service.logo_url ? (
+                            {service.logo_path ? (
                               <img
-                                src={service.logo_url}
+                                src={service.logo_path}
                                 alt={`${service.name} logo`}
                                 className="w-8 h-8 object-contain"
                               />
@@ -445,17 +482,19 @@ const Settings: React.FC = () => {
                             {/* Tier-aware price display */}
                             {displayAmount != null && (
                               <div className="mr-3 text-sm text-gray-600">
-                                {displayCurrency || '$'}{displayAmount.toFixed(2)}/mo
+                                {displayCurrency || '$'}
+                                {displayAmount.toFixed(2)}/mo
                               </div>
                             )}
 
                             <button
                               onClick={() => toggleSubscription(service, !subscribed)}
                               disabled={savingSubscription === service.id}
-                              className={`px-4 py-2 text-sm font-medium rounded transition-colors ${subscribed
+                              className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                                subscribed
                                   ? 'bg-red-100 text-red-700 hover:bg-red-200'
                                   : 'bg-green-100 text-green-700 hover:bg-green-200'
-                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                              } disabled:opacity-50 disabled:cursor-not-allowed`}
                             >
                               {savingSubscription === service.id ? (
                                 <span className="flex items-center">
@@ -472,43 +511,60 @@ const Settings: React.FC = () => {
                         </div>
 
                         {/* Tier selector when NOT subscribed and tiers are available */}
-                        {!subscribed && (service.prices?.length ? (
-                          <div className="mb-3">
-                            <label className="block text-xs text-gray-500 mb-1">Tier</label>
-                            <select
-                              className="border rounded px-2 py-1 text-sm"
-                              value={selectedTierByService[service.id] || service.default_price?.tier || ''}
-                              onChange={(e) =>
-                                setSelectedTierByService(prev => ({ ...prev, [service.id]: e.target.value }))
-                              }
-                            >
-                              {(service.prices || [])
-                                .filter(t => t.active !== false)
-                                .map(t => (
-                                  <option key={t.tier} value={t.tier}>
-                                    {t.tier}
-                                    {t.amount != null ? ` — ${t.currency ?? ''}${t.amount.toFixed(2)}/mo` : ''}
-                                  </option>
-                                ))}
-                            </select>
-                          </div>
-                        ) : null)}
+                        {!subscribed &&
+                          (service.prices?.length ? (
+                            <div className="mb-3">
+                              <label className="block text-xs text-gray-500 mb-1">Tier</label>
+                              <select
+                                className="border rounded px-2 py-1 text-sm"
+                                value={
+                                  selectedTierByService[service.id] ||
+                                  service.default_price?.tier ||
+                                  ''
+                                }
+                                onChange={(e) =>
+                                  setSelectedTierByService((prev) => ({
+                                    ...prev,
+                                    [service.id]: e.target.value,
+                                  }))
+                                }
+                              >
+                                {(service.prices || [])
+                                  .filter((t) => t.active !== false)
+                                  .map((t) => (
+                                    <option key={t.tier} value={t.tier}>
+                                      {t.tier}
+                                      {t.amount != null
+                                        ? ` — ${t.currency ?? ''}${t.amount.toFixed(2)}/mo`
+                                        : ''}
+                                    </option>
+                                  ))}
+                              </select>
+                            </div>
+                          ) : null)}
 
                         {subscribed && subscription && (
                           <div className="mt-3">
-                            {(service.prices && service.prices.length > 0) && (
+                            {service.prices && service.prices.length > 0 && (
                               <div className="mb-3">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tier</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  Tier
+                                </label>
                                 <select
                                   className="border rounded px-2 py-1 text-sm"
                                   value={subscription.tier || service.default_price?.tier || ''}
-                                  onChange={(e) => updateSubscriptionTier(subscription.id, e.target.value)}
+                                  onChange={(e) =>
+                                    updateSubscriptionTier(subscription.id, e.target.value)
+                                  }
                                 >
                                   {service.prices
-                                    .filter(t => t.active !== false)
-                                    .map(t => (
+                                    .filter((t) => t.active !== false)
+                                    .map((t) => (
                                       <option key={t.tier} value={t.tier}>
-                                        {t.tier}{t.amount != null ? ` — ${t.currency ?? ''}${t.amount.toFixed(2)}/mo` : ''}
+                                        {t.tier}
+                                        {t.amount != null
+                                          ? ` — ${t.currency ?? ''}${t.amount.toFixed(2)}/mo`
+                                          : ''}
                                       </option>
                                     ))}
                                 </select>
@@ -558,4 +614,4 @@ const Settings: React.FC = () => {
   );
 };
 
-export default Settings;
+export default Subscriptions;

@@ -1,6 +1,6 @@
 /**
  * Centralized Error Handling Utilities
- * 
+ *
  * Provides consistent error handling patterns across the API
  */
 
@@ -25,26 +25,23 @@ export type ApiResponse<T = any> = ApiSuccess<T> | ApiError;
  * Standard error response structure
  */
 export const createErrorResponse = (
-  message: string, 
-  details?: string, 
+  message: string,
+  details?: string,
   code?: string
 ): ApiError => ({
   success: false,
   error: message,
   ...(details && { details }),
-  ...(code && { code })
+  ...(code && { code }),
 });
 
 /**
  * Standard success response structure
  */
-export const createSuccessResponse = <T>(
-  data: T, 
-  message?: string
-): ApiSuccess<T> => ({
+export const createSuccessResponse = <T>(data: T, message?: string): ApiSuccess<T> => ({
   success: true,
   data,
-  ...(message && { message })
+  ...(message && { message }),
 });
 
 /**
@@ -52,7 +49,7 @@ export const createSuccessResponse = <T>(
  */
 export const handleDatabaseError = (error: any, operation: string): ApiError => {
   console.error(`[DatabaseError] ${operation}:`, error);
-  
+
   // Handle specific database error types
   if (error?.code === '23505') {
     return createErrorResponse(
@@ -61,7 +58,7 @@ export const handleDatabaseError = (error: any, operation: string): ApiError => 
       'DUPLICATE_ENTRY'
     );
   }
-  
+
   if (error?.code === '23503') {
     return createErrorResponse(
       'Referenced resource not found',
@@ -69,7 +66,7 @@ export const handleDatabaseError = (error: any, operation: string): ApiError => 
       'FOREIGN_KEY_VIOLATION'
     );
   }
-  
+
   if (error?.message?.includes('Row Level Security')) {
     return createErrorResponse(
       'Access denied',
@@ -77,7 +74,7 @@ export const handleDatabaseError = (error: any, operation: string): ApiError => 
       'ACCESS_DENIED'
     );
   }
-  
+
   return createErrorResponse(
     `Database operation failed: ${operation}`,
     error?.message || 'Unknown database error',
@@ -95,43 +92,30 @@ export const handleAuthError = (message: string = 'Authentication required'): Ap
 /**
  * Handle validation errors
  */
-export const handleValidationError = (
-  field: string, 
-  message: string
-): ApiError => {
-  return createErrorResponse(
-    'Validation failed',
-    `${field}: ${message}`,
-    'VALIDATION_ERROR'
-  );
+export const handleValidationError = (field: string, message: string): ApiError => {
+  return createErrorResponse('Validation failed', `${field}: ${message}`, 'VALIDATION_ERROR');
 };
 
 /**
  * Handle not found errors
  */
 export const handleNotFoundError = (resource: string = 'Resource'): ApiError => {
-  return createErrorResponse(
-    `${resource} not found`,
-    undefined,
-    'NOT_FOUND'
-  );
+  return createErrorResponse(`${resource} not found`, undefined, 'NOT_FOUND');
 };
 
 /**
  * Send error response with appropriate HTTP status
  */
 export const sendErrorResponse = (
-  res: Response, 
-  error: ApiError | string, 
+  res: Response,
+  error: ApiError | string,
   statusCode: number = 500
 ): void => {
-  const errorResponse = typeof error === 'string' 
-    ? createErrorResponse(error)
-    : error;
-    
+  const errorResponse = typeof error === 'string' ? createErrorResponse(error) : error;
+
   // Map error codes to HTTP status codes
   const httpStatus = getHttpStatusFromError(errorResponse, statusCode);
-  
+
   res.status(httpStatus).json(errorResponse);
 };
 
@@ -139,8 +123,8 @@ export const sendErrorResponse = (
  * Send success response
  */
 export const sendSuccessResponse = <T>(
-  res: Response, 
-  data: T, 
+  res: Response,
+  data: T,
   message?: string,
   statusCode: number = 200
 ): void => {
@@ -152,7 +136,7 @@ export const sendSuccessResponse = <T>(
  */
 const getHttpStatusFromError = (error: ApiError, defaultStatus: number): number => {
   if (!error.code) return defaultStatus;
-  
+
   switch (error.code) {
     case 'AUTH_ERROR':
       return 401;
@@ -174,33 +158,26 @@ const getHttpStatusFromError = (error: ApiError, defaultStatus: number): number 
 /**
  * Wrapper for async route handlers to catch errors
  */
-export const asyncHandler = (
-  fn: (req: any, res: Response, next: any) => Promise<void>
-) => (req: any, res: Response, next: any) => {
-  Promise.resolve(fn(req, res, next)).catch((error) => {
-    console.error('[AsyncHandler] Unhandled error:', error);
-    sendErrorResponse(res, handleDatabaseError(error, 'operation'));
-  });
-};
+export const asyncHandler =
+  (fn: (req: any, res: Response, next: any) => Promise<void>) =>
+  (req: any, res: Response, next: any) => {
+    Promise.resolve(fn(req, res, next)).catch((error) => {
+      console.error('[AsyncHandler] Unhandled error:', error);
+      sendErrorResponse(res, handleDatabaseError(error, 'operation'));
+    });
+  };
 
 /**
  * Middleware to ensure consistent error format
  */
-export const errorMiddleware = (
-  error: any, 
-  req: any, 
-  res: Response, 
-  next: any
-): void => {
+export const errorMiddleware = (error: any, req: any, res: Response, next: any): void => {
   console.error('[ErrorMiddleware]:', error);
-  
+
   if (res.headersSent) {
     return next(error);
   }
-  
-  const errorResponse = error.isApiError 
-    ? error
-    : handleDatabaseError(error, 'middleware');
-    
+
+  const errorResponse = error.isApiError ? error : handleDatabaseError(error, 'middleware');
+
   sendErrorResponse(res, errorResponse);
 };

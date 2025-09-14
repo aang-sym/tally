@@ -30,10 +30,10 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
         // Store token in localStorage
         localStorage.setItem('authToken', response.token);
         localStorage.setItem('current_user_id', response.user.id);
-        
+
         onLoginSuccess(response.token, response.user);
         onClose();
-        
+
         // Reset form
         setEmail('');
         setPassword('');
@@ -72,11 +72,13 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
       if (response.success && response.token && response.user) {
         localStorage.setItem('authToken', response.token);
         localStorage.setItem('current_user_id', response.user.id);
-        
+
         onLoginSuccess(response.token, response.user);
         onClose();
       } else {
-        setError('Test login failed. Please check if the password_hash column exists in your database.');
+        setError(
+          'Test login failed. Please check if the password_hash column exists in your database.'
+        );
       }
     } catch (err) {
       setError(`Test login failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -91,13 +93,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">
-            {isLogin ? 'Login' : 'Sign Up'}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
+          <h2 className="text-xl font-bold">{isLogin ? 'Login' : 'Sign Up'}</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             ✕
           </button>
         </div>
@@ -143,7 +140,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
             disabled={loading}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
           >
-            {loading ? 'Please wait...' : (isLogin ? 'Login' : 'Sign Up')}
+            {loading ? 'Please wait...' : isLogin ? 'Login' : 'Sign Up'}
           </button>
         </form>
 
@@ -154,7 +151,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
           >
             {isLogin ? 'Need an account? Sign up' : 'Already have an account? Login'}
           </button>
-          
+
           <button
             onClick={handleTestLogin}
             disabled={loading}

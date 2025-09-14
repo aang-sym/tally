@@ -1,6 +1,6 @@
 /**
  * Show Service
- * 
+ *
  * Handles show data with intelligent TMDB caching, TTL logic, and background refresh.
  * Optimizes API calls by caching show data and refreshing based on show status and popularity.
  */
@@ -56,13 +56,17 @@ export class ShowService {
    */
   async getOrCreateShow(tmdbId: number, client: SupabaseClient = supabase): Promise<Show | null> {
     try {
-      const clientType = client === serviceSupabase ? 'serviceSupabase' :
-                        client === supabase ? 'regularSupabase' : 'userClient';
-      
+      const clientType =
+        client === serviceSupabase
+          ? 'serviceSupabase'
+          : client === supabase
+            ? 'regularSupabase'
+            : 'userClient';
+
       console.log('🎭 [SHOW_SERVICE] getOrCreateShow called:', {
         tmdbId,
         clientType,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       // First, try to get existing show
@@ -73,22 +77,23 @@ export class ShowService {
         .eq('tmdb_id', tmdbId)
         .single();
 
-      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = not found
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        // PGRST116 = not found
         console.error('❌ [SHOW_SERVICE] Error fetching existing show:', {
           error: fetchError,
           errorCode: fetchError.code,
           clientType,
-          tmdbId
+          tmdbId,
         });
         throw fetchError;
       }
-      
+
       console.log('🔍 [SHOW_SERVICE] Existing show check result:', {
         showExists: !!existingShow,
         showId: existingShow?.id,
         title: existingShow?.title,
         needsRefresh: existingShow ? this.shouldRefreshShow(existingShow) : false,
-        fetchErrorCode: fetchError?.code
+        fetchErrorCode: fetchError?.code,
       });
 
       // If show exists and doesn't need refresh, return it
@@ -105,7 +110,7 @@ export class ShowService {
 
       console.log(`Fetching TMDB data for show ${tmdbId}...`);
       const tmdbShow = await this.fetchTMDBShowData(tmdbId);
-      
+
       if (!tmdbShow) {
         console.error(`CRITICAL: fetchTMDBShowData returned null for TMDB ID ${tmdbId}`);
         return existingShow || null;
@@ -114,7 +119,7 @@ export class ShowService {
       console.log(`Successfully fetched TMDB data for show ${tmdbId}:`, {
         title: tmdbShow.name,
         seasons: tmdbShow.seasons?.length || 0,
-        status: tmdbShow.status
+        status: tmdbShow.status,
       });
 
       // Create or update the show
@@ -157,12 +162,14 @@ export class ShowService {
             status: showData.status,
             totalSeasons: showData.total_seasons,
             totalEpisodes: showData.total_episodes,
-            overview: showData.overview ? `${showData.overview.substring(0, 100)}...` : null
+            overview: showData.overview ? `${showData.overview.substring(0, 100)}...` : null,
           },
-          usingServiceSupabase: true
+          usingServiceSupabase: true,
         });
 
-        console.log('🔑 [SHOW_SERVICE] Using serviceSupabase client for show creation (bypasses RLS)');
+        console.log(
+          '🔑 [SHOW_SERVICE] Using serviceSupabase client for show creation (bypasses RLS)'
+        );
 
         const { data: newShow, error: createError } = await serviceSupabase
           .from('shows')
@@ -181,23 +188,25 @@ export class ShowService {
             showDataPreview: {
               title: showData.title,
               status: showData.status,
-              tmdbId: showData.tmdb_id
+              tmdbId: showData.tmdb_id,
             },
             usingServiceSupabase: true,
-            isPGRST301: createError.code === 'PGRST301'
+            isPGRST301: createError.code === 'PGRST301',
           });
-          
+
           if (createError.code === 'PGRST301') {
-            console.error('🔥 [SHOW_SERVICE] PGRST301 in show creation - this should NOT happen with serviceSupabase!');
+            console.error(
+              '🔥 [SHOW_SERVICE] PGRST301 in show creation - this should NOT happen with serviceSupabase!'
+            );
           }
-          
+
           throw createError;
         }
 
         console.log('✅ [SHOW_SERVICE] Successfully created show:', {
           showId: newShow.id,
           title: newShow.title,
-          tmdbId: newShow.tmdb_id
+          tmdbId: newShow.tmdb_id,
         });
 
         // Create seasons and episodes
@@ -212,7 +221,7 @@ export class ShowService {
         errorMessage: (error as Error).message,
         errorCode: (error as any).code,
         errorDetails: (error as any).details,
-        tmdbId
+        tmdbId,
       });
       return null;
     }
@@ -252,9 +261,9 @@ export class ShowService {
     try {
       await supabase
         .from('shows')
-        .update({ 
+        .update({
           is_popular: true,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', showId);
     } catch (error) {
@@ -276,7 +285,7 @@ export class ShowService {
 
       if (error) throw error;
 
-      return shows?.filter(show => this.shouldRefreshShow(show)) || [];
+      return shows?.filter((show) => this.shouldRefreshShow(show)) || [];
     } catch (error) {
       console.error('Failed to get shows for background refresh:', error);
       return [];
@@ -293,7 +302,7 @@ export class ShowService {
 
     try {
       const results = await tmdbService.searchTVShows(query, country);
-      
+
       // Mark frequently searched shows as popular (simple heuristic)
       if (results.length > 0) {
         // Could implement search frequency tracking here
@@ -327,24 +336,29 @@ export class ShowService {
       // Get seasons with episodes
       const { data: seasons, error: seasonsError } = await supabase
         .from('seasons')
-        .select(`
+        .select(
+          `
           *,
           episodes (*)
-        `)
+        `
+        )
         .eq('show_id', showId)
         .order('season_number', { ascending: true });
 
       if (seasonsError) throw seasonsError;
 
       // Sort episodes within each season
-      const seasonsWithEpisodes = seasons?.map(season => ({
-        ...season,
-        episodes: season.episodes.sort((a: Episode, b: Episode) => a.episode_number - b.episode_number)
-      })) || [];
+      const seasonsWithEpisodes =
+        seasons?.map((season) => ({
+          ...season,
+          episodes: season.episodes.sort(
+            (a: Episode, b: Episode) => a.episode_number - b.episode_number
+          ),
+        })) || [];
 
       return {
         show,
-        seasons: seasonsWithEpisodes
+        seasons: seasonsWithEpisodes,
       };
     } catch (error) {
       console.error(`Failed to get show details for ${showId}:`, error);
@@ -358,16 +372,19 @@ export class ShowService {
   private async fetchTMDBShowData(tmdbId: number): Promise<any> {
     try {
       console.log(`Calling tmdbService.analyzeShow for TMDB ID ${tmdbId}...`);
-      
+
       const analysis = await tmdbService.analyzeShow(tmdbId);
-      
+
       if (!analysis) {
         console.error(`tmdbService.analyzeShow returned null for TMDB ID ${tmdbId}`);
         return null;
       }
 
       if (!analysis.showDetails) {
-        console.error(`tmdbService.analyzeShow returned analysis without showDetails for TMDB ID ${tmdbId}:`, analysis);
+        console.error(
+          `tmdbService.analyzeShow returned analysis without showDetails for TMDB ID ${tmdbId}:`,
+          analysis
+        );
         return null;
       }
 
@@ -375,7 +392,7 @@ export class ShowService {
         title: analysis.showDetails.title,
         seasonInfoLength: analysis.seasonInfo?.length || 0,
         episodeCount: analysis.episodeCount || 0,
-        status: analysis.showDetails.status
+        status: analysis.showDetails.status,
       });
 
       const result = {
@@ -394,16 +411,16 @@ export class ShowService {
           avgInterval: analysis.diagnostics?.avgInterval ?? null,
           stdDev: analysis.diagnostics?.stdDev ?? null,
           intervals: analysis.diagnostics?.intervals ?? [],
-          analyzedSeason: analysis.analyzedSeason
+          analyzedSeason: analysis.analyzedSeason,
         },
         // Fix: Make sure seasons are in the expected format for createSeasonsAndEpisodes
-        seasons: analysis.seasonInfo || []
+        seasons: analysis.seasonInfo || [],
       };
 
       console.log(`Processed TMDB data structure for ${tmdbId}:`, {
         name: result.name,
         seasonsCount: result.seasons.length,
-        episodesTotal: result.number_of_episodes
+        episodesTotal: result.number_of_episodes,
       });
 
       return result;
@@ -411,7 +428,7 @@ export class ShowService {
       console.error(`Failed to fetch TMDB data for show ${tmdbId}:`, {
         error,
         errorMessage: (error as Error).message,
-        tmdbId
+        tmdbId,
       });
       return null;
     }
@@ -423,11 +440,11 @@ export class ShowService {
   private mapTMDBStatus(tmdbStatus: string): Show['status'] {
     const statusMap: Record<string, Show['status']> = {
       'Returning Series': 'Airing',
-      'Ended': 'Ended',
-      'Canceled': 'Cancelled',
+      Ended: 'Ended',
+      Canceled: 'Cancelled',
       'In Production': 'In Production',
-      'Planned': 'Planned',
-      'Pilot': 'Pilot'
+      Planned: 'Planned',
+      Pilot: 'Pilot',
     };
 
     return statusMap[tmdbStatus] || 'Airing';
@@ -441,10 +458,12 @@ export class ShowService {
       console.log(`Creating seasons and episodes for show ${showId}:`, {
         seasonsAvailable: !!tmdbShow.seasons,
         seasonsLength: tmdbShow.seasons?.length || 0,
-        seasonsData: tmdbShow.seasons ? tmdbShow.seasons.map((s: any) => ({
-          seasonNumber: s.seasonNumber,
-          episodeCount: s.episodeCount
-        })) : 'no seasons'
+        seasonsData: tmdbShow.seasons
+          ? tmdbShow.seasons.map((s: any) => ({
+              seasonNumber: s.seasonNumber,
+              episodeCount: s.episodeCount,
+            }))
+          : 'no seasons',
       });
 
       if (!tmdbShow.seasons || tmdbShow.seasons.length === 0) {
@@ -459,7 +478,7 @@ export class ShowService {
           tmdb_season_id: tmdbSeason.seasonNumber || 0,
           season_number: tmdbSeason.seasonNumber,
           name: `Season ${tmdbSeason.seasonNumber}`,
-          episode_count: tmdbSeason.episodeCount
+          episode_count: tmdbSeason.episodeCount,
         };
 
         console.log(`Creating season ${tmdbSeason.seasonNumber} for show ${showId}:`, seasonData);
@@ -475,21 +494,21 @@ export class ShowService {
             error: seasonError,
             seasonData,
             showId,
-            tmdbSeasonData: tmdbSeason
+            tmdbSeasonData: tmdbSeason,
           });
           continue;
         }
 
         console.log(`Successfully created season ${season.id} for show ${showId}`);
 
-        // For now, we'll create episode stubs - episodes would be populated 
+        // For now, we'll create episode stubs - episodes would be populated
         // when we need detailed episode data
         if (tmdbSeason.episodeCount) {
           const episodeStubs = Array.from({ length: tmdbSeason.episodeCount }, (_, i) => ({
             season_id: season.id,
             tmdb_episode_id: 0, // Would be populated when fetching detailed episode data
             episode_number: i + 1,
-            name: `Episode ${i + 1}`
+            name: `Episode ${i + 1}`,
           }));
 
           console.log(`Creating ${episodeStubs.length} episode stubs for season ${season.id}`);
@@ -503,10 +522,12 @@ export class ShowService {
               error: episodeError,
               seasonId: season.id,
               showId,
-              episodeCount: episodeStubs.length
+              episodeCount: episodeStubs.length,
             });
           } else {
-            console.log(`Successfully created ${episodeStubs.length} episodes for season ${season.id}`);
+            console.log(
+              `Successfully created ${episodeStubs.length} episodes for season ${season.id}`
+            );
           }
         }
       }
@@ -519,8 +540,8 @@ export class ShowService {
         tmdbShowStructure: {
           hasSeasons: !!tmdbShow.seasons,
           seasonsLength: tmdbShow.seasons?.length,
-          seasonsKeys: tmdbShow.seasons ? Object.keys(tmdbShow.seasons[0] || {}) : 'no seasons'
-        }
+          seasonsKeys: tmdbShow.seasons ? Object.keys(tmdbShow.seasons[0] || {}) : 'no seasons',
+        },
       });
     }
   }
@@ -528,7 +549,7 @@ export class ShowService {
   /**
    * Private: Update seasons and episodes for an existing show
    */
-  private async updateSeasonsAndEpisodes(showId: string, tmdbShow: any): Promise<void> {
+  private async updateSeasonsAndEpisodes(showId: string, _tmdbShow: any): Promise<void> {
     // For now, we'll skip updating seasons/episodes to avoid complexity
     // In a full implementation, you'd compare existing vs new data
     // and update accordingly

@@ -5,7 +5,11 @@ import { StreamingAvailabilityClient, StreamingAvailabilityError } from '@tally/
 vi.mock('@tally/core', () => ({
   StreamingAvailabilityClient: vi.fn(),
   StreamingAvailabilityError: class extends Error {
-    constructor(message: string, public statusCode?: number, public rateLimitReset?: number) {
+    constructor(
+      message: string,
+      public statusCode?: number,
+      public rateLimitReset?: number
+    ) {
       super(message);
       this.name = 'StreamingAvailabilityError';
     }
@@ -16,15 +20,43 @@ vi.mock('@tally/core', () => ({
 vi.mock('../config/index.js', () => ({
   config: {
     streamingAvailabilityApiKey: 'test-api-key',
+    streamingApiDevMode: false,
+    streamingApiMonthlyLimit: 1000000,
   },
 }));
+// Mock the quota tracker to bypass monthly quota and provide stable stats
+vi.mock('./quota-tracker.js', () => {
+  const canMakeCall = vi.fn().mockResolvedValue(true);
+  const shouldWarnLowQuota = vi.fn().mockResolvedValue(false);
+  const getRemainingCalls = vi.fn().mockResolvedValue(1000);
+  const getUsageStats = vi.fn().mockResolvedValue({
+    month: '2025-09',
+    callsUsed: 0,
+    callsRemaining: 1000,
+    limit: 1000000,
+    percentUsed: 0,
+    lastReset: new Date().toISOString(),
+  });
+  const recordCall = vi.fn().mockResolvedValue(undefined);
+
+  return {
+    quotaTracker: {
+      canMakeCall,
+      shouldWarnLowQuota,
+      getRemainingCalls,
+      getUsageStats,
+      recordCall,
+    },
+  };
+});
 
 describe('StreamingAvailabilityService', () => {
   let mockClient: any;
-  
+
   beforeEach(async () => {
     vi.clearAllMocks();
-    
+    await vi.resetModules(); // ensure singleton service re-initializes per test
+
     // Create a mock client instance
     mockClient = {
       search: vi.fn(),
@@ -35,15 +67,15 @@ describe('StreamingAvailabilityService', () => {
       getExpirationDate: vi.fn(),
       isLeavingSoon: vi.fn(),
     };
-    
+
     // Make the constructor return our mock
     (StreamingAvailabilityClient as any).mockImplementation(() => mockClient);
   });
 
   it('should initialize with API key', async () => {
     // Import after mocks are set up
-    const { streamingAvailabilityService } = await import('./streaming-availability.js');
-    
+    await import('./streaming-availability.js');
+
     expect(StreamingAvailabilityClient).toHaveBeenCalledWith('test-api-key');
   });
 
@@ -56,9 +88,9 @@ describe('StreamingAvailabilityService', () => {
           year: 2023,
           type: 'series' as const,
           streamingOptions: {
-            us: []
-          }
-        }
+            us: [],
+          },
+        },
       ],
       hasMore: false,
     };
@@ -67,9 +99,9 @@ describe('StreamingAvailabilityService', () => {
 
     // Import after mocks are set up
     const { streamingAvailabilityService } = await import('./streaming-availability.js');
-    
+
     const result = await streamingAvailabilityService.searchShows('Test Show');
-    
+
     expect(mockClient.search).toHaveBeenCalledWith('Test Show', 'us', undefined, 10);
     expect(result).toEqual(mockSearchResult.shows);
   });
@@ -80,8 +112,10 @@ describe('StreamingAvailabilityService', () => {
 
     // Import after mocks are set up
     const { streamingAvailabilityService } = await import('./streaming-availability.js');
-    
-    await expect(streamingAvailabilityService.searchShows('Test Show')).rejects.toThrow('Rate limit exceeded');
+
+    await expect(streamingAvailabilityService.searchShows('Test Show')).rejects.toThrow(
+      'Rate limit exceeded'
+    );
   });
 
   it('should get show details with error handling', async () => {
@@ -90,9 +124,9 @@ describe('StreamingAvailabilityService', () => {
 
     // Import after mocks are set up
     const { streamingAvailabilityService } = await import('./streaming-availability.js');
-    
+
     const result = await streamingAvailabilityService.getShowDetails('nonexistent');
-    
+
     expect(result).toBeNull();
   });
 
@@ -101,8 +135,8 @@ describe('StreamingAvailabilityService', () => {
       id: '123',
       title: 'Test Show',
       streamingOptions: {
-        us: []
-      }
+        us: [],
+      },
     };
 
     const mockOption = {
@@ -119,12 +153,12 @@ describe('StreamingAvailabilityService', () => {
 
     // Import after mocks are set up
     const { streamingAvailabilityService } = await import('./streaming-availability.js');
-    
+
     const result = await streamingAvailabilityService.getContentAvailability('123', 'netflix');
-    
+
     expect(result).toEqual({
       available: true,
-      expiresOn: new Date('2024-12-31'),
+      expiresOn: new Date('2024-12-31').toISOString(),
       leavingSoon: true,
     });
   });
@@ -134,8 +168,8 @@ describe('StreamingAvailabilityService', () => {
       id: '123',
       title: 'Test Show',
       streamingOptions: {
-        us: []
-      }
+        us: [],
+      },
     };
 
     mockClient.getShow.mockResolvedValue(mockShow);
@@ -143,9 +177,9 @@ describe('StreamingAvailabilityService', () => {
 
     // Import after mocks are set up
     const { streamingAvailabilityService } = await import('./streaming-availability.js');
-    
+
     const result = await streamingAvailabilityService.getContentAvailability('123', 'hulu');
-    
+
     expect(result).toEqual({
       available: false,
       leavingSoon: false,

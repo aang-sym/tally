@@ -7,11 +7,12 @@ interface TVGuideHeaderProps {
   onJumpToDate?: (date: Date) => void;
 }
 
-const TVGuideHeader: React.FC<TVGuideHeaderProps> = ({
-  dates,
-  columnWidth,
-  onJumpToDate
-}) => {
+const TVGuideHeader: React.FC<TVGuideHeaderProps> = ({ dates, columnWidth, onJumpToDate }) => {
+  // Ensure we only operate on valid Date instances to satisfy strict typing
+  const safeDates: Date[] = Array.isArray(dates)
+    ? dates.filter((d): d is Date => d instanceof Date && !isNaN(d.getTime()))
+    : [];
+
   const formatDateHeader = (date: Date): { day: string; date: string; isSpecial: boolean } => {
     let day = format(date, 'EEE'); // Mon, Tue, etc.
     let isSpecial = false;
@@ -30,7 +31,7 @@ const TVGuideHeader: React.FC<TVGuideHeaderProps> = ({
     return {
       day,
       date: format(date, 'MMM d'),
-      isSpecial
+      isSpecial,
     };
   };
 
@@ -42,9 +43,9 @@ const TVGuideHeader: React.FC<TVGuideHeaderProps> = ({
   };
 
   const handleJumpToNextMonth = () => {
-    if (!dates.length || !onJumpToDate) return;
-    const last = dates[dates.length - 1];
-    const nextMonth = new Date(last);
+    if (!safeDates.length || !onJumpToDate) return;
+    const last = safeDates[safeDates.length - 1]!;
+    const nextMonth = new Date(last.getTime());
     nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
     onJumpToDate(nextMonth);
   };
@@ -75,34 +76,34 @@ const TVGuideHeader: React.FC<TVGuideHeaderProps> = ({
 
         {/* Date columns */}
         <div className="flex-1 flex overflow-hidden">
-          {dates.map((date, index) => {
+          {safeDates.map((date, index) => {
             const { day, date: dateStr, isSpecial } = formatDateHeader(date);
             const isTodayColumn = isToday(date);
-            
+
             return (
               <div
                 key={`${date.getTime()}-${index}`}
                 className={`flex-shrink-0 flex flex-col items-center justify-center px-2 border-r border-gray-200 transition-colors ${
-                  isTodayColumn 
-                    ? 'bg-blue-50 border-blue-200' 
-                    : 'hover:bg-gray-100'
+                  isTodayColumn ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-100'
                 }`}
                 style={{ width: columnWidth }}
               >
-                <div className={`text-sm font-medium ${
-                  isSpecial 
-                    ? isTodayColumn 
-                      ? 'text-blue-700' 
-                      : 'text-gray-700'
-                    : 'text-gray-600'
-                }`}>
+                <div
+                  className={`text-sm font-medium ${
+                    isSpecial
+                      ? isTodayColumn
+                        ? 'text-blue-700'
+                        : 'text-gray-700'
+                      : 'text-gray-600'
+                  }`}
+                >
                   {day}
                 </div>
-                <div className={`text-xs ${
-                  isTodayColumn 
-                    ? 'text-blue-600 font-medium' 
-                    : 'text-gray-500'
-                }`}>
+                <div
+                  className={`text-xs ${
+                    isTodayColumn ? 'text-blue-600 font-medium' : 'text-gray-500'
+                  }`}
+                >
                   {dateStr}
                 </div>
               </div>

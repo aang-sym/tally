@@ -4,7 +4,10 @@ import path from 'path';
 
 describe('Migration 011_add_user_shows_fields.sql', () => {
   // Vitest CWD is apps/api; avoid duplicating path segments
-  const migrationPath = path.resolve(process.cwd(), 'src/db/migrations/011_add_user_shows_fields.sql');
+  const migrationPath = path.resolve(
+    process.cwd(),
+    'src/db/migrations/011_add_user_shows_fields.sql'
+  );
 
   it('file exists', () => {
     const exists = fs.existsSync(migrationPath);

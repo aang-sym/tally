@@ -30,7 +30,7 @@ const JSONDebugSection: React.FC<{ data: any }> = ({ data }) => {
 
   return (
     <div className="bg-white rounded-lg shadow-lg">
-      <div 
+      <div
         className="p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -46,18 +46,23 @@ const JSONDebugSection: React.FC<{ data: any }> = ({ data }) => {
             >
               {copied ? 'Copied!' : 'Copy JSON'}
             </button>
-            <svg 
+            <svg
               className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-              fill="none" 
-              stroke="currentColor" 
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </div>
         </div>
       </div>
-      
+
       {isExpanded && (
         <div className="p-4 bg-gray-50">
           <pre className="text-xs text-gray-800 overflow-x-auto whitespace-pre-wrap bg-white p-3 rounded border max-h-96 overflow-y-auto">
@@ -95,7 +100,7 @@ const TMDBTestingDashboard: React.FC = () => {
     setAnalysisData(null);
     setAnalysisError('');
     setSelectedSeason(undefined);
-    
+
     // Auto-analyze the selected show
     await analyzeShow(show.id);
   };
@@ -104,19 +109,19 @@ const TMDBTestingDashboard: React.FC = () => {
     try {
       setAnalysisLoading(true);
       setAnalysisError('');
-      
+
       const params = new URLSearchParams({ country });
       if (seasonNumber) {
         params.append('season', seasonNumber.toString());
       }
-      
+
       const response = await fetch(`/api/tmdb/show/${showId}/analyze?${params}`);
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Analysis failed');
       }
-      
+
       setAnalysisData(data.analysis);
       setSelectedSeason(seasonNumber);
     } catch (err) {
@@ -146,9 +151,7 @@ const TMDBTestingDashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            TMDB Testing Dashboard
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">TMDB Testing Dashboard</h1>
           <p className="text-gray-600">
             Search TV shows, analyze release patterns, and explore streaming availability
           </p>
@@ -156,9 +159,7 @@ const TMDBTestingDashboard: React.FC = () => {
 
         {/* Country Selector */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Country/Region
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Country/Region</label>
           <select
             value={country}
             onChange={(e) => setCountry(e.target.value)}
@@ -176,11 +177,8 @@ const TMDBTestingDashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Search */}
           <div className="space-y-6">
-            <TMDBSearch
-              onSelectShow={handleShowSelect}
-              selectedShowId={selectedShow?.id}
-            />
-            
+            <TMDBSearch onSelectShow={handleShowSelect} selectedShowId={selectedShow?.id} />
+
             {/* Season Selector */}
             {analysisData?.seasonInfo && analysisData.seasonInfo.length > 1 && (
               <div className="bg-white rounded-lg shadow-lg p-6">
@@ -223,14 +221,11 @@ const TMDBTestingDashboard: React.FC = () => {
               loading={analysisLoading}
               error={analysisError}
             />
-            
+
             {/* JSON Debug Section */}
-            {analysisData && (
-              <JSONDebugSection data={analysisData} />
-            )}
+            {analysisData && <JSONDebugSection data={analysisData} />}
           </div>
         </div>
-
 
         {/* Stats Footer */}
         <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -239,26 +234,20 @@ const TMDBTestingDashboard: React.FC = () => {
             <h3 className="font-medium text-gray-900 mb-4">Dashboard Statistics</h3>
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
-                  {selectedShow ? '1' : '0'}
-                </div>
+                <div className="text-2xl font-bold text-blue-600">{selectedShow ? '1' : '0'}</div>
                 <div className="text-sm text-gray-500">Shows Selected</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {analysisData ? '1' : '0'}
-                </div>
+                <div className="text-2xl font-bold text-green-600">{analysisData ? '1' : '0'}</div>
                 <div className="text-sm text-gray-500">Patterns Analyzed</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
-                  {country}
-                </div>
+                <div className="text-2xl font-bold text-purple-600">{country}</div>
                 <div className="text-sm text-gray-500">Active Region</div>
               </div>
             </div>
           </div>
-          
+
           {/* API Usage Widget */}
           <APIUsageWidget />
         </div>
@@ -268,25 +257,53 @@ const TMDBTestingDashboard: React.FC = () => {
           <h3 className="font-medium text-gray-900 mb-4">Quick Actions</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <button
-              onClick={() => handleShowSelect({ id: 1399, title: 'Game of Thrones', overview: 'Popular HBO series', popularity: 100 })}
+              onClick={() =>
+                handleShowSelect({
+                  id: 1399,
+                  title: 'Game of Thrones',
+                  overview: 'Popular HBO series',
+                  popularity: 100,
+                })
+              }
               className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm"
             >
               Test: Game of Thrones
             </button>
             <button
-              onClick={() => handleShowSelect({ id: 194766, title: 'The Summer I Turned Pretty', overview: 'Amazon Prime series', popularity: 85 })}
+              onClick={() =>
+                handleShowSelect({
+                  id: 194766,
+                  title: 'The Summer I Turned Pretty',
+                  overview: 'Amazon Prime series',
+                  popularity: 85,
+                })
+              }
               className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm"
             >
               Test: Summer I Turned Pretty
             </button>
             <button
-              onClick={() => handleShowSelect({ id: 1396, title: 'Breaking Bad', overview: 'AMC crime drama', popularity: 95 })}
+              onClick={() =>
+                handleShowSelect({
+                  id: 1396,
+                  title: 'Breaking Bad',
+                  overview: 'AMC crime drama',
+                  popularity: 95,
+                })
+              }
               className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm"
             >
               Test: Breaking Bad
             </button>
             <button
-              onClick={() => handleShowSelect({ id: 85552, title: 'Euphoria', overview: 'HBO teen drama', popularity: 90 })}
+              onClick={() =>
+                handleShowSelect({
+                  id: 85552,
+                  title: 'Euphoria',
+                  overview: 'HBO teen drama',
+                  popularity: 90,
+                })
+              }
               className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm"
             >
               Test: Euphoria

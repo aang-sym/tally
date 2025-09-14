@@ -6,7 +6,7 @@
 echo "🔐 TALLY SECURITY VALIDATION TESTS"
 echo "=================================="
 
-API_BASE="http://localhost:3001"
+API_BASE="http://localhost:4000"
 TEST_USER1_EMAIL="testuser1@security-test.com"
 TEST_USER2_EMAIL="testuser2@security-test.com"
 TEST_PASSWORD="SecureTestPass123"
@@ -122,7 +122,7 @@ echo "====================================="
 
 # Test 8: Create watchlist item for User 1
 echo "Test 3.1: Create watchlist item for User 1"
-ADD_SHOW_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST "$API_BASE/api/watchlist-v2" \
+ADD_SHOW_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" -X POST "$API_BASE/api/watchlist" \
     -H "Authorization: Bearer $USER1_TOKEN" \
     -H "Content-Type: application/json" \
     -d '{"tmdbId":"123","title":"Test Show","status":"watchlist"}')
@@ -131,7 +131,7 @@ test_http_status 200 "$ADD_SHOW_STATUS" "Add show to User 1 watchlist"
 
 # Test 9: Try to access User 1's data with User 2's token
 echo "Test 3.2: Cross-user data access attempt"
-CROSS_ACCESS_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" -X GET "$API_BASE/api/watchlist-v2" \
+CROSS_ACCESS_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" -X GET "$API_BASE/api/watchlist" \
     -H "Authorization: Bearer $USER2_TOKEN")
 CROSS_ACCESS_STATUS=$(echo "$CROSS_ACCESS_RESPONSE" | grep -o "HTTPSTATUS:[0-9]*" | cut -d: -f2)
 CROSS_ACCESS_BODY=$(echo "$CROSS_ACCESS_RESPONSE" | sed 's/HTTPSTATUS:[0-9]*$//')

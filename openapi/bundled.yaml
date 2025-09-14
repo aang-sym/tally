@@ -1,0 +1,1710 @@
+openapi: 3.1.0
+info:
+  title: Tally API (Bundled)
+  version: 0.1.0
+servers:
+  - url: http://localhost:4000
+security:
+  - bearerAuth: []
+paths:
+  /api/users/signup:
+    post:
+      summary: Sign up
+      operationId: usersSignup
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '400':
+          description: Bad Request
+        '409':
+          description: Conflict
+  /api/users/login:
+    post:
+      summary: Log in
+      operationId: usersLogin
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Unauthorized
+  /api/users:
+    get:
+      summary: List users (admin/test)
+      operationId: usersList
+      tags:
+        - Users
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      users:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UserProfile'
+  /api/users/{id}/profile:
+    get:
+      summary: Get user profile
+      operationId: usersGetProfile
+      tags:
+        - Users
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '404':
+          description: Not Found
+  /api/users/{id}:
+    patch:
+      summary: Update user (partial)
+      operationId: usersUpdate
+      tags:
+        - Users
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '400':
+          description: Bad Request
+        '404':
+          description: Not Found
+  /api/users/{id}/subscriptions:
+    get:
+      summary: List a user's subscriptions
+      description: |
+        Returns the user's active/inactive subscriptions. Prices/tiers in the embedded service object are filtered by `country`.
+        If `country` is omitted server-side may fall back to `users.country_code`, then 'US'.
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+        - name: country
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 2
+            example: AU
+          description: ISO 3166-1 alpha-2 country code (e.g., AU, US).
+      responses:
+        '200':
+          description: Subscriptions retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionsResponse'
+              examples:
+                ok:
+                  value:
+                    success: true
+                    data:
+                      subscriptions:
+                        - id: 23fd0b2a-5c8a-4a5e-9e6a-1b2c3d4e5f60
+                          service_id: c38c74f5-b020-4292-9aba-6342ba529485
+                          monthly_cost: 14.99
+                          is_active: true
+                          started_date: '2025-09-01'
+                          ended_date: null
+                          tier: Standard
+                          service:
+                            id: c38c74f5-b020-4292-9aba-6342ba529485
+                            tmdb_provider_id: 1899
+                            name: HBO Max
+                            logo_path: https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg
+                            homepage: https://www.max.com/
+                            prices:
+                              - tier: Standard
+                                amount: 14.99
+                                currency: USD
+                                billing_frequency: monthly
+                                active: true
+                                provider_name: HBO Max
+                              - tier: Premium
+                                amount: 19.99
+                                currency: USD
+                                billing_frequency: monthly
+                                active: true
+                                provider_name: HBO Max
+                            default_price:
+                              tier: Standard
+                              amount: 14.99
+                              currency: USD
+                              billing_frequency: monthly
+                              active: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      summary: Add (or upsert) a subscription
+      description: |
+        Creates a new subscription for the user; if one already exists for the service, updates it.
+        `tier` is optional; when provided, it is stored alongside the subscription.
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionCreateRequest'
+            examples:
+              add:
+                value:
+                  service_id: c38c74f5-b020-4292-9aba-6342ba529485
+                  monthly_cost: 14.99
+                  tier: Standard
+                  is_active: true
+      responses:
+        '200':
+          description: Upserted subscription
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/users/{id}/subscriptions/{subscriptionId}:
+    put:
+      summary: Update a subscription
+      description: |
+        Partial update; any of `monthly_cost`, `is_active`, or `tier` may be provided.
+        Supports **tier-only** updates for quick UI changes.
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+        - $ref: '#/components/parameters/SubscriptionIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionUpdateRequest'
+            examples:
+              tierOnly:
+                value:
+                  tier: Premium
+              costAndActive:
+                value:
+                  monthly_cost: 19.99
+                  is_active: true
+      responses:
+        '200':
+          description: Updated subscription
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    delete:
+      summary: Remove (deactivate or delete) a subscription
+      description: |
+        Deletes or marks the subscription inactive (implementation-defined). Client should treat as removed.
+      parameters:
+        - $ref: '#/components/parameters/UserIdParam'
+        - $ref: '#/components/parameters/SubscriptionIdParam'
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/streaming-services:
+    get:
+      summary: List streaming services
+      description: |
+        Returns streaming services with price tiers for a given country.
+        If `country` is omitted, the server falls back to the authenticated user's `users.country_code`, then 'US'.
+      parameters:
+        - name: country
+          in: query
+          required: false
+          description: ISO 3166-1 alpha-2 country code (e.g., AU, US)
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 2
+            example: AU
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServicesResponse'
+              examples:
+                ok:
+                  value:
+                    success: true
+                    data:
+                      services:
+                        - id: c38c74f5-b020-4292-9aba-6342ba529485
+                          tmdb_provider_id: 1899
+                          name: HBO Max
+                          logo_path: https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg
+                          homepage: https://www.max.com
+                          prices:
+                            - tier: Standard
+                              amount: 14.99
+                              currency: USD
+                              billing_frequency: monthly
+                              active: true
+                              provider_name: HBO Max
+                          default_price:
+                            tier: Standard
+                            amount: 14.99
+                            currency: USD
+                            billing_frequency: monthly
+                            active: true
+                      count: 1
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/streaming-services/{id}:
+    get:
+      summary: Get a streaming service by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceResponse'
+              examples:
+                ok:
+                  value:
+                    success: true
+                    data:
+                      service:
+                        id: c38c74f5-b020-4292-9aba-6342ba529485
+                        name: HBO Max
+                        logo_path: https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg
+                        homepage: https://www.max.com
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '404':
+          $ref: '#/components/responses/responses-NotFound'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/streaming-services/popular:
+    get:
+      summary: List most popular services by active subscriptions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PopularServicesResponse'
+              examples:
+                ok:
+                  value:
+                    success: true
+                    data:
+                      services:
+                        - id: c38c74f5-b020-4292-9aba-6342ba529485
+                          name: HBO Max
+                          logo_path: https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg
+                          homepage: https://www.max.com
+                          subscriber_count: 42
+                      count: 1
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/streaming-services/regions:
+    get:
+      summary: List common regions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegionsResponse'
+              examples:
+                ok:
+                  value:
+                    success: true
+                    data:
+                      regions:
+                        - code: US
+                          name: United States
+                        - code: AU
+                          name: Australia
+                        - code: GB
+                          name: United Kingdom
+                      count: 3
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/watchlist:
+    get:
+      summary: Get user's watchlist
+      description: |
+        Returns the user's watchlist with normalized show details and selected streaming provider.
+        Optional `status` query filters by watchlist status.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - watchlist
+              - watching
+              - completed
+              - dropped
+              - all
+            default: all
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchlistListResponse'
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+    post:
+      summary: Add a show to the user's watchlist
+      description: |
+        Adds a show (by TMDB ID) to the user's watchlist; status defaults to `watchlist`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tmdbId
+              properties:
+                tmdbId:
+                  type: integer
+                status:
+                  type: string
+                  enum:
+                    - watchlist
+                    - watching
+                  default: watchlist
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddWatchlistResponse'
+        '400':
+          $ref: '#/components/responses/responses-BadRequest'
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/watchlist/{tmdbId}/progress:
+    get:
+      summary: Get user's episode progress for a show (by TMDB ID)
+      parameters:
+        - name: tmdbId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowProgressMapResponse'
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '404':
+          $ref: '#/components/responses/responses-NotFound'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+    put:
+      summary: Set episode progress up to an episode (inclusive) for a show (by TMDB ID)
+      description: |
+        Sets progress for all episodes up to (and including) the specified episode.
+      parameters:
+        - name: tmdbId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - seasonNumber
+                - episodeNumber
+                - status
+              properties:
+                seasonNumber:
+                  type: integer
+                episodeNumber:
+                  type: integer
+                status:
+                  type: string
+                  enum:
+                    - watched
+                    - unwatched
+                    - watching
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressUpdateResponse'
+        '400':
+          $ref: '#/components/responses/responses-BadRequest'
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '404':
+          $ref: '#/components/responses/responses-NotFound'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/watchlist/{id}/provider:
+    put:
+      summary: Update selected streaming provider for the user's show
+      description: |
+        Set or clear (`null`) the provider. Expects `{ id, name, logo_path }` when not null.
+      parameters:
+        - $ref: '#/components/parameters/UserShowIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - provider
+              properties:
+                provider:
+                  oneOf:
+                    - $ref: '#/components/schemas/SelectedProvider'
+                    - type: 'null'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateProviderResponse'
+        '400':
+          $ref: '#/components/responses/responses-BadRequest'
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '404':
+          $ref: '#/components/responses/responses-NotFound'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/watchlist/stats:
+    get:
+      summary: Get user's watchlist statistics
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchlistStatsResponse'
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/watchlist/{id}/status:
+    put:
+      summary: Update a show's status
+      parameters:
+        - $ref: '#/components/parameters/UserShowIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - watchlist
+                    - watching
+                    - completed
+                    - dropped
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserShowStatusResponse'
+        '400':
+          $ref: '#/components/responses/responses-BadRequest'
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '404':
+          $ref: '#/components/responses/responses-NotFound'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/watchlist/{id}/rating:
+    put:
+      summary: Rate a show
+      parameters:
+        - $ref: '#/components/parameters/UserShowIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rating
+              properties:
+                rating:
+                  type: number
+                  minimum: 0
+                  maximum: 10
+                  multipleOf: 0.5
+      responses:
+        '200':
+          description: Rated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateShowResponse'
+        '400':
+          $ref: '#/components/responses/responses-BadRequest'
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '404':
+          $ref: '#/components/responses/responses-NotFound'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/watchlist/{id}/notes:
+    put:
+      summary: Update show notes
+      parameters:
+        - $ref: '#/components/parameters/UserShowIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - notes
+              properties:
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateNotesResponse'
+        '400':
+          $ref: '#/components/responses/responses-BadRequest'
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '404':
+          $ref: '#/components/responses/responses-NotFound'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/watchlist/{id}/country:
+    put:
+      summary: Update per-show country override
+      description: |
+        Set a per-show `countryCode` (e.g., AU) or clear it with `null`.
+      parameters:
+        - $ref: '#/components/parameters/UserShowIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - countryCode
+              properties:
+                countryCode:
+                  oneOf:
+                    - type: string
+                      minLength: 2
+                      maxLength: 2
+                    - type: 'null'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateCountryResponse'
+        '400':
+          $ref: '#/components/responses/responses-BadRequest'
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '404':
+          $ref: '#/components/responses/responses-NotFound'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/watchlist/{id}/buffer:
+    put:
+      summary: Update buffer days for a show
+      parameters:
+        - $ref: '#/components/parameters/UserShowIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bufferDays
+              properties:
+                bufferDays:
+                  type: number
+                  minimum: 0
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateBufferResponse'
+        '400':
+          $ref: '#/components/responses/responses-BadRequest'
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '404':
+          $ref: '#/components/responses/responses-NotFound'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/watchlist/{id}:
+    delete:
+      summary: Remove show from watchlist
+      parameters:
+        - $ref: '#/components/parameters/UserShowIdParam'
+      responses:
+        '200':
+          description: Removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Show removed from watchlist
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '404':
+          $ref: '#/components/responses/responses-NotFound'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/watchlist/watching:
+    get:
+      summary: List currently watching shows
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WatchingListResponse'
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/watchlist/watching/{showId}:
+    get:
+      summary: Get detailed progress for a specific show (by internal show id)
+      parameters:
+        - name: showId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShowProgressDetailResponse'
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '404':
+          $ref: '#/components/responses/responses-NotFound'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+  /api/watchlist/search-and-add:
+    post:
+      summary: Search TMDB and add a show in one request
+      operationId: watchlistSearchAndAdd
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                tmdbId:
+                  type: integer
+                status:
+                  type: string
+                  enum:
+                    - watchlist
+                    - watching
+                  default: watchlist
+              oneOf:
+                - required:
+                    - query
+                - required:
+                    - tmdbId
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      userShow:
+                        $ref: '#/components/schemas/UserShow'
+                      message:
+                        type: string
+        '400':
+          $ref: '#/components/responses/responses-BadRequest'
+        '401':
+          $ref: '#/components/responses/responses-Unauthorized'
+        '404':
+          $ref: '#/components/responses/responses-NotFound'
+        '500':
+          $ref: '#/components/responses/responses-ServerError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    SignUpRequest:
+      type: object
+      required:
+        - email
+        - password
+        - display_name
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        display_name:
+          type: string
+    UserProfile:
+      type: object
+      required:
+        - id
+        - email
+        - display_name
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+        country_code:
+          type: string
+          nullable: true
+    UserProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/UserProfile'
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserProfile'
+    UserUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        display_name:
+          type: string
+        avatar_url:
+          type: string
+          nullable: true
+        country_code:
+          type: string
+          nullable: true
+    PriceTier:
+      type: object
+      properties:
+        tier:
+          type: string
+          example: Standard
+        amount:
+          type: number
+          nullable: true
+          example: 14.99
+        currency:
+          type: string
+          nullable: true
+          example: USD
+        billing_frequency:
+          type: string
+          nullable: true
+          example: monthly
+        active:
+          type: boolean
+          nullable: true
+          example: true
+        notes:
+          type: string
+          nullable: true
+        provider_name:
+          type: string
+          nullable: true
+    StreamingServiceSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tmdb_provider_id:
+          type: integer
+          nullable: true
+        name:
+          type: string
+        logo_path:
+          type: string
+          format: uri
+          nullable: true
+        homepage:
+          type: string
+          format: uri
+          nullable: true
+        prices:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceTier'
+        default_price:
+          $ref: '#/components/schemas/PriceTier'
+    UserSubscription:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        service_id:
+          type: string
+          format: uuid
+        monthly_cost:
+          type: number
+        is_active:
+          type: boolean
+        started_date:
+          type: string
+          format: date
+        ended_date:
+          type: string
+          format: date
+          nullable: true
+        tier:
+          type: string
+          nullable: true
+        service:
+          $ref: '#/components/schemas/StreamingServiceSummary'
+    SubscriptionsEnvelope:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            subscriptions:
+              type: array
+              items:
+                $ref: '#/components/schemas/UserSubscription'
+    SubscriptionsResponse:
+      allOf:
+        - $ref: '#/components/schemas/SubscriptionsEnvelope'
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+        details:
+          type: string
+          nullable: true
+    SubscriptionCreateRequest:
+      type: object
+      required:
+        - service_id
+        - monthly_cost
+      properties:
+        service_id:
+          type: string
+          format: uuid
+        monthly_cost:
+          type: number
+        is_active:
+          type: boolean
+          default: true
+        tier:
+          type: string
+          nullable: true
+    SubscriptionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/UserSubscription'
+    SubscriptionUpdateRequest:
+      type: object
+      properties:
+        monthly_cost:
+          type: number
+        is_active:
+          type: boolean
+        tier:
+          type: string
+          nullable: true
+    schemas-PriceTier:
+      type: object
+      properties:
+        tier:
+          type: string
+        amount:
+          type: number
+          nullable: true
+        currency:
+          type: string
+          nullable: true
+        billing_frequency:
+          type: string
+          nullable: true
+          example: monthly
+        active:
+          type: boolean
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        provider_name:
+          type: string
+          nullable: true
+    Service:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tmdb_provider_id:
+          type: integer
+          nullable: true
+        name:
+          type: string
+        logo_path:
+          type: string
+          nullable: true
+        homepage:
+          type: string
+          nullable: true
+        prices:
+          type: array
+          items:
+            $ref: '#/components/schemas/schemas-PriceTier'
+        default_price:
+          $ref: '#/components/schemas/schemas-PriceTier'
+    ServicesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            services:
+              type: array
+              items:
+                $ref: '#/components/schemas/Service'
+            count:
+              type: integer
+              example: 12
+    ServiceResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            service:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                logo_path:
+                  type: string
+                  nullable: true
+                homepage:
+                  type: string
+                  nullable: true
+    PopularService:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        logo_path:
+          type: string
+          nullable: true
+        homepage:
+          type: string
+          nullable: true
+        subscriber_count:
+          type: integer
+    PopularServicesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            services:
+              type: array
+              items:
+                $ref: '#/components/schemas/PopularService'
+            count:
+              type: integer
+              example: 10
+    Region:
+      type: object
+      properties:
+        code:
+          type: string
+          example: US
+        name:
+          type: string
+          example: United States
+    RegionsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            regions:
+              type: array
+              items:
+                $ref: '#/components/schemas/Region'
+            count:
+              type: integer
+              example: 10
+    ShowSummary:
+      type: object
+      description: Normalized show object from DB + poster URL normalization
+      properties:
+        id:
+          type: string
+          format: uuid
+        tmdb_id:
+          type: integer
+        title:
+          type: string
+        overview:
+          type: string
+          nullable: true
+        poster_path:
+          type: string
+          nullable: true
+        first_air_date:
+          type: string
+          format: date
+          nullable: true
+        last_air_date:
+          type: string
+          format: date
+          nullable: true
+        status:
+          type: string
+          nullable: true
+        total_seasons:
+          type: integer
+          nullable: true
+        total_episodes:
+          type: integer
+          nullable: true
+    SelectedProvider:
+      type: object
+      required:
+        - id
+        - name
+        - logo_path
+      properties:
+        id:
+          type: integer
+          description: TMDB provider id
+        name:
+          type: string
+        logo_path:
+          type: string
+    WatchlistRow:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - watchlist
+            - watching
+            - completed
+            - dropped
+        show:
+          $ref: '#/components/schemas/ShowSummary'
+        streaming_provider:
+          oneOf:
+            - $ref: '#/components/schemas/SelectedProvider'
+            - type: 'null'
+    WatchlistListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            shows:
+              type: array
+              items:
+                $ref: '#/components/schemas/WatchlistRow'
+            totalCount:
+              type: integer
+            statusFilter:
+              type: string
+    UserShow:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        show_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - watchlist
+            - watching
+            - completed
+            - dropped
+        added_at:
+          type: string
+          format: date-time
+          nullable: true
+        started_watching_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_episode_watched_id:
+          type: string
+          format: uuid
+          nullable: true
+        show_rating:
+          type: number
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        buffer_days:
+          type: integer
+        selected_service_id:
+          type: string
+          format: uuid
+          nullable: true
+        country_code:
+          type: string
+          minLength: 2
+          maxLength: 2
+          nullable: true
+    AddWatchlistResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            userShow:
+              $ref: '#/components/schemas/UserShow'
+            show:
+              allOf:
+                - $ref: '#/components/schemas/ShowSummary'
+            availability:
+              type: array
+              items:
+                type: object
+                properties:
+                  country_code:
+                    type: string
+                  service_id:
+                    type: string
+                    format: uuid
+                  availability_type:
+                    type: string
+                  price_amount:
+                    type: number
+                    nullable: true
+                  price_currency:
+                    type: string
+                    nullable: true
+                  deep_link:
+                    type: string
+                    nullable: true
+            message:
+              type: string
+    ShowProgressMapResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            seasons:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    episodeNumber:
+                      type: integer
+                    status:
+                      type: string
+    ProgressUpdateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            updatedCount:
+              type: integer
+            totalRequested:
+              type: integer
+            status:
+              type: string
+              enum:
+                - watched
+                - unwatched
+                - watching
+            message:
+              type: string
+    UpdateProviderResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            provider:
+              oneOf:
+                - $ref: '#/components/schemas/SelectedProvider'
+                - type: 'null'
+            message:
+              type: string
+    WatchlistStatsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          description: Implementation-defined stats from WatchlistService.getUserWatchlistStats
+          additionalProperties: true
+    UserShowStatusResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            userShow:
+              $ref: '#/components/schemas/UserShow'
+            message:
+              type: string
+    RateShowResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            rating:
+              type: number
+            message:
+              type: string
+    UpdateNotesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            notes:
+              type: string
+            message:
+              type: string
+    UpdateCountryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            countryCode:
+              oneOf:
+                - type: string
+                - type: 'null'
+            message:
+              type: string
+    UpdateBufferResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            bufferDays:
+              type: integer
+            message:
+              type: string
+    WatchingListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            shows:
+              type: array
+              items:
+                anyOf:
+                  - $ref: '#/components/schemas/WatchlistRow'
+                  - type: object
+                    additionalProperties: true
+            totalCount:
+              type: integer
+    ShowProgressDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            show:
+              $ref: '#/components/schemas/ShowSummary'
+            seasons:
+              type: array
+              items:
+                type: object
+                properties:
+                  season_number:
+                    type: integer
+                  episodes:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        episode_number:
+                          type: integer
+            progress:
+              type: object
+              additionalProperties: true
+            totalEpisodes:
+              type: integer
+            watchedEpisodes:
+              type: integer
+            completionPercentage:
+              type: integer
+  parameters:
+    UserIdParam:
+      name: id
+      in: path
+      required: true
+      description: User UUID
+      schema:
+        type: string
+        format: uuid
+    SubscriptionIdParam:
+      name: subscriptionId
+      in: path
+      required: true
+      description: Subscription UUID
+      schema:
+        type: string
+        format: uuid
+    UserShowIdParam:
+      name: id
+      in: path
+      required: true
+      description: User show id (UUID)
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            unauthorized:
+              value:
+                success: false
+                error: Unauthorized
+    ServerError:
+      description: Server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            boom:
+              value:
+                success: false
+                error: Failed to retrieve user subscriptions
+                details: Unknown error
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            bad:
+              value:
+                success: false
+                error: Invalid input
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            notFound:
+              value:
+                success: false
+                error: Not Found
+    responses-Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    responses-ServerError:
+      description: Server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    responses-NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    responses-BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

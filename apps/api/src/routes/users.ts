@@ -1,6 +1,6 @@
 /**
  * User Management API Routes
- * 
+ *
  * Handles test user creation, management, and switching functionality.
  * Supports creating multiple test users for development and demo purposes.
  */
@@ -14,13 +14,11 @@ import { authenticateUser } from '../middleware/user-identity.js';
 import {
   sendErrorResponse,
   sendSuccessResponse,
-  handleDatabaseError,
   handleValidationError,
-  handleNotFoundError,
-  asyncHandler
+  asyncHandler,
 } from '../utils/errorHandler.js';
 
-const router = Router();
+const router: Router = Router();
 
 /**
  * Helper function to generate JWT token
@@ -41,7 +39,7 @@ const generateToken = (userId: string, email: string, displayName: string) => {
 /**
  * POST /api/users/signup
  * Create a new user account with proper authentication
- * 
+ *
  * Body: {
  *   email: string,
  *   password: string,
@@ -49,95 +47,107 @@ const generateToken = (userId: string, email: string, displayName: string) => {
  *   avatarUrl?: string
  * }
  */
-router.post('/signup', asyncHandler(async (req: Request, res: Response) => {
-  const { email, password, displayName, avatarUrl } = req.body;
+router.post(
+  '/signup',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { email, password, displayName, avatarUrl } = req.body;
 
-  // Validation
-  if (!email || !password || !displayName) {
-    return sendErrorResponse(res, handleValidationError(
-      'required fields',
-      'Email, password, and display name are required'
-    ), 400);
-  }
+    // Validation
+    if (!email || !password || !displayName) {
+      return sendErrorResponse(
+        res,
+        handleValidationError('required fields', 'Email, password, and display name are required'),
+        400
+      );
+    }
 
-  // Basic email validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    return sendErrorResponse(res, handleValidationError(
-      'email',
-      'Please provide a valid email address'
-    ), 400);
-  }
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return sendErrorResponse(
+        res,
+        handleValidationError('email', 'Please provide a valid email address'),
+        400
+      );
+    }
 
-  // Basic password validation
-  if (password.length < 6) {
-    return sendErrorResponse(res, handleValidationError(
-      'password',
-      'Password must be at least 6 characters long'
-    ), 400);
-  }
+    // Basic password validation
+    if (password.length < 6) {
+      return sendErrorResponse(
+        res,
+        handleValidationError('password', 'Password must be at least 6 characters long'),
+        400
+      );
+    }
 
-  // Check if user already exists
-  const { data: existingUser } = await supabase
-    .from('users')
-    .select('id')
-    .eq('email', email)
-    .single();
+    // Check if user already exists
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .single();
 
-  if (existingUser) {
-    return sendErrorResponse(res, handleValidationError(
-      'email',
-      'A user with this email already exists'
-    ), 409);
-  }
+    if (existingUser) {
+      return sendErrorResponse(
+        res,
+        handleValidationError('email', 'A user with this email already exists'),
+        409
+      );
+    }
 
-  // Hash the password
-  const saltRounds = 12;
-  const passwordHash = await bcrypt.hash(password, saltRounds);
+    // Hash the password
+    const saltRounds = 12;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
 
-  // Create new user
-  const userId = uuidv4();
-  const newUser = {
-    id: userId,
-    email: email.toLowerCase(),
-    display_name: displayName,
-    avatar_url: avatarUrl || null,
-    is_test_user: email.includes('test') || email.includes('example'), // Mark as test user if email contains test/example
-    password_hash: passwordHash,
-    created_at: new Date().toISOString()
-  };
+    // Create new user
+    const userId = uuidv4();
+    const newUser = {
+      id: userId,
+      email: email.toLowerCase(),
+      display_name: displayName,
+      avatar_url: avatarUrl || null,
+      is_test_user: email.includes('test') || email.includes('example'), // Mark as test user if email contains test/example
+      password_hash: passwordHash,
+      created_at: new Date().toISOString(),
+    };
 
-  // Use service role client for user creation since RLS blocks inserts
-  const { data: user, error } = await serviceSupabase
-    .from('users')
-    .insert([newUser])
-    .select('id, email, display_name, avatar_url, created_at')
-    .single();
+    // Use service role client for user creation since RLS blocks inserts
+    const { data: user, error } = await serviceSupabase
+      .from('users')
+      .insert([newUser])
+      .select('id, email, display_name, avatar_url, created_at')
+      .single();
 
-  if (error) {
-    throw error;
-  }
+    if (error) {
+      throw error;
+    }
 
-  // Generate JWT token
-  const token = generateToken(userId, email, displayName);
+    // Generate JWT token
+    const token = generateToken(userId, email, displayName);
 
-  // Send success response
-  sendSuccessResponse(res, {
-    user: {
-      id: user.id,
-      email: user.email,
-      displayName: user.display_name,
-      avatarUrl: user.avatar_url,
-      createdAt: user.created_at
-    },
-    token
-  }, 'Account created successfully', 201);
-}));
+    // Send success response
+    sendSuccessResponse(
+      res,
+      {
+        user: {
+          id: user.id,
+          email: user.email,
+          displayName: user.display_name,
+          avatarUrl: user.avatar_url,
+          createdAt: user.created_at,
+        },
+        token,
+      },
+      'Account created successfully',
+      201
+    );
+  })
+);
 
 /**
  * POST /api/users/login
  * Authenticate user and return JWT token
- * 
+ *
  * Body: {
  *   email: string,
  *   password: string
@@ -150,7 +160,7 @@ router.post('/login', async (req: Request, res: Response) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        error: 'Email and password are required'
+        error: 'Email and password are required',
       });
     }
 
@@ -164,7 +174,7 @@ router.post('/login', async (req: Request, res: Response) => {
     if (error || !user) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid email or password'
+        error: 'Invalid email or password',
       });
     }
 
@@ -174,7 +184,7 @@ router.post('/login', async (req: Request, res: Response) => {
     if (!validPassword) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid email or password'
+        error: 'Invalid email or password',
       });
     }
 
@@ -188,18 +198,18 @@ router.post('/login', async (req: Request, res: Response) => {
           id: user.id,
           email: user.email,
           displayName: user.display_name,
-          avatarUrl: user.avatar_url
+          avatarUrl: user.avatar_url,
         },
         token,
-        message: 'Login successful'
-      }
+        message: 'Login successful',
+      },
     });
   } catch (error) {
     console.error('Login failed:', error);
     res.status(500).json({
       success: false,
       error: 'Login failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -216,15 +226,11 @@ router.get('/', async (req: Request, res: Response) => {
       return res.status(403).json({
         success: false,
         error: 'Forbidden',
-        details: 'User list access not allowed in production'
+        details: 'User list access not allowed in production',
       });
     }
 
-    // Get authorization header to determine if user is authenticated
-    const authHeader = req.headers.authorization;
-    const isAuthenticated = authHeader && authHeader.startsWith('Bearer ');
-
-    let query = serviceSupabase
+    const query = serviceSupabase
       .from('users')
       .select('id, email, display_name, avatar_url, is_test_user, created_at')
       .order('created_at', { ascending: false });
@@ -244,15 +250,15 @@ router.get('/', async (req: Request, res: Response) => {
       success: true,
       data: {
         users: users || [],
-        totalUsers: users?.length || 0
-      }
+        totalUsers: users?.length || 0,
+      },
     });
   } catch (error) {
     console.error('Failed to fetch users:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch users',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -261,7 +267,7 @@ router.get('/', async (req: Request, res: Response) => {
  * POST /api/users
  * Create a new test user
  * Requires authentication
- * 
+ *
  * Body: {
  *   displayName: string,
  *   email: string,
@@ -276,7 +282,7 @@ router.post('/', authenticateUser, async (req: Request, res: Response) => {
     if (!displayName || !email) {
       return res.status(400).json({
         success: false,
-        error: 'Display name and email are required'
+        error: 'Display name and email are required',
       });
     }
 
@@ -290,7 +296,7 @@ router.post('/', authenticateUser, async (req: Request, res: Response) => {
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        error: 'User with this email already exists'
+        error: 'User with this email already exists',
       });
     }
 
@@ -302,7 +308,7 @@ router.post('/', authenticateUser, async (req: Request, res: Response) => {
       avatar_url: avatarUrl || null,
       is_test_user: isTestUser,
       password_hash: 'test-password-hash', // Placeholder for test users
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     };
 
     const { data: user, error } = await supabase
@@ -319,15 +325,15 @@ router.post('/', authenticateUser, async (req: Request, res: Response) => {
       success: true,
       data: {
         user,
-        message: 'User created successfully'
-      }
+        message: 'User created successfully',
+      },
     });
   } catch (error) {
     console.error('Failed to create user:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to create user',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -351,7 +357,7 @@ router.get('/:id/profile', authenticateUser, async (req: Request, res: Response)
     if (userError || !user) {
       return res.status(404).json({
         success: false,
-        error: 'User not found'
+        error: 'User not found',
       });
     }
 
@@ -361,14 +367,14 @@ router.get('/:id/profile', authenticateUser, async (req: Request, res: Response)
       .select('status')
       .eq('user_id', id);
 
-    let stats = {
+    const stats = {
       totalShows: 0,
       byStatus: {
         watchlist: 0,
         watching: 0,
         completed: 0,
-        dropped: 0
-      }
+        dropped: 0,
+      },
     };
 
     if (!statsError && watchlistStats) {
@@ -387,7 +393,7 @@ router.get('/:id/profile', authenticateUser, async (req: Request, res: Response)
       .eq('user_id', id)
       .eq('is_active', true);
 
-    const activeSubscriptions = subsError ? 0 : (subscriptions?.length || 0);
+    const activeSubscriptions = subsError ? 0 : subscriptions?.length || 0;
 
     res.json({
       success: true,
@@ -395,15 +401,15 @@ router.get('/:id/profile', authenticateUser, async (req: Request, res: Response)
         user,
         stats,
         activeSubscriptions,
-        joinedDate: user.created_at
-      }
+        joinedDate: user.created_at,
+      },
     });
   } catch (error) {
     console.error('Failed to fetch user profile:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch user profile',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -425,13 +431,7 @@ router.put('/:id', authenticateUser, async (req: Request, res: Response) => {
     }
 
     // accept either camelCase or snake_case
-    const {
-      countryCode,
-      country_code,
-      displayName,
-      display_name,
-      timezone,
-    } = req.body || {};
+    const { countryCode, country_code, displayName, display_name, timezone } = req.body || {};
 
     const update: any = {};
     if (countryCode || country_code) {
@@ -486,22 +486,19 @@ router.delete('/:id', authenticateUser, async (req: Request, res: Response) => {
     if (fetchError || !user) {
       return res.status(404).json({
         success: false,
-        error: 'User not found'
+        error: 'User not found',
       });
     }
 
     if (!user.is_test_user) {
       return res.status(400).json({
         success: false,
-        error: 'Cannot delete non-test users'
+        error: 'Cannot delete non-test users',
       });
     }
 
     // Delete user (cascade will handle related data)
-    const { error: deleteError } = await supabase
-      .from('users')
-      .delete()
-      .eq('id', id);
+    const { error: deleteError } = await supabase.from('users').delete().eq('id', id);
 
     if (deleteError) {
       throw deleteError;
@@ -511,15 +508,15 @@ router.delete('/:id', authenticateUser, async (req: Request, res: Response) => {
       success: true,
       data: {
         message: `User "${user.display_name}" deleted successfully`,
-        deletedUserId: id
-      }
+        deletedUserId: id,
+      },
     });
   } catch (error) {
     console.error('Failed to delete user:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to delete user',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -528,7 +525,7 @@ router.delete('/:id', authenticateUser, async (req: Request, res: Response) => {
  * POST /api/users/bulk-create
  * Create multiple test users at once
  * Requires authentication
- * 
+ *
  * Body: {
  *   users: Array<{displayName: string, email: string, avatarUrl?: string}>
  * }
@@ -540,18 +537,18 @@ router.post('/bulk-create', authenticateUser, async (req: Request, res: Response
     if (!Array.isArray(userList) || userList.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'Users array is required'
+        error: 'Users array is required',
       });
     }
 
-    const newUsers = userList.map(userData => ({
+    const newUsers = userList.map((userData) => ({
       id: uuidv4(),
       email: userData.email,
       display_name: userData.displayName,
       avatar_url: userData.avatarUrl || null,
       is_test_user: true,
       password_hash: 'test-password-hash',
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     }));
 
     const { data: createdUsers, error } = await supabase
@@ -568,15 +565,15 @@ router.post('/bulk-create', authenticateUser, async (req: Request, res: Response
       data: {
         users: createdUsers,
         count: createdUsers?.length || 0,
-        message: `${createdUsers?.length || 0} test users created successfully`
-      }
+        message: `${createdUsers?.length || 0} test users created successfully`,
+      },
     });
   } catch (error) {
     console.error('Failed to bulk create users:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to bulk create users',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -591,22 +588,31 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
     const { id } = req.params;
     let country = (req.query.country as string) || '';
     if (!country) {
-      const { data: userRow } = await serviceSupabase
+      const response = await serviceSupabase
         .from('users')
         .select('country_code')
         .eq('id', id)
         .single();
-      country = (userRow?.country_code as string) || 'US';
+
+      if (response.error) {
+        console.warn('Failed to fetch user country:', response.error);
+        country = 'US';
+      } else {
+        country = (response.data?.country_code as string) || 'US';
+      }
     }
     country = country.toUpperCase();
 
     if (req.userId !== id) {
-      return res.status(403).json({ success: false, error: 'Forbidden: You can only access your own subscriptions.' });
+      return res
+        .status(403)
+        .json({ success: false, error: 'Forbidden: You can only access your own subscriptions.' });
     }
 
     const { data: subscriptions, error } = await serviceSupabase
       .from('user_streaming_subscriptions')
-      .select(`
+      .select(
+        `
         id,
         user_id,
         service_id,
@@ -634,7 +640,8 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
             country_code
           )
         )
-      `)
+      `
+      )
       .eq('user_id', id)
       .order('created_at', { ascending: false });
 
@@ -643,92 +650,95 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
         code: (error as any)?.code,
         message: (error as any)?.message,
         details: (error as any)?.details,
-        hint: (error as any)?.hint
+        hint: (error as any)?.hint,
       });
       throw error;
     }
 
     // Transform the data to match the expected format (normalize provider fields)
-    const formattedSubscriptions = (subscriptions ?? []).map((sub: any) => {
-      const svc = Array.isArray(sub.streaming_services)
-        ? sub.streaming_services[0]
-        : sub.streaming_services;
+    const formattedSubscriptions =
+      (subscriptions ?? []).map((sub: any) => {
+        const svc = Array.isArray(sub.streaming_services)
+          ? sub.streaming_services[0]
+          : sub.streaming_services;
 
-      const logo_url = svc?.logo_path
-        ? (typeof svc.logo_path === 'string' && svc.logo_path.startsWith('http')
-          ? svc.logo_path
-          : `https://image.tmdb.org/t/p/w45${svc.logo_path}`)
-        : null;
+        const logo_path = svc?.logo_path
+          ? typeof svc.logo_path === 'string' && svc.logo_path.startsWith('http')
+            ? svc.logo_path
+            : `https://image.tmdb.org/t/p/w45${svc.logo_path}`
+          : null;
 
-      // --- Normalize prices and default_price ---
-      const svcPricesSrc = Array.isArray(svc?.streaming_service_prices)
-        ? svc.streaming_service_prices
-        : [];
-      const svcPricesCountry = svcPricesSrc.filter((p: any) => (p?.country_code || '').toUpperCase() === country);
+        // --- Normalize prices and default_price ---
+        const svcPricesSrc = Array.isArray(svc?.streaming_service_prices)
+          ? svc.streaming_service_prices
+          : [];
+        const svcPricesCountry = svcPricesSrc.filter(
+          (p: any) => (p?.country_code || '').toUpperCase() === country
+        );
 
-      const prices = svcPricesCountry
-        .filter((p: any) => p && (p.active ?? true))
-        .map((p: any) => ({
-          tier: p.tier,
-          amount: p.monthly_cost,
-          currency: p.currency,
-          billing_frequency: p.billing_frequency ?? 'monthly',
-          active: p.active ?? true,
-          notes: p.notes ?? null,
-          provider_name: p.provider_name ?? svc?.name ?? null,
-        }));
+        const prices = svcPricesCountry
+          .filter((p: any) => p && (p.active ?? true))
+          .map((p: any) => ({
+            tier: p.tier,
+            amount: p.monthly_cost,
+            currency: p.currency,
+            billing_frequency: p.billing_frequency ?? 'monthly',
+            active: p.active ?? true,
+            notes: p.notes ?? null,
+            provider_name: p.provider_name ?? svc?.name ?? null,
+          }));
 
-      const rank = (t: string | null | undefined): number => {
-        const s = (t ?? '').toLowerCase();
-        if (s.startsWith('standard')) return 1;
-        if (s.includes('no ads')) return 2;
-        if (s.includes('ads')) return 3;
-        if (s.includes('premium')) return 4;
-        return 9;
-      };
-      const default_price = prices.length
-        ? [...prices].sort(
-            (a: { tier: string | null | undefined }, b: { tier: string | null | undefined }) =>
-              rank(a.tier) - rank(b.tier)
-          )[0]
-        : null;
-      // --- END normalize prices and default_price ---
+        const rank = (t: string | null | undefined): number => {
+          const s = (t ?? '').toLowerCase();
+          if (s.startsWith('standard')) return 1;
+          if (s.includes('no ads')) return 2;
+          if (s.includes('ads')) return 3;
+          if (s.includes('premium')) return 4;
+          return 9;
+        };
+        const default_price = prices.length
+          ? [...prices].sort(
+              (a: { tier: string | null | undefined }, b: { tier: string | null | undefined }) =>
+                rank(a.tier) - rank(b.tier)
+            )[0]
+          : null;
+        // --- END normalize prices and default_price ---
 
-      return {
-        id: sub.id,
-        service_id: sub.service_id,
-        monthly_cost: sub.monthly_cost,
-        is_active: sub.is_active,
-        tier: sub.tier,
-        started_date: sub.started_date,
-        ended_date: sub.ended_date,
-        service: svc
-          ? {
-            id: svc.id,
-            tmdb_provider_id: svc.tmdb_provider_id,
-            name: svc.name,
-            logo_url,
-            homepage: svc.homepage || null,
-            prices,
-            default_price,
-          }
-          : null,
-      };
-    }) || [];
+        return {
+          id: sub.id,
+          service_id: sub.service_id,
+          monthly_cost: sub.monthly_cost,
+          is_active: sub.is_active,
+          tier: sub.tier,
+          started_date: sub.started_date,
+          ended_date: sub.ended_date,
+          service: svc
+            ? {
+                id: svc.id,
+                tmdb_provider_id: svc.tmdb_provider_id,
+                name: svc.name,
+                logo_path,
+                homepage: svc.homepage || null,
+                prices,
+                default_price,
+              }
+            : null,
+        };
+      }) || [];
 
     res.json({
       success: true,
       data: {
         subscriptions: formattedSubscriptions,
-        totalActive: formattedSubscriptions.filter(sub => sub.is_active).length
-      }
+        totalActive: formattedSubscriptions.filter((sub) => sub.is_active).length,
+      },
     });
   } catch (error) {
     console.error('Failed to get user subscriptions:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to retrieve user subscriptions',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -737,7 +747,7 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
  * POST /api/users/:id/subscriptions
  * Add a new subscription for user
  * Requires authentication - users can only manage their own subscriptions
- * 
+ *
  * Body: {
  *   service_id: string,
  *   monthly_cost: number,
@@ -752,7 +762,7 @@ router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Re
     if (!service_id || typeof monthly_cost !== 'number') {
       return res.status(400).json({
         success: false,
-        error: 'service_id and monthly_cost are required'
+        error: 'service_id and monthly_cost are required',
       });
     }
 
@@ -772,7 +782,7 @@ router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Re
           monthly_cost,
           is_active,
           tier,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('user_id', id)
         .eq('service_id', service_id)
@@ -785,8 +795,8 @@ router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Re
         success: true,
         data: {
           subscription,
-          message: 'Subscription updated successfully'
-        }
+          message: 'Subscription updated successfully',
+        },
       });
     }
 
@@ -799,7 +809,7 @@ router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Re
         monthly_cost,
         tier,
         is_active,
-        started_date: new Date().toISOString().split('T')[0]
+        started_date: new Date().toISOString().split('T')[0],
       })
       .select()
       .single();
@@ -812,15 +822,15 @@ router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Re
       success: true,
       data: {
         subscription,
-        message: 'Subscription added successfully'
-      }
+        message: 'Subscription added successfully',
+      },
     });
   } catch (error) {
     console.error('Failed to add subscription:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to add subscription',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -829,98 +839,106 @@ router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Re
  * PUT /api/users/:id/subscriptions/:subscriptionId
  * Update a subscription
  * Requires authentication - users can only manage their own subscriptions
- * 
+ *
  * Body: {
  *   monthly_cost?: number,
  *   is_active?: boolean
  * }
  */
-router.put('/:id/subscriptions/:subscriptionId', authenticateUser, async (req: Request, res: Response) => {
-  try {
-    const { id, subscriptionId } = req.params;
-    const { monthly_cost, is_active, tier } = req.body;
+router.put(
+  '/:id/subscriptions/:subscriptionId',
+  authenticateUser,
+  async (req: Request, res: Response) => {
+    try {
+      const { id, subscriptionId } = req.params;
+      const { monthly_cost, is_active, tier } = req.body;
 
-    const updateData: any = { updated_at: new Date().toISOString() };
-    if (typeof monthly_cost === 'number') updateData.monthly_cost = monthly_cost;
-    if (typeof is_active === 'boolean') updateData.is_active = is_active;
-    if (typeof tier === 'string') updateData.tier = tier;
+      const updateData: any = { updated_at: new Date().toISOString() };
+      if (typeof monthly_cost === 'number') updateData.monthly_cost = monthly_cost;
+      if (typeof is_active === 'boolean') updateData.is_active = is_active;
+      if (typeof tier === 'string') updateData.tier = tier;
 
-    // If deactivating, set end date
-    if (is_active === false) {
-      updateData.ended_date = new Date().toISOString().split('T')[0];
-    } else if (is_active === true) {
-      updateData.ended_date = null;
-    }
+      // If deactivating, set end date
+      if (is_active === false) {
+        updateData.ended_date = new Date().toISOString().split('T')[0];
+      } else if (is_active === true) {
+        updateData.ended_date = null;
+      }
 
-    const { data: subscription, error } = await supabase
-      .from('user_streaming_subscriptions')
-      .update(updateData)
-      .eq('id', subscriptionId)
-      .eq('user_id', id)
-      .select()
-      .single();
+      const { data: subscription, error } = await supabase
+        .from('user_streaming_subscriptions')
+        .update(updateData)
+        .eq('id', subscriptionId)
+        .eq('user_id', id)
+        .select()
+        .single();
 
-    if (error) {
-      throw error;
-    }
+      if (error) {
+        throw error;
+      }
 
-    if (!subscription) {
-      return res.status(404).json({
+      if (!subscription) {
+        return res.status(404).json({
+          success: false,
+          error: 'Subscription not found',
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          subscription,
+          message: 'Subscription updated successfully',
+        },
+      });
+    } catch (error) {
+      console.error('Failed to update subscription:', error);
+      res.status(500).json({
         success: false,
-        error: 'Subscription not found'
+        error: 'Failed to update subscription',
+        details: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-
-    res.json({
-      success: true,
-      data: {
-        subscription,
-        message: 'Subscription updated successfully'
-      }
-    });
-  } catch (error) {
-    console.error('Failed to update subscription:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to update subscription',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
   }
-});
+);
 
 /**
  * DELETE /api/users/:id/subscriptions/:subscriptionId
  * Remove a subscription
  * Requires authentication - users can only manage their own subscriptions
  */
-router.delete('/:id/subscriptions/:subscriptionId', authenticateUser, async (req: Request, res: Response) => {
-  try {
-    const { id, subscriptionId } = req.params;
+router.delete(
+  '/:id/subscriptions/:subscriptionId',
+  authenticateUser,
+  async (req: Request, res: Response) => {
+    try {
+      const { id, subscriptionId } = req.params;
 
-    const { error } = await supabase
-      .from('user_streaming_subscriptions')
-      .delete()
-      .eq('id', subscriptionId)
-      .eq('user_id', id);
+      const { error } = await supabase
+        .from('user_streaming_subscriptions')
+        .delete()
+        .eq('id', subscriptionId)
+        .eq('user_id', id);
 
-    if (error) {
-      throw error;
-    }
-
-    res.json({
-      success: true,
-      data: {
-        message: 'Subscription removed successfully'
+      if (error) {
+        throw error;
       }
-    });
-  } catch (error) {
-    console.error('Failed to remove subscription:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to remove subscription',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+
+      res.json({
+        success: true,
+        data: {
+          message: 'Subscription removed successfully',
+        },
+      });
+    } catch (error) {
+      console.error('Failed to remove subscription:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to remove subscription',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   }
-});
+);
 
 export default router;

@@ -1,11 +1,10 @@
 import { Router } from 'express';
 import { ValidationError } from '../middleware/errorHandler.js';
 import { tmdbService } from '../services/tmdb.js';
-import { releasePatternService } from '@tally/core';
 import { watchlistStorageService } from '../storage/simple-watchlist.js';
 // Types are inferred from the API responses, no imports needed from @tally/types for this router
 
-const router = Router();
+const router: Router = Router();
 
 // Search TV shows
 router.get('/search', async (req, res, next) => {
@@ -19,19 +18,19 @@ router.get('/search', async (req, res, next) => {
     if (!tmdbService.isAvailable) {
       return res.status(503).json({
         error: 'TMDB_UNAVAILABLE',
-        message: 'TMDB service is not configured or in dev mode'
+        message: 'TMDB service is not configured or in dev mode',
       });
     }
 
     console.log(`🔍 Searching TMDB for "${query}" in ${country}`);
-    
+
     const searchResults = await tmdbService.searchTVShows(query, country as string);
 
     res.json({
       success: true,
       query,
       country,
-      results: searchResults
+      results: searchResults,
     });
   } catch (error) {
     console.error('Error in TMDB search:', error);
@@ -53,15 +52,17 @@ router.get('/show/:id/analyze', async (req, res, next) => {
     if (!tmdbService.isAvailable) {
       return res.status(503).json({
         error: 'TMDB_UNAVAILABLE',
-        message: 'TMDB service is not configured or in dev mode'
+        message: 'TMDB service is not configured or in dev mode',
       });
     }
 
-    console.log(`📊 Analyzing TMDB show ${showId} for ${country}${season ? ` (season ${season})` : ''}`);
-    
+    console.log(
+      `📊 Analyzing TMDB show ${showId} for ${country}${season ? ` (season ${season})` : ''}`
+    );
+
     let analysis = await tmdbService.analyzeShow(
-      showId, 
-      country as string, 
+      showId,
+      country as string,
       season ? parseInt(season as string) : undefined
     );
 
@@ -71,7 +72,7 @@ router.get('/show/:id/analyze', async (req, res, next) => {
       if (!analysis) {
         return res.status(404).json({
           error: 'SHOW_NOT_FOUND',
-          message: `Could not analyze show with ID ${showId}`
+          message: `Could not analyze show with ID ${showId}`,
         });
       }
     }
@@ -80,7 +81,7 @@ router.get('/show/:id/analyze', async (req, res, next) => {
       success: true,
       showId,
       country,
-      analysis
+      analysis,
     });
   } catch (error) {
     console.error(`Error analyzing show ${req.params.id}:`, error);
@@ -120,19 +121,19 @@ router.get('/show/:id/providers', async (req, res, next) => {
     if (!tmdbService.isAvailable) {
       return res.status(503).json({
         error: 'TMDB_UNAVAILABLE',
-        message: 'TMDB service is not configured or in dev mode'
+        message: 'TMDB service is not configured or in dev mode',
       });
     }
 
     console.log(`🎬 Getting providers for TMDB show ${showId} in ${country}`);
-    
+
     const providers = await tmdbService.getWatchProviders(showId, country as string);
 
     res.json({
       success: true,
       showId,
       country,
-      providers
+      providers,
     });
   } catch (error) {
     console.error(`Error getting providers for show ${req.params.id}:`, error);
@@ -156,20 +157,20 @@ router.post('/batch-analyze', async (req, res, next) => {
     if (!tmdbService.isAvailable) {
       return res.status(503).json({
         error: 'TMDB_UNAVAILABLE',
-        message: 'TMDB service is not configured or in dev mode'
+        message: 'TMDB service is not configured or in dev mode',
       });
     }
 
     console.log(`📊 Batch analyzing ${showIds.length} shows for ${country}`);
-    
+
     const results = await tmdbService.batchAnalyze(showIds, country);
 
     res.json({
       success: true,
       country,
       totalRequested: showIds.length,
-      totalAnalyzed: results.filter(r => r.success).length,
-      results
+      totalAnalyzed: results.filter((r) => r.success).length,
+      results,
     });
   } catch (error) {
     console.error('Error in batch analysis:', error);
@@ -181,7 +182,7 @@ router.post('/batch-analyze', async (req, res, next) => {
 router.post('/watchlist', async (req, res, next) => {
   try {
     const { tmdbId, title, status = 'watchlist' } = req.body;
-    const userId = req.headers['x-user-id'] as string || 'user-1';
+    const userId = (req.headers['x-user-id'] as string) || 'user-1';
 
     if (!tmdbId || !title) {
       throw new ValidationError('tmdbId and title are required');
@@ -196,21 +197,21 @@ router.post('/watchlist', async (req, res, next) => {
       tmdbId,
       title,
       status: status as any,
-      addedAt: new Date().toISOString()
+      addedAt: new Date().toISOString(),
     });
 
     // Check if it was an update or new item
     const userWatchlist = watchlistStorageService.getUserWatchlist(userId);
-    const wasUpdate = userWatchlist.filter(i => i.tmdbId === tmdbId).length === 1;
+    const wasUpdate = userWatchlist.filter((i) => i.tmdbId === tmdbId).length === 1;
 
-    const message = wasUpdate 
+    const message = wasUpdate
       ? `Updated "${title}" status to ${status}`
       : `Added "${title}" to ${status}`;
 
     res.status(201).json({
       success: true,
       message,
-      item
+      item,
     });
   } catch (error) {
     next(error);
@@ -220,19 +221,19 @@ router.post('/watchlist', async (req, res, next) => {
 // Get user's watchlist
 router.get('/watchlist', async (req, res, next) => {
   try {
-    const userId = req.headers['x-user-id'] as string || 'user-1';
+    const userId = (req.headers['x-user-id'] as string) || 'user-1';
     const status = req.query.status as string;
 
     const userWatchlist = watchlistStorageService.getUserWatchlist(userId);
-    
-    const filteredList = status 
-      ? userWatchlist.filter(item => item.status === status)
+
+    const filteredList = status
+      ? userWatchlist.filter((item) => item.status === status)
       : userWatchlist;
 
     res.json({
       success: true,
       items: filteredList,
-      total: filteredList.length
+      total: filteredList.length,
     });
   } catch (error) {
     next(error);

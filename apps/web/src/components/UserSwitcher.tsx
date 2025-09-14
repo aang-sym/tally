@@ -25,7 +25,7 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
       // Use apiRequest for consistency with authentication
       const data = await apiRequest(API_ENDPOINTS.users.base, {}, token);
       setUsers(data.data.users || []);
-      
+
       // If no users and no token, this means user needs to create an account
       if (!token && (!data.data.users || data.data.users.length === 0)) {
         console.log('No users found and no auth token. User should create an account.');
@@ -37,26 +37,30 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
         console.log('Authorization required - user needs to create an account first');
       }
     }
-  };  const switchUser = async (userId: string) => {
+  };
+  const switchUser = async (userId: string) => {
     const currentToken = localStorage.getItem('authToken');
     console.log('[AUTH DEBUG] Switching to user:', userId);
-    console.log('[AUTH DEBUG] Current stored token:', currentToken ? `${currentToken.substring(0, 20)}...` : 'none');
-    
+    console.log(
+      '[AUTH DEBUG] Current stored token:',
+      currentToken ? `${currentToken.substring(0, 20)}...` : 'none'
+    );
+
     // Find the user we're switching to
-    const targetUser = users.find(user => user.id === userId);
+    const targetUser = users.find((user) => user.id === userId);
     if (!targetUser) {
       console.error('User not found:', userId);
       return;
     }
-    
+
     // For test users with known passwords, we can auto-login
     const testCredentials: { [key: string]: string } = {
       'freshtest@example.com': 'testpassword123',
       'test1@example.com': 'password123',
-      'test2@example.com': 'password123', 
-      'admin@test.com': 'password123'
+      'test2@example.com': 'password123',
+      'admin@test.com': 'password123',
     };
-    
+
     const password = testCredentials[targetUser.email];
     if (password) {
       try {
@@ -65,10 +69,10 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
           method: 'POST',
           body: JSON.stringify({
             email: targetUser.email,
-            password: password
-          })
+            password: password,
+          }),
         });
-        
+
         if (loginData.token) {
           localStorage.setItem('authToken', loginData.token);
           localStorage.setItem('current_user_id', loginData.user.id);
@@ -79,36 +83,41 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
         // Fall back to just setting the user ID
       }
     }
-    
+
     UserManager.setCurrentUserId(userId);
     setCurrentUserId(userId);
     setIsOpen(false);
     onUserChange?.(userId);
-    
+
     // Reload the page to update all components with new user data
     window.location.reload();
   };
 
   const getCurrentUser = () => {
-    return users.find(user => user.id === currentUserId);
+    return users.find((user) => user.id === currentUserId);
   };
 
-  const handleCreateUser = async (userData: { displayName: string; email: string; password: string }) => {
+  const handleCreateUser = async (userData: {
+    displayName: string;
+    email: string;
+    password: string;
+  }) => {
     try {
       setLoading(true);
       // Use the correct auth endpoint for registration
       const data = await apiRequest(API_ENDPOINTS.auth.signup, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           email: userData.email,
-          password: userData.password
-        })
+          password: userData.password,
+        }),
       });
 
-      if (data.token) { // Store the token if received
+      if (data.token) {
+        // Store the token if received
         localStorage.setItem('authToken', data.token);
         localStorage.setItem('current_user_id', data.user.id);
         console.log('[AUTH DEBUG] Stored JWT token:', `${data.token.substring(0, 20)}...`);
@@ -142,7 +151,12 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
           <span className="hidden md:block text-gray-700">
             {currentUser?.display_name || 'Select User'}
           </span>
-          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg
+            className="w-4 h-4 text-gray-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
@@ -154,9 +168,14 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
                 Users
               </div>
               {users.map((user) => {
-                const testCredentials = ['freshtest@example.com', 'test1@example.com', 'test2@example.com', 'admin@test.com'];
+                const testCredentials = [
+                  'freshtest@example.com',
+                  'test1@example.com',
+                  'test2@example.com',
+                  'admin@test.com',
+                ];
                 const hasKnownPassword = testCredentials.includes(user.email);
-                
+
                 return (
                   <button
                     key={user.id}
@@ -166,9 +185,15 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
                     }`}
                   >
                     <div className="flex items-center space-x-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
-                        user.id === currentUserId ? 'bg-blue-500' : hasKnownPassword ? 'bg-green-500' : 'bg-gray-400'
-                      }`}>
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
+                          user.id === currentUserId
+                            ? 'bg-blue-500'
+                            : hasKnownPassword
+                              ? 'bg-green-500'
+                              : 'bg-gray-400'
+                        }`}
+                      >
                         {user.display_name?.charAt(0) || user.email?.charAt(0) || 'U'}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -186,15 +211,25 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
                         )}
                       </div>
                       {user.id === currentUserId && (
-                        <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <svg
+                          className="w-4 h-4 text-blue-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
                         </svg>
                       )}
                     </div>
                   </button>
                 );
               })}
-              
+
               <div className="border-t mt-1">
                 <button
                   onClick={() => {
@@ -205,8 +240,18 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
                 >
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 border-2 border-dashed border-blue-300 rounded-full flex items-center justify-center">
-                      <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      <svg
+                        className="w-4 h-4 text-blue-500"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                        />
                       </svg>
                     </div>
                     <span className="text-sm font-medium">Create New User</span>
@@ -223,16 +268,18 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Test User</h3>
-            
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target as HTMLFormElement);
-              handleCreateUser({
-                displayName: formData.get('displayName') as string,
-                email: formData.get('email') as string,
-                password: formData.get('password') as string
-              });
-            }}>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target as HTMLFormElement);
+                handleCreateUser({
+                  displayName: formData.get('displayName') as string,
+                  email: formData.get('email') as string,
+                  password: formData.get('password') as string,
+                });
+              }}
+            >
               <div className="space-y-4">
                 <div>
                   <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
@@ -247,7 +294,7 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
                     placeholder="John Doe"
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                     Email
@@ -261,7 +308,7 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
                     placeholder="john.doe@example.com"
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                     Password
@@ -277,7 +324,7 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
                   />
                 </div>
               </div>
-              
+
               <div className="flex justify-end space-x-3 mt-6">
                 <button
                   type="button"
@@ -301,12 +348,7 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
       )}
 
       {/* Click outside to close */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 z-40" 
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+      {isOpen && <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />}
     </>
   );
 };

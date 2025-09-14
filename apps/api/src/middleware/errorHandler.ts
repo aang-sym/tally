@@ -17,7 +17,7 @@ export class AppError extends Error {
 export class ValidationError extends Error {
   statusCode = 400;
   isOperational = true;
-  
+
   constructor(message: string) {
     super(message);
     this.name = 'ValidationError';
@@ -27,7 +27,7 @@ export class ValidationError extends Error {
 export class NotFoundError extends Error {
   statusCode = 404;
   isOperational = true;
-  
+
   constructor(message: string) {
     super(message);
     this.name = 'NotFoundError';
@@ -38,7 +38,7 @@ export function errorHandler(
   error: AppError | ZodError,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) {
   console.error('Error:', error);
 

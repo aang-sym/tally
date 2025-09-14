@@ -1,6 +1,6 @@
 /**
  * Streaming Service
- * 
+ *
  * Handles streaming provider availability data with caching and normalization.
  * Integrates with TMDB watch providers and maintains local streaming service data.
  */
@@ -8,9 +8,10 @@
 import { supabase } from '../db/supabase.js';
 import { tmdbService } from './tmdb.js';
 import { providerNormalizer } from './provider-normalizer.js';
-import { TMDBProviderListItem } from '@tally/core';
+/* Removed unused/unavailable type import to satisfy TS */
+// import { TMDBProviderListItem } from '@tally/core';
 
-export interface StreamingService {
+export interface StreamingServiceData {
   id: string;
   tmdb_provider_id: number;
   name: string;
@@ -31,20 +32,20 @@ export interface ShowAvailability {
 }
 
 export interface ShowAvailabilityWithService extends ShowAvailability {
-  service: StreamingService;
+  service: StreamingServiceData;
 }
 
 export class StreamingService {
   /**
    * Get or create streaming services from TMDB provider data
    */
-  async syncStreamingServices(tmdbProviders: any[]): Promise<StreamingService[]> {
+  async syncStreamingServices(tmdbProviders: any[]): Promise<StreamingServiceData[]> {
     try {
-      const services: StreamingService[] = [];
+      const services: StreamingServiceData[] = [];
 
       for (const provider of tmdbProviders) {
         // Check if service already exists
-        let { data: existingService, error: fetchError } = await supabase
+        const { data: existingService, error: fetchError } = await supabase
           .from('streaming_services')
           .select('*')
           .eq('tmdb_provider_id', provider.provider_id)
@@ -62,7 +63,7 @@ export class StreamingService {
             tmdb_provider_id: provider.provider_id,
             name: provider.provider_name,
             logo_path: provider.logo_path,
-            homepage: provider.homepage || null
+            homepage: provider.homepage || null,
           };
 
           const { data: newService, error: createError } = await supabase
@@ -91,14 +92,14 @@ export class StreamingService {
    * Update show availability data from TMDB
    */
   async updateShowAvailability(
-    showId: string, 
-    tmdbId: number, 
+    showId: string,
+    tmdbId: number,
     country: string = 'US'
   ): Promise<ShowAvailabilityWithService[]> {
     try {
       // Get watch providers from TMDB
       const providers = await tmdbService.getWatchProviders(tmdbId, country);
-      
+
       if (!providers || providers.length === 0) {
         return [];
       }
@@ -117,23 +118,28 @@ export class StreamingService {
       const availabilityData = [];
 
       for (const provider of providers) {
-        let service = services.find(s => s.tmdb_provider_id === provider.provider_id);
-        
+        let service = services.find((s) => s.tmdb_provider_id === provider.provider_id);
+
         if (!service) {
           // Try to auto-discover the missing provider
-          console.log(`🔍 Auto-discovering missing provider during availability lookup: ${provider.provider_name} (TMDB ID: ${provider.provider_id})`);
-          
-          service = await this.autoDiscoverProvider(
-            provider.provider_id,
-            provider.provider_name,
-            provider.logo_path
+          console.log(
+            `🔍 Auto-discovering missing provider during availability lookup: ${provider.provider_name} (TMDB ID: ${provider.provider_id})`
           );
-          
+
+          service =
+            (await this.autoDiscoverProvider(
+              provider.provider_id,
+              provider.provider_name,
+              provider.logo_path
+            )) || undefined;
+
           if (!service) {
-            console.warn(`⚠️ Failed to auto-discover provider ${provider.provider_name} (${provider.provider_id})`);
+            console.warn(
+              `⚠️ Failed to auto-discover provider ${provider.provider_name} (${provider.provider_id})`
+            );
             continue;
           }
-          
+
           // Add the discovered service to our services array for other providers in this loop
           services.push(service);
         }
@@ -144,7 +150,7 @@ export class StreamingService {
           service_id: service.id,
           country_code: country,
           availability_type: 'subscription' as const,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         });
       }
 
@@ -154,8 +160,7 @@ export class StreamingService {
 
       const { data: availability, error: availabilityError } = await supabase
         .from('show_availability')
-        .insert(availabilityData)
-        .select(`
+        .insert(availabilityData).select(`
           *,
           streaming_services (*)
         `);
@@ -164,10 +169,12 @@ export class StreamingService {
         throw availabilityError;
       }
 
-      return availability?.map(a => ({
-        ...a,
-        service: a.streaming_services
-      })) || [];
+      return (
+        availability?.map((a) => ({
+          ...a,
+          service: a.streaming_services,
+        })) || []
+      );
     } catch (error) {
       console.error(`Failed to update show availability for ${showId}:`, error);
       return [];
@@ -178,7 +185,7 @@ export class StreamingService {
    * Get show availability with normalized providers
    */
   async getShowAvailability(
-    showId: string, 
+    showId: string,
     country: string = 'US'
   ): Promise<{
     availability: ShowAvailabilityWithService[];
@@ -187,46 +194,49 @@ export class StreamingService {
     try {
       const { data: availability, error } = await supabase
         .from('show_availability')
-        .select(`
+        .select(
+          `
           *,
           streaming_services (*)
-        `)
+        `
+        )
         .eq('show_id', showId)
         .eq('country_code', country)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
 
-      const availabilityWithServices = availability?.map(a => ({
-        ...a,
-        service: a.streaming_services
-      })) || [];
+      const availabilityWithServices =
+        availability?.map((a) => ({
+          ...a,
+          service: a.streaming_services,
+        })) || [];
 
       // Normalize providers to consolidate variants
-      const providerVariants = availabilityWithServices.map(a => ({
+      const providerVariants = availabilityWithServices.map((a) => ({
         id: a.service.tmdb_provider_id,
         name: a.service.name,
         logo: a.service.logo_path ? `https://image.tmdb.org/t/p/w92${a.service.logo_path}` : '',
-        type: a.availability_type
+        type: a.availability_type,
       }));
 
       const normalized = providerNormalizer.normalizeProviders(providerVariants);
 
       return {
         availability: availabilityWithServices,
-        normalized: normalized.map(n => ({
+        normalized: normalized.map((n) => ({
           providerId: n.parentId,
           name: n.parentName,
           logo: n.logo,
           type: n.type,
-          hasMultiplePlans: n.hasMultiplePlans
-        }))
+          hasMultiplePlans: n.hasMultiplePlans,
+        })),
       };
     } catch (error) {
       console.error(`Failed to get show availability for ${showId}:`, error);
       return {
         availability: [],
-        normalized: []
+        normalized: [],
       };
     }
   }
@@ -234,7 +244,7 @@ export class StreamingService {
   /**
    * Get all streaming services
    */
-  async getAllStreamingServices(): Promise<StreamingService[]> {
+  async getAllStreamingServices(): Promise<StreamingServiceData[]> {
     try {
       const { data: services, error } = await supabase
         .from('streaming_services')
@@ -255,7 +265,7 @@ export class StreamingService {
    */
   async getUserSubscriptionAnalysis(userId: string): Promise<{
     services: {
-      service: StreamingService;
+      service: StreamingServiceData;
       showCount: number;
       watchingCount: number;
       watchlistCount: number;
@@ -268,7 +278,8 @@ export class StreamingService {
       // Get user's shows with their streaming services
       const { data: userShows, error } = await supabase
         .from('user_shows')
-        .select(`
+        .select(
+          `
           *,
           shows!inner (
             id,
@@ -278,22 +289,26 @@ export class StreamingService {
               streaming_services (*)
             )
           )
-        `)
+        `
+        )
         .eq('user_id', userId)
         .neq('status', 'dropped');
 
       if (error) throw error;
 
       // Group by streaming service
-      const serviceMap = new Map<string, {
-        service: StreamingService;
-        showCount: number;
-        watchingCount: number;
-        watchlistCount: number;
-        completedCount: number;
-      }>();
+      const serviceMap = new Map<
+        string,
+        {
+          service: StreamingServiceData;
+          showCount: number;
+          watchingCount: number;
+          watchlistCount: number;
+          completedCount: number;
+        }
+      >();
 
-      userShows?.forEach(userShow => {
+      userShows?.forEach((userShow) => {
         userShow.shows.show_availability?.forEach((availability: any) => {
           const service = availability.streaming_services;
           const serviceId = service.id;
@@ -304,7 +319,7 @@ export class StreamingService {
               showCount: 0,
               watchingCount: 0,
               watchlistCount: 0,
-              completedCount: 0
+              completedCount: 0,
             });
           }
 
@@ -325,26 +340,24 @@ export class StreamingService {
         });
       });
 
-      const services = Array.from(serviceMap.values()).sort((a, b) => 
-        b.showCount - a.showCount
-      );
+      const services = Array.from(serviceMap.values()).sort((a, b) => b.showCount - a.showCount);
 
       // Simple cancellation recommendations
       const recommendedCancellations = services
-        .filter(s => s.watchingCount === 0 && s.watchlistCount === 0)
-        .map(s => s.service.name);
+        .filter((s) => s.watchingCount === 0 && s.watchlistCount === 0)
+        .map((s) => s.service.name);
 
       return {
         services,
         totalServices: services.length,
-        recommendedCancellations
+        recommendedCancellations,
       };
     } catch (error) {
       console.error('Failed to get user subscription analysis:', error);
       return {
         services: [],
         totalServices: 0,
-        recommendedCancellations: []
+        recommendedCancellations: [],
       };
     }
   }
@@ -355,7 +368,7 @@ export class StreamingService {
   async getStreamingServiceStats(): Promise<{
     totalServices: number;
     mostPopularServices: {
-      service: StreamingService;
+      service: StreamingServiceData;
       showCount: number;
       userCount: number;
     }[];
@@ -369,28 +382,22 @@ export class StreamingService {
       if (servicesError) throw servicesError;
 
       // Get service popularity (most shows available)
-      const { data: serviceStats, error: statsError } = await supabase
-        .from('show_availability')
-        .select(`
-          service_id,
-          streaming_services (*)
-        `)
-        .group(['service_id', 'streaming_services']);
+      /* Stats aggregation temporarily disabled to avoid unsupported client-side grouping and unused var */
 
-      if (statsError) throw statsError;
+      // stats aggregation skipped
 
       // This is a simplified version - in a real implementation you'd want
       // proper aggregation queries for accurate statistics
 
       return {
         totalServices: services?.length || 0,
-        mostPopularServices: [] // Would need more complex aggregation
+        mostPopularServices: [], // Would need more complex aggregation
       };
     } catch (error) {
       console.error('Failed to get streaming service stats:', error);
       return {
         totalServices: 0,
-        mostPopularServices: []
+        mostPopularServices: [],
       };
     }
   }
@@ -406,14 +413,18 @@ export class StreamingService {
 
       const { data: staleShows, error } = await supabase
         .from('shows')
-        .select(`
+        .select(
+          `
           id,
           tmdb_id,
           show_availability!left (
             updated_at
           )
-        `)
-        .or(`show_availability.updated_at.lt.${sevenDaysAgo.toISOString()},show_availability.is.null`)
+        `
+        )
+        .or(
+          `show_availability.updated_at.lt.${sevenDaysAgo.toISOString()},show_availability.is.null`
+        )
         .limit(limit);
 
       if (error) throw error;
@@ -422,9 +433,9 @@ export class StreamingService {
         try {
           console.log(`Refreshing availability for show ${show.id}`);
           await this.updateShowAvailability(show.id, show.tmdb_id);
-          
+
           // Small delay to respect API limits
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 500));
         } catch (error) {
           console.error(`Failed to refresh availability for show ${show.id}:`, error);
           continue;
@@ -442,15 +453,15 @@ export class StreamingService {
     totalFetched: number;
     newProviders: number;
     updatedProviders: number;
-    providers: StreamingService[];
+    providers: StreamingServiceData[];
     errors: string[];
   }> {
     const result = {
       totalFetched: 0,
       newProviders: 0,
       updatedProviders: 0,
-      providers: [] as StreamingService[],
-      errors: [] as string[]
+      providers: [] as StreamingServiceData[],
+      errors: [] as string[],
     };
 
     try {
@@ -468,14 +479,16 @@ export class StreamingService {
         return result;
       }
 
-      console.log(`📺 Found ${allProvidersData.total} providers from TMDB across regions: ${regions.join(', ')}`);
+      console.log(
+        `📺 Found ${allProvidersData.total} providers from TMDB across regions: ${regions.join(', ')}`
+      );
 
       // Convert TMDB providers to our format and sync with database
-      const tmdbProviders = allProvidersData.providers.map((provider: TMDBProviderListItem) => ({
+      const tmdbProviders = allProvidersData.providers.map((provider: any) => ({
         provider_id: provider.provider_id,
         provider_name: provider.provider_name,
         logo_path: provider.logo_path,
-        homepage: null // Will be populated when we encounter the provider in show data
+        homepage: null, // Will be populated when we encounter the provider in show data
       }));
 
       // Use existing sync method to create/update providers
@@ -493,8 +506,8 @@ export class StreamingService {
         if (!error && existing) {
           // Consider it new if created recently (within last minute)
           const createdAt = new Date(existing.created_at);
-          const isNew = (Date.now() - createdAt.getTime()) < 60000;
-          
+          const isNew = Date.now() - createdAt.getTime() < 60000;
+
           if (isNew) {
             result.newProviders++;
           } else {
@@ -503,8 +516,9 @@ export class StreamingService {
         }
       }
 
-      console.log(`✅ Backfill complete: ${result.newProviders} new, ${result.updatedProviders} updated, ${result.totalFetched} total providers`);
-
+      console.log(
+        `✅ Backfill complete: ${result.newProviders} new, ${result.updatedProviders} updated, ${result.totalFetched} total providers`
+      );
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       result.errors.push(`Failed to backfill streaming services: ${errorMessage}`);
@@ -517,7 +531,11 @@ export class StreamingService {
   /**
    * Auto-discover and create missing providers during regular operations
    */
-  async autoDiscoverProvider(tmdbProviderId: number, providerName: string, logoPath?: string): Promise<StreamingService | null> {
+  async autoDiscoverProvider(
+    tmdbProviderId: number,
+    providerName: string,
+    logoPath?: string
+  ): Promise<StreamingServiceData | null> {
     try {
       // Check if provider already exists
       const { data: existingService, error: fetchError } = await supabase
@@ -538,8 +556,11 @@ export class StreamingService {
       const serviceData = {
         tmdb_provider_id: tmdbProviderId,
         name: providerName,
-        logo_path: logoPath && logoPath.includes('/') ? logoPath.substring(logoPath.lastIndexOf('/')) : logoPath,
-        homepage: null
+        logo_path:
+          logoPath && logoPath.includes('/')
+            ? logoPath.substring(logoPath.lastIndexOf('/'))
+            : logoPath,
+        homepage: null,
       };
 
       const { data: newServices, error: createError } = await supabase
@@ -559,9 +580,10 @@ export class StreamingService {
         return null;
       }
 
-      console.log(`🔍 Auto-discovered new streaming provider: ${providerName} (TMDB ID: ${tmdbProviderId})`);
+      console.log(
+        `🔍 Auto-discovered new streaming provider: ${providerName} (TMDB ID: ${tmdbProviderId})`
+      );
       return newService;
-
     } catch (error) {
       console.error(`Failed to auto-discover provider ${providerName} (${tmdbProviderId}):`, error);
       return null;

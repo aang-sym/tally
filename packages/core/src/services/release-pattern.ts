@@ -1,4 +1,4 @@
-import type { EpisodeMetadata, ReleasePattern, ReleasePatternAnalysis } from '../types';
+import type { EpisodeMetadata, ReleasePatternAnalysis } from '../types';
 
 export class ReleasePatternService {
   /**
@@ -9,7 +9,7 @@ export class ReleasePatternService {
       return {
         pattern: { pattern: 'unknown', confidence: 0 },
         episodes,
-        diagnostics: { avgInterval: 0, stdDev: 0, intervals: [] }
+        diagnostics: { avgInterval: 0, stdDev: 0, intervals: [] },
       };
     }
 
@@ -22,7 +22,9 @@ export class ReleasePatternService {
     }
 
     const avgInterval = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
-    const variance = intervals.reduce((sum, interval) => sum + Math.pow(interval - avgInterval, 2), 0) / intervals.length;
+    const variance =
+      intervals.reduce((sum, interval) => sum + Math.pow(interval - avgInterval, 2), 0) /
+      intervals.length;
     const stdDev = Math.sqrt(variance);
 
     // Determine pattern based on intervals
@@ -42,7 +44,7 @@ export class ReleasePatternService {
     return {
       pattern: { pattern, confidence },
       episodes,
-      diagnostics: { avgInterval, stdDev, intervals }
+      diagnostics: { avgInterval, stdDev, intervals },
     };
   }
 

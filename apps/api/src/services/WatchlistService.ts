@@ -1,6 +1,6 @@
 /**
  * Watchlist Service
- * 
+ *
  * Handles user show tracking operations including watchlist management,
  * watching progress, and status transitions between different states.
  */
@@ -32,11 +32,13 @@ export interface UserShowWithDetails extends UserShow {
   progress?: {
     totalEpisodes: number;
     watchedEpisodes: number;
-    currentEpisode?: {
-      season_number: number;
-      episode_number: number;
-      name?: string;
-    } | undefined;
+    currentEpisode?:
+      | {
+          season_number: number;
+          episode_number: number;
+          name?: string;
+        }
+      | undefined;
   };
 }
 
@@ -53,31 +55,39 @@ export class WatchlistService {
       userTokenLength: userToken?.length || 0,
       clientType: userToken ? 'authenticated_user' : 'anonymous',
       fixApplied: 'Reverted to authenticated client for RLS/RPCs',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 
   /**
    * Add a show to user's watchlist
    */
-  async addToWatchlist(userId: string, tmdbId: number, status: 'watchlist' | 'watching' = 'watchlist'): Promise<UserShow | null> {
+  async addToWatchlist(
+    userId: string,
+    tmdbId: number,
+    status: 'watchlist' | 'watching' = 'watchlist'
+  ): Promise<UserShow | null> {
     try {
       console.log('📝 [WATCHLIST_SERVICE] Starting addToWatchlist:', {
         userId,
         tmdbId,
         status,
         clientType: this.client === supabase ? 'anonymous' : 'authenticated_user',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       // Get or create the show first, using the service client to bypass RLS
       // This is an admin-like operation, so it's acceptable to use serviceSupabase here
-      console.log('🎭 [WATCHLIST_SERVICE] Getting/creating show via ShowService with serviceSupabase...');
+      console.log(
+        '🎭 [WATCHLIST_SERVICE] Getting/creating show via ShowService with serviceSupabase...'
+      );
       let show = await showService.getOrCreateShow(tmdbId, serviceSupabase);
-      
+
       if (!show) {
-        console.warn('⚠️ [WATCHLIST_SERVICE] ShowService failed, attempting fallback show creation...');
-        
+        console.warn(
+          '⚠️ [WATCHLIST_SERVICE] ShowService failed, attempting fallback show creation...'
+        );
+
         // Fallback: Create a minimal show entry for immediate use
         const fallbackShowData = {
           tmdb_id: tmdbId,
@@ -85,58 +95,58 @@ export class WatchlistService {
           status: 'Airing' as const,
           overview: `Show data from TMDB ID ${tmdbId} - will be updated when TMDB service is available`,
           tmdb_last_updated: new Date().toISOString(),
-          is_popular: false
+          is_popular: false,
         };
-        
+
         console.log('🔄 [WATCHLIST_SERVICE] Creating fallback show entry:', fallbackShowData);
-        
+
         const { data: fallbackShow, error: fallbackError } = await serviceSupabase
           .from('shows')
           .upsert(fallbackShowData)
           .select()
           .single();
-          
+
         if (fallbackError) {
           console.error('❌ [WATCHLIST_SERVICE] Fallback show creation also failed:', {
             error: fallbackError,
             errorMessage: fallbackError.message,
             errorCode: fallbackError.code,
-            tmdbId
+            tmdbId,
           });
           throw new Error(`Failed to create show data: ${fallbackError.message}`);
         }
-        
+
         show = fallbackShow;
         console.log('✅ [WATCHLIST_SERVICE] Fallback show created successfully:', {
           showId: fallbackShow.id,
           title: fallbackShow.title,
-          tmdbId: fallbackShow.tmdb_id
+          tmdbId: fallbackShow.tmdb_id,
         });
       }
-      
+
       // At this point, show should never be null
       if (!show) {
         console.error('❌ [WATCHLIST_SERVICE] Show is still null after all attempts');
         throw new Error('Unable to create or retrieve show data');
       }
-      
+
       console.log('✅ [WATCHLIST_SERVICE] Show retrieved/created:', {
         showId: show.id,
         title: show.title,
-        tmdbId: show.tmdb_id
+        tmdbId: show.tmdb_id,
       });
 
       // Test both authenticated client and service client
       console.log('➕ [WATCHLIST_SERVICE] Testing INSERT with service client first...');
-      
+
       const userShowData = {
         user_id: userId,
         show_id: show.id,
         status,
         added_at: new Date().toISOString(),
         ...(status === 'watching' && {
-          started_watching_at: new Date().toISOString()
-        })
+          started_watching_at: new Date().toISOString(),
+        }),
       };
 
       // First try with serviceSupabase (should bypass RLS)
@@ -151,16 +161,16 @@ export class WatchlistService {
           error: serviceInsertError,
           errorCode: serviceInsertError.code,
           errorMessage: serviceInsertError.message,
-          userShowData
+          userShowData,
         });
         throw serviceInsertError;
       } else {
         console.log('✅ [WATCHLIST_SERVICE] Service client INSERT successful:', {
           userShowId: serviceInsertResult.id,
           showId: serviceInsertResult.show_id,
-          status: serviceInsertResult.status
+          status: serviceInsertResult.status,
         });
-        
+
         // Now test if we can read it back with authenticated client
         console.log('🔍 [WATCHLIST_SERVICE] Testing SELECT with authenticated client...');
         const { data: selectResult, error: selectError } = await this.client
@@ -173,12 +183,12 @@ export class WatchlistService {
           console.error('❌ [WATCHLIST_SERVICE] Authenticated client SELECT failed:', {
             error: selectError,
             errorCode: selectError.code,
-            errorMessage: selectError.message
+            errorMessage: selectError.message,
           });
         } else {
           console.log('✅ [WATCHLIST_SERVICE] Authenticated client SELECT successful:', {
             userShowId: selectResult.id,
-            userId: selectResult.user_id
+            userId: selectResult.user_id,
           });
         }
 
@@ -202,7 +212,7 @@ export class WatchlistService {
         errorHint: (error as any)?.hint,
         userId,
         tmdbId,
-        status
+        status,
       });
       return null;
     }
@@ -211,15 +221,19 @@ export class WatchlistService {
   /**
    * Update show status (watchlist -> watching -> completed, etc.)
    */
-  async updateShowStatus(userId: string, userShowId: string, newStatus: UserShow['status']): Promise<UserShow | null> {
+  async updateShowStatus(
+    userId: string,
+    userShowId: string,
+    newStatus: UserShow['status']
+  ): Promise<UserShow | null> {
     try {
       const updateData: Partial<UserShow> = {
         status: newStatus,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       // Set timestamps based on status
-      if (newStatus === 'watching' && !await this.hasStartedWatching(userShowId)) {
+      if (newStatus === 'watching' && !(await this.hasStartedWatching(userShowId))) {
         updateData.started_watching_at = new Date().toISOString();
       }
 
@@ -256,7 +270,7 @@ export class WatchlistService {
     try {
       console.log('➖ [WATCHLIST_SERVICE] Calling rpc_remove_from_watchlist:', { userId, showId });
       const { error: rpcError } = await this.client.rpc('rpc_remove_from_watchlist', {
-        p_show_id: showId
+        p_show_id: showId,
       });
 
       if (rpcError) {
@@ -267,7 +281,7 @@ export class WatchlistService {
           errorDetails: rpcError.details,
           errorHint: rpcError.hint,
           userId,
-          showId
+          showId,
         });
         throw rpcError;
       }
@@ -283,21 +297,26 @@ export class WatchlistService {
   /**
    * Get user's watchlist with show details
    */
-  async getUserWatchlist(userId: string, status?: UserShow['status']): Promise<UserShowWithDetails[]> {
+  async getUserWatchlist(
+    userId: string,
+    status?: UserShow['status']
+  ): Promise<UserShowWithDetails[]> {
     try {
       console.log('🔎 [WATCHLIST_SERVICE] getUserWatchlist called:', {
         userId,
         status: status || 'all',
         clientType: this.client === supabase ? 'anonymous' : 'authenticated_user',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       let query = serviceSupabase
         .from('user_shows')
-        .select(`
+        .select(
+          `
           *,
           shows (*)
-        `)
+        `
+        )
         .eq('user_id', userId);
 
       if (status) {
@@ -311,7 +330,7 @@ export class WatchlistService {
           code: (error as any)?.code,
           message: (error as any)?.message,
           details: (error as any)?.details,
-          hint: (error as any)?.hint
+          hint: (error as any)?.hint,
         });
         throw error;
       }
@@ -320,7 +339,7 @@ export class WatchlistService {
         rowCount: userShows?.length || 0,
         firstItemKeys: userShows && userShows[0] ? Object.keys(userShows[0]) : [],
         hasShowKey: userShows && userShows[0] ? 'show' in userShows[0] : false,
-        hasShowsKey: userShows && userShows[0] ? 'shows' in userShows[0] : false
+        hasShowsKey: userShows && userShows[0] ? 'shows' in userShows[0] : false,
       });
 
       // Enhance with progress information
@@ -329,13 +348,13 @@ export class WatchlistService {
           const progress = await this.getShowProgress(userId, userShow.show_id);
           return {
             ...userShow,
-            progress
+            progress,
           };
         })
       );
 
       console.log('✅ [WATCHLIST_SERVICE] getUserWatchlist returning:', {
-        count: showsWithProgress.length
+        count: showsWithProgress.length,
       });
 
       return showsWithProgress;
@@ -348,7 +367,10 @@ export class WatchlistService {
   /**
    * Get detailed watch progress for a show
    */
-  async getShowProgress(userId: string, showId: string): Promise<{
+  async getShowProgress(
+    userId: string,
+    showId: string
+  ): Promise<{
     totalEpisodes: number;
     watchedEpisodes: number;
     currentEpisode?: {
@@ -361,13 +383,15 @@ export class WatchlistService {
       // Get all episodes for the show
       const { data: episodes, error: episodesError } = await this.client
         .from('episodes')
-        .select(`
+        .select(
+          `
           *,
           seasons!inner (
             show_id,
             season_number
           )
-        `)
+        `
+        )
         .eq('seasons.show_id', showId);
 
       if (episodesError) throw episodesError;
@@ -375,7 +399,7 @@ export class WatchlistService {
       const totalEpisodes = episodes?.length || 0;
 
       // Get user's watched episodes
-      const episodeIds = episodes?.map(ep => ep.id) || [];
+      const episodeIds = episodes?.map((ep) => ep.id) || [];
       // Use the authenticated client for reading user_episode_progress, RLS will handle access
       const { data: watchedProgress, error: progressError } = await this.client
         .from('user_episode_progress')
@@ -389,18 +413,20 @@ export class WatchlistService {
       const watchedEpisodes = watchedProgress?.length || 0;
 
       // Find current episode (last watched + 1, or first unwatched)
-      let currentEpisode: { season_number: number; episode_number: number; name?: string } | undefined = undefined;
+      let currentEpisode:
+        | { season_number: number; episode_number: number; name?: string }
+        | undefined = undefined;
 
       if (watchedEpisodes > 0 && watchedEpisodes < totalEpisodes) {
         // Find the next unwatched episode
-        const watchedEpisodeIds = new Set(watchedProgress?.map(wp => wp.episode_id) || []);
-        const nextUnwatched = episodes?.find(ep => !watchedEpisodeIds.has(ep.id));
+        const watchedEpisodeIds = new Set(watchedProgress?.map((wp) => wp.episode_id) || []);
+        const nextUnwatched = episodes?.find((ep) => !watchedEpisodeIds.has(ep.id));
 
         if (nextUnwatched) {
           currentEpisode = {
             season_number: nextUnwatched.seasons.season_number,
             episode_number: nextUnwatched.episode_number,
-            name: nextUnwatched.name
+            name: nextUnwatched.name,
           };
         }
       } else if (watchedEpisodes === 0 && episodes && episodes.length > 0) {
@@ -416,7 +442,7 @@ export class WatchlistService {
           currentEpisode = {
             season_number: firstEpisode.seasons.season_number,
             episode_number: firstEpisode.episode_number,
-            name: firstEpisode.name
+            name: firstEpisode.name,
           };
         }
       }
@@ -431,19 +457,19 @@ export class WatchlistService {
         };
       } = {
         totalEpisodes,
-        watchedEpisodes
+        watchedEpisodes,
       };
-      
+
       if (currentEpisode) {
         result.currentEpisode = currentEpisode;
       }
-      
+
       return result;
     } catch (error) {
       console.error(`Failed to get show progress for show ${showId}:`, error);
       return {
         totalEpisodes: 0,
-        watchedEpisodes: 0
+        watchedEpisodes: 0,
       };
     }
   }
@@ -462,7 +488,7 @@ export class WatchlistService {
         .from('user_shows')
         .update({
           show_rating: rating,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', userShowId)
         .eq('user_id', userId);
@@ -485,7 +511,7 @@ export class WatchlistService {
         .from('user_shows')
         .update({
           notes,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', userShowId)
         .eq('user_id', userId);
@@ -522,23 +548,25 @@ export class WatchlistService {
           watchlist: 0,
           watching: 0,
           completed: 0,
-          dropped: 0
+          dropped: 0,
         } as Record<UserShow['status'], number>,
         totalHoursWatched: 0, // Would need episode runtime data
-        averageRating: 0
+        averageRating: 0,
       };
 
       // Count by status
-      userShows?.forEach(show => {
+      userShows?.forEach((show) => {
         if (show.status in stats.byStatus) {
           stats.byStatus[show.status as UserShow['status']]++;
         }
       });
 
       // Calculate average rating
-      const ratingsWithValues = userShows?.filter(s => s.show_rating !== null) || [];
+      const ratingsWithValues = userShows?.filter((s) => s.show_rating !== null) || [];
       if (ratingsWithValues.length > 0) {
-        stats.averageRating = ratingsWithValues.reduce((sum, show) => sum + (show.show_rating || 0), 0) / ratingsWithValues.length;
+        stats.averageRating =
+          ratingsWithValues.reduce((sum, show) => sum + (show.show_rating || 0), 0) /
+          ratingsWithValues.length;
         stats.averageRating = Math.round(stats.averageRating * 10) / 10; // Round to 1 decimal
       }
 
@@ -549,7 +577,7 @@ export class WatchlistService {
         totalShows: 0,
         byStatus: { watchlist: 0, watching: 0, completed: 0, dropped: 0 },
         totalHoursWatched: 0,
-        averageRating: 0
+        averageRating: 0,
       };
     }
   }
@@ -565,20 +593,26 @@ export class WatchlistService {
     progress: number
   ): Promise<boolean> {
     try {
-      console.log('▶️ [WATCHLIST_SERVICE] Upserting user_episode_progress (service role):', { userId, showId, episodeId, state, progress });
+      console.log('▶️ [WATCHLIST_SERVICE] Upserting user_episode_progress (service role):', {
+        userId,
+        showId,
+        episodeId,
+        state,
+        progress,
+      });
 
-      const { error: upsertError } = await serviceSupabase
-        .from('user_episode_progress')
-        .upsert(
-          [{
+      const { error: upsertError } = await serviceSupabase.from('user_episode_progress').upsert(
+        [
+          {
             user_id: userId,
             show_id: showId,
             episode_id: episodeId,
             state,
-            progress
-          }],
-          { onConflict: 'user_id,show_id,episode_id' }
-        );
+            progress,
+          },
+        ],
+        { onConflict: 'user_id,show_id,episode_id' }
+      );
 
       if (upsertError) {
         console.error('❌ [WATCHLIST_SERVICE] Upsert user_episode_progress failed:', {
@@ -591,7 +625,7 @@ export class WatchlistService {
           showId,
           episodeId,
           state,
-          progress
+          progress,
         });
         throw upsertError;
       }
@@ -667,7 +701,11 @@ export class WatchlistService {
    * Helper method to find streaming service UUID by TMDB provider ID
    * Creates the service if it doesn't exist
    */
-  private async getStreamingServiceUUID(tmdbProviderId: number, providerName: string, logoUrl?: string): Promise<string | null> {
+  private async getStreamingServiceUUID(
+    tmdbProviderId: number,
+    providerName: string,
+    logoUrl?: string
+  ): Promise<string | null> {
     try {
       // First try to find by TMDB provider ID
       const { data: serviceById } = await serviceSupabase
@@ -692,17 +730,25 @@ export class WatchlistService {
       }
 
       // Create new streaming service if it doesn't exist
-      const logoPath = logoUrl ? (() => {
-        try { return new URL(logoUrl).pathname; } catch { return null; }
-      })() : null;
+      const logoPath = logoUrl
+        ? (() => {
+            try {
+              return new URL(logoUrl).pathname;
+            } catch {
+              return null;
+            }
+          })()
+        : null;
 
       const { data: newService, error: insertError } = await serviceSupabase
         .from('streaming_services')
-        .insert([{
-          tmdb_provider_id: tmdbProviderId,
-          name: providerName,
-          logo_path: logoPath
-        }])
+        .insert([
+          {
+            tmdb_provider_id: tmdbProviderId,
+            name: providerName,
+            logo_path: logoPath,
+          },
+        ])
         .select('id')
         .single();
 
@@ -710,7 +756,7 @@ export class WatchlistService {
         console.error('[WATCHLIST_SERVICE] Failed to create streaming service:', {
           tmdbProviderId,
           providerName,
-          error: insertError
+          error: insertError,
         });
         return null;
       }
@@ -718,7 +764,7 @@ export class WatchlistService {
       console.log('[WATCHLIST_SERVICE] Created new streaming service:', {
         tmdbProviderId,
         providerName,
-        uuid: newService.id
+        uuid: newService.id,
       });
 
       return newService.id;
@@ -731,7 +777,7 @@ export class WatchlistService {
   async updateStreamingProvider(
     userId: string,
     userShowId: string,
-    provider: { id: number; name: string; logo_url: string } | null
+    provider: { id: number; name: string; logo_path: string } | null
   ): Promise<boolean> {
     try {
       // Manual authorization: verify ownership first using service role
@@ -752,23 +798,26 @@ export class WatchlistService {
         selectedServiceId = await this.getStreamingServiceUUID(
           provider.id,
           provider.name,
-          provider.logo_url
+          provider.logo_path
         );
 
         if (!selectedServiceId) {
-          console.error('[WATCHLIST_SERVICE] updateStreamingProvider: failed to resolve service UUID', {
-            userId,
-            userShowId,
-            tmdbProviderId: provider.id,
-            providerName: provider.name
-          });
+          console.error(
+            '[WATCHLIST_SERVICE] updateStreamingProvider: failed to resolve service UUID',
+            {
+              userId,
+              userShowId,
+              tmdbProviderId: provider.id,
+              providerName: provider.name,
+            }
+          );
           return false;
         }
       }
 
       const updateData: Partial<UserShow> = {
         selected_service_id: selectedServiceId,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       // Use serviceSupabase to bypass RLS after manual auth check
@@ -824,7 +873,7 @@ export class WatchlistService {
 
       const updateData: Partial<UserShow> = {
         country_code: countryCode,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       const { data, error } = await serviceSupabase
@@ -859,11 +908,7 @@ export class WatchlistService {
     }
   }
 
-  async updateBufferDays(
-    userId: string,
-    userShowId: string,
-    bufferDays: number
-  ): Promise<boolean> {
+  async updateBufferDays(userId: string, userShowId: string, bufferDays: number): Promise<boolean> {
     try {
       // Manual authorization: verify ownership
       const owns = await this.verifyOwnership(userId, userShowId);
@@ -878,7 +923,7 @@ export class WatchlistService {
 
       const updateData: Partial<UserShow> = {
         buffer_days: bufferDays,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       const { data, error } = await serviceSupabase

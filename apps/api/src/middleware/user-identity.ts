@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 
 // Extend the Express Request type to include our custom properties
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     export interface Request {
       userId?: string;
@@ -31,7 +32,7 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
       success: false,
-      error: 'Authorization token required. Please provide a valid Bearer token.'
+      error: 'Authorization token required. Please provide a valid Bearer token.',
     });
   }
 
@@ -43,7 +44,7 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
       console.error('[authenticateUser] JWT_SECRET not configured');
       return res.status(500).json({
         success: false,
-        error: 'Authentication service not configured'
+        error: 'Authentication service not configured',
       });
     }
 
@@ -55,7 +56,7 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
     req.user = {
       id: decoded.userId,
       email: decoded.email,
-      displayName: decoded.displayName
+      displayName: decoded.displayName,
     };
 
     next();
@@ -63,21 +64,21 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
     if (error instanceof jwt.TokenExpiredError) {
       return res.status(401).json({
         success: false,
-        error: 'Token has expired. Please login again.'
+        error: 'Token has expired. Please login again.',
       });
     }
 
     if (error instanceof jwt.JsonWebTokenError) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid token. Please login again.'
+        error: 'Invalid token. Please login again.',
       });
     }
 
     console.error('[authenticateUser] Unexpected error:', error);
     return res.status(500).json({
       success: false,
-      error: 'Authentication error'
+      error: 'Authentication error',
     });
   }
 };
@@ -109,7 +110,7 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
     req.user = {
       id: decoded.userId,
       email: decoded.email,
-      displayName: decoded.displayName
+      displayName: decoded.displayName,
     };
 
     next();

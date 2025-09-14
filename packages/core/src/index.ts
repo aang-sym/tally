@@ -1,14 +1,14 @@
 import type { ServiceWindow, SavingsEstimate } from '@tally/types';
 
 // Re-export streaming availability client and types
-export { 
-  StreamingAvailabilityClient, 
+export {
+  StreamingAvailabilityClient,
   StreamingAvailabilityError,
   type StreamingAvailability,
   type StreamingService as StreamingAPIService,
   type StreamingOption as StreamingAPIOption,
   type SearchResult,
-  type Episode
+  type Episode,
 } from './external/streaming-availability.js';
 
 // Re-export TMDB client and types
@@ -20,15 +20,11 @@ export {
   type TMDBEpisode,
   type TMDBSearchResult,
   type TMDBWatchProvider,
-  type TMDBWatchProviderData
+  type TMDBWatchProviderData,
 } from './external/tmdb.js';
 
 // Export types for release pattern detection
-export type { 
-  EpisodeMetadata,
-  ReleasePattern,
-  ReleasePatternAnalysis 
-} from './types';
+export type { EpisodeMetadata, ReleasePattern, ReleasePatternAnalysis } from './types';
 
 // Export release pattern service
 export { releasePatternService } from './services/release-pattern';
@@ -49,7 +45,7 @@ export const MOCK_TITLES = [
   { id: '2', title: 'The Mandalorian', serviceId: 'disney' },
   { id: '3', title: 'The Last of Us', serviceId: 'hbo' },
   { id: '4', title: 'Ted Lasso', serviceId: 'apple' },
-  { id: '5', title: 'The Handmaid\'s Tale', serviceId: 'hulu' },
+  { id: '5', title: "The Handmaid's Tale", serviceId: 'hulu' },
 ] as const;
 
 /**
@@ -93,12 +89,14 @@ export function generateActivationWindows(): ServiceWindow[] {
 export function calculateSavingsEstimate(): SavingsEstimate {
   // Mock calculation: assume user currently pays for all services year-round
   // but with smart planning only needs 6 months of subscriptions
-  const allServicesMonthly = Object.values(STREAMING_SERVICES)
-    .reduce((sum, service) => sum + service.monthlyPrice, 0);
-  
+  const allServicesMonthly = Object.values(STREAMING_SERVICES).reduce(
+    (sum, service) => sum + service.monthlyPrice,
+    0
+  );
+
   const optimizedMonthly = allServicesMonthly * 0.5; // 50% of the year subscribed
   const monthlySavings = allServicesMonthly - optimizedMonthly;
-  
+
   return {
     monthly: Math.round(monthlySavings * 100) / 100,
     yearToDate: Math.round(monthlySavings * 12 * 100) / 100,
@@ -123,7 +121,7 @@ export function getStreamingService(serviceId: string) {
  * Detect release pattern for a TV show using TMDB API
  */
 export async function detectReleasePatternFromTMDB(
-  showTitle: string, 
+  showTitle: string,
   tmdbApiKey: string
 ): Promise<{ pattern: 'weekly' | 'binge' | 'unknown'; tmdbId?: number } | null> {
   const { TMDBClient } = await import('./external/tmdb.js');

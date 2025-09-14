@@ -44,11 +44,12 @@ Primary reference: Image 2 (stacked logo bubbles), light theme only.
 
 ## Notes
 
-- Service logos: use `streaming_provider.logo_url` when available; fallback color dot.
+- Service logos: use `streaming_provider.logo_path` when available; fallback color dot.
 - Data model: compute per-provider per-day `displayType` (`logo` vs `bar` → now `pip`), with flags for `isStart`, `isEnd`, `isEndingSoon` for status dots.
 - Keep `SavingsCalendar` behavior intact by making new props optional with safe defaults.
 
 Out of Scope / Removed
+
 - Row-spanning “capsule” overlay was prototyped for comparison and removed per direction.
 
 ## Progress
@@ -68,8 +69,9 @@ Out of Scope / Removed
   - Grid/narrow mode: +N badge shown via container queries
 - [x] Dynamic pips count
   - Render a pip per active provider on the day (no hard cap)
- - [x] Calendar caching (localStorage by user+month; 6h TTL) and persisted episode cache
+- [x] Calendar caching (localStorage by user+month; 6h TTL) and persisted episode cache
 
 ## Known Issues / Follow-ups
+
 - Lock background scroll/content under the day-detail modal to avoid any underlying numbers peeking through on some screen sizes.
 - Optionally add aria-label for the stacked “+” bubble to aid screen readers.

@@ -29,6 +29,7 @@ chmod +x scripts/security-validation-tests.sh
 ```
 
 The script will test:
+
 - User signup and login
 - JWT token generation and validation
 - Protected endpoint access control
@@ -108,6 +109,7 @@ grep "JWT_SECRET" apps/api/.env
 ### Test Complete User Flow
 
 1. **Start both servers:**
+
    ```bash
    npm run dev  # Starts both API and web
    ```
@@ -129,7 +131,8 @@ grep "JWT_SECRET" apps/api/.env
 
 ### Issue: "RLS policy violation" errors
 
-**Solution:** 
+**Solution:**
+
 - Ensure you executed the RLS policies SQL file
 - Check that `auth.uid()` can extract user ID from JWT
 - Verify JWT tokens contain correct user ID
@@ -137,12 +140,14 @@ grep "JWT_SECRET" apps/api/.env
 ### Issue: "Authentication service not configured" error
 
 **Solution:**
+
 - Check `JWT_SECRET` exists in `.env` file
 - Restart the API server after adding environment variables
 
 ### Issue: Users can access other users' data
 
 **Solution:**
+
 - RLS policies not properly applied
 - Re-run the secure RLS policies SQL
 - Check Supabase is using anon key, not service key
@@ -150,6 +155,7 @@ grep "JWT_SECRET" apps/api/.env
 ### Issue: Public endpoints require authentication
 
 **Solution:**
+
 - Check server.ts route configuration
 - Public routes should use `optionalAuth` middleware
 - Protected routes should use `authenticateUser` middleware
@@ -174,6 +180,7 @@ Before deploying to production:
 ### Additional Production Requirements
 
 1. **Use strong JWT secret:**
+
    ```bash
    # Generate a secure random secret
    JWT_SECRET=$(openssl rand -base64 32)

@@ -8,10 +8,7 @@ app.use('/health', healthRouter);
 
 describe('GET /health', () => {
   it('should return health check status', async () => {
-    const response = await request(app)
-      .get('/health')
-      .expect('Content-Type', /json/)
-      .expect(200);
+    const response = await request(app).get('/health').expect('Content-Type', /json/).expect(200);
 
     expect(response.body).toMatchObject({
       ok: true,

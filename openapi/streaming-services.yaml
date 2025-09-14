@@ -1,0 +1,265 @@
+openapi: 3.1.0
+info:
+  title: Streaming Services API
+  version: 0.1.0
+  description: |
+    Endpoints for streaming services and region-scoped pricing/tiers.
+
+servers:
+  - url: http://localhost:4000
+    description: Local dev
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/streaming-services:
+    get:
+      summary: List streaming services
+      description: |
+        Returns streaming services with price tiers for a given country.
+        If `country` is omitted, the server falls back to the authenticated user's `users.country_code`, then 'US'.
+      parameters:
+        - name: country
+          in: query
+          required: false
+          description: ISO 3166-1 alpha-2 country code (e.g., AU, US)
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 2
+            example: AU
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServicesResponse'
+              examples:
+                ok:
+                  value:
+                    success: true
+                    data:
+                      services:
+                        - id: 'c38c74f5-b020-4292-9aba-6342ba529485'
+                          tmdb_provider_id: 1899
+                          name: 'HBO Max'
+                          logo_path: 'https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg'
+                          homepage: 'https://www.max.com'
+                          prices:
+                            - tier: 'Standard'
+                              amount: 14.99
+                              currency: 'USD'
+                              billing_frequency: 'monthly'
+                              active: true
+                              provider_name: 'HBO Max'
+                          default_price:
+                            tier: 'Standard'
+                            amount: 14.99
+                            currency: 'USD'
+                            billing_frequency: 'monthly'
+                            active: true
+                      count: 1
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/streaming-services/{id}:
+    get:
+      summary: Get a streaming service by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceResponse'
+              examples:
+                ok:
+                  value:
+                    success: true
+                    data:
+                      service:
+                        id: 'c38c74f5-b020-4292-9aba-6342ba529485'
+                        name: 'HBO Max'
+                        logo_path: 'https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg'
+                        homepage: 'https://www.max.com'
+        '404': { $ref: '#/components/responses/NotFound' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/streaming-services/popular:
+    get:
+      summary: List most popular services by active subscriptions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PopularServicesResponse'
+              examples:
+                ok:
+                  value:
+                    success: true
+                    data:
+                      services:
+                        - id: 'c38c74f5-b020-4292-9aba-6342ba529485'
+                          name: 'HBO Max'
+                          logo_path: 'https://image.tmdb.org/t/p/w45/jbe4gVSfRlbPTdESXhEKpornsfu.jpg'
+                          homepage: 'https://www.max.com'
+                          subscriber_count: 42
+                      count: 1
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/streaming-services/regions:
+    get:
+      summary: List common regions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegionsResponse'
+              examples:
+                ok:
+                  value:
+                    success: true
+                    data:
+                      regions:
+                        - { code: 'US', name: 'United States' }
+                        - { code: 'AU', name: 'Australia' }
+                        - { code: 'GB', name: 'United Kingdom' }
+                      count: 3
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    ServerError:
+      description: Server error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: false }
+        error: { type: string }
+        details: { type: string, nullable: true }
+
+    PriceTier:
+      type: object
+      properties:
+        tier: { type: string }
+        amount: { type: number, nullable: true }
+        currency: { type: string, nullable: true }
+        billing_frequency: { type: string, nullable: true, example: monthly }
+        active: { type: boolean, nullable: true }
+        notes: { type: string, nullable: true }
+        provider_name: { type: string, nullable: true }
+
+    Service:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tmdb_provider_id: { type: integer, nullable: true }
+        name: { type: string }
+        logo_path: { type: string, nullable: true }
+        homepage: { type: string, nullable: true }
+        prices:
+          type: array
+          items: { $ref: '#/components/schemas/PriceTier' }
+        default_price:
+          $ref: '#/components/schemas/PriceTier'
+
+    ServicesResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          type: object
+          properties:
+            services:
+              type: array
+              items: { $ref: '#/components/schemas/Service' }
+            count: { type: integer, example: 12 }
+
+    ServiceResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          type: object
+          properties:
+            service:
+              type: object
+              properties:
+                id: { type: string, format: uuid }
+                name: { type: string }
+                logo_path: { type: string, nullable: true }
+                homepage: { type: string, nullable: true }
+
+    PopularService:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        logo_path: { type: string, nullable: true }
+        homepage: { type: string, nullable: true }
+        subscriber_count: { type: integer }
+
+    PopularServicesResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          type: object
+          properties:
+            services:
+              type: array
+              items: { $ref: '#/components/schemas/PopularService' }
+            count: { type: integer, example: 10 }
+
+    Region:
+      type: object
+      properties:
+        code: { type: string, example: US }
+        name: { type: string, example: United States }
+
+    RegionsResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        data:
+          type: object
+          properties:
+            regions:
+              type: array
+              items: { $ref: '#/components/schemas/Region' }
+            count: { type: integer, example: 10 }

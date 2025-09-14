@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { HealthResponseSchema } from '@tally/types';
 
-const router = Router();
+const router: Router = Router();
 
 router.get('/', (req, res) => {
   const response = HealthResponseSchema.parse({

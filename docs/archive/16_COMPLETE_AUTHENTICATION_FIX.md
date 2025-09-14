@@ -7,6 +7,7 @@
 ## Problem Summary
 
 The application was experiencing a "chicken-and-egg" authentication problem where:
+
 - UserSwitcher couldn't load test users (401 errors)
 - All protected pages (MyShows, Dashboard, Calendar, etc.) failed with authentication errors
 - Frontend was using mixed authentication patterns (x-user-id headers vs JWT tokens)
@@ -23,6 +24,7 @@ The application was experiencing a "chicken-and-egg" authentication problem wher
 ### 1. Backend Changes
 
 #### `/apps/api/src/routes/users.ts`
+
 - **Made GET `/api/users` endpoint public** (line 212): Removed `authenticateUser` middleware requirement
 - **Added environment protection**: Only allows access in development, returns 403 in production
 - **Added test user filtering**: Plans to return only test users for security
@@ -53,6 +55,7 @@ router.get('/', async (req: Request, res: Response) => {
 ### 2. Frontend Changes
 
 #### `/apps/web/src/pages/SearchShows.tsx`
+
 - **Converted authentication calls** to use JWT tokens with `apiRequest` helper
 - **Fixed episode progress tracking**: `checkWatchlistStatus`, `fetchEpisodeProgress`, and `setEpisodeProgress` functions
 - **Added proper error handling** for authentication failures
@@ -61,19 +64,20 @@ router.get('/', async (req: Request, res: Response) => {
 // Before: Raw fetch with x-user-id header
 const userId = UserManager.getCurrentUserId();
 const response = await fetch(endpoint, {
-  headers: { 'x-user-id': userId }
+  headers: { 'x-user-id': userId },
 });
 
-// After: JWT authentication with apiRequest helper  
+// After: JWT authentication with apiRequest helper
 const token = localStorage.getItem('authToken') || undefined;
 const data = await apiRequest(endpoint, {}, token);
 ```
 
 #### `/apps/web/src/pages/MyShows.tsx`
+
 - **Converted 7 authentication calls** to use JWT tokens:
   1. `rateShow` function (line 209)
   2. `updateStreamingProvider` function (line 242)
-  3. `removeShow` function (line 283) 
+  3. `removeShow` function (line 283)
   4. `fetchSeasonEpisodes` progress fetch (line 367)
   5. `markEpisodeWatched` function (line 430)
   6. Buffer days update (line 922)
@@ -82,6 +86,7 @@ const data = await apiRequest(endpoint, {}, token);
 ### 3. Testing Results
 
 #### API Endpoint Validation
+
 - ✅ **Public users endpoint**: Returns all 14 users including test users (Emma Chen, Alex Rodriguez, Sarah Johnson, Mike Thompson)
 - ✅ **JWT Authentication**: Valid tokens allow access to protected endpoints
 - ✅ **Authentication Rejection**: Invalid tokens properly rejected with appropriate error messages
@@ -89,21 +94,23 @@ const data = await apiRequest(endpoint, {}, token);
 - ✅ **Public Endpoints**: Work without authentication as expected
 
 #### Test Flow Validation
+
 ```bash
 # 1. Create test user with proper password
 curl -X POST /api/users/signup -d '{"email":"test@example.com","password":"testpass123","displayName":"Test User"}'
 # Returns: JWT token
 
-# 2. Use JWT token with protected endpoint  
+# 2. Use JWT token with protected endpoint
 curl -H "Authorization: Bearer [JWT_TOKEN]" /api/recommendations/optimization
 # Returns: Success with data
 
 # 3. Test invalid token rejection
-curl -H "Authorization: Bearer invalid-token" /api/recommendations/optimization  
+curl -H "Authorization: Bearer invalid-token" /api/recommendations/optimization
 # Returns: {"success":false,"error":"Invalid token. Please login again."}
 ```
 
 #### Frontend Compilation
+
 - ✅ **No compilation errors** after JWT authentication conversions
 - ✅ **All imports resolved** correctly with centralized `API_ENDPOINTS` and `apiRequest`
 
@@ -118,9 +125,11 @@ curl -H "Authorization: Bearer invalid-token" /api/recommendations/optimization
 ## Files Modified
 
 ### Backend
+
 - `/apps/api/src/routes/users.ts` - Core authentication endpoint fix
 
-### Frontend  
+### Frontend
+
 - `/apps/web/src/pages/SearchShows.tsx` - JWT conversion for episode progress
 - `/apps/web/src/pages/MyShows.tsx` - JWT conversion for all watchlist operations
 
@@ -128,31 +137,33 @@ curl -H "Authorization: Bearer invalid-token" /api/recommendations/optimization
 
 ```bash
 # Test users endpoint (should return test users)
-curl http://localhost:3001/api/users
+curl http://localhost:4000/api/users
 
 # Test JWT authentication flow
-curl -X POST http://localhost:3001/api/users/signup \
+curl -X POST http://localhost:4000/api/users/signup \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"testpass123","displayName":"Test User"}'
 
 # Use returned JWT token with protected endpoint
 curl -H "Authorization: Bearer [JWT_TOKEN]" \
-  http://localhost:3001/api/recommendations/optimization
+  http://localhost:4000/api/recommendations/optimization
 ```
 
 ## Issue Resolution
 
 ### Before Fix
+
 - ❌ UserSwitcher: 401 authentication errors, no users displayed
-- ❌ SearchShows: "Authorization token required" errors on episode progress  
+- ❌ SearchShows: "Authorization token required" errors on episode progress
 - ❌ MyShows: "Failed to load your shows" due to authentication failures
 - ❌ Dashboard: Empty watchlist stats and recommendations
 - ❌ Calendar: Failed to load user data
 
-### After Fix  
+### After Fix
+
 - ✅ UserSwitcher: Loads all test users successfully
 - ✅ SearchShows: Episode progress tracking works with JWT authentication
-- ✅ MyShows: Full watchlist functionality with JWT authentication  
+- ✅ MyShows: Full watchlist functionality with JWT authentication
 - ✅ Dashboard: Watchlist stats and recommendations load properly
 - ✅ Calendar: User data loads successfully
 - ✅ End-to-end authentication flow fully functional

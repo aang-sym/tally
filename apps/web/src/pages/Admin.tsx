@@ -1,6 +1,6 @@
 /**
  * Admin/Dev Tools Page
- * 
+ *
  * Development and administrative tools for user management and system testing.
  * Only accessible in development mode.
  */
@@ -32,6 +32,13 @@ const Admin: React.FC = () => {
   const [creating, setCreating] = useState(false);
   const [bulkCreating, setBulkCreating] = useState(false);
 
+  useEffect(() => {
+    // Only load users if in development mode
+    if (process.env.NODE_ENV === 'development') {
+      loadUsers();
+    }
+  }, []);
+
   // Check if we're in development mode
   if (process.env.NODE_ENV !== 'development') {
     return (
@@ -44,10 +51,6 @@ const Admin: React.FC = () => {
       </div>
     );
   }
-
-  useEffect(() => {
-    loadUsers();
-  }, []);
 
   const loadUsers = async () => {
     try {
@@ -68,20 +71,26 @@ const Admin: React.FC = () => {
             stats: {
               totalShows: statsData.data.stats.totalShows || 0,
               activeSubscriptions: statsData.data.stats.activeSubscriptions || 0,
-              monthlySpend: statsData.data.stats.monthlySpend || 0
-            }
+              monthlySpend: statsData.data.stats.monthlySpend || 0,
+            },
           };
         } catch (err) {
           console.warn(`Failed to load stats for user ${user.id}:`, err);
-          return { userId: user.id, stats: { totalShows: 0, activeSubscriptions: 0, monthlySpend: 0 } };
+          return {
+            userId: user.id,
+            stats: { totalShows: 0, activeSubscriptions: 0, monthlySpend: 0 },
+          };
         }
       });
 
       const statsResults = await Promise.all(statsPromises);
-      const statsMap = statsResults.reduce((acc, { userId, stats }) => {
-        acc[userId] = stats;
-        return acc;
-      }, {} as Record<string, UserStats>);
+      const statsMap = statsResults.reduce(
+        (acc, { userId, stats }) => {
+          acc[userId] = stats;
+          return acc;
+        },
+        {} as Record<string, UserStats>
+      );
 
       setUserStats(statsMap);
     } catch (err) {
@@ -96,20 +105,24 @@ const Admin: React.FC = () => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
-    
+
     const userData = {
       displayName: formData.get('displayName') as string,
-      email: formData.get('email') as string
+      email: formData.get('email') as string,
     };
 
     try {
       setCreating(true);
       const token = localStorage.getItem('authToken') || undefined;
-      await apiRequest(API_ENDPOINTS.users.base, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData)
-      }, token);
+      await apiRequest(
+        API_ENDPOINTS.users.base,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(userData),
+        },
+        token
+      );
 
       form.reset();
       await loadUsers();
@@ -128,10 +141,14 @@ const Admin: React.FC = () => {
 
     try {
       const token = localStorage.getItem('authToken') || undefined;
-      await apiRequest(`${API_ENDPOINTS.users.base}/${userId}`, {
-        method: 'DELETE'
-      }, token);
-      
+      await apiRequest(
+        `${API_ENDPOINTS.users.base}/${userId}`,
+        {
+          method: 'DELETE',
+        },
+        token
+      );
+
       await loadUsers();
     } catch (err: any) {
       console.error('Failed to delete user:', err);
@@ -145,17 +162,21 @@ const Admin: React.FC = () => {
       { displayName: 'Bob Smith', email: 'bob.smith@example.com' },
       { displayName: 'Carol Davis', email: 'carol.davis@example.com' },
       { displayName: 'David Wilson', email: 'david.wilson@example.com' },
-      { displayName: 'Eva Garcia', email: 'eva.garcia@example.com' }
+      { displayName: 'Eva Garcia', email: 'eva.garcia@example.com' },
     ];
 
     try {
       setBulkCreating(true);
       const token = localStorage.getItem('authToken') || undefined;
-      await apiRequest(`${API_ENDPOINTS.users.base}/bulk-create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ users: sampleUsers })
-      }, token);
+      await apiRequest(
+        `${API_ENDPOINTS.users.base}/bulk-create`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ users: sampleUsers }),
+        },
+        token
+      );
 
       await loadUsers();
     } catch (err: any) {
@@ -188,7 +209,7 @@ const Admin: React.FC = () => {
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
             <p className="text-red-800">{error}</p>
-            <button 
+            <button
               onClick={loadUsers}
               className="mt-2 px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-800 rounded transition-colors"
             >
@@ -247,12 +268,16 @@ const Admin: React.FC = () => {
                               <p className="text-sm text-gray-500">{user.email}</p>
                               <div className="flex items-center space-x-4 mt-1 text-xs text-gray-400">
                                 <span>{userStats[user.id]?.totalShows || 0} shows</span>
-                                <span>{userStats[user.id]?.activeSubscriptions || 0} subscriptions</span>
-                                <span>${(userStats[user.id]?.monthlySpend || 0).toFixed(2)}/month</span>
+                                <span>
+                                  {userStats[user.id]?.activeSubscriptions || 0} subscriptions
+                                </span>
+                                <span>
+                                  ${(userStats[user.id]?.monthlySpend || 0).toFixed(2)}/month
+                                </span>
                               </div>
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center space-x-2">
                             {user.is_test_user && (
                               <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">
@@ -287,7 +312,7 @@ const Admin: React.FC = () => {
           <div>
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">Create Test User</h2>
-              
+
               <form onSubmit={createUser} className="space-y-4">
                 <div>
                   <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
@@ -302,7 +327,7 @@ const Admin: React.FC = () => {
                     placeholder="John Doe"
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                     Email
@@ -316,7 +341,7 @@ const Admin: React.FC = () => {
                     placeholder="john.doe@example.com"
                   />
                 </div>
-                
+
                 <button
                   type="submit"
                   disabled={creating}
@@ -336,7 +361,9 @@ const Admin: React.FC = () => {
                   </div>
                   <div className="flex justify-between">
                     <span>Test Users:</span>
-                    <span className="font-medium">{users.filter(u => u.is_test_user).length}</span>
+                    <span className="font-medium">
+                      {users.filter((u) => u.is_test_user).length}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Current User:</span>
@@ -364,7 +391,7 @@ const Admin: React.FC = () => {
               <h3 className="font-medium text-gray-900">Health Check</h3>
               <p className="text-sm text-gray-600">View API health status</p>
             </a>
-            
+
             <a
               href="/api/usage-stats"
               target="_blank"
@@ -375,7 +402,7 @@ const Admin: React.FC = () => {
               <h3 className="font-medium text-gray-900">Usage Stats</h3>
               <p className="text-sm text-gray-600">View API usage statistics</p>
             </a>
-            
+
             <a
               href="/api/streaming-quota"
               target="_blank"
@@ -386,7 +413,7 @@ const Admin: React.FC = () => {
               <h3 className="font-medium text-gray-900">Quota Monitor</h3>
               <p className="text-sm text-gray-600">Check streaming API quotas</p>
             </a>
-            
+
             <button
               onClick={() => window.location.reload()}
               className="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors text-left"

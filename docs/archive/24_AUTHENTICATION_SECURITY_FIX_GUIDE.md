@@ -28,7 +28,7 @@ constructor(userToken?: string) {
 **Why this was dangerous:**
 
 1. **RLS Bypass**: Service role client bypasses all Row Level Security policies
-2. **Security Leak Risk**: If service key was exposed in browser bundles or logs, it would be a critical vulnerability  
+2. **Security Leak Risk**: If service key was exposed in browser bundles or logs, it would be a critical vulnerability
 3. **User Isolation Failure**: No guarantee operations were scoped to the correct user
 4. **Inconsistent Access**: Mixed client usage caused reads/writes to use different security contexts
 5. **FK Validation Issues**: Foreign key checks failed when switching between authenticated and service contexts
@@ -40,7 +40,7 @@ The original RLS policies were overly restrictive, particularly the `shows` tabl
 ```sql
 -- PROBLEMATIC POLICY
 CREATE POLICY "Authenticated can manage shows" ON shows
-  FOR ALL 
+  FOR ALL
   USING (auth.uid() IS NOT NULL)
   WITH CHECK (auth.uid() IS NOT NULL);
 ```
@@ -56,6 +56,7 @@ This `FOR ALL` policy blocked `SELECT` operations needed for foreign key validat
 Applied comprehensive RLS policies via [`010_comprehensive_rls_and_rpcs_fix.sql`](apps/api/src/db/migrations/010_comprehensive_rls_and_rpcs_fix.sql:1):
 
 #### User Shows Table Policies
+
 ```sql
 -- Enable RLS on user_shows
 ALTER TABLE user_shows ENABLE ROW LEVEL SECURITY;
@@ -77,6 +78,7 @@ USING (user_id = auth.uid());
 ```
 
 #### Shows Table Policy Fix
+
 ```sql
 -- Enable RLS on shows
 ALTER TABLE shows ENABLE ROW LEVEL SECURITY;
@@ -94,6 +96,7 @@ This crucial change allows all authenticated users to read `shows` data for fore
 Created secure RPC functions that run with elevated privileges but derive user context from JWT:
 
 #### Add to Watchlist RPC
+
 ```sql
 CREATE OR REPLACE FUNCTION rpc_add_to_watchlist(p_show_id uuid, p_status text DEFAULT 'watchlist')
 RETURNS json
@@ -108,19 +111,20 @@ BEGIN
   IF v_user IS NULL THEN
     RAISE EXCEPTION 'User not authenticated: auth.uid() returned null';
   END IF;
-  
+
   -- Insert or update user show
   INSERT INTO user_shows(user_id, show_id, status)
   VALUES (v_user, p_show_id, COALESCE(p_status, 'watchlist'))
   ON CONFLICT (user_id, show_id) DO UPDATE
     SET status = EXCLUDED.status
   RETURNING json_build_object('id', id, 'user_id', user_id, 'show_id', show_id, 'status', status) INTO v_result;
-  
+
   RETURN v_result;
 END $$;
 ```
 
 #### Remove from Watchlist RPC
+
 ```sql
 CREATE OR REPLACE FUNCTION rpc_remove_from_watchlist(p_show_id uuid)
 RETURNS void
@@ -133,6 +137,7 @@ $$;
 ```
 
 #### Episode Progress RPC
+
 ```sql
 CREATE OR REPLACE FUNCTION rpc_set_episode_progress(
   p_show_id uuid,
@@ -171,7 +176,7 @@ RENAME COLUMN status TO state;
 
 -- Add unique constraint
 ALTER TABLE user_episode_progress
-ADD CONSTRAINT user_episode_progress_user_show_episode_key 
+ADD CONSTRAINT user_episode_progress_user_show_episode_key
 UNIQUE (user_id, show_id, episode_id);
 ```
 
@@ -184,12 +189,13 @@ UNIQUE (user_id, show_id, episode_id);
 The [`WatchlistService`](apps/api/src/services/WatchlistService.ts:40) was refactored to use authenticated clients with RLS/RPCs:
 
 #### Constructor Changes
+
 ```typescript
 constructor(userToken?: string) {
     // Use authenticated client for user-specific operations
     // RLS policies and RPCs will handle security
     this.client = userToken ? createUserClient(userToken) : supabase;
-    
+
     console.log('🔧 [WATCHLIST_SERVICE] Constructor called (REVERTED):', {
         hasUserToken: !!userToken,
         clientType: userToken ? 'authenticated_user' : 'anonymous',
@@ -199,6 +205,7 @@ constructor(userToken?: string) {
 ```
 
 #### RPC Integration
+
 Methods now use secure RPCs instead of direct database operations:
 
 ```typescript
@@ -207,13 +214,13 @@ async removeFromWatchlist(userId: string, showId: string): Promise<boolean> {
     const { error: rpcError } = await this.client.rpc('rpc_remove_from_watchlist', {
         p_show_id: showId
     });
-    
+
     if (rpcError) throw rpcError;
     return true;
 }
 
 // Set episode progress using RPC
-async setEpisodeProgress(userId: string, showId: string, episodeId: string, 
+async setEpisodeProgress(userId: string, showId: string, episodeId: string,
                         state: string, progress: number): Promise<boolean> {
     const { error: rpcError } = await this.client.rpc('rpc_set_episode_progress', {
         p_show_id: showId,
@@ -221,14 +228,16 @@ async setEpisodeProgress(userId: string, showId: string, episodeId: string,
         p_state: state,
         p_progress: progress
     });
-    
+
     if (rpcError) throw rpcError;
     return true;
 }
 ```
 
 #### Hybrid Approach for Show Creation
+
 The service uses a hybrid approach where:
+
 - **Show creation/retrieval** uses `serviceSupabase` (admin operation)
 - **User-specific operations** use authenticated client with RLS/RPCs
 
@@ -239,8 +248,8 @@ const show = await showService.getOrCreateShow(tmdbId, serviceSupabase);
 
 // Use authenticated client with RPC for user operation
 const { error: rpcError } = await this.client.rpc('rpc_add_to_watchlist', {
-    p_show_id: show.id,
-    p_status: status
+  p_show_id: show.id,
+  p_status: status,
 });
 ```
 
@@ -253,18 +262,19 @@ const { error: rpcError } = await this.client.rpc('rpc_add_to_watchlist', {
 ```sql
 -- Verify RLS policies are correctly applied
 SELECT schemaname, tablename, policyname, cmd, qual
-FROM pg_policies 
-WHERE schemaname = 'public' 
+FROM pg_policies
+WHERE schemaname = 'public'
   AND tablename IN ('shows', 'user_shows', 'user_episode_progress')
 ORDER BY tablename, policyname;
 ```
 
 **Expected Output:**
+
 ```
  schemaname | tablename         | policyname               | cmd    | qual
  public     | shows             | shows_fk_select          | SELECT | true
  public     | user_shows        | user_shows_delete_own    | DELETE | (user_id = auth.uid())
- public     | user_shows        | user_shows_insert_own    | INSERT | 
+ public     | user_shows        | user_shows_insert_own    | INSERT |
  public     | user_shows        | user_shows_select_own    | SELECT | (user_id = auth.uid())
 ```
 
@@ -280,6 +290,7 @@ ORDER BY routine_name;
 ```
 
 **Expected Output:**
+
 ```
  routine_name              | routine_type | security_type
  rpc_add_to_watchlist      | FUNCTION     | DEFINER
@@ -290,28 +301,31 @@ ORDER BY routine_name;
 ### 3. API Endpoint Testing
 
 #### Create Test User
+
 ```bash
-curl -X POST http://localhost:3001/api/users/signup \
+curl -X POST http://localhost:4000/api/users/signup \
   -H "Content-Type: application/json" \
   -d '{"email": "test@example.com", "password": "testpass123", "displayName": "Test User", "countryCode": "US"}'
 ```
 
 #### Test Watchlist Addition
+
 ```bash
 # Use JWT token from signup response
-curl -X POST http://localhost:3001/api/watchlist-v2 \
+curl -X POST http://localhost:4000/api/watchlist-v2 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{"tmdbId": 157239, "status": "watchlist"}'
 ```
 
 **Expected Success Response:**
+
 ```json
 {
   "success": true,
   "data": {
     "id": "uuid-here",
-    "userId": "user-id-here", 
+    "userId": "user-id-here",
     "showId": "show-id-here",
     "status": "watchlist",
     "addedAt": "2025-09-05T01:xx:xx.xxxZ"
@@ -321,14 +335,16 @@ curl -X POST http://localhost:3001/api/watchlist-v2 \
 ```
 
 #### Test Watchlist Retrieval
+
 ```bash
-curl -X GET http://localhost:3001/api/watchlist-v2 \
+curl -X GET http://localhost:4000/api/watchlist-v2 \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
 #### Test Episode Progress
+
 ```bash
-curl -X POST http://localhost:3001/api/progress \
+curl -X POST http://localhost:4000/api/progress \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{"showId": "SHOW_UUID", "episodeId": "EPISODE_UUID", "state": "watched", "progress": 100}'
@@ -344,16 +360,20 @@ fetch('/api/watchlist-v2', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${localStorage.getItem('token')}`
+    Authorization: `Bearer ${localStorage.getItem('token')}`,
   },
-  body: JSON.stringify({tmdbId: 157239, status: 'watchlist'})
-}).then(r => r.json()).then(console.log);
+  body: JSON.stringify({ tmdbId: 157239, status: 'watchlist' }),
+})
+  .then((r) => r.json())
+  .then(console.log);
 
 // Test remove from watchlist
 fetch('/api/watchlist-v2/SHOW_ID', {
   method: 'DELETE',
-  headers: {'Authorization': `Bearer ${localStorage.getItem('token')}`}
-}).then(r => r.json()).then(console.log);
+  headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+})
+  .then((r) => r.json())
+  .then(console.log);
 ```
 
 ---
@@ -365,12 +385,14 @@ fetch('/api/watchlist-v2/SHOW_ID', {
 Execute the following SQL migrations in order:
 
 #### Migration 009: User Episode Progress Schema
+
 ```bash
 # Run in Supabase SQL Editor or via CLI
 psql -h your-db-host -U postgres -d postgres -f apps/api/src/db/migrations/009_fix_user_episode_progress_schema.sql
 ```
 
-#### Migration 010: Comprehensive RLS and RPCs Fix  
+#### Migration 010: Comprehensive RLS and RPCs Fix
+
 ```bash
 # Run in Supabase SQL Editor or via CLI
 psql -h your-db-host -U postgres -d postgres -f apps/api/src/db/migrations/010_comprehensive_rls_and_rpcs_fix.sql
@@ -385,7 +407,7 @@ npm run build
 npm run deploy
 
 # Deploy frontend if needed
-cd ../web  
+cd ../web
 npm run build
 npm run deploy
 ```
@@ -393,6 +415,7 @@ npm run deploy
 ### 3. Verify Migration Success
 
 Run the verification SQL queries above to confirm:
+
 - ✅ RLS policies are correctly applied
 - ✅ RPC functions are created with DEFINER security
 - ✅ Database constraints are in place
@@ -402,12 +425,14 @@ Run the verification SQL queries above to confirm:
 ## Testing Checklist
 
 ### Database Level Tests
+
 - [ ] RLS policies exist for `user_shows`, `shows`, `user_episode_progress`
 - [ ] RPC functions `rpc_add_to_watchlist`, `rpc_remove_from_watchlist`, `rpc_set_episode_progress` exist
 - [ ] Functions have `SECURITY DEFINER` and correct permissions
 - [ ] Unique constraints exist on `user_shows` and `user_episode_progress`
 
 ### API Level Tests
+
 - [ ] User signup creates valid JWT token
 - [ ] POST `/api/watchlist-v2` adds show successfully (returns 201)
 - [ ] GET `/api/watchlist-v2` returns user's shows only
@@ -415,7 +440,8 @@ Run the verification SQL queries above to confirm:
 - [ ] POST `/api/progress` sets episode progress successfully
 - [ ] No PGRST301 errors in API logs
 
-### Frontend Integration Tests  
+### Frontend Integration Tests
+
 - [ ] Login flow works and stores JWT token
 - [ ] Add show to watchlist button works
 - [ ] MyShows page displays user's shows
@@ -424,6 +450,7 @@ Run the verification SQL queries above to confirm:
 - [ ] User isolation: User A cannot see User B's data
 
 ### Security Tests
+
 - [ ] Anonymous users cannot access protected endpoints
 - [ ] Invalid tokens are rejected
 - [ ] Users can only access their own data
@@ -439,6 +466,7 @@ Run the verification SQL queries above to confirm:
 While the main PGRST301 issue is resolved, you may still encounter this error in these scenarios:
 
 **Scenario A: Missing Episodes Data**
+
 ```
 Error: PGRST301 when setting episode progress
 Cause: Episode ID doesn't exist in episodes table
@@ -446,7 +474,8 @@ Solution: Ensure episodes are populated via TMDB sync before setting progress
 ```
 
 **Scenario B: Malformed UUIDs**
-```  
+
+```
 Error: PGRST301 with "wrong key type"
 Cause: Sending string ID where UUID expected
 Solution: Validate UUID format before API calls
@@ -455,30 +484,33 @@ Solution: Validate UUID format before API calls
 ### 2. Performance Considerations
 
 **Large Watchlists**: Users with 100+ shows may experience slower load times
+
 - **Mitigation**: Implement pagination on `/api/watchlist-v2` endpoint
 - **Monitoring**: Add performance logging to identify bottlenecks
 
 **Episode Progress Queries**: Complex progress calculations for shows with many seasons
+
 - **Mitigation**: Consider caching progress summaries
 - **Alternative**: Pre-compute progress in background job
 
 ### 3. Data Migration Issues
 
 **Existing Bad Data**: Some users may have orphaned records from the service client era
+
 ```sql
 -- Clean up orphaned user_shows records
-DELETE FROM user_shows 
+DELETE FROM user_shows
 WHERE show_id NOT IN (SELECT id FROM shows);
 
 -- Standardize status values
-UPDATE user_shows 
-SET status = 'watchlist' 
+UPDATE user_shows
+SET status = 'watchlist'
 WHERE status IS NULL OR status NOT IN ('watchlist', 'watching', 'completed', 'dropped');
 ```
 
 ---
 
-## Security Validation  
+## Security Validation
 
 ### 1. User Isolation Verification
 
@@ -486,11 +518,11 @@ Test that users can only access their own data:
 
 ```sql
 -- Create two test users
-INSERT INTO users (id, email, display_name) VALUES 
+INSERT INTO users (id, email, display_name) VALUES
 ('11111111-1111-1111-1111-111111111111', 'user1@test.com', 'User 1'),
 ('22222222-2222-2222-2222-222222222222', 'user2@test.com', 'User 2');
 
--- Add shows for each user  
+-- Add shows for each user
 INSERT INTO user_shows (user_id, show_id, status) VALUES
 ('11111111-1111-1111-1111-111111111111', (SELECT id FROM shows LIMIT 1), 'watchlist'),
 ('22222222-2222-2222-2222-222222222222', (SELECT id FROM shows LIMIT 1), 'watching');
@@ -505,14 +537,14 @@ Verify RPCs properly authenticate and authorize:
 
 ```bash
 # Test unauthenticated RPC call (should fail)
-curl -X POST http://localhost:3001/api/watchlist-v2 \
+curl -X POST http://localhost:4000/api/watchlist-v2 \
   -H "Content-Type: application/json" \
   -d '{"tmdbId": 157239, "status": "watchlist"}'
 
 # Expected: 401 Unauthorized
 
-# Test with invalid token (should fail)  
-curl -X POST http://localhost:3001/api/watchlist-v2 \
+# Test with invalid token (should fail)
+curl -X POST http://localhost:4000/api/watchlist-v2 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer invalid.token.here" \
   -d '{"tmdbId": 157239, "status": "watchlist"}'
@@ -530,11 +562,13 @@ grep -r "serviceSupabase" apps/api/src/
 ```
 
 **Acceptable Usage:**
+
 - ✅ Show creation/updates (admin operation)
 - ✅ Background data sync jobs
 - ✅ Migration scripts
 
 **Unacceptable Usage:**
+
 - ❌ User-specific CRUD operations
 - ❌ Frontend/client-side code
 - ❌ Request handlers without admin context
@@ -544,7 +578,7 @@ grep -r "serviceSupabase" apps/api/src/
 Ensure JWT tokens are handled securely:
 
 - [ ] Tokens stored in httpOnly cookies (not localStorage for production)
-- [ ] CORS properly configured for API endpoints  
+- [ ] CORS properly configured for API endpoints
 - [ ] Token expiration implemented and enforced
 - [ ] Refresh token rotation implemented
 - [ ] No tokens logged in application logs
@@ -556,7 +590,7 @@ Ensure JWT tokens are handled securely:
 This comprehensive fix resolves the authentication and RLS issues by:
 
 1. **Replacing the serviceSupabase band-aid** with proper RLS policies and security-definer RPCs
-2. **Implementing user isolation** through carefully crafted database policies  
+2. **Implementing user isolation** through carefully crafted database policies
 3. **Maintaining security** while allowing necessary FK validation operations
 4. **Providing clear verification steps** to confirm the fix works correctly
 5. **Establishing monitoring** for ongoing security validation

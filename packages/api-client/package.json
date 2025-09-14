@@ -1,0 +1,35 @@
+{
+  "name": "@tally/api-client",
+  "version": "0.1.1-beta.0",
+  "description": "TypeScript API client for Tally - Auto-generated from OpenAPI specification",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/tally.git",
+    "directory": "packages/api-client"
+  },
+  "keywords": [
+    "tally",
+    "api-client",
+    "typescript",
+    "openapi",
+    "streaming",
+    "watchlist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dependencies": {
+    "axios": "^1.11.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

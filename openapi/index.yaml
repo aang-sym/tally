@@ -1,0 +1,73 @@
+openapi: 3.1.0
+info:
+  title: Tally API (Bundled)
+  version: 0.1.0
+  # CI workflow validation test - trigger workflows
+servers:
+  - url: http://localhost:4000
+security:
+  - bearerAuth: []
+
+paths:
+  # users.yaml
+  /api/users/signup:
+    $ref: './users.yaml#/paths/~1api~1users~1signup'
+  /api/users/login:
+    $ref: './users.yaml#/paths/~1api~1users~1login'
+  /api/users:
+    $ref: './users.yaml#/paths/~1api~1users'
+  /api/users/{id}/profile:
+    $ref: './users.yaml#/paths/~1api~1users~1{id}~1profile'
+  /api/users/{id}:
+    $ref: './users.yaml#/paths/~1api~1users~1{id}'
+
+  # subscriptions.yaml
+  /api/users/{id}/subscriptions:
+    $ref: './subscriptions.yaml#/paths/~1api~1users~1{id}~1subscriptions'
+  /api/users/{id}/subscriptions/{subscriptionId}:
+    $ref: './subscriptions.yaml#/paths/~1api~1users~1{id}~1subscriptions~1{subscriptionId}'
+
+  # streaming-services.yaml
+  /api/streaming-services:
+    $ref: './streaming-services.yaml#/paths/~1api~1streaming-services'
+  /api/streaming-services/{id}:
+    $ref: './streaming-services.yaml#/paths/~1api~1streaming-services~1{id}'
+  /api/streaming-services/popular:
+    $ref: './streaming-services.yaml#/paths/~1api~1streaming-services~1popular'
+  /api/streaming-services/regions:
+    $ref: './streaming-services.yaml#/paths/~1api~1streaming-services~1regions'
+
+  # watchlist.yaml (full coverage)
+  /api/watchlist:
+    $ref: './watchlist.yaml#/paths/~1api~1watchlist'
+  /api/watchlist/{tmdbId}/progress:
+    $ref: './watchlist.yaml#/paths/~1api~1watchlist~1{tmdbId}~1progress'
+  /api/watchlist/{id}/provider:
+    $ref: './watchlist.yaml#/paths/~1api~1watchlist~1{id}~1provider'
+  /api/watchlist/stats:
+    $ref: './watchlist.yaml#/paths/~1api~1watchlist~1stats'
+  /api/watchlist/{id}/status:
+    $ref: './watchlist.yaml#/paths/~1api~1watchlist~1{id}~1status'
+  /api/watchlist/{id}/rating:
+    $ref: './watchlist.yaml#/paths/~1api~1watchlist~1{id}~1rating'
+  /api/watchlist/{id}/notes:
+    $ref: './watchlist.yaml#/paths/~1api~1watchlist~1{id}~1notes'
+  /api/watchlist/{id}/country:
+    $ref: './watchlist.yaml#/paths/~1api~1watchlist~1{id}~1country'
+  /api/watchlist/{id}/buffer:
+    $ref: './watchlist.yaml#/paths/~1api~1watchlist~1{id}~1buffer'
+  /api/watchlist/{id}:
+    $ref: './watchlist.yaml#/paths/~1api~1watchlist~1{id}'
+  /api/watchlist/watching:
+    $ref: './watchlist.yaml#/paths/~1api~1watchlist~1watching'
+  /api/watchlist/watching/{showId}:
+    $ref: './watchlist.yaml#/paths/~1api~1watchlist~1watching~1{showId}'
+  /api/watchlist/search-and-add:
+    $ref: './watchlist.yaml#/paths/~1api~1watchlist~1search-and-add'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

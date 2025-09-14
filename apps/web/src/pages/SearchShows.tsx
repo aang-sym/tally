@@ -1,6 +1,6 @@
 /**
  * Search Shows Page
- * 
+ *
  * Browse and search TV shows from TMDB with detailed analysis and watchlist functionality.
  * Based on the TMDB testing dashboard but with integrated watchlist features.
  */
@@ -26,7 +26,6 @@ interface WatchlistAddRequest {
   title: string;
   status: 'watchlist' | 'watching';
 }
-
 
 const SearchShows: React.FC = () => {
   const [selectedShow, setSelectedShow] = useState<TMDBShow | null>(null);
@@ -60,16 +59,16 @@ const SearchShows: React.FC = () => {
   // Check if show is in user's watchlist and get episode progress
   const checkWatchlistStatus = async (tmdbId: number) => {
     try {
-      setWatchlistStatus(prev => ({ ...prev, loading: true }));
+      setWatchlistStatus((prev) => ({ ...prev, loading: true }));
       const token = localStorage.getItem('authToken') || undefined;
-      
+
       const data = await apiRequest(API_ENDPOINTS.watchlist.v2, {}, token);
       const userShow = data.data?.shows?.find((show: any) => show.show.tmdb_id === tmdbId);
-      
+
       setWatchlistStatus({
         isInWatchlist: !!userShow,
         isWatching: userShow?.status === 'watching',
-        loading: false
+        loading: false,
       });
 
       // If show is in watchlist, get episode progress
@@ -90,19 +89,19 @@ const SearchShows: React.FC = () => {
     try {
       const token = localStorage.getItem('authToken') || undefined;
       const data = await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${tmdbId}/progress`, {}, token);
-        const watchedSet = new Set<string>();
-        
-        // Create episode keys for all watched episodes
-        if (data.data?.showProgress) {
-          data.data.showProgress.forEach((episode: any) => {
-            if (episode.status === 'watched') {
-              const episodeKey = `S${episode.seasonNumber}E${episode.episodeNumber}`;
-              watchedSet.add(episodeKey);
-            }
-          });
-        }
-        
-        setWatchedEpisodes(watchedSet);
+      const watchedSet = new Set<string>();
+
+      // Create episode keys for all watched episodes
+      if (data.data?.showProgress) {
+        data.data.showProgress.forEach((episode: any) => {
+          if (episode.status === 'watched') {
+            const episodeKey = `S${episode.seasonNumber}E${episode.episodeNumber}`;
+            watchedSet.add(episodeKey);
+          }
+        });
+      }
+
+      setWatchedEpisodes(watchedSet);
     } catch (error) {
       console.error('Failed to fetch episode progress:', error);
     }
@@ -113,65 +112,124 @@ const SearchShows: React.FC = () => {
     setAnalysisData(null);
     setAnalysisError('');
     setSelectedSeason(undefined);
-    
+
     // Check watchlist status for the selected show
     await checkWatchlistStatus(show.id);
-    
+
     // Auto-analyze the selected show
     await analyzeShow(show.id);
   };
 
   // Compute pattern from raw episode dates according to docs categories
   const computePatternFromEpisodes = (dates: Date[]) => {
-    const result = { pattern: 'unknown', confidence: 0.5, intervals: [] as number[], avg: 0, std: 0, reasoning: '' };
-    if (dates.length < 2) { result.reasoning = 'Insufficient data'; return result; }
-    const sorted = dates.slice().sort((a,b)=>a.getTime()-b.getTime());
-    const intervals = [] as number[];
-    for (let i=1;i<sorted.length;i++) intervals.push(Math.round((sorted[i].getTime()-sorted[i-1].getTime())/(1000*60*60*24)));
-    const avg = intervals.reduce((s,d)=>s+d,0)/intervals.length;
-    const std = Math.sqrt(intervals.reduce((s,d)=>s+Math.pow(d-avg,2),0)/intervals.length);
-    const sameDayPairs = intervals.filter(d=>d===0).length;
-    const nearWeekly = intervals.filter(d=>Math.abs(d-7)<=1).length;
-    const nearWeeklyRatio = nearWeekly/intervals.length;
+    const result = {
+      pattern: 'unknown',
+      confidence: 0.5,
+      intervals: [] as number[],
+      avg: 0,
+      std: 0,
+      reasoning: '',
+    };
+    if (dates.length < 2) {
+      result.reasoning = 'Insufficient data';
+      return result;
+    }
+    const sorted = dates.slice().sort((a, b) => a.getTime() - b.getTime());
+    const intervals: number[] = [];
+    for (let i = 1; i < sorted.length; i++) {
+      const curr = sorted[i]!;
+      const prev = sorted[i - 1]!;
+      intervals.push(Math.round((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24)));
+    }
+    const avg = intervals.reduce((s, d) => s + d, 0) / intervals.length;
+    const std = Math.sqrt(
+      intervals.reduce((s, d) => s + Math.pow(d - avg, 2), 0) / intervals.length
+    );
+    const sameDayPairs = intervals.filter((d) => d === 0).length;
+    const nearWeekly = intervals.filter((d) => Math.abs(d - 7) <= 1).length;
+    const nearWeeklyRatio = nearWeekly / intervals.length;
     // Categories
-    if (intervals.every(d=>d<=1)) {
-      Object.assign(result,{pattern:'binge',confidence:0.95,avg,std,intervals,reasoning:'All episodes within ≤1 day'});
+    if (intervals.every((d) => d <= 1)) {
+      Object.assign(result, {
+        pattern: 'binge',
+        confidence: 0.95,
+        avg,
+        std,
+        intervals,
+        reasoning: 'All episodes within ≤1 day',
+      });
       return result;
     }
     // premiere_weekly: episodes 1-2 same day (interval=0), then weekly intervals
     const hasZeroDayPremiere = intervals[0] === 0;
     if (hasZeroDayPremiere && intervals.length >= 2) {
       // Check if episodes after the premiere drop are mostly weekly
-      const weeklyIntervals = intervals.slice(1).filter(d => Math.abs(d - 7) <= 2);
-      const weeklyRatio = intervals.length > 1 ? weeklyIntervals.length / (intervals.length - 1) : 0;
-      
+      const weeklyIntervals = intervals.slice(1).filter((d) => Math.abs(d - 7) <= 2);
+      const weeklyRatio =
+        intervals.length > 1 ? weeklyIntervals.length / (intervals.length - 1) : 0;
+
       // Require at least 70% of post-premiere intervals to be weekly
       if (weeklyRatio >= 0.7) {
-        Object.assign(result,{pattern:'premiere_weekly',confidence:0.85+0.1*weeklyRatio,avg,std,intervals,reasoning:'Multiple episodes premiered same day, then weekly releases'});
+        Object.assign(result, {
+          pattern: 'premiere_weekly',
+          confidence: 0.85 + 0.1 * weeklyRatio,
+          avg,
+          std,
+          intervals,
+          reasoning: 'Multiple episodes premiered same day, then weekly releases',
+        });
         return result;
       }
     }
-    
+
     // Alternative premiere_weekly: at least 1 same-day drop + mostly weekly
-    const looksPremiereWeekly = sameDayPairs>=1 && nearWeeklyRatio>=0.6;
+    const looksPremiereWeekly = sameDayPairs >= 1 && nearWeeklyRatio >= 0.6;
     if (looksPremiereWeekly && nearWeeklyRatio >= 0.7) {
-      Object.assign(result,{pattern:'premiere_weekly',confidence:0.8,avg,std,intervals,reasoning:'Premiere episodes same day, then weekly cadence'});
+      Object.assign(result, {
+        pattern: 'premiere_weekly',
+        confidence: 0.8,
+        avg,
+        std,
+        intervals,
+        reasoning: 'Premiere episodes same day, then weekly cadence',
+      });
       return result;
     }
     // weekly
-    if (avg>=6 && avg<=8 && std<2) {
-      Object.assign(result,{pattern:'weekly',confidence:0.9,avg,std,intervals,reasoning:'Average 6–8 days with low variance'});
+    if (avg >= 6 && avg <= 8 && std < 2) {
+      Object.assign(result, {
+        pattern: 'weekly',
+        confidence: 0.9,
+        avg,
+        std,
+        intervals,
+        reasoning: 'Average 6–8 days with low variance',
+      });
       return result;
     }
     // multi_weekly: more than one episode per 7‑day window consistently (approx by many 0–3 day gaps and weekly anchors)
-    const shortGapsRatio = intervals.filter(d=>d<=3).length/intervals.length;
-    if (nearWeeklyRatio>=0.5 && shortGapsRatio>=0.5) {
-      Object.assign(result,{pattern:'multi_weekly',confidence:0.75,avg,std,intervals,reasoning:'Multiple episodes within a week consistently'});
+    const shortGapsRatio = intervals.filter((d) => d <= 3).length / intervals.length;
+    if (nearWeeklyRatio >= 0.5 && shortGapsRatio >= 0.5) {
+      Object.assign(result, {
+        pattern: 'multi_weekly',
+        confidence: 0.75,
+        avg,
+        std,
+        intervals,
+        reasoning: 'Multiple episodes within a week consistently',
+      });
       return result;
     }
     // mixed
-    if (intervals.length>=2) {
-      Object.assign(result,{pattern:'mixed',confidence:0.6,avg,std,intervals,reasoning:'Premieres/gaps cause irregular cadence'});
+    if (intervals.length >= 2) {
+      Object.assign(result, {
+        pattern: 'mixed',
+        confidence: 0.6,
+        avg,
+        std,
+        intervals,
+        reasoning: 'Premieres/gaps cause irregular cadence',
+      });
       return result;
     }
     return result;
@@ -181,26 +239,38 @@ const SearchShows: React.FC = () => {
     try {
       setAnalysisLoading(true);
       setAnalysisError('');
-      
+
       // 1) Get show details + season list (minimal); keep using analyze for details only
-      const baseRes = await fetch(`${API_BASE_URL}/api/tmdb/show/${showId}/analyze?country=${country}`);
+      const baseRes = await fetch(
+        `${API_BASE_URL}/api/tmdb/show/${showId}/analyze?country=${country}`
+      );
       const base = await baseRes.json();
       if (!baseRes.ok) throw new Error(base.message || 'Failed to fetch show details');
       const seasonInfo = base.analysis?.seasonInfo || [];
-      const showDetails = base.analysis?.showDetails || { id: showId, title: selectedShow?.title, poster: selectedShow?.poster };
+      const showDetails = base.analysis?.showDetails || {
+        id: showId,
+        title: selectedShow?.title,
+        poster: selectedShow?.poster,
+      };
       // 2) Determine target season: explicit or latest
-      const targetSeason = seasonNumber ?? (seasonInfo.length>0 ? Math.max(...seasonInfo.map((s:any)=>s.seasonNumber)) : 1);
+      const targetSeason =
+        seasonNumber ??
+        (seasonInfo.length > 0 ? Math.max(...seasonInfo.map((s: any) => s.seasonNumber)) : 1);
       // 3) Fetch RAW episodes for that season
-      const rawRes = await fetch(`${API_BASE_URL}/api/tmdb/show/${showId}/season/${targetSeason}/raw?country=${country}`);
+      const rawRes = await fetch(
+        `${API_BASE_URL}/api/tmdb/show/${showId}/season/${targetSeason}/raw?country=${country}`
+      );
       const raw = await rawRes.json();
       if (!rawRes.ok) throw new Error('Failed to fetch raw season');
       const season = raw.raw?.season || raw.raw;
-      const episodes = (season?.episodes || []).filter((ep:any)=>!!ep.air_date).map((ep:any)=>({
-        number: ep.episode_number,
-        airDate: new Date(ep.air_date).toISOString(),
-        title: ep.name || `Episode ${ep.episode_number}`
-      }));
-      const dates = episodes.map((e:any)=>new Date(e.airDate));
+      const episodes = (season?.episodes || [])
+        .filter((ep: any) => !!ep.air_date)
+        .map((ep: any) => ({
+          number: ep.episode_number,
+          airDate: new Date(ep.air_date).toISOString(),
+          title: ep.name || `Episode ${ep.episode_number}`,
+        }));
+      const dates = episodes.map((e: any) => new Date(e.airDate));
       const pat = computePatternFromEpisodes(dates);
 
       // 4) Build analysis object compatible with PatternAnalysis
@@ -212,11 +282,11 @@ const SearchShows: React.FC = () => {
           status: base.analysis?.showDetails?.status || '',
           firstAirDate: base.analysis?.showDetails?.firstAirDate,
           lastAirDate: base.analysis?.showDetails?.lastAirDate,
-          poster: selectedShow?.poster || showDetails?.poster
+          poster: selectedShow?.poster || showDetails?.poster,
         },
         pattern: {
           pattern: pat.pattern,
-          confidence: pat.confidence
+          confidence: pat.confidence,
         },
         confidence: pat.confidence,
         episodeCount: episodes.length,
@@ -227,11 +297,11 @@ const SearchShows: React.FC = () => {
           avgInterval: pat.avg,
           stdDev: pat.std,
           reasoning: pat.reasoning,
-          episodeDetails: episodes
+          episodeDetails: episodes,
         },
         watchProviders: base.analysis?.watchProviders || [],
         analyzedSeason: targetSeason,
-        country
+        country,
       };
 
       setAnalysisData(analysis);
@@ -260,20 +330,33 @@ const SearchShows: React.FC = () => {
   }, [country]);
 
   // Handle episode click - add show to watchlist and set progress
-  const handleEpisodeClick = async (episode: { number: number; airDate: string; title: string; seasonNumber: number }) => {
+  const handleEpisodeClick = async (episode: {
+    number: number;
+    airDate: string;
+    title: string;
+    seasonNumber: number;
+  }) => {
     if (!selectedShow || settingProgress) return;
-    
+
     try {
       setSettingProgress(true);
 
-      // First, add show to watchlist as "watching" using the watchlist-v2 API
-      const watchlistData: WatchlistAddRequest = { tmdbId: selectedShow.id, title: selectedShow.title, status: 'watching' };
+      // First, add show to watchlist as "watching" using the watchlist API
+      const watchlistData: WatchlistAddRequest = {
+        tmdbId: selectedShow.id,
+        title: selectedShow.title,
+        status: 'watching',
+      };
       const token = localStorage.getItem('authToken') || undefined;
-      const watchlistResult = await apiRequest(API_ENDPOINTS.watchlist.v2, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(watchlistData)
-      }, token);
+      const watchlistResult = await apiRequest(
+        API_ENDPOINTS.watchlist.v2,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(watchlistData),
+        },
+        token
+      );
       // The API returns the item ID directly, not nested in data.userShow
       const userShowId = watchlistResult.item?.id;
 
@@ -282,18 +365,22 @@ const SearchShows: React.FC = () => {
         // Continue without the userShowId - we can still set progress using tmdbId
       }
 
-      // Then set the episode progress using the watchlist-v2 API
-      const progressData = await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${selectedShow.id}/progress`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
+      // Then set the episode progress using the watchlist API
+      const progressData = await apiRequest(
+        `${API_ENDPOINTS.watchlist.v2}/${selectedShow.id}/progress`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            seasonNumber: episode.seasonNumber,
+            episodeNumber: episode.number,
+            status: 'watched', // Mark this episode and all previous as watched
+          }),
         },
-        body: JSON.stringify({
-          seasonNumber: episode.seasonNumber,
-          episodeNumber: episode.number,
-          status: 'watched' // Mark this episode and all previous as watched
-        })
-      }, token);
+        token
+      );
 
       console.log('Progress set successfully:', progressData);
       const progressSet = true;
@@ -302,7 +389,7 @@ const SearchShows: React.FC = () => {
       setWatchlistStatus({
         isInWatchlist: true,
         isWatching: true,
-        loading: false
+        loading: false,
       });
 
       // Optimistically update watched episodes
@@ -315,21 +402,23 @@ const SearchShows: React.FC = () => {
 
       // Show success message
       const toast = document.createElement('div');
-      toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
-      toast.textContent = progressSet 
+      toast.className =
+        'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      toast.textContent = progressSet
         ? `✓ Added "${selectedShow.title}" to watchlist and marked S${episode.seasonNumber}E${episode.number} as watched!`
         : `✓ Added "${selectedShow.title}" to watchlist`;
       document.body.appendChild(toast);
-      
+
       setTimeout(() => {
         if (document.body.contains(toast)) {
           document.body.removeChild(toast);
         }
       }, 5000);
-
     } catch (err) {
       console.error('Failed to set episode progress:', err);
-      alert(`Failed to set progress for ${selectedShow.title}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      alert(
+        `Failed to set progress for ${selectedShow.title}: ${err instanceof Error ? err.message : 'Unknown error'}`
+      );
     } finally {
       setSettingProgress(false);
     }
@@ -343,38 +432,44 @@ const SearchShows: React.FC = () => {
       const watchlistData: WatchlistAddRequest = {
         tmdbId: show.id,
         title: show.title,
-        status
+        status,
       };
 
       const token = localStorage.getItem('authToken') || undefined;
-      const result = await apiRequest(API_ENDPOINTS.watchlist.v2, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(watchlistData)
-      }, token);
-      
+      const result = await apiRequest(
+        API_ENDPOINTS.watchlist.v2,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(watchlistData),
+        },
+        token
+      );
+
       // Update watchlist status after successful action
       setWatchlistStatus({
         isInWatchlist: true,
         isWatching: status === 'watching',
-        loading: false
+        loading: false,
       });
-      
+
       // Show success message
       const toast = document.createElement('div');
-      toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      toast.className =
+        'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
       toast.textContent = result.message || `Added ${show.title} to ${status}`;
       document.body.appendChild(toast);
-      
+
       setTimeout(() => {
         if (document.body.contains(toast)) {
           document.body.removeChild(toast);
         }
       }, 3000);
-
     } catch (err) {
       console.error('Failed to add to watchlist:', err);
-      alert(`Failed to add ${show.title} to watchlist: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      alert(
+        `Failed to add ${show.title} to watchlist: ${err instanceof Error ? err.message : 'Unknown error'}`
+      );
     } finally {
       setAddingToWatchlist(null);
     }
@@ -383,34 +478,39 @@ const SearchShows: React.FC = () => {
   // Remove show from watchlist
   const removeFromWatchlist = async (show: TMDBShow) => {
     try {
-      setWatchlistStatus(prev => ({ ...prev, loading: true }));
+      setWatchlistStatus((prev) => ({ ...prev, loading: true }));
 
       // First get the watchlist to find the item ID
       const token = localStorage.getItem('authToken') || undefined;
       const watchlistData = await apiRequest(API_ENDPOINTS.watchlist.v2, {}, token);
 
       const userShow = watchlistData.data?.shows?.find((s: any) => s.show.tmdb_id === show.id);
-      
+
       if (userShow) {
         // Remove the show using the user show ID
-        await apiRequest(`${API_ENDPOINTS.watchlist.v2}/${userShow.id}`, {
-          method: 'DELETE'
-        }, token);
-        
+        await apiRequest(
+          `${API_ENDPOINTS.watchlist.v2}/${userShow.id}`,
+          {
+            method: 'DELETE',
+          },
+          token
+        );
+
         // Update local state
         setWatchlistStatus({
           isInWatchlist: false,
           isWatching: false,
-          loading: false
+          loading: false,
         });
         setWatchedEpisodes(new Set());
 
         // Show success message
         const toast = document.createElement('div');
-        toast.className = 'fixed top-4 right-4 bg-yellow-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+        toast.className =
+          'fixed top-4 right-4 bg-yellow-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
         toast.textContent = `Removed "${show.title}" from your watchlist`;
         document.body.appendChild(toast);
-        
+
         setTimeout(() => {
           if (document.body.contains(toast)) {
             document.body.removeChild(toast);
@@ -421,8 +521,10 @@ const SearchShows: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to remove from watchlist:', err);
-      setWatchlistStatus(prev => ({ ...prev, loading: false }));
-      alert(`Failed to remove ${show.title} from watchlist: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setWatchlistStatus((prev) => ({ ...prev, loading: false }));
+      alert(
+        `Failed to remove ${show.title} from watchlist: ${err instanceof Error ? err.message : 'Unknown error'}`
+      );
     }
   };
 
@@ -431,9 +533,7 @@ const SearchShows: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Discover Shows
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Discover Shows</h1>
           <p className="text-gray-600">
             Search TV shows, analyze release patterns, and add them to your watchlist
           </p>
@@ -441,9 +541,7 @@ const SearchShows: React.FC = () => {
 
         {/* Country Selector */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Country/Region
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Country/Region</label>
           <select
             value={country}
             onChange={(e) => setCountry(e.target.value)}
@@ -461,11 +559,8 @@ const SearchShows: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Search */}
           <div className="space-y-6">
-            <TMDBSearch
-              onSelectShow={handleShowSelect}
-              selectedShowId={selectedShow?.id}
-            />
-            
+            <TMDBSearch onSelectShow={handleShowSelect} selectedShowId={selectedShow?.id} />
+
             {/* Season Selector */}
             {analysisData?.seasonInfo && analysisData.seasonInfo.length > 1 && (
               <div className="bg-white rounded-lg shadow-lg p-6">
@@ -513,22 +608,25 @@ const SearchShows: React.FC = () => {
                 showInteractiveEpisodes={true}
                 watchedEpisodes={watchedEpisodes}
               />
-              
+
               {/* Watchlist Action Buttons */}
               {selectedShow && !analysisLoading && (
                 <div className="border-t border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    Add to Your Lists
-                  </h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Add to Your Lists</h3>
                   {!watchlistStatus.isInWatchlist && !watchlistStatus.isWatching ? (
                     <>
                       <p className="text-sm text-gray-600 mb-4">
-                        💡 <strong>Quick tip:</strong> Click any episode above to instantly add the show and set your progress to that episode!
+                        💡 <strong>Quick tip:</strong> Click any episode above to instantly add the
+                        show and set your progress to that episode!
                       </p>
                       <div className="flex space-x-4">
                         <button
                           onClick={() => addToWatchlist(selectedShow, 'watchlist')}
-                          disabled={addingToWatchlist === selectedShow.id || settingProgress || watchlistStatus.loading}
+                          disabled={
+                            addingToWatchlist === selectedShow.id ||
+                            settingProgress ||
+                            watchlistStatus.loading
+                          }
                           className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                         >
                           {addingToWatchlist === selectedShow.id ? (
@@ -543,27 +641,34 @@ const SearchShows: React.FC = () => {
 
                         <button
                           onClick={() => addToWatchlist(selectedShow, 'watching')}
-                          disabled={addingToWatchlist === selectedShow.id || settingProgress || watchlistStatus.loading}
+                          disabled={
+                            addingToWatchlist === selectedShow.id ||
+                            settingProgress ||
+                            watchlistStatus.loading
+                          }
                           className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                         >
-                          {addingToWatchlist === selectedShow.id ? (
-                            'Adding...'
-                          ) : settingProgress ? (
-                            'Setting Progress...'
-                          ) : (
-                            'Start Watching'
-                          )}
+                          {addingToWatchlist === selectedShow.id
+                            ? 'Adding...'
+                            : settingProgress
+                              ? 'Setting Progress...'
+                              : 'Start Watching'}
                         </button>
                       </div>
                     </>
                   ) : (
                     <>
                       <p className="text-sm text-gray-600 mb-4">
-                        ✓ <strong>Already in your collection!</strong> Click "Watching" to remove from your watchlist.
+                        ✓ <strong>Already in your collection!</strong> Click "Watching" to remove
+                        from your watchlist.
                       </p>
                       <button
                         onClick={() => removeFromWatchlist(selectedShow)}
-                        disabled={addingToWatchlist === selectedShow.id || settingProgress || watchlistStatus.loading}
+                        disabled={
+                          addingToWatchlist === selectedShow.id ||
+                          settingProgress ||
+                          watchlistStatus.loading
+                        }
                         className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                       >
                         {watchlistStatus.loading ? (
@@ -577,7 +682,7 @@ const SearchShows: React.FC = () => {
                       </button>
                     </>
                   )}
-                  
+
                   {/* Show Selected Info */}
                   <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3">
@@ -587,7 +692,9 @@ const SearchShows: React.FC = () => {
                       <div>
                         <p className="text-sm font-medium text-gray-900">{selectedShow.title}</p>
                         <p className="text-xs text-gray-500">
-                          {analysisData ? `${analysisData.pattern.pattern} release pattern` : 'Ready to add to your list'}
+                          {analysisData
+                            ? `${analysisData.pattern.pattern} release pattern`
+                            : 'Ready to add to your list'}
                         </p>
                       </div>
                     </div>

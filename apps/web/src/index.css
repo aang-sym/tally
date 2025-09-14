@@ -9,8 +9,8 @@
 
 /* Defaults for stacked logos; adjusted via container queries */
 .logos {
-  --bubble: 42px;      /* default bubble diameter */
-  --overlap: 12px;     /* negative overlap between bubbles */
+  --bubble: 42px; /* default bubble diameter */
+  --overlap: 12px; /* negative overlap between bubbles */
 }
 
 .logo {
@@ -31,7 +31,10 @@
 
 /* Medium tiles: slightly smaller */
 @container (max-width: 119px) {
-  .logos { --bubble: 36px; --overlap: 10px; }
+  .logos {
+    --bubble: 36px;
+    --overlap: 10px;
+  }
 }
 
 /* Narrow tiles: switch to 2x2 grid; remove overlap */
@@ -42,14 +45,26 @@
     gap: 4px;
     place-items: center;
   }
-  .logo { margin-left: 0 !important; }
-  .plus-stacked { display: none !important; }
-  .more-badge { display: inline-flex !important; }
+  .logo {
+    margin-left: 0 !important;
+  }
+  .plus-stacked {
+    display: none !important;
+  }
+  .more-badge {
+    display: inline-flex !important;
+  }
 }
 
 /* Extra narrow: show one logo and a +N badge */
 @container (max-width: 59px) {
-  .logos { grid-template-columns: 1fr; }
-  .logo:nth-child(n+2) { display: none !important; }
-  .more-badge { display: inline-flex !important; }
+  .logos {
+    grid-template-columns: 1fr;
+  }
+  .logo:nth-child(n + 2) {
+    display: none !important;
+  }
+  .more-badge {
+    display: inline-flex !important;
+  }
 }

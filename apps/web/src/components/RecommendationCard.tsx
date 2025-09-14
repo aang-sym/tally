@@ -79,20 +79,20 @@ interface OptimizationCardProps {
   onViewDetails?: (() => void) | undefined;
 }
 
-const CancellationCard: React.FC<CancellationCardProps> = ({ 
-  recommendation, 
-  onAccept, 
-  onReject 
+const CancellationCard: React.FC<CancellationCardProps> = ({
+  recommendation,
+  onAccept,
+  onReject,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+
   const getTypeIcon = () => {
     return recommendation.type === 'cancel' ? '❌' : '⏸️';
   };
 
   const getTypeColor = () => {
-    return recommendation.type === 'cancel' 
-      ? 'border-red-200 bg-red-50' 
+    return recommendation.type === 'cancel'
+      ? 'border-red-200 bg-red-50'
       : 'border-yellow-200 bg-yellow-50';
   };
 
@@ -116,8 +116,10 @@ const CancellationCard: React.FC<CancellationCardProps> = ({
         </div>
         <div className="text-right">
           <div className="text-lg font-bold text-green-600">
-            ${recommendation.potentialSavings.monthly?.toFixed(2) || 
-              recommendation.potentialSavings.shortTerm?.toFixed(2) || '0.00'}
+            $
+            {recommendation.potentialSavings.monthly?.toFixed(2) ||
+              recommendation.potentialSavings.shortTerm?.toFixed(2) ||
+              '0.00'}
             <span className="text-sm text-gray-500">
               /{recommendation.potentialSavings.monthly ? 'mo' : '3mo'}
             </span>
@@ -132,18 +134,18 @@ const CancellationCard: React.FC<CancellationCardProps> = ({
       <div className="mb-4">
         {recommendation.showsCompleted && (
           <p className="text-sm text-gray-600">
-            ✅ {recommendation.showsCompleted} show{recommendation.showsCompleted !== 1 ? 's' : ''} completed
+            ✅ {recommendation.showsCompleted} show{recommendation.showsCompleted !== 1 ? 's' : ''}{' '}
+            completed
           </p>
         )}
         {recommendation.showsInWatchlist && (
           <p className="text-sm text-gray-600">
-            📋 {recommendation.showsInWatchlist} show{recommendation.showsInWatchlist !== 1 ? 's' : ''} in watchlist
+            📋 {recommendation.showsInWatchlist} show
+            {recommendation.showsInWatchlist !== 1 ? 's' : ''} in watchlist
           </p>
         )}
         {recommendation.resumeWhen && (
-          <p className="text-sm text-gray-600">
-            🔄 Resume: {recommendation.resumeWhen}
-          </p>
+          <p className="text-sm text-gray-600">🔄 Resume: {recommendation.resumeWhen}</p>
         )}
         {recommendation.safeDate && (
           <p className="text-sm text-gray-500">
@@ -194,26 +196,32 @@ const CancellationCard: React.FC<CancellationCardProps> = ({
   );
 };
 
-const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ 
-  recommendation, 
-  onAccept, 
-  onReject 
+const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
+  recommendation,
+  onAccept,
+  onReject,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const getPriorityColor = () => {
     switch (recommendation.priority) {
-      case 'high': return 'border-green-200 bg-green-50';
-      case 'medium': return 'border-yellow-200 bg-yellow-50';
-      case 'low': return 'border-gray-200 bg-gray-50';
+      case 'high':
+        return 'border-green-200 bg-green-50';
+      case 'medium':
+        return 'border-yellow-200 bg-yellow-50';
+      case 'low':
+        return 'border-gray-200 bg-gray-50';
     }
   };
 
   const getPriorityIcon = () => {
     switch (recommendation.priority) {
-      case 'high': return '🔥';
-      case 'medium': return '⭐';
-      case 'low': return '💡';
+      case 'high':
+        return '🔥';
+      case 'medium':
+        return '⭐';
+      case 'low':
+        return '💡';
     }
   };
 
@@ -234,9 +242,7 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
             ${recommendation.monthlyPrice.toFixed(2)}
             <span className="text-sm text-gray-500">/mo</span>
           </div>
-          <div className="text-sm text-blue-600">
-            Value: {recommendation.estimatedValue}/10
-          </div>
+          <div className="text-sm text-blue-600">Value: {recommendation.estimatedValue}/10</div>
         </div>
       </div>
 
@@ -297,10 +303,7 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
   );
 };
 
-const OptimizationCard: React.FC<OptimizationCardProps> = ({ 
-  recommendation, 
-  onViewDetails 
-}) => {
+const OptimizationCard: React.FC<OptimizationCardProps> = ({ recommendation, onViewDetails }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -309,11 +312,10 @@ const OptimizationCard: React.FC<OptimizationCardProps> = ({
         <div className="flex items-center">
           <span className="text-2xl mr-3">🎯</span>
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              Subscription Optimization Plan
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900">Subscription Optimization Plan</h3>
             <p className="text-gray-600 text-sm">
-              Reduce from {recommendation.currentSituation.activeServices} to {recommendation.optimizedPlan.recommendedServices} services
+              Reduce from {recommendation.currentSituation.activeServices} to{' '}
+              {recommendation.optimizedPlan.recommendedServices} services
             </p>
           </div>
         </div>
@@ -336,7 +338,8 @@ const OptimizationCard: React.FC<OptimizationCardProps> = ({
             ${recommendation.currentSituation.monthlyCost.toFixed(2)}/mo
           </p>
           <p className="text-xs text-gray-500">
-            {recommendation.currentSituation.utilization.watching} watching, {recommendation.currentSituation.utilization.watchlist} queued
+            {recommendation.currentSituation.utilization.watching} watching,{' '}
+            {recommendation.currentSituation.utilization.watchlist} queued
           </p>
         </div>
         <div className="bg-white bg-opacity-50 rounded-lg p-3">
@@ -354,22 +357,22 @@ const OptimizationCard: React.FC<OptimizationCardProps> = ({
       <div className="mb-4">
         <h4 className="font-semibold text-gray-900 text-sm mb-2">Recommended Actions:</h4>
         <div className="space-y-1">
-          {recommendation.optimizedPlan.actions.slice(0, isExpanded ? undefined : 2).map((action, index) => (
-            <div key={index} className="flex items-center text-sm text-gray-600">
-              <span className="mr-2">
-                {action.action === 'cancel' ? '❌' : action.action === 'rotate' ? '🔄' : '📋'}
-              </span>
-              {action.service && (
-                <span className="font-medium mr-2">{action.service}:</span>
-              )}
-              <span>{action.reason || action.explanation}</span>
-              {action.estimatedSavings && (
-                <span className="ml-auto text-green-600 font-medium">
-                  +${action.estimatedSavings.toFixed(2)}
+          {recommendation.optimizedPlan.actions
+            .slice(0, isExpanded ? undefined : 2)
+            .map((action, index) => (
+              <div key={index} className="flex items-center text-sm text-gray-600">
+                <span className="mr-2">
+                  {action.action === 'cancel' ? '❌' : action.action === 'rotate' ? '🔄' : '📋'}
                 </span>
-              )}
-            </div>
-          ))}
+                {action.service && <span className="font-medium mr-2">{action.service}:</span>}
+                <span>{action.reason || action.explanation}</span>
+                {action.estimatedSavings && (
+                  <span className="ml-auto text-green-600 font-medium">
+                    +${action.estimatedSavings.toFixed(2)}
+                  </span>
+                )}
+              </div>
+            ))}
           {!isExpanded && recommendation.optimizedPlan.actions.length > 2 && (
             <p className="text-xs text-gray-500">
               +{recommendation.optimizedPlan.actions.length - 2} more actions...
@@ -412,9 +415,7 @@ const OptimizationCard: React.FC<OptimizationCardProps> = ({
           >
             View full plan
           </button>
-          <button
-            className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
+          <button className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700">
             Start optimization
           </button>
         </div>
@@ -426,7 +427,10 @@ const OptimizationCard: React.FC<OptimizationCardProps> = ({
 // Main export component that handles different recommendation types
 export const RecommendationCard: React.FC<{
   type: 'cancellation' | 'subscription' | 'optimization';
-  recommendation: CancellationRecommendation | SubscriptionRecommendation | OptimizationRecommendation;
+  recommendation:
+    | CancellationRecommendation
+    | SubscriptionRecommendation
+    | OptimizationRecommendation;
   onAccept?: () => void;
   onReject?: () => void;
   onViewDetails?: () => void;

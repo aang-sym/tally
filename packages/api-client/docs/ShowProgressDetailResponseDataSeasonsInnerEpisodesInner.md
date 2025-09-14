@@ -1,0 +1,21 @@
+# ShowProgressDetailResponseDataSeasonsInnerEpisodesInner
+
+## Properties
+
+| Name               | Type       | Description | Notes                             |
+| ------------------ | ---------- | ----------- | --------------------------------- |
+| **id**             | **string** |             | [optional] [default to undefined] |
+| **episode_number** | **number** |             | [optional] [default to undefined] |
+
+## Example
+
+```typescript
+import { ShowProgressDetailResponseDataSeasonsInnerEpisodesInner } from './api';
+
+const instance: ShowProgressDetailResponseDataSeasonsInnerEpisodesInner = {
+  id,
+  episode_number,
+};
+```
+
+[[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
