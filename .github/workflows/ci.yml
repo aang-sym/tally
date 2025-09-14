@@ -99,13 +99,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build dependencies for unit tests
+        run: |
+          pnpm --dir packages/types build
+          pnpm --dir packages/core build
+
       - name: Run unit tests (excluding integration tests)
         run: |
           # Run tests but exclude integration tests that require live server
           cd apps/api
           npx vitest run --config vitest.config.unit.ts
 
-  # Temporarily disabled: RLS integration tests have mock environment limitations  
+  # Temporarily disabled: RLS integration tests have mock environment limitations
   # TODO: Re-enable once RLS tests are stabilized for CI environment
   #
   # rls-integration-tests:
@@ -162,7 +167,7 @@ jobs:
   #           fi
   #           echo "Waiting for API... ($i/60)"
   #           sleep 2
-  #         done  
+  #         done
   #         echo "❌ API failed to start. Logs:"
   #         tail -n 50 api.log || true
   #         exit 1
