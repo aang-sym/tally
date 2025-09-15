@@ -2,16 +2,19 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { API_ENDPOINTS, apiRequest } from '../config/api';
 import { UserManager, User } from '../services/UserManager';
+import { useAuth } from '../context/AuthContext';
 
 interface UserSwitcherProps {
   onUserChange?: (userId: string) => void;
 }
 
 const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
+  const auth = useAuth();
   const [users, setUsers] = useState<User[]>([]); // All users from Supabase
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   useEffect(() => {
@@ -39,58 +42,82 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
     }
   };
   const switchUser = async (userId: string) => {
-    const currentToken = localStorage.getItem('authToken');
-    console.log('[AUTH DEBUG] Switching to user:', userId);
-    console.log(
-      '[AUTH DEBUG] Current stored token:',
-      currentToken ? `${currentToken.substring(0, 20)}...` : 'none'
-    );
+    setSwitching(true);
+    console.log('[USER SWITCH DEBUG] Starting user switch to:', userId);
+    console.log('[USER SWITCH DEBUG] Current auth user:', auth.user?.id, auth.user?.email);
 
-    // Find the user we're switching to
-    const targetUser = users.find((user) => user.id === userId);
-    if (!targetUser) {
-      console.error('User not found:', userId);
-      return;
-    }
-
-    // For test users with known passwords, we can auto-login
-    const testCredentials: { [key: string]: string } = {
-      'freshtest@example.com': 'testpassword123',
-      'test1@example.com': 'password123',
-      'test2@example.com': 'password123',
-      'admin@test.com': 'password123',
-    };
-
-    const password = testCredentials[targetUser.email];
-    if (password) {
-      try {
-        // Login as the target user
-        const loginData = await apiRequest(API_ENDPOINTS.auth.login, {
-          method: 'POST',
-          body: JSON.stringify({
-            email: targetUser.email,
-            password: password,
-          }),
-        });
-
-        if (loginData.token) {
-          localStorage.setItem('authToken', loginData.token);
-          localStorage.setItem('current_user_id', loginData.user.id);
-          console.log('[AUTH DEBUG] Successfully switched to user:', targetUser.email);
-        }
-      } catch (error) {
-        console.error('[AUTH DEBUG] Failed to login as target user:', error);
-        // Fall back to just setting the user ID
+    try {
+      // Find the user we're switching to
+      const targetUser = users.find((user) => user.id === userId);
+      if (!targetUser) {
+        console.error('[USER SWITCH DEBUG] Target user not found:', userId);
+        return;
       }
+
+      console.log('[USER SWITCH DEBUG] Target user found:', targetUser.email);
+
+      // For test users with known passwords, we can auto-login
+      const testCredentials: { [key: string]: string } = {
+        'freshtest@example.com': 'testpassword123',
+        'test1@example.com': 'password123',
+        'test2@example.com': 'password123',
+        'admin@test.com': 'password123',
+      };
+
+      const password = testCredentials[targetUser.email];
+      if (password) {
+        try {
+          console.log('[USER SWITCH DEBUG] Attempting login for test user:', targetUser.email);
+
+          // Login as the target user
+          const loginData = await apiRequest(API_ENDPOINTS.auth.login, {
+            method: 'POST',
+            body: JSON.stringify({
+              email: targetUser.email,
+              password: password,
+            }),
+          });
+
+          if (loginData.token && loginData.user) {
+            console.log('[USER SWITCH DEBUG] Login successful, updating auth context');
+            console.log('[USER SWITCH DEBUG] New token:', `${loginData.token.substring(0, 20)}...`);
+            console.log('[USER SWITCH DEBUG] New user:', loginData.user.id, loginData.user.email);
+
+            // Update UserManager state
+            UserManager.setCurrentUserId(loginData.user.id);
+
+            // Update auth context - this will trigger re-renders throughout the app
+            auth.login(loginData.token, {
+              id: loginData.user.id,
+              email: loginData.user.email,
+            });
+
+            setCurrentUserId(loginData.user.id);
+            console.log('[USER SWITCH DEBUG] Auth context updated, user switch complete');
+          } else {
+            throw new Error('Invalid login response');
+          }
+        } catch (error) {
+          console.error('[USER SWITCH DEBUG] Failed to login as target user:', error);
+          alert(`Failed to switch to user ${targetUser.email}: ${error}`);
+          return;
+        }
+      } else {
+        console.error('[USER SWITCH DEBUG] No test credentials found for user:', targetUser.email);
+        alert(`Cannot switch to ${targetUser.email}: no test credentials available`);
+        return;
+      }
+
+      setIsOpen(false);
+      onUserChange?.(userId);
+
+      console.log('[USER SWITCH DEBUG] User switch process completed successfully');
+    } catch (error) {
+      console.error('[USER SWITCH DEBUG] User switch failed:', error);
+      alert(`Failed to switch user: ${error}`);
+    } finally {
+      setSwitching(false);
     }
-
-    UserManager.setCurrentUserId(userId);
-    setCurrentUserId(userId);
-    setIsOpen(false);
-    onUserChange?.(userId);
-
-    // Reload the page to update all components with new user data
-    window.location.reload();
   };
 
   const getCurrentUser = () => {
@@ -143,13 +170,18 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
       <div className="relative">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center space-x-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          disabled={switching}
+          className={`flex items-center space-x-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors ${switching ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
-            {currentUser?.display_name?.charAt(0) || 'U'}
+            {switching ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            ) : (
+              currentUser?.display_name?.charAt(0) || 'U'
+            )}
           </div>
           <span className="hidden md:block text-gray-700">
-            {currentUser?.display_name || 'Select User'}
+            {switching ? 'Switching...' : currentUser?.display_name || 'Select User'}
           </span>
           <svg
             className="w-4 h-4 text-gray-500"
@@ -180,9 +212,10 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
                   <button
                     key={user.id}
                     onClick={() => switchUser(user.id)}
+                    disabled={switching}
                     className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors ${
                       user.id === currentUserId ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                    }`}
+                    } ${switching ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <div className="flex items-center space-x-3">
                       <div

@@ -9,6 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { UserManager } from '../services/UserManager';
 import { API_ENDPOINTS, apiRequest } from '../config/api';
 import { UserShow, StreamingProvider, StoredEpisodeProgress } from '../types/api';
+import { useAuth } from '../context/AuthContext';
 
 // Shared, accessible progress bar component
 const ProgressBar: React.FC<{
@@ -149,6 +150,7 @@ const deriveStats = (items: UserShow[]): WatchlistStats => {
 // API_BASE removed - using centralized API_ENDPOINTS
 
 const MyShows: React.FC = () => {
+  const auth = useAuth();
   const [activeTab, setActiveTab] = useState<'all' | 'watchlist' | 'watching' | 'completed'>('all');
   const [shows, setShows] = useState<UserShow[]>([]);
   // Cache watchlist per tab to avoid full reloads when switching
@@ -202,8 +204,41 @@ const MyShows: React.FC = () => {
     }
   };
 
+  // Clear all cached data when user changes
+  useEffect(() => {
+    if (auth.user) {
+      console.log('[MY SHOWS DEBUG] User changed, clearing cache and refetching data');
+      console.log('[MY SHOWS DEBUG] New user:', auth.user.id, auth.user.email);
+
+      // Clear all caches
+      setWatchlistCache({});
+      setShows([]);
+      setStats(null);
+      setSeriesProgress({});
+      setShowAnalysis({});
+      setSelectedSeasons({});
+      setEpisodeData({});
+      setShowProviders({});
+      setPosterOverrides({});
+
+      // Reset to "all" tab and refetch
+      setActiveTab('all');
+      fetchWatchlist('all', false);
+      fetchStats();
+    }
+  }, [auth.user?.id]); // Depend on user ID to trigger when user switches
+
   // Fetch watchlist data
   useEffect(() => {
+    // Skip if we don't have an authenticated user yet
+    if (!auth.user) {
+      console.log('[MY SHOWS DEBUG] No authenticated user, skipping watchlist fetch');
+      return;
+    }
+
+    console.log('[MY SHOWS DEBUG] Fetching watchlist for tab:', activeTab);
+    console.log('[MY SHOWS DEBUG] Current user:', auth.user.id, auth.user.email);
+
     // If we have cached data for this tab, show it immediately without flicker
     const cached = watchlistCache[activeTab];
     if (cached) {
@@ -213,13 +248,18 @@ const MyShows: React.FC = () => {
     }
     // Always refresh the list in the background; stats are global and fetched separately
     fetchWatchlist(activeTab, !!cached);
-  }, [activeTab]);
+  }, [activeTab, auth.user?.id]); // Also depend on user ID
 
   useEffect(() => {
+    // Skip if we don't have an authenticated user yet
+    if (!auth.user) {
+      return;
+    }
+
     // Initial stats fetch on mount; subsequent updates come from mutations or background refresh
     fetchStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [auth.user?.id]); // Depend on user ID
 
   // When country changes, persist and refresh provider lists
   useEffect(() => {
@@ -251,6 +291,10 @@ const MyShows: React.FC = () => {
       setIsBackgroundLoading(useBackground);
       const token = localStorage.getItem('authToken') || undefined;
       const statusParam = tab !== 'all' ? tab : undefined;
+
+      console.log('[MY SHOWS DEBUG] Fetching watchlist for tab:', tab);
+      console.log('[MY SHOWS DEBUG] Auth context user:', auth.user?.id, auth.user?.email);
+      console.log('[MY SHOWS DEBUG] Using token:', token ? `${token.substring(0, 20)}...` : 'none');
 
       // Use apiRequest helper to fetch watchlist, tolerant of both array and object shapes
       const qs = statusParam ? `?status=${encodeURIComponent(statusParam)}` : '';

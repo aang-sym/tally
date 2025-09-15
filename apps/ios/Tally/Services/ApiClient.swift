@@ -23,6 +23,8 @@ enum ApiError: Error, LocalizedError {
     case unauthorized
     case badStatus(Int)
     case cannotParse
+    case timeout
+    case network
     case underlying(Error)
 
     var errorDescription: String? {
@@ -30,6 +32,8 @@ enum ApiError: Error, LocalizedError {
         case .unauthorized: return "Unauthorized (401). Please sign in or provide a token."
         case .badStatus(let code): return "Server responded with status \(code)."
         case .cannotParse: return "Could not parse server response."
+        case .timeout: return "The request timed out. Please check your connection."
+        case .network: return "You're offline. Please check your internet connection."
         case .underlying(let err): return err.localizedDescription
         }
     }
@@ -67,6 +71,72 @@ struct AuthenticatedUser {
     let token: String
 }
 
+// MARK: - MyShows temporary models (will be moved to Core/Models later)
+struct Show: Codable, Identifiable {
+    let id: String
+    let tmdbId: Int?
+    let title: String
+    let overview: String?
+    let posterPath: String?
+    let firstAirDate: String?
+    let status: String?
+    let totalSeasons: Int?
+    let totalEpisodes: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case tmdbId = "tmdb_id"
+        case title, overview
+        case posterPath = "poster_path"
+        case firstAirDate = "first_air_date"
+        case status
+        case totalSeasons = "total_seasons"
+        case totalEpisodes = "total_episodes"
+    }
+}
+
+enum ShowStatus: String, Codable, CaseIterable {
+    case watchlist, watching, completed, dropped
+}
+
+struct StreamingProvider: Codable, Identifiable {
+    let id: Int
+    let name: String
+    let logoPath: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, name
+        case logoPath = "logo_path"
+    }
+}
+
+struct UserShow: Codable, Identifiable {
+    let id: String
+    let status: ShowStatus
+    let showRating: Double?
+    let notes: String?
+    let show: Show
+    let streamingProvider: StreamingProvider?
+
+    enum CodingKeys: String, CodingKey {
+        case id, status
+        case showRating = "show_rating"
+        case notes, show
+        case streamingProvider = "streaming_provider"
+    }
+}
+
+// Response wrappers for watchlist endpoints
+private struct WatchlistListResponse: Codable {
+    let success: Bool
+    let data: ShowsData
+    struct ShowsData: Codable { let shows: [UserShow] }
+}
+private struct WatchlistCreateResponse: Codable {
+    let success: Bool
+    let data: UserShow
+}
+
 class ApiClient: ObservableObject {
     private let baseURL = URL(string: "http://localhost:4000")!
     private var token: String?
@@ -89,21 +159,39 @@ class ApiClient: ObservableObject {
         return URLSession(configuration: cfg)
     }
 
+    private func mapToApiError(_ error: Error) -> ApiError {
+        if let urlErr = error as? URLError {
+            switch urlErr.code {
+            case .timedOut:
+                return .timeout
+            case .notConnectedToInternet, .networkConnectionLost, .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed:
+                return .network
+            default:
+                return .underlying(error)
+            }
+        }
+        return .underlying(error)
+    }
+
+    private func addAuthHeaders(_ req: inout URLRequest) {
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        if let token, !token.isEmpty {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+    }
+
     // Generic GET that attaches headers (incl. Authorization when present)
     private func getData(from path: String) async throws -> (Data, HTTPURLResponse) {
         let url = baseURL.appendingPathComponent(path)
         var req = URLRequest(url: url)
         req.httpMethod = "GET"
-        req.setValue("application/json", forHTTPHeaderField: "Accept")
-        if let token, !token.isEmpty {
-            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        addAuthHeaders(&req)
         do {
             let (data, resp) = try await session.data(for: req)
             guard let http = resp as? HTTPURLResponse else { throw ApiError.badStatus(-1) }
             return (data, http)
         } catch {
-            throw ApiError.underlying(error)
+            throw mapToApiError(error)
         }
     }
 
@@ -123,7 +211,7 @@ class ApiClient: ObservableObject {
             guard let http = resp as? HTTPURLResponse else { throw ApiError.badStatus(-1) }
             return (data, http)
         } catch {
-            throw ApiError.underlying(error)
+            throw mapToApiError(error)
         }
     }
 
@@ -220,5 +308,104 @@ class ApiClient: ObservableObject {
             return env2.data.subscriptions
         }
         throw ApiError.cannotParse
+    }
+
+    // MARK: - MyShows / Watchlist
+    @MainActor
+    func getWatchlist(status: ShowStatus? = nil) async throws -> [UserShow] {
+        var comps = URLComponents(url: baseURL.appendingPathComponent("/api/watchlist"), resolvingAgainstBaseURL: false)!
+        if let status { comps.queryItems = [URLQueryItem(name: "status", value: status.rawValue)] }
+        var req = URLRequest(url: comps.url!)
+        req.httpMethod = "GET"
+        addAuthHeaders(&req)
+
+        do {
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { throw ApiError.badStatus(-1) }
+            guard (200..<300).contains(http.statusCode) else {
+                if http.statusCode == 401 { throw ApiError.unauthorized }
+                #if DEBUG
+                if let body = String(data: data, encoding: .utf8) { print("Watchlist error:", body) }
+                #endif
+                throw ApiError.badStatus(http.statusCode)
+            }
+            if let decoded = try? JSONDecoder().decode(WatchlistListResponse.self, from: data) {
+                return decoded.data.shows
+            }
+            // Back-compat fallbacks
+            if let direct = try? JSONDecoder().decode([UserShow].self, from: data) { return direct }
+            struct Envelope: Codable { let data: [UserShow] }
+            if let env = try? JSONDecoder().decode(Envelope.self, from: data) { return env.data }
+            throw ApiError.cannotParse
+        } catch {
+            throw mapToApiError(error)
+        }
+    }
+
+    @MainActor
+    func addToWatchlist(tmdbId: Int, status: ShowStatus = .watchlist) async throws -> UserShow {
+        var req = URLRequest(url: baseURL.appendingPathComponent("/api/watchlist"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        addAuthHeaders(&req)
+        let body: [String: Any] = ["tmdb_id": tmdbId, "status": status.rawValue]
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { throw ApiError.badStatus(-1) }
+            guard (200..<300).contains(http.statusCode) else {
+                if http.statusCode == 401 { throw ApiError.unauthorized }
+                throw ApiError.badStatus(http.statusCode)
+            }
+            return try JSONDecoder().decode(WatchlistCreateResponse.self, from: data).data
+        } catch {
+            throw mapToApiError(error)
+        }
+    }
+
+    @MainActor
+    func updateShowStatus(id: String, status: ShowStatus) async throws {
+        var req = URLRequest(url: baseURL.appendingPathComponent("/api/watchlist/\(id)/status"))
+        req.httpMethod = "PUT"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        addAuthHeaders(&req)
+        let body = ["status": status.rawValue]
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { throw ApiError.badStatus(-1) }
+            guard (200..<300).contains(http.statusCode) else {
+                if http.statusCode == 401 { throw ApiError.unauthorized }
+                #if DEBUG
+                if let body = String(data: data, encoding: .utf8) { print("Update status error:", body) }
+                #endif
+                throw ApiError.badStatus(http.statusCode)
+            }
+        } catch {
+            throw mapToApiError(error)
+        }
+    }
+
+    @MainActor
+    func removeFromWatchlist(id: String) async throws {
+        var req = URLRequest(url: baseURL.appendingPathComponent("/api/watchlist/\(id)"))
+        req.httpMethod = "DELETE"
+        addAuthHeaders(&req)
+
+        do {
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { throw ApiError.badStatus(-1) }
+            guard (200..<300).contains(http.statusCode) else {
+                if http.statusCode == 401 { throw ApiError.unauthorized }
+                #if DEBUG
+                if let body = String(data: data, encoding: .utf8) { print("Remove error:", body) }
+                #endif
+                throw ApiError.badStatus(http.statusCode)
+            }
+        } catch {
+            throw mapToApiError(error)
+        }
     }
 }
