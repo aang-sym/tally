@@ -367,11 +367,15 @@ class ApiClient: ObservableObject {
 
     @MainActor
     func addToWatchlist(tmdbId: Int, status: ShowStatus = .watchlist) async throws -> UserShow {
+        guard currentUser != nil else {
+            throw ApiError.unauthorized
+        }
+
         var req = URLRequest(url: baseURL.appendingPathComponent("/api/watchlist"))
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         addAuthHeaders(&req)
-        let body: [String: Any] = ["tmdb_id": tmdbId, "status": status.rawValue]
+        let body: [String: Any] = ["tmdbId": tmdbId, "status": status.rawValue]
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         do {

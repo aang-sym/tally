@@ -10,8 +10,8 @@ import SwiftUI
 struct ContentView: View {
     @State private var status = "Loading…"
     @State private var token: String = ""
-    @State private var email: String = "test@example.com"
-    @State private var password: String = "password"
+    @State private var email: String = "test2@example.com"
+    @State private var password: String = "password123"
     @StateObject private var api = ApiClient()
 
     var body: some View {

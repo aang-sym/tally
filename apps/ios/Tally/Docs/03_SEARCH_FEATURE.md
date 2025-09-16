@@ -156,6 +156,36 @@ Create a new folder `Features/Search/`:
 - ✅ Add to watchlist functionality working
 - ✅ Error states handled (unauthorized, network, timeout)
 
+### Issue Resolution: Add to Watchlist 400 Error
+
+**Problem**: Users reported 400 error when trying to add shows from search to watchlist
+
+**Root Cause**: Missing authentication check in `addToWatchlist` method - the method wasn't verifying that a user was logged in before attempting to make the API request
+
+**Solution**: Added authentication guard to `addToWatchlist` method:
+
+```swift
+guard currentUser != nil else {
+    throw ApiError.unauthorized
+}
+```
+
+**Result**: Now properly displays "Please log in to search and add shows to your watchlist" message when user is not authenticated, preventing invalid API requests and providing clear user feedback
+
+### Additional Issue Resolution: JSON Decoding Error
+
+**Problem**: After authentication fix, users encountered JSON decoding error: `No value associated with key "id"`
+
+**Root Cause**: Backend API response structure mismatch - the `addToWatchlist` endpoint wasn't including nested show data that iOS client expected
+
+**Solution**: Modified backend `WatchlistService.addToWatchlist` method:
+
+1. Updated database query to include nested show data: `.select('*, shows (*)')`
+2. Added response transformation to map `shows` field to `show` for iOS compatibility
+3. Ensured response structure matches iOS `UserShow` model expectations
+
+**Result**: Add to watchlist functionality now works end-to-end with proper nested show data and field mapping
+
 ## Follow-ups (Later)
 
 - Show detail screen with overview, providers, seasons/episodes.
