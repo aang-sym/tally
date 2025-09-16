@@ -132,9 +132,13 @@ private struct WatchlistListResponse: Codable {
     let data: ShowsData
     struct ShowsData: Codable { let shows: [UserShow] }
 }
+private struct WatchlistCreateResponseData: Codable {
+    let userShow: UserShow
+}
+
 private struct WatchlistCreateResponse: Codable {
     let success: Bool
-    let data: UserShow
+    let data: WatchlistCreateResponseData
 }
 
 // Response wrapper for search endpoint
@@ -213,10 +217,15 @@ struct Season: Codable, Identifiable {
 }
 
 // Response models for /analyze endpoint
+struct ReleasePattern: Codable {
+    let pattern: String
+    let confidence: Double?
+}
+
 struct AnalysisResult: Codable {
     let showDetails: AnalysisShowDetails
     let seasonInfo: [SeasonInfo]
-    let pattern: String?
+    let pattern: ReleasePattern?
     let confidence: Double?
     let reasoning: String?
 }
@@ -517,7 +526,7 @@ class ApiClient: ObservableObject {
                 if http.statusCode == 401 { throw ApiError.unauthorized }
                 throw ApiError.badStatus(http.statusCode)
             }
-            return try JSONDecoder().decode(WatchlistCreateResponse.self, from: data).data
+            return try JSONDecoder().decode(WatchlistCreateResponse.self, from: data).data.userShow
         } catch {
             throw mapToApiError(error)
         }
@@ -727,7 +736,51 @@ class ApiClient: ObservableObject {
                 if http.statusCode == 401 { throw ApiError.unauthorized }
                 throw ApiError.badStatus(http.statusCode)
             }
-            return try JSONDecoder().decode(WatchlistCreateResponse.self, from: data).data
+            return try JSONDecoder().decode(WatchlistCreateResponse.self, from: data).data.userShow
+        } catch {
+            throw mapToApiError(error)
+        }
+    }
+
+    // MARK: - Episode Progress
+    struct ProgressSetResponse: Codable {
+        let success: Bool
+        let data: ProgressSetData
+    }
+
+    struct ProgressSetData: Codable {
+        let updatedCount: Int
+        let totalRequested: Int
+        let status: String
+        let message: String
+    }
+
+    @MainActor
+    func setEpisodeProgress(tmdbId: Int, seasonNumber: Int, episodeNumber: Int, status: String = "watching") async throws -> ProgressSetData {
+        var req = URLRequest(url: baseURL.appendingPathComponent("/api/watchlist/\(tmdbId)/progress"))
+        req.httpMethod = "PUT"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        addAuthHeaders(&req)
+        let body: [String: Any] = [
+            "seasonNumber": seasonNumber,
+            "episodeNumber": episodeNumber,
+            "status": status
+        ]
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { throw ApiError.badStatus(-1) }
+            guard (200..<300).contains(http.statusCode) else {
+                if http.statusCode == 401 { throw ApiError.unauthorized }
+                #if DEBUG
+                if let body = String(data: data, encoding: .utf8) { print("Set progress error:", body) }
+                #endif
+                throw ApiError.badStatus(http.statusCode)
+            }
+
+            let response = try JSONDecoder().decode(ProgressSetResponse.self, from: data)
+            return response.data
         } catch {
             throw mapToApiError(error)
         }

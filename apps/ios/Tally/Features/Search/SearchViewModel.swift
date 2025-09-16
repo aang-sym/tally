@@ -32,9 +32,12 @@ class SearchViewModel: ObservableObject {
     @Published var expandedShowIds: Set<String> = []
     @Published var showDetails: [String: ShowExpandedData] = [:] // TMDB ID -> ShowExpandedData
     @Published var loadingDetails: Set<String> = [] // TMDB IDs currently loading
+    @Published var settingProgressFor: Set<String> = [] // keys: "<tmdbId>-s<season>-e<episode>"
+    @Published var localProgress: [String: Int] = [:] // keys: "<tmdbId>-s<season>" -> last watched episode number
 
     private var currentSearchTask: Task<Void, Never>? = nil
     private var detailsTasks: [String: Task<Void, Never>] = [:] // TMDB ID -> Task
+    private var debounceTask: Task<Void, Never>? = nil
 
     // Store reference to API client for internal operations
     weak var api: ApiClient?
@@ -92,6 +95,17 @@ class SearchViewModel: ObservableObject {
                 print("Search failed for '\(trimmedQuery)': \(error)")
                 #endif
             }
+        }
+    }
+
+    func scheduleSearch(api: ApiClient, debounceMs: UInt64 = 400) {
+        // Cancel previous debounce
+        debounceTask?.cancel()
+        debounceTask = Task { [weak self] in
+            // Debounce delay
+            try? await Task.sleep(nanoseconds: debounceMs * 1_000_000)
+            guard !Task.isCancelled, let self = self else { return }
+            await self.performSearch(api: api)
         }
     }
 
@@ -238,6 +252,32 @@ class SearchViewModel: ObservableObject {
             #if DEBUG
             print("Failed to add show to watching: \(error)")
             #endif
+        }
+    }
+
+    func setProgressUpToEpisode(api: ApiClient, tmdbId: Int, season: Int, episode: Int) async {
+        let key = "\(tmdbId)-s\(season)-e\(episode)"
+        if settingProgressFor.contains(key) { return }
+        settingProgressFor.insert(key)
+        defer { settingProgressFor.remove(key) }
+
+        do {
+            // Ensure show status is watching
+            _ = try? await api.addToWatching(tmdbId: tmdbId)
+
+            // Mark all episodes up to the tapped one as watched
+            _ = try await api.setEpisodeProgress(
+                tmdbId: tmdbId,
+                seasonNumber: season,
+                episodeNumber: episode,
+                status: "watched"
+            )
+
+            // Locally reflect progress
+            let seasonKey = "\(tmdbId)-s\(season)"
+            localProgress[seasonKey] = max(localProgress[seasonKey] ?? 0, episode)
+        } catch {
+            self.error = mapErrorToUserFriendlyMessage(error)
         }
     }
 

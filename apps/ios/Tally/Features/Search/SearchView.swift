@@ -26,12 +26,6 @@ struct SearchView: View {
                             .onSubmit {
                                 viewModel.performSearch(api: api)
                             }
-
-                        Button("Search") {
-                            viewModel.performSearch(api: api)
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(viewModel.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isLoading)
                     }
                 }
                 .padding()
@@ -65,6 +59,9 @@ struct SearchView: View {
         .environmentObject(viewModel)
         .onAppear {
             viewModel.api = api
+        }
+        .onChange(of: viewModel.query) { _ in
+            viewModel.scheduleSearch(api: api)
         }
     }
 
@@ -256,15 +253,9 @@ private struct SearchResultRow: View {
                         .padding(.vertical, 8)
                     } else if let details = showDetails {
                         ExpandedDetailsView(
+                            show: show,
                             details: details,
-                            selectedSeason: $selectedSeason,
-                            onAddToWatching: {
-                                Task {
-                                    guard let tmdbId = show.tmdbId else { return }
-                                    guard let api = viewModel.api else { return }
-                                    await viewModel.addToWatching(api: api, tmdbId: tmdbId, season: selectedSeason)
-                                }
-                            }
+                            selectedSeason: $selectedSeason
                         )
                     } else {
                         HStack {
@@ -300,35 +291,58 @@ private struct SearchResultRow: View {
 
 // MARK: - Expanded Details View
 private struct ExpandedDetailsView: View {
+    let show: Show
     let details: ShowExpandedData
     @Binding var selectedSeason: Int
-    let onAddToWatching: () -> Void
+    @EnvironmentObject private var viewModel: SearchViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Season selector
             if !details.seasons.isEmpty {
-                HStack {
-                    Text("Season:")
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Season")
                         .font(.subheadline)
-                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
 
-                    Picker("Season", selection: $selectedSeason) {
+                    Menu {
                         ForEach(details.seasons, id: \.seasonNumber) { season in
-                            Text("Season \(season.seasonNumber) (\(season.episodeCount) episodes)")
-                                .tag(season.seasonNumber)
+                            Button("Season \(season.seasonNumber) (\(season.episodeCount) episodes)") {
+                                selectedSeason = season.seasonNumber
+                            }
+                        }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("Season \(selectedSeason)")
+                                .font(.subheadline)
+                                .foregroundColor(.blue)
+                            if let season = details.seasons.first(where: { $0.seasonNumber == selectedSeason }) {
+                                Text("(\(season.episodeCount) episodes)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
-                    .pickerStyle(.menu)
-                    .accentColor(.blue)
 
                     Spacer()
 
-                    Button("Add to Watching") {
-                        onAddToWatching()
+                    // Add to Watchlist action (clock icon)
+                    if let tmdbId = show.tmdbId {
+                        Button {
+                            Task {
+                                if let api = viewModel.api {
+                                    await viewModel.addToWatchlist(api: api, show: show)
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "clock")
+                                Text("Watchlist")
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .font(.caption)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .font(.caption)
                 }
             }
 
@@ -339,18 +353,15 @@ private struct ExpandedDetailsView: View {
                         .font(.subheadline)
                         .fontWeight(.medium)
 
-                    LazyVStack(spacing: 4) {
-                        ForEach(Array(currentSeason.episodes.prefix(5)), id: \.id) { episode in
-                            EpisodeRowView(episode: episode)
-                        }
-
-                        if currentSeason.episodes.count > 5 {
-                            Text("... and \(currentSeason.episodes.count - 5) more episodes")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .padding(.top, 4)
+                    // Scrollable list of episodes within the expanded card
+                    ScrollView {
+                        LazyVStack(spacing: 4) {
+                            ForEach(currentSeason.episodes, id: \.id) { episode in
+                                EpisodeRowButton(episode: episode, tmdbId: show.tmdbId, season: currentSeason.seasonNumber)
+                            }
                         }
                     }
+                    .frame(height: 260)
                 }
             } else {
                 Text("No episode data available")
@@ -369,57 +380,89 @@ private struct ExpandedDetailsView: View {
 }
 
 // MARK: - Episode Row View
-private struct EpisodeRowView: View {
+private struct EpisodeRowButton: View {
     let episode: Episode
+    let tmdbId: Int?
+    let season: Int
+    @EnvironmentObject private var viewModel: SearchViewModel
+
+    private var progressKey: String {
+        guard let tmdbId = tmdbId else { return "" }
+        return "\(tmdbId)-s\(season)-e\(episode.episodeNumber)"
+    }
+
+    private var seasonKey: String {
+        guard let tmdbId = tmdbId else { return "" }
+        return "\(tmdbId)-s\(season)"
+    }
+
+    private var isCompletedLocally: Bool {
+        (viewModel.localProgress[seasonKey] ?? 0) >= episode.episodeNumber
+    }
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    Text("E\(episode.episodeNumber)")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.secondary)
-
-                    if let name = episode.name {
-                        Text(name)
+        Button(action: {
+            guard let tmdbId = tmdbId, let api = viewModel.api else { return }
+            Task { await viewModel.setProgressUpToEpisode(api: api, tmdbId: tmdbId, season: season, episode: episode.episodeNumber) }
+        }) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text("E\(episode.episodeNumber)")
                             .font(.caption)
-                            .lineLimit(1)
-                    }
+                            .fontWeight(.medium)
+                            .foregroundStyle(.secondary)
 
-                    Spacer()
+                        if let name = episode.name {
+                            Text(name)
+                                .font(.caption)
+                                .lineLimit(1)
+                        }
+
+                        Spacer()
+
+                        if let airDate = episode.airDate {
+                            Text(formatAirDate(airDate))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
 
                     if let airDate = episode.airDate {
-                        Text(formatAirDate(airDate))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                        if isAiringNext(airDate) {
+                            Text("Airing Next")
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.blue)
+                        } else if hasAired(airDate) {
+                            Text("Aired")
+                                .font(.caption2)
+                                .foregroundStyle(.green)
+                        } else {
+                            Text("Upcoming")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
                     }
                 }
+                Spacer()
 
-                if let airDate = episode.airDate {
-                    if isAiringNext(airDate) {
-                        Text("Airing Next")
-                            .font(.caption2)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.blue)
-                    } else if hasAired(airDate) {
-                        Text("Aired")
-                            .font(.caption2)
-                            .foregroundStyle(.green)
-                    } else {
-                        Text("Upcoming")
-                            .font(.caption2)
-                            .foregroundStyle(.orange)
-                    }
+                if viewModel.settingProgressFor.contains(progressKey) {
+                    ProgressView().scaleEffect(0.8)
+                } else if isCompletedLocally {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                } else {
+                    Image(systemName: "play.circle")
+                        .foregroundStyle(.blue)
                 }
             }
-
-            Spacer()
+            .padding(.vertical, 2)
+            .padding(.horizontal, 8)
+            .background(isCompletedLocally ? Color(.systemGreen).opacity(0.25) : Color(.systemGray6))
+            .cornerRadius(4)
         }
-        .padding(.vertical, 2)
-        .padding(.horizontal, 8)
-        .background(Color(.systemGray6))
-        .cornerRadius(4)
+        .buttonStyle(.plain)
     }
 
     private func formatAirDate(_ dateString: String) -> String {
