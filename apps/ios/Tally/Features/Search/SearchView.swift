@@ -18,7 +18,7 @@ struct SearchView: View {
             VStack(spacing: 0) {
                 // Search input section
                 VStack(spacing: 16) {
-                    HStack {
+                    HStack(spacing: 8) {
                         TextField("Search for TV shows...", text: $viewModel.query)
                             .textFieldStyle(.roundedBorder)
                             .textInputAutocapitalization(.words)
@@ -26,6 +26,17 @@ struct SearchView: View {
                             .onSubmit {
                                 viewModel.performSearch(api: api)
                             }
+
+                        Menu("Country: \(viewModel.country)") {
+                            ForEach(CountryManager.all, id: \.self) { code in
+                                Button(code) {
+                                    viewModel.setCountry(code)
+                                    if !viewModel.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        viewModel.scheduleSearch(api: api)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 .padding()
@@ -55,12 +66,24 @@ struct SearchView: View {
             } message: {
                 Text("'\(lastAddedShowTitle)' has been added to your watchlist")
             }
+            .overlay(alignment: .bottom) {
+                if let msg = viewModel.toastMessage {
+                    Text(msg)
+                        .font(.caption)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(14)
+                        .padding(.bottom, 24)
+                        .transition(.opacity)
+                }
+            }
         }
         .environmentObject(viewModel)
         .onAppear {
             viewModel.api = api
         }
-        .onChange(of: viewModel.query) { _ in
+        .onChange(of: viewModel.query) { _, newValue in
             viewModel.scheduleSearch(api: api)
         }
     }
@@ -349,6 +372,64 @@ private struct ExpandedDetailsView: View {
                 }
             }
 
+            // Pattern badge + providers row
+            VStack(alignment: .leading, spacing: 8) {
+                if let pat = details.analysis.pattern {
+                    HStack(spacing: 8) {
+                        Text(pat.pattern.uppercased())
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(6)
+                        if let conf = pat.confidence {
+                            Text("\(Int((conf * 100).rounded()))%")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                if let providers = details.analysis.watchProviders, !providers.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(Array(providers.prefix(12)), id: \.providerId) { p in
+                                Button {
+                                    if let tmdbId = show.tmdbId, let api = viewModel.api {
+                                        Task { await viewModel.selectProvider(api: api, tmdbId: tmdbId, provider: p) }
+                                    }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        if let logo = p.logo, let url = URL(string: logo) {
+                                            AsyncImage(url: url) { image in
+                                                image.resizable().aspectRatio(contentMode: .fit)
+                                            } placeholder: {
+                                                Color(.systemGray5)
+                                            }
+                                            .frame(height: 20)
+                                        } else {
+                                            Image(systemName: "play.rectangle.fill").foregroundStyle(.secondary)
+                                        }
+                                        Text(p.name)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 6)
+                                    .background(providerChipBackground(p))
+                                    .cornerRadius(6)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Provider: \(p.name)")
+                                .accessibilityHint("Sets streaming provider for this show")
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            }
+
             // Current season episodes
             if let currentSeason = details.seasons.first(where: { $0.seasonNumber == selectedSeason }) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -392,6 +473,23 @@ private struct ExpandedDetailsView: View {
                 Task { await viewModel.readbackProgress(api: api, tmdbId: tmdbId) }
             }
         }
+        .onChange(of: viewModel.country) { _, _ in
+            // After country change, make sure the currently selected season episodes are present
+            if let tmdbId = show.tmdbId, let api = viewModel.api {
+                Task { await viewModel.ensureSeasonEpisodesLoaded(api: api, tmdbId: tmdbId, seasonNumber: selectedSeason) }
+            }
+        }
+    }
+
+    private func providerChipBackground(_ p: WatchProvider) -> Color {
+        guard let tmdbId = show.tmdbId else { return Color(.systemGray6) }
+        if viewModel.savingProviderFor.contains(tmdbId) {
+            return Color(.systemGray5)
+        }
+        if viewModel.selectedProviderByTmdb[tmdbId] == p.providerId {
+            return Color(.systemBlue).opacity(0.2)
+        }
+        return Color(.systemGray6)
     }
 }
 
@@ -496,6 +594,8 @@ private struct EpisodeRowButton: View {
             .cornerRadius(4)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Episode \(episode.episodeNumber)")
+        .accessibilityHint("Sets watched up to this episode")
     }
 
     private func formatAirDate(_ dateString: String) -> String {

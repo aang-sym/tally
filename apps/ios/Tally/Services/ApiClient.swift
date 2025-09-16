@@ -228,6 +228,7 @@ struct AnalysisResult: Codable {
     let pattern: ReleasePattern?
     let confidence: Double?
     let reasoning: String?
+    let watchProviders: [WatchProvider]?
 }
 
 struct AnalysisShowDetails: Codable {
@@ -254,6 +255,25 @@ struct SeasonInfo: Codable {
     enum CodingKeys: String, CodingKey {
         case seasonNumber, episodeCount, airDate
     }
+}
+
+struct WatchProvider: Codable {
+    let providerId: Int
+    let name: String
+    let logo: String?
+    let type: String?
+
+    enum CodingKeys: String, CodingKey {
+        case providerId = "providerId"
+        case name, logo, type
+    }
+}
+
+// Provider selection payload for saving user's chosen streaming provider
+struct ProviderSelection: Codable {
+    let id: Int
+    let name: String
+    let logo_path: String
 }
 
 private struct AnalyzeResponse: Codable {
@@ -815,6 +835,38 @@ class ApiClient: ObservableObject {
                 throw ApiError.badStatus(http.statusCode)
             }
             return try JSONDecoder().decode(ShowProgressResponse.self, from: data).data
+        } catch {
+            throw mapToApiError(error)
+        }
+    }
+
+    // Save user's selected streaming provider for a watchlist item (user_show)
+    @MainActor
+    func updateStreamingProvider(userShowId: String, provider: ProviderSelection?) async throws {
+        var req = URLRequest(url: baseURL.appendingPathComponent("/api/watchlist/\(userShowId)/provider"))
+        req.httpMethod = "PUT"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        addAuthHeaders(&req)
+        let body: [String: Any] = [
+            "provider": provider != nil ? [
+                "id": provider!.id,
+                "name": provider!.name,
+                "logo_path": provider!.logo_path
+            ] : NSNull()
+        ]
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { throw ApiError.badStatus(-1) }
+            guard (200..<300).contains(http.statusCode) else {
+                if http.statusCode == 401 { throw ApiError.unauthorized }
+                #if DEBUG
+                if let s = String(data: data, encoding: .utf8) { print("Update provider error:", s) }
+                #endif
+                throw ApiError.badStatus(http.statusCode)
+            }
+            // Response body not used currently
         } catch {
             throw mapToApiError(error)
         }

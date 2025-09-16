@@ -47,8 +47,6 @@ final class WatchlistViewModel: ObservableObject {
             return "You're offline. Please check your internet connection."
         case .underlying(let e):
             return "Something went wrong: \(e.localizedDescription)"
-        default:
-            return "Something went wrong. Please try again."
         }
     }
 }

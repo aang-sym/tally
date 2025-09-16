@@ -24,6 +24,7 @@ struct ExpandedSeason {
 @MainActor
 class SearchViewModel: ObservableObject {
     @Published var query: String = ""
+    @Published var country: String = CountryManager.get()
     @Published var results: [Show] = []
     @Published var isLoading: Bool = false
     @Published var error: String? = nil
@@ -36,6 +37,10 @@ class SearchViewModel: ObservableObject {
     @Published var settingProgressFor: Set<String> = [] // keys: "<tmdbId>-s<season>-e<episode>"
     @Published var localProgress: [String: Int] = [:] // keys: "<tmdbId>-s<season>" -> last watched episode number
     @Published var serverProgress: [String: Int] = [:]
+    @Published var toastMessage: String? = nil
+    @Published var userShowIdByTmdb: [Int: String] = [:]
+    @Published var selectedProviderByTmdb: [Int: Int] = [:]
+    @Published var savingProviderFor: Set<Int> = [] // tmdbId
 
     private var currentSearchTask: Task<Void, Never>? = nil
     private var detailsTasks: [String: Task<Void, Never>] = [:] // TMDB ID -> Task
@@ -70,9 +75,12 @@ class SearchViewModel: ObservableObject {
         isLoading = true
 
         currentSearchTask = Task {
+            #if DEBUG
+            print("[Search] query='\(trimmedQuery)' start")
+            #endif
             do {
                 // Perform search
-                let searchResults = try await api.searchShows(query: trimmedQuery)
+                let searchResults = try await api.searchShows(query: trimmedQuery, country: country)
 
                 // Check if task was cancelled
                 guard !Task.isCancelled else { return }
@@ -82,7 +90,7 @@ class SearchViewModel: ObservableObject {
                 isLoading = false
 
                 #if DEBUG
-                print("Search completed for '\(trimmedQuery)': \(searchResults.count) results")
+                print("[Search] done count=\(searchResults.count)")
                 #endif
             } catch {
                 // Check if task was cancelled
@@ -94,7 +102,7 @@ class SearchViewModel: ObservableObject {
                 self.isLoading = false
 
                 #if DEBUG
-                print("Search failed for '\(trimmedQuery)': \(error)")
+                print("[Search] error=\(error)")
                 #endif
             }
         }
@@ -107,7 +115,7 @@ class SearchViewModel: ObservableObject {
             // Debounce delay
             try? await Task.sleep(nanoseconds: debounceMs * 1_000_000)
             guard !Task.isCancelled, let self = self else { return }
-            await self.performSearch(api: api)
+            self.performSearch(api: api)
         }
     }
 
@@ -118,22 +126,111 @@ class SearchViewModel: ObservableObject {
         }
 
         do {
-            _ = try await api.addToWatchlist(tmdbId: tmdbId, status: .watchlist)
-
+            let added = try await api.addToWatchlist(tmdbId: tmdbId, status: .watchlist)
+            userShowIdByTmdb[tmdbId] = added.id
             #if DEBUG
-            print("Successfully added '\(show.title)' to watchlist")
+            print("[Watchlist] added id=\(added.id) status=watchlist")
             #endif
         } catch {
             self.error = mapErrorToUserFriendlyMessage(error)
 
             #if DEBUG
-            print("Failed to add '\(show.title)' to watchlist: \(error)")
+            print("[Watchlist] error add watchlist: \(error)")
             #endif
         }
     }
 
     func clearError() {
         error = nil
+    }
+
+    func showToast(_ message: String) {
+        toastMessage = message
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            await MainActor.run { self?.toastMessage = nil }
+        }
+    }
+
+    func setCountry(_ c: String) {
+        CountryManager.set(c)
+        country = c
+        // If any rows are expanded, refresh their details for the new country
+        if let api = self.api, !expandedShowIds.isEmpty {
+            Task { [weak self] in
+                await self?.refreshExpandedDetails(api: api)
+            }
+        }
+        #if DEBUG
+        print("[Country] set=\(c)")
+        #endif
+    }
+
+    /// Re-fetch analysis and minimally load episodes for all expanded shows
+    func refreshExpandedDetails(api: ApiClient) async {
+        let ids = expandedShowIds // copy
+        for tmdbIdString in ids {
+            guard let tmdbId = Int(tmdbIdString) else { continue }
+            do {
+                // Analyze with new country
+                let analysis = try await api.analyzeShow(tmdbId: tmdbId, country: country)
+
+                // Pre-populate seasons, then load latest season episodes
+                var seasons: [ExpandedSeason] = analysis.seasonInfo.map { info in
+                    ExpandedSeason(
+                        seasonNumber: info.seasonNumber,
+                        name: "Season \(info.seasonNumber)",
+                        episodeCount: info.episodeCount,
+                        episodes: []
+                    )
+                }.sorted { $0.seasonNumber < $1.seasonNumber }
+
+                let latest = analysis.seasonInfo.map { $0.seasonNumber }.max() ?? 1
+                await loadSeasonEpisodesInternal(api: api, tmdbId: tmdbId, seasonNumber: latest, existingSeasons: &seasons)
+
+                let expanded = ShowExpandedData(analysis: analysis, seasons: seasons)
+                showDetails[tmdbIdString] = expanded
+
+                #if DEBUG
+                print("[Refresh] tmdbId=\(tmdbId) providers=\(analysis.watchProviders?.count ?? 0) season=\(latest)")
+                #endif
+            } catch {
+                #if DEBUG
+                print("[Refresh] error tmdbId=\(tmdbId) error=\(error)")
+                #endif
+                // keep previous data if refresh fails
+                continue
+            }
+        }
+    }
+
+    func ensureUserShowId(api: ApiClient, tmdbId: Int) async -> String? {
+        if let id = userShowIdByTmdb[tmdbId] { return id }
+        do {
+            let created = try await api.addToWatching(tmdbId: tmdbId)
+            userShowIdByTmdb[tmdbId] = created.id
+            return created.id
+        } catch {
+            self.error = mapErrorToUserFriendlyMessage(error)
+            return nil
+        }
+    }
+
+    func selectProvider(api: ApiClient, tmdbId: Int, provider: WatchProvider) async {
+        guard !savingProviderFor.contains(tmdbId) else { return }
+        savingProviderFor.insert(tmdbId)
+        defer { savingProviderFor.remove(tmdbId) }
+
+        guard let userShowId = await ensureUserShowId(api: api, tmdbId: tmdbId) else { return }
+
+        let payload = ProviderSelection(id: provider.providerId, name: provider.name, logo_path: provider.logo ?? "")
+        do {
+            try await api.updateStreamingProvider(userShowId: userShowId, provider: payload)
+            selectedProviderByTmdb[tmdbId] = provider.providerId
+            showToast("Provider saved")
+        } catch {
+            self.error = mapErrorToUserFriendlyMessage(error)
+        }
     }
 
     func toggleExpansion(for show: Show, api: ApiClient) {
@@ -146,6 +243,9 @@ class SearchViewModel: ObservableObject {
 
         // If already expanded, collapse
         if expandedShowIds.contains(tmdbIdString) {
+            #if DEBUG
+            print("[Expand] tmdbId=\(tmdbId) close")
+            #endif
             expandedShowIds.remove(tmdbIdString)
 
             // Cancel any ongoing details task for this show
@@ -160,6 +260,9 @@ class SearchViewModel: ObservableObject {
 
         // Expand the row
         expandedShowIds.insert(tmdbIdString)
+        #if DEBUG
+        print("[Expand] tmdbId=\(tmdbId) open")
+        #endif
 
         // If we already have details cached, no need to fetch again
         if showDetails[tmdbIdString] != nil {
@@ -172,7 +275,7 @@ class SearchViewModel: ObservableObject {
         let task = Task {
             do {
                 // Step 1: Get analysis data (show details + season list)
-                let analysis = try await api.analyzeShow(tmdbId: tmdbId)
+                let analysis = try await api.analyzeShow(tmdbId: tmdbId, country: country)
 
                 // Check if task was cancelled
                 guard !Task.isCancelled else { return }
@@ -193,6 +296,9 @@ class SearchViewModel: ObservableObject {
                     // Load latest season episodes immediately
                     let latestSeasonNumber = analysis.seasonInfo.map { $0.seasonNumber }.max() ?? 1
                     await loadSeasonEpisodesInternal(api: api, tmdbId: tmdbId, seasonNumber: latestSeasonNumber, existingSeasons: &seasons)
+                    #if DEBUG
+                    print("[Analyze] tmdbId=\(tmdbId) season=\(latestSeasonNumber) ok")
+                    #endif
                 }
 
                 // Check if task was cancelled
@@ -210,7 +316,7 @@ class SearchViewModel: ObservableObject {
                 detailsTasks.removeValue(forKey: tmdbIdString)
 
                 #if DEBUG
-                print("Successfully loaded details for show: \(show.title)")
+                print("[Analyze] tmdbId=\(tmdbId) analyzedSeason=\(analysis.seasonInfo.last?.seasonNumber ?? 0)")
                 #endif
             } catch {
                 // Check if task was cancelled
@@ -253,7 +359,7 @@ class SearchViewModel: ObservableObject {
         defer { loadingSeason.remove(key) }
 
         do {
-            let seasonData = try await api.getSeasonRaw(tmdbId: tmdbId, season: seasonNumber)
+            let seasonData = try await api.getSeasonRaw(tmdbId: tmdbId, season: seasonNumber, country: country)
             if let idx = existingSeasons.firstIndex(where: { $0.seasonNumber == seasonNumber }) {
                 existingSeasons[idx] = ExpandedSeason(
                     seasonNumber: seasonData.seasonNumber,
@@ -288,6 +394,9 @@ class SearchViewModel: ObservableObject {
         defer { settingProgressFor.remove(key) }
 
         do {
+            #if DEBUG
+            print("[Progress] tap tmdbId=\(tmdbId) S\(season)E\(episode)")
+            #endif
             // Ensure show status is watching
             _ = try? await api.addToWatching(tmdbId: tmdbId)
 
@@ -302,6 +411,16 @@ class SearchViewModel: ObservableObject {
             // Locally reflect progress
             let seasonKey = "\(tmdbId)-s\(season)"
             localProgress[seasonKey] = max(localProgress[seasonKey] ?? 0, episode)
+
+            // Immediate, non-blocking readback of server truth
+            Task { [weak self] in
+                guard let self = self else { return }
+                await self.readbackProgress(api: api, tmdbId: tmdbId)
+                await MainActor.run { self.showToast("Progress saved to S\(season) E\(episode)") }
+                #if DEBUG
+                print("[Progress] set watched up to S\(season)E\(episode) OK")
+                #endif
+            }
         } catch {
             self.error = mapErrorToUserFriendlyMessage(error)
         }
@@ -322,6 +441,9 @@ class SearchViewModel: ObservableObject {
                 let key = "\(tmdbId)-s\(seasonNum)"
                 serverProgress[key] = lastWatched
             }
+            #if DEBUG
+            print("[Progress] readback tmdbId=\(tmdbId) seasons=\(data.seasons.keys.count)")
+            #endif
         } catch {
             #if DEBUG
             print("Readback progress failed: \(error)")
