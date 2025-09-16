@@ -137,6 +137,29 @@ private struct WatchlistCreateResponse: Codable {
     let data: UserShow
 }
 
+// Response wrapper for search endpoint
+private struct SearchResponse: Codable {
+    let success: Bool
+    let query: String
+    let country: String
+    let results: [SearchResult]
+}
+
+private struct SearchResult: Codable {
+    let id: Int
+    let title: String
+    let overview: String?
+    let poster: String?
+    let firstAirDate: String?
+    let year: Int?
+    let popularity: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, overview, poster, year, popularity
+        case firstAirDate = "firstAirDate"
+    }
+}
+
 class ApiClient: ObservableObject {
     private let baseURL = URL(string: "http://localhost:4000")!
     private var token: String?
@@ -404,6 +427,67 @@ class ApiClient: ObservableObject {
                 #endif
                 throw ApiError.badStatus(http.statusCode)
             }
+        } catch {
+            throw mapToApiError(error)
+        }
+    }
+
+    // MARK: - Search
+    @MainActor
+    func searchShows(query: String, country: String = "US") async throws -> [Show] {
+        guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return []
+        }
+
+        var comps = URLComponents(url: baseURL.appendingPathComponent("/api/tmdb/search"), resolvingAgainstBaseURL: false)!
+        comps.queryItems = [
+            URLQueryItem(name: "query", value: query),
+            URLQueryItem(name: "country", value: country)
+        ]
+
+        var req = URLRequest(url: comps.url!)
+        req.httpMethod = "GET"
+        addAuthHeaders(&req)
+
+        do {
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { throw ApiError.badStatus(-1) }
+            guard (200..<300).contains(http.statusCode) else {
+                if http.statusCode == 401 { throw ApiError.unauthorized }
+                if http.statusCode == 503 {
+                    // TMDB service unavailable
+                    throw ApiError.underlying(NSError(domain: "TMDBServiceUnavailable", code: 503, userInfo: [NSLocalizedDescriptionKey: "Search service temporarily unavailable"]))
+                }
+                #if DEBUG
+                if let body = String(data: data, encoding: .utf8) { print("Search error:", body) }
+                #endif
+                throw ApiError.badStatus(http.statusCode)
+            }
+
+            #if DEBUG
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("Search API Response:", responseString)
+            }
+            #endif
+
+            let searchResponse = try JSONDecoder().decode(SearchResponse.self, from: data)
+
+            // Convert SearchResult to Show format
+            let shows = searchResponse.results.map { result in
+                Show(
+                    id: UUID().uuidString, // Generate unique ID for iOS
+                    tmdbId: result.id,
+                    title: result.title,
+                    overview: result.overview,
+                    posterPath: result.poster,
+                    firstAirDate: result.firstAirDate,
+                    status: nil,
+                    totalSeasons: nil,
+                    totalEpisodes: nil
+                )
+            }
+
+            return shows
         } catch {
             throw mapToApiError(error)
         }

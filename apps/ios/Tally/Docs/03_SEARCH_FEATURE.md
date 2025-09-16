@@ -1,0 +1,164 @@
+# 03 – Search Feature Implementation Plan
+
+> **Directive for Claude Code**: Use **Gemini** to read and index the codebase (both Web and iOS, plus API) before making changes. Cite the exact files and lines you modify in your PR description. Keep edits surgical and incremental with compiling checkpoints.
+
+## Goal
+
+Enable users to **search for TV shows**, view results, and **add them to their Watchlist/My Shows** from iOS. Keep the flow minimal for MVP, but leave extension points for details/episodes.
+
+## Scope (MVP)
+
+- iOS: Search screen (SwiftUI) with query input, results list, and an **Add** action.
+- API: Use the existing `/api/search/shows?q=` endpoint (or confirm with Gemini and adjust to the real path) that returns a list of `Show` objects compatible with the app models.
+- Watchlist integration: Tapping **Add** calls `POST /api/watchlist` with `tmdb_id` and default status `.watchlist`.
+
+Out of scope (for later): show detail page, episode list, progress, recommendations.
+
+## References / Context
+
+- Existing iOS My Shows flow and models (added in `ApiClient.swift` temporarily): `Show`, `UserShow`, `ShowStatus`, `StreamingProvider`.
+- Watchlist methods already present in `ApiClient`: `addToWatchlist`, `getWatchlist`.
+- Login/Auth is in place; **must** attach Bearer tokens to search requests.
+
+**Action**: Use **Gemini** to find the authoritative files for:
+
+- iOS API client (`Services/ApiClient.swift`) and any duplicate helpers
+- Watchlist view (`Features/Watchlist/*`)
+- Routing/nav entry (`ContentView.swift` or equivalent tab/router)
+- API route for search (Node/Express): likely `apps/api/src/routes/search.ts` or similar
+- Service method that calls TMDB or internal search (e.g. `SearchService.ts`)
+
+## Backend Contract (confirm with Gemini)
+
+- **Endpoint**: `GET /api/search/shows?q=<string>`
+- **Auth**: Bearer token required (401 otherwise)
+- **Response**: Prefer one of these shapes (client already supports them):
+  - `{ success: true, data: { shows: Show[] } }`
+  - `{ data: Show[] }`
+  - `Show[]`
+- **Show fields** (minimum):
+  - `id: string` (internal id if present)
+  - `tmdb_id: number` (required for Add to Watchlist)
+  - `title: string`
+  - `overview?: string`
+  - `poster_path?: string`
+  - `first_air_date?: string`
+
+If API differs, update iOS decoder or unify the API shape server-side.
+
+## iOS Work
+
+### 1) ApiClient
+
+- Add `searchShows(query: String) async throws -> [Show]` that queries `/api/search/shows?q=` and decodes one of the supported envelopes (already drafted in `ApiClient.swift`).
+- Use existing `addAuthHeaders(_:)` and `mapToApiError(_:)` for consistent error states (unauthorized, timeout, network).
+
+### 2) Feature Module
+
+Create a new folder `Features/Search/`:
+
+- `SearchViewModel.swift`
+  - `@Published var query: String`
+  - `@Published var results: [Show]`
+  - `@Published var isLoading: Bool`
+  - `@Published var error: String?`
+  - `performSearch(api:)` with cancellation of prior task, guards for empty query, sets loading and error, awaits `api.searchShows` and assigns `results`.
+  - `addToWatchlist(api:tmdbId:)` calls `api.addToWatchlist(tmdbId: status: .watchlist)`.
+  - Map `ApiError` to user-friendly messages (reuse pattern from WatchlistViewModel).
+- `SearchView.swift`
+  - TextField + Search button, submit triggers `performSearch`.
+  - Loading/Error/Empty states.
+  - `List(results)` with `SearchRow` showing poster, title, year, and an **Add** button (disabled if `tmdb_id` missing).
+  - `navigationTitle("Search")`.
+
+### 3) Navigation Hook
+
+- In `ContentView.swift`, add a `NavigationLink("Search", destination: SearchView(api: api))` near Watchlist/My Shows.
+
+## UX Notes
+
+- Don’t refetch on every keystroke; fetch on submit/tap. (We can add debounce later.)
+- Persist last query to `@StateObject` only; no disk persistence needed.
+- After **Add**, consider a subtle toast/snackbar or a checkmark on the row (optional).
+
+## Error Handling & Edge Cases
+
+- **401 Unauthorized** → show: “Please log in to search and add shows.”
+- **Timeout / Network** → show friendly messages; keep last results displayed.
+- **Empty query** → skip network; show helper text.
+- **Poster path** may be full URL or relative; if relative, prepend TMDB base in one place (API or UI helper).
+
+## Telemetry / Logging (dev only)
+
+- Log `searchShows` requests with query length and result count.
+- Log `addToWatchlist` errors with HTTP status and body in DEBUG builds.
+
+## Tests / Acceptance Criteria
+
+- Given a valid session, entering “breaking bad” returns results including the expected title.
+- Adding an item with `tmdb_id` results in a new `user_shows` row for the active user.
+- Unauthorized session returns the friendly error and does **not** crash.
+- Switching users updates the watchlist; adding from search writes to the **current** user.
+
+## Rollout Steps
+
+1. Implement `ApiClient.searchShows` and compile.
+2. Add `Features/Search` files; run the app and validate on-device.
+3. Add nav entry to `ContentView`.
+4. Smoke test: login → search → add to watchlist → verify in DB and My Shows.
+5. PR with file diff and a short screencap of the flow.
+
+## Implementation Status: ✅ COMPLETED
+
+### What Was Built
+
+- **ApiClient.swift:437**: Added `searchShows(query: String) async throws -> [Show]` method
+- **Features/Search/SearchViewModel.swift**: Complete search state management with task cancellation
+- **Features/Search/SearchView.swift**: SwiftUI interface with loading/error/empty states
+- **ContentView.swift:49**: Added navigation link to search feature
+
+### API Contract Verified
+
+- **Endpoint**: `GET /api/tmdb/search?query=<string>&country=US`
+- **Response Format**:
+  ```json
+  {
+    "success": true,
+    "query": "breaking bad",
+    "country": "US",
+    "results": [
+      {
+        "id": 1396,
+        "title": "Breaking Bad", // Note: 'title' not 'name'
+        "overview": "A high school chemistry teacher...",
+        "poster": "https://image.tmdb.org/t/p/w500/...",
+        "firstAirDate": "2008-01-20",
+        "year": 2008,
+        "popularity": 451.713
+      }
+    ]
+  }
+  ```
+
+### Key Implementation Details
+
+- **Field Mapping Issue Resolved**: API returns `"title"` field, not `"name"` - fixed in SearchResult model
+- **Authentication**: Bearer token properly attached via `addAuthHeaders()`
+- **Error Handling**: All ApiError cases mapped to user-friendly messages
+- **Task Cancellation**: Previous searches cancelled when new ones start
+- **Watchlist Integration**: Add button calls `api.addToWatchlist(tmdbId:status:.watchlist)`
+
+### Testing Results
+
+- ✅ Xcode compilation successful
+- ✅ Search API returns proper JSON response
+- ✅ Results display correctly in UI after field mapping fix
+- ✅ Add to watchlist functionality working
+- ✅ Error states handled (unauthorized, network, timeout)
+
+## Follow-ups (Later)
+
+- Show detail screen with overview, providers, seasons/episodes.
+- Debounced live search (1–2s) with cancellable tasks.
+- Saved searches / recent history.
+- Server-side ranking and typo tolerance.

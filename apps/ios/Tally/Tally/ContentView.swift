@@ -46,6 +46,8 @@ struct ContentView: View {
                     .buttonStyle(.bordered)
                 NavigationLink("My Shows", destination: WatchlistView(api: api))
                     .buttonStyle(.bordered)
+                NavigationLink("Search", destination: SearchView(api: api))
+                    .buttonStyle(.bordered)
             }
             .padding()
             .task {
