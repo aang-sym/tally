@@ -145,6 +145,138 @@ private struct SearchResponse: Codable {
     let results: [SearchResult]
 }
 
+// MARK: - Show Details Models for expandable search
+struct Episode: Codable, Identifiable {
+    let id: String
+    let episodeNumber: Int
+    let name: String?
+    let airDate: String?
+    let overview: String?
+    let runtime: Int?
+    let stillPath: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case episodeNumber = "episode_number"
+        case name
+        case airDate = "air_date"
+        case overview
+        case runtime
+        case stillPath = "still_path"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        episodeNumber = try container.decode(Int.self, forKey: .episodeNumber)
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        airDate = try container.decodeIfPresent(String.self, forKey: .airDate)
+        overview = try container.decodeIfPresent(String.self, forKey: .overview)
+        runtime = try container.decodeIfPresent(Int.self, forKey: .runtime)
+        stillPath = try container.decodeIfPresent(String.self, forKey: .stillPath)
+        // Generate a unique ID since the API might not provide one
+        id = "\(episodeNumber)"
+    }
+}
+
+struct Season: Codable, Identifiable {
+    let id: String
+    let seasonNumber: Int
+    let name: String?
+    let episodeCount: Int
+    let airDate: String?
+    let posterPath: String?
+    let overview: String?
+    let episodes: [Episode]
+
+    enum CodingKeys: String, CodingKey {
+        case seasonNumber = "season_number"
+        case name
+        case episodeCount = "episode_count"
+        case airDate = "air_date"
+        case posterPath = "poster_path"
+        case overview
+        case episodes
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        seasonNumber = try container.decode(Int.self, forKey: .seasonNumber)
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        episodeCount = try container.decode(Int.self, forKey: .episodeCount)
+        airDate = try container.decodeIfPresent(String.self, forKey: .airDate)
+        posterPath = try container.decodeIfPresent(String.self, forKey: .posterPath)
+        overview = try container.decodeIfPresent(String.self, forKey: .overview)
+        episodes = try container.decode([Episode].self, forKey: .episodes)
+        // Generate a unique ID
+        id = "\(seasonNumber)"
+    }
+}
+
+// Response models for /analyze endpoint
+struct AnalysisResult: Codable {
+    let showDetails: AnalysisShowDetails
+    let seasonInfo: [SeasonInfo]
+    let pattern: String?
+    let confidence: Double?
+    let reasoning: String?
+}
+
+struct AnalysisShowDetails: Codable {
+    let id: Int
+    let title: String
+    let overview: String?
+    let poster: String?
+    let status: String?
+    let firstAirDate: String?
+    let lastAirDate: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, overview, poster, status
+        case firstAirDate = "firstAirDate"
+        case lastAirDate = "lastAirDate"
+    }
+}
+
+struct SeasonInfo: Codable {
+    let seasonNumber: Int
+    let episodeCount: Int
+    let airDate: String?
+
+    enum CodingKeys: String, CodingKey {
+        case seasonNumber, episodeCount, airDate
+    }
+}
+
+private struct AnalyzeResponse: Codable {
+    let success: Bool
+    let showId: Int
+    let country: String
+    let analysis: AnalysisResult
+}
+
+// Response models for /season/:season/raw endpoint
+struct SeasonRawData: Codable {
+    let season: SeasonData
+}
+
+struct SeasonData: Codable {
+    let seasonNumber: Int
+    let episodes: [Episode]
+
+    enum CodingKeys: String, CodingKey {
+        case seasonNumber = "season_number"
+        case episodes
+    }
+}
+
+private struct SeasonRawResponse: Codable {
+    let success: Bool
+    let showId: Int
+    let season: Int
+    let country: String
+    let raw: SeasonRawData
+}
+
 private struct SearchResult: Codable {
     let id: Int
     let title: String
@@ -492,6 +624,110 @@ class ApiClient: ObservableObject {
             }
 
             return shows
+        } catch {
+            throw mapToApiError(error)
+        }
+    }
+
+    // MARK: - Show Analysis for expandable search
+    @MainActor
+    func analyzeShow(tmdbId: Int, country: String = "US") async throws -> AnalysisResult {
+        var comps = URLComponents(url: baseURL.appendingPathComponent("/api/tmdb/show/\(tmdbId)/analyze"), resolvingAgainstBaseURL: false)!
+        comps.queryItems = [URLQueryItem(name: "country", value: country)]
+
+        var req = URLRequest(url: comps.url!)
+        req.httpMethod = "GET"
+        addAuthHeaders(&req)
+
+        do {
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { throw ApiError.badStatus(-1) }
+            guard (200..<300).contains(http.statusCode) else {
+                if http.statusCode == 401 { throw ApiError.unauthorized }
+                if http.statusCode == 503 {
+                    throw ApiError.underlying(NSError(domain: "TMDBServiceUnavailable", code: 503, userInfo: [NSLocalizedDescriptionKey: "Show analysis service temporarily unavailable"]))
+                }
+                #if DEBUG
+                if let body = String(data: data, encoding: .utf8) { print("Show analysis error:", body) }
+                #endif
+                throw ApiError.badStatus(http.statusCode)
+            }
+
+            #if DEBUG
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("Show Analysis API Response:", responseString)
+            }
+            #endif
+
+            let response = try JSONDecoder().decode(AnalyzeResponse.self, from: data)
+            return response.analysis
+        } catch {
+            throw mapToApiError(error)
+        }
+    }
+
+    @MainActor
+    func getSeasonRaw(tmdbId: Int, season: Int, country: String = "US") async throws -> SeasonData {
+        var comps = URLComponents(url: baseURL.appendingPathComponent("/api/tmdb/show/\(tmdbId)/season/\(season)/raw"), resolvingAgainstBaseURL: false)!
+        comps.queryItems = [URLQueryItem(name: "country", value: country)]
+
+        var req = URLRequest(url: comps.url!)
+        req.httpMethod = "GET"
+        addAuthHeaders(&req)
+
+        do {
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { throw ApiError.badStatus(-1) }
+            guard (200..<300).contains(http.statusCode) else {
+                if http.statusCode == 401 { throw ApiError.unauthorized }
+                if http.statusCode == 503 {
+                    throw ApiError.underlying(NSError(domain: "TMDBServiceUnavailable", code: 503, userInfo: [NSLocalizedDescriptionKey: "Season data service temporarily unavailable"]))
+                }
+                #if DEBUG
+                if let body = String(data: data, encoding: .utf8) { print("Season raw error:", body) }
+                #endif
+                throw ApiError.badStatus(http.statusCode)
+            }
+
+            #if DEBUG
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("Season Raw API Response:", responseString)
+            }
+            #endif
+
+            let response = try JSONDecoder().decode(SeasonRawResponse.self, from: data)
+            return response.raw.season
+        } catch {
+            throw mapToApiError(error)
+        }
+    }
+
+    // Enhanced addToWatchlist method that supports specifying season
+    @MainActor
+    func addToWatching(tmdbId: Int, season: Int? = nil) async throws -> UserShow {
+        guard currentUser != nil else {
+            throw ApiError.unauthorized
+        }
+
+        var req = URLRequest(url: baseURL.appendingPathComponent("/api/watchlist"))
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        addAuthHeaders(&req)
+
+        var body: [String: Any] = ["tmdbId": tmdbId, "status": "watching"]
+        if let season = season {
+            body["season"] = season
+        }
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { throw ApiError.badStatus(-1) }
+            guard (200..<300).contains(http.statusCode) else {
+                if http.statusCode == 401 { throw ApiError.unauthorized }
+                throw ApiError.badStatus(http.statusCode)
+            }
+            return try JSONDecoder().decode(WatchlistCreateResponse.self, from: data).data
         } catch {
             throw mapToApiError(error)
         }

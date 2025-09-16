@@ -63,6 +63,9 @@ struct SearchView: View {
             }
         }
         .environmentObject(viewModel)
+        .onAppear {
+            viewModel.api = api
+        }
     }
 
     // MARK: - Loading View
@@ -151,6 +154,8 @@ struct SearchView: View {
                     }
                 }
             )
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
         }
         .listStyle(.plain)
     }
@@ -161,56 +166,124 @@ private struct SearchResultRow: View {
     let show: Show
     let onAdd: () -> Void
     @EnvironmentObject private var viewModel: SearchViewModel
+    @State private var selectedSeason: Int = 1
+
+    private var isExpanded: Bool {
+        guard let tmdbId = show.tmdbId else { return false }
+        return viewModel.expandedShowIds.contains(String(tmdbId))
+    }
+
+    private var isLoadingDetails: Bool {
+        guard let tmdbId = show.tmdbId else { return false }
+        return viewModel.loadingDetails.contains(String(tmdbId))
+    }
+
+    private var showDetails: ShowExpandedData? {
+        guard let tmdbId = show.tmdbId else { return nil }
+        return viewModel.showDetails[String(tmdbId)]
+    }
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Poster image
-            AsyncImage(url: posterURL) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } placeholder: {
-                Rectangle()
-                    .fill(Color(.systemGray5))
-                    .overlay {
-                        Image(systemName: "tv")
-                            .foregroundStyle(.secondary)
+        VStack(spacing: 0) {
+            // Main row (always visible)
+            Button(action: {
+                guard let api = viewModel.api else { return }
+                viewModel.toggleExpansion(for: show, api: api)
+            }) {
+                HStack(spacing: 12) {
+                    // Poster image
+                    AsyncImage(url: posterURL) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } placeholder: {
+                        Rectangle()
+                            .fill(Color(.systemGray5))
+                            .overlay {
+                                Image(systemName: "tv")
+                                    .foregroundStyle(.secondary)
+                            }
                     }
-            }
-            .frame(width: 60, height: 90)
-            .clipped()
-            .cornerRadius(8)
+                    .frame(width: 60, height: 90)
+                    .clipped()
+                    .cornerRadius(8)
 
-            // Show details
-            VStack(alignment: .leading, spacing: 4) {
-                Text(show.title)
-                    .font(.headline)
-                    .lineLimit(2)
+                    // Show details
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(show.title)
+                            .font(.headline)
+                            .lineLimit(2)
+                            .foregroundColor(.primary)
 
-                if let year = releaseYear {
-                    Text(year)
-                        .font(.subheadline)
+                        if let year = releaseYear {
+                            Text(year)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        if let overview = show.overview, !overview.isEmpty {
+                            Text(overview)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(isExpanded ? nil : 3)
+                        }
+                    }
+
+                    Spacer()
+
+                    // Expand indicator
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .foregroundStyle(.secondary)
-                }
-
-                if let overview = show.overview, !overview.isEmpty {
-                    Text(overview)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(3)
                 }
+                .padding(.vertical, 4)
             }
+            .buttonStyle(.plain)
 
-            Spacer()
+            // Expanded details section
+            if isExpanded {
+                VStack(spacing: 12) {
+                    Divider()
 
-            // Add button
-            Button("Add") {
-                onAdd()
+                    if isLoadingDetails {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Loading details...")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 8)
+                    } else if let details = showDetails {
+                        ExpandedDetailsView(
+                            details: details,
+                            selectedSeason: $selectedSeason,
+                            onAddToWatching: {
+                                Task {
+                                    guard let tmdbId = show.tmdbId else { return }
+                                    guard let api = viewModel.api else { return }
+                                    await viewModel.addToWatching(api: api, tmdbId: tmdbId, season: selectedSeason)
+                                }
+                            }
+                        )
+                    } else {
+                        HStack {
+                            Image(systemName: "exclamationmark.triangle")
+                                .foregroundStyle(.orange)
+                            Text("Failed to load details")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 8)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.bottom, 8)
             }
-            .buttonStyle(.bordered)
-            .disabled(show.tmdbId == nil)
         }
-        .padding(.vertical, 4)
+        .background(Color(.systemBackground))
+        .cornerRadius(8)
+        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
     }
 
     private var posterURL: URL? {
@@ -225,6 +298,174 @@ private struct SearchResultRow: View {
     }
 }
 
+// MARK: - Expanded Details View
+private struct ExpandedDetailsView: View {
+    let details: ShowExpandedData
+    @Binding var selectedSeason: Int
+    let onAddToWatching: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Season selector
+            if !details.seasons.isEmpty {
+                HStack {
+                    Text("Season:")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+
+                    Picker("Season", selection: $selectedSeason) {
+                        ForEach(details.seasons, id: \.seasonNumber) { season in
+                            Text("Season \(season.seasonNumber) (\(season.episodeCount) episodes)")
+                                .tag(season.seasonNumber)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .accentColor(.blue)
+
+                    Spacer()
+
+                    Button("Add to Watching") {
+                        onAddToWatching()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .font(.caption)
+                }
+            }
+
+            // Current season episodes
+            if let currentSeason = details.seasons.first(where: { $0.seasonNumber == selectedSeason }) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Episodes (\(currentSeason.episodes.count))")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+
+                    LazyVStack(spacing: 4) {
+                        ForEach(Array(currentSeason.episodes.prefix(5)), id: \.id) { episode in
+                            EpisodeRowView(episode: episode)
+                        }
+
+                        if currentSeason.episodes.count > 5 {
+                            Text("... and \(currentSeason.episodes.count - 5) more episodes")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 4)
+                        }
+                    }
+                }
+            } else {
+                Text("No episode data available")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 8)
+            }
+        }
+        .onAppear {
+            // Set default selected season to the first available season
+            if selectedSeason == 1 && !details.seasons.isEmpty {
+                selectedSeason = details.seasons.first?.seasonNumber ?? 1
+            }
+        }
+    }
+}
+
+// MARK: - Episode Row View
+private struct EpisodeRowView: View {
+    let episode: Episode
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text("E\(episode.episodeNumber)")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+
+                    if let name = episode.name {
+                        Text(name)
+                            .font(.caption)
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    if let airDate = episode.airDate {
+                        Text(formatAirDate(airDate))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                if let airDate = episode.airDate {
+                    if isAiringNext(airDate) {
+                        Text("Airing Next")
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.blue)
+                    } else if hasAired(airDate) {
+                        Text("Aired")
+                            .font(.caption2)
+                            .foregroundStyle(.green)
+                    } else {
+                        Text("Upcoming")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
+                }
+            }
+
+            Spacer()
+        }
+        .padding(.vertical, 2)
+        .padding(.horizontal, 8)
+        .background(Color(.systemGray6))
+        .cornerRadius(4)
+    }
+
+    private func formatAirDate(_ dateString: String) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        guard let date = formatter.date(from: dateString) else {
+            return dateString
+        }
+
+        formatter.dateFormat = "MMM d"
+        return formatter.string(from: date)
+    }
+
+    private func hasAired(_ dateString: String) -> Bool {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        guard let airDate = formatter.date(from: dateString) else {
+            return false
+        }
+
+        return airDate <= Date()
+    }
+
+    private func isAiringNext(_ dateString: String) -> Bool {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        guard let airDate = formatter.date(from: dateString) else {
+            return false
+        }
+
+        let now = Date()
+        let calendar = Calendar.current
+
+        // Check if it's within the next 7 days and hasn't aired yet
+        if airDate > now {
+            let daysDifference = calendar.dateComponents([.day], from: now, to: airDate).day ?? 0
+            return daysDifference <= 7
+        }
+
+        return false
+    }
+}
+
 // MARK: - Previews
 #Preview {
     let api = ApiClient()
@@ -233,33 +474,5 @@ private struct SearchResultRow: View {
 
 #Preview("With Results") {
     let api = ApiClient()
-    let view = SearchView(api: api)
-
-    // Mock some results for preview
-    let mockShows = [
-        Show(
-            id: "1",
-            tmdbId: 1399,
-            title: "Game of Thrones",
-            overview: "Seven noble families fight for control of the mythical land of Westeros.",
-            posterPath: nil,
-            firstAirDate: "2011-04-17",
-            status: nil,
-            totalSeasons: nil,
-            totalEpisodes: nil
-        ),
-        Show(
-            id: "2",
-            tmdbId: 1396,
-            title: "Breaking Bad",
-            overview: "A high school chemistry teacher diagnosed with inoperable lung cancer turns to manufacturing and selling methamphetamine.",
-            posterPath: nil,
-            firstAirDate: "2008-01-20",
-            status: nil,
-            totalSeasons: nil,
-            totalEpisodes: nil
-        )
-    ]
-
-    return view
+    return SearchView(api: api)
 }

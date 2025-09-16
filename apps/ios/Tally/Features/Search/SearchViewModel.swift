@@ -7,6 +7,20 @@
 
 import Foundation
 
+// Combined data structure for show analysis + season data
+struct ShowExpandedData {
+    let analysis: AnalysisResult
+    let seasons: [ExpandedSeason] // Built from season raw data
+}
+
+// Helper to convert episodes to ExpandedSeason format
+struct ExpandedSeason {
+    let seasonNumber: Int
+    let name: String?
+    let episodeCount: Int
+    let episodes: [Episode]
+}
+
 @MainActor
 class SearchViewModel: ObservableObject {
     @Published var query: String = ""
@@ -14,10 +28,23 @@ class SearchViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var error: String? = nil
 
+    // Expandable rows functionality
+    @Published var expandedShowIds: Set<String> = []
+    @Published var showDetails: [String: ShowExpandedData] = [:] // TMDB ID -> ShowExpandedData
+    @Published var loadingDetails: Set<String> = [] // TMDB IDs currently loading
+
     private var currentSearchTask: Task<Void, Never>? = nil
+    private var detailsTasks: [String: Task<Void, Never>] = [:] // TMDB ID -> Task
+
+    // Store reference to API client for internal operations
+    weak var api: ApiClient?
 
     deinit {
         currentSearchTask?.cancel()
+        // Cancel all details tasks
+        for task in detailsTasks.values {
+            task.cancel()
+        }
     }
 
     func performSearch(api: ApiClient) {
@@ -91,6 +118,127 @@ class SearchViewModel: ObservableObject {
 
     func clearError() {
         error = nil
+    }
+
+    func toggleExpansion(for show: Show, api: ApiClient) {
+        guard let tmdbId = show.tmdbId else {
+            error = "Cannot expand show - missing required information"
+            return
+        }
+
+        let tmdbIdString = String(tmdbId)
+
+        // If already expanded, collapse
+        if expandedShowIds.contains(tmdbIdString) {
+            expandedShowIds.remove(tmdbIdString)
+
+            // Cancel any ongoing details task for this show
+            if let task = detailsTasks[tmdbIdString] {
+                task.cancel()
+                detailsTasks.removeValue(forKey: tmdbIdString)
+            }
+
+            loadingDetails.remove(tmdbIdString)
+            return
+        }
+
+        // Expand the row
+        expandedShowIds.insert(tmdbIdString)
+
+        // If we already have details cached, no need to fetch again
+        if showDetails[tmdbIdString] != nil {
+            return
+        }
+
+        // Start loading details
+        loadingDetails.insert(tmdbIdString)
+
+        let task = Task {
+            do {
+                // Step 1: Get analysis data (show details + season list)
+                let analysis = try await api.analyzeShow(tmdbId: tmdbId)
+
+                // Check if task was cancelled
+                guard !Task.isCancelled else { return }
+
+                // Step 2: Get the latest season episodes
+                var seasons: [ExpandedSeason] = []
+                if !analysis.seasonInfo.isEmpty {
+                    // Get the latest season (highest season number)
+                    let latestSeasonNumber = analysis.seasonInfo.map { $0.seasonNumber }.max() ?? 1
+
+                    do {
+                        let seasonData = try await api.getSeasonRaw(tmdbId: tmdbId, season: latestSeasonNumber)
+
+                        // Check if task was cancelled
+                        guard !Task.isCancelled else { return }
+
+                        // Convert to ExpandedSeason format
+                        let season = ExpandedSeason(
+                            seasonNumber: seasonData.seasonNumber,
+                            name: "Season \(seasonData.seasonNumber)",
+                            episodeCount: seasonData.episodes.count,
+                            episodes: seasonData.episodes
+                        )
+                        seasons.append(season)
+
+                    } catch {
+                        // Continue even if season fetch fails
+                        #if DEBUG
+                        print("Failed to fetch season \(latestSeasonNumber) for \(show.title): \(error)")
+                        #endif
+                    }
+                }
+
+                // Check if task was cancelled
+                guard !Task.isCancelled else { return }
+
+                // Combine analysis + season data
+                let expandedData = ShowExpandedData(
+                    analysis: analysis,
+                    seasons: seasons
+                )
+
+                // Update cached details
+                showDetails[tmdbIdString] = expandedData
+                loadingDetails.remove(tmdbIdString)
+                detailsTasks.removeValue(forKey: tmdbIdString)
+
+                #if DEBUG
+                print("Successfully loaded details for show: \(show.title)")
+                #endif
+            } catch {
+                // Check if task was cancelled
+                guard !Task.isCancelled else { return }
+
+                // Handle error
+                self.error = mapErrorToUserFriendlyMessage(error)
+                loadingDetails.remove(tmdbIdString)
+                detailsTasks.removeValue(forKey: tmdbIdString)
+
+                #if DEBUG
+                print("Failed to load details for \(show.title): \(error)")
+                #endif
+            }
+        }
+
+        detailsTasks[tmdbIdString] = task
+    }
+
+    func addToWatching(api: ApiClient, tmdbId: Int, season: Int) async {
+        do {
+            _ = try await api.addToWatching(tmdbId: tmdbId, season: season)
+
+            #if DEBUG
+            print("Successfully added show to watching with season \(season)")
+            #endif
+        } catch {
+            self.error = mapErrorToUserFriendlyMessage(error)
+
+            #if DEBUG
+            print("Failed to add show to watching: \(error)")
+            #endif
+        }
     }
 
     private func mapErrorToUserFriendlyMessage(_ error: Error) -> String {
