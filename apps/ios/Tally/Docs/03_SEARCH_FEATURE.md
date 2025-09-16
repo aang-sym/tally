@@ -186,6 +186,105 @@ guard currentUser != nil else {
 
 **Result**: Add to watchlist functionality now works end-to-end with proper nested show data and field mapping
 
+## Phase 2: Expandable Search Implementation ✅ COMPLETED
+
+### Overview
+
+Extended the basic search feature to support **expandable search rows** that show detailed season and episode information when tapped, matching the web app functionality.
+
+### API Architecture Changes
+
+**Removed Endpoint**: `GET /api/tmdb/show/:id/details`
+
+- Was providing incomplete episode data
+- Replaced with proven two-endpoint pattern used by web app
+
+**New Two-Endpoint Pattern**:
+
+1. `GET /api/tmdb/show/:id/analyze?country=US` - Gets basic show info + season list
+2. `GET /api/tmdb/show/:id/season/:season/raw?country=US` - Gets detailed episode data for specific season
+
+### iOS Implementation Changes
+
+**New Data Models** (`ApiClient.swift`):
+
+```swift
+// Analysis endpoint models
+struct AnalysisResult: Codable {
+    let showDetails: AnalysisShowDetails
+    let seasonInfo: [SeasonInfo]
+    let pattern: ReleasePattern?
+    let confidence: Double?
+    let reasoning: String?
+}
+
+struct SeasonRawData: Codable {
+    let season: SeasonData
+}
+
+struct SeasonData: Codable {
+    let seasonNumber: Int
+    let episodes: [Episode]
+}
+```
+
+**New API Methods** (`ApiClient.swift:620-734`):
+
+- `analyzeShow(tmdbId: Int, country: String = "US") async throws -> AnalysisResult`
+- `getSeasonRaw(tmdbId: Int, season: Int, country: String = "US") async throws -> SeasonData`
+
+**Enhanced SearchViewModel** (`Features/Search/SearchViewModel.swift`):
+
+```swift
+// Combined data structure for expandable rows
+struct ShowExpandedData {
+    let analysis: AnalysisResult
+    let seasons: [ExpandedSeason]
+}
+
+// Updated expandable functionality
+@Published var showDetails: [String: ShowExpandedData] = [:]
+```
+
+**Updated Data Flow**:
+
+1. User taps search result → `toggleExpansion(for:api:)`
+2. Calls `analyzeShow()` to get show details + season list
+3. Calls `getSeasonRaw()` for latest season episodes
+4. Combines data into `ShowExpandedData` structure
+5. UI displays expandable row with season selector and episode list
+
+**Enhanced SearchView** (`Features/Search/SearchView.swift`):
+
+- Expandable rows with chevron indicators
+- Season dropdown selector
+- Episode list with air date status ("Aired", "Airing Next", "Upcoming")
+- "Add to Watchlist" action button
+- Loading states for episode data
+
+### Key Benefits
+
+✅ **API Consistency**: iOS and web now use identical, proven API endpoints
+✅ **Better Episode Data**: Full episode information with proper air dates
+✅ **Expandable UI**: Rich season/episode exploration within search results
+✅ **Performance**: Efficient two-step data loading (analyze → episodes)
+✅ **Error Handling**: Robust fallbacks for missing or incomplete data
+
+### Testing Results
+
+- ✅ iOS build successful (resolved `Season` naming conflicts)
+- ✅ Expandable rows display correctly with proper show names
+- ✅ Season selection and episode loading works
+- ✅ Episode air date status indicators working ("Aired", "Airing Next", "Upcoming")
+- ✅ Add to watchlist functionality integrated
+
+### Files Modified
+
+- `/apps/api/src/routes/tmdb.ts` - Removed `/details` endpoint
+- `/apps/ios/Tally/Services/ApiClient.swift` - New API methods and models
+- `/apps/ios/Tally/Features/Search/SearchViewModel.swift` - Enhanced expansion logic
+- `/apps/ios/Tally/Features/Search/SearchView.swift` - Expandable UI components
+
 ## Follow-ups (Later)
 
 - Show detail screen with overview, providers, seasons/episodes.

@@ -306,9 +306,12 @@ private struct ExpandedDetailsView: View {
                         .foregroundStyle(.secondary)
 
                     Menu {
-                        ForEach(details.seasons, id: \.seasonNumber) { season in
+                        ForEach(details.seasons.sorted { $0.seasonNumber > $1.seasonNumber }, id: \.seasonNumber) { season in
                             Button("Season \(season.seasonNumber) (\(season.episodeCount) episodes)") {
                                 selectedSeason = season.seasonNumber
+                                if let tmdbId = show.tmdbId, let api = viewModel.api {
+                                    Task { await viewModel.ensureSeasonEpisodesLoaded(api: api, tmdbId: tmdbId, seasonNumber: season.seasonNumber) }
+                                }
                             }
                         }
                     } label: {
@@ -353,15 +356,23 @@ private struct ExpandedDetailsView: View {
                         .font(.subheadline)
                         .fontWeight(.medium)
 
-                    // Scrollable list of episodes within the expanded card
-                    ScrollView {
-                        LazyVStack(spacing: 4) {
-                            ForEach(currentSeason.episodes, id: \.id) { episode in
-                                EpisodeRowButton(episode: episode, tmdbId: show.tmdbId, season: currentSeason.seasonNumber)
+                    // Episodes area (loading-aware)
+                    if currentSeason.episodes.isEmpty,
+                       let tmdbId = show.tmdbId,
+                       viewModel.loadingSeason.contains("\(tmdbId)-s\(currentSeason.seasonNumber)") {
+                        HStack { ProgressView(); Text("Loading episodes...").font(.caption).foregroundStyle(.secondary) }
+                            .frame(height: 60)
+                    } else {
+                        // Scrollable list of episodes within the expanded card
+                        ScrollView {
+                            LazyVStack(spacing: 4) {
+                                ForEach(currentSeason.episodes, id: \.id) { episode in
+                                    EpisodeRowButton(episode: episode, tmdbId: show.tmdbId, season: currentSeason.seasonNumber)
+                                }
                             }
                         }
+                        .frame(height: 260)
                     }
-                    .frame(height: 260)
                 }
             } else {
                 Text("No episode data available")
@@ -372,8 +383,13 @@ private struct ExpandedDetailsView: View {
         }
         .onAppear {
             // Set default selected season to the first available season
-            if selectedSeason == 1 && !details.seasons.isEmpty {
-                selectedSeason = details.seasons.first?.seasonNumber ?? 1
+            if !details.seasons.isEmpty {
+                selectedSeason = details.seasons.map { $0.seasonNumber }.max() ?? 1
+            }
+            // Ensure episodes for selected season are loaded
+            if let tmdbId = show.tmdbId, let api = viewModel.api {
+                Task { await viewModel.ensureSeasonEpisodesLoaded(api: api, tmdbId: tmdbId, seasonNumber: selectedSeason) }
+                Task { await viewModel.readbackProgress(api: api, tmdbId: tmdbId) }
             }
         }
     }
@@ -397,7 +413,19 @@ private struct EpisodeRowButton: View {
     }
 
     private var isCompletedLocally: Bool {
-        (viewModel.localProgress[seasonKey] ?? 0) >= episode.episodeNumber
+        if let sp = viewModel.serverProgress[seasonKey] {
+            return episode.episodeNumber <= sp
+        }
+        return (viewModel.localProgress[seasonKey] ?? 0) >= episode.episodeNumber
+    }
+
+    private var isUpNext: Bool {
+        if let sp = viewModel.serverProgress[seasonKey] {
+            return episode.episodeNumber == (sp + 1)
+        }
+        // With only local progress available
+        let lw = viewModel.localProgress[seasonKey] ?? 0
+        return episode.episodeNumber == (lw + 1)
     }
 
     var body: some View {
@@ -428,7 +456,12 @@ private struct EpisodeRowButton: View {
                         }
                     }
 
-                    if let airDate = episode.airDate {
+                    if isUpNext {
+                        Text("Up Next")
+                            .font(.caption2)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.blue)
+                    } else if let airDate = episode.airDate {
                         if isAiringNext(airDate) {
                             Text("Airing Next")
                                 .font(.caption2)

@@ -785,4 +785,38 @@ class ApiClient: ObservableObject {
             throw mapToApiError(error)
         }
     }
+
+    // Read back server progress grouped by season
+    struct ShowProgressResponse: Codable {
+        let success: Bool
+        let data: ShowProgressData
+    }
+
+    struct ShowProgressData: Codable {
+        let seasons: [String: [SeasonEpisodeState]]
+    }
+
+    struct SeasonEpisodeState: Codable {
+        let episodeNumber: Int
+        let status: String
+    }
+
+    @MainActor
+    func getShowProgress(tmdbId: Int) async throws -> ShowProgressData {
+        let url = baseURL.appendingPathComponent("/api/watchlist/\(tmdbId)/progress")
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        addAuthHeaders(&req)
+        do {
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { throw ApiError.badStatus(-1) }
+            guard (200..<300).contains(http.statusCode) else {
+                if http.statusCode == 401 { throw ApiError.unauthorized }
+                throw ApiError.badStatus(http.statusCode)
+            }
+            return try JSONDecoder().decode(ShowProgressResponse.self, from: data).data
+        } catch {
+            throw mapToApiError(error)
+        }
+    }
 }

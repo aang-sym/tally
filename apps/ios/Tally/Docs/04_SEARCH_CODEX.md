@@ -134,3 +134,85 @@ File Touch List (when implementing)
 - `apps/ios/Tally/Features/Search/SearchView.swift` –
   - replace season selector row and trailing actions,
   - make `EpisodeRowView` a button and apply visual progress cues.
+
+---
+
+Next Steps For Search UI
+
+1. Readback server progress on expand
+
+- Add `ApiClient.getShowProgress(tmdbId: Int)` calling `GET /api/watchlist/:tmdbId/progress`.
+- Map the response to per-season highest watched and any active watching episode.
+- Reconcile the optimistic state so rows ≤ N-1 are green (watched) and N is styled as watching.
+- Call on expand and after a successful set.
+
+2. Exact N behavior (N-1 watched, N watching)
+
+- Leave current call as “watched up to N” until the atomic backend route exists.
+- Add a view model feature flag to switch to the atomic route when available.
+- Update row styling accordingly (N blue/watching, ≤N-1 green/watched).
+
+3. Season selector ordering
+
+- Sort menu options in descending order (most recent season at the top).
+- Default the selected season to the maximum season number.
+
+4. Minor polish
+
+- Add a small toast/snackbar on success.
+- Accessibility: label/hint for episode rows and announce success.
+
+Implementation Specifics (for minimal‑reasoning agent)
+
+- ApiClient method:
+  - `getShowProgress(tmdbId: Int) -> { seasons: { [Int]: [{ episodeNumber: Int, status: 'watched' | 'watching' | 'unwatched' }] } }`
+  - Call `GET /api/watchlist/:tmdbId/progress` and decode only `data.seasons`.
+
+- ViewModel state:
+  - `serverProgress: [String: (lastWatched: Int, watching: Int?)]` keyed by `"<tmdbId>-s<season>"`.
+  - Keep existing `localProgress` as optimistic fallback; prefer `serverProgress` when present.
+
+- Mapping logic from API response:
+  - For each season array: `lastWatched = max(episodeNumber where status == 'watched')` or 0 if none.
+  - `watching = max(episodeNumber where status == 'watching')` or nil if none.
+  - `isWatched(row) = episode.episodeNumber <= lastWatched`.
+  - `isWatching(row) = (watching != nil) && (episode.episodeNumber == watching)`.
+  - Rendering precedence: if `isWatching` then do NOT render as watched-green; use watching-blue.
+
+- Call sites for readback:
+  - On expand: after analysis + `ensureSeasonEpisodesLoaded`, call `getShowProgress`; compute and set `serverProgress`.
+  - After successful `setEpisodeProgress`, call `getShowProgress` again to reconcile UI.
+
+- Feature flag for exact N behavior:
+  - Add `useExactPositionProgress: Bool = false` in ViewModel.
+  - When true (once backend exists), call `PUT /api/watchlist/:tmdbId/progress/exact` with `{ seasonNumber, episodeNumber }` and update `serverProgress` from readback. Until then, keep current "watched up to N".
+
+- Season ordering in UI:
+  - Sort menu options: `details.seasons.sorted { $0.seasonNumber > $1.seasonNumber }`.
+  - `selectedSeason = details.seasons.map(\.seasonNumber).max() ?? 1`.
+
+- UI styling:
+  - Watched (≤ N−1): green background tint (e.g., `.opacity(0.25)`) + `checkmark.circle.fill`.
+  - Watching (N): blue accent (no green) + `play.fill` or `play.circle.fill`.
+
+- Toast feedback:
+  - After success: show message `"Progress updated to S{selectedSeason} E{episodeNumber}"`.
+
+- Fallbacks:
+  - If readback fails, keep optimistic local state; do not block further taps.
+  - Debounce readback if multiple quick taps (e.g., 200–300ms) to avoid request spam.
+
+---
+
+Fix Build Issues (to apply immediately)
+
+- The tuple usage in `serverProgress` caused Swift errors (single-element labeled tuples collapse to the underlying type `Int`). Fix by simplifying the storage and reads:
+  1. Change `SearchViewModel.serverProgress` type to `private(set) var lastWatchedBySeason: [String: Int]` (or keep the name `serverProgress` but as `[String: Int]`).
+  2. In `readbackProgress`, assign plain `Int`: `serverProgress[key] = lastWatched` (remove `(lastWatched: ...)`).
+  3. In `SearchView.swift`, update reads:
+     - `if let sp = viewModel.serverProgress[seasonKey] { return episode.episodeNumber <= sp }`
+     - Up Next: `episode.episodeNumber == (sp + 1)`.
+  4. Remove all references to `.lastWatched` (no longer a tuple).
+  5. Keep `localProgress` fallback logic unchanged.
+
+Rationale: Swift doesn’t support labeled single-element tuples consistently; storing an `Int` avoids the member lookup compile error and matches how we actually use the value.

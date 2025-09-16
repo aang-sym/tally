@@ -10,7 +10,7 @@ import Foundation
 // Combined data structure for show analysis + season data
 struct ShowExpandedData {
     let analysis: AnalysisResult
-    let seasons: [ExpandedSeason] // Built from season raw data
+    let seasons: [ExpandedSeason] // Built from season raw data (episodes may be lazily loaded)
 }
 
 // Helper to convert episodes to ExpandedSeason format
@@ -32,8 +32,10 @@ class SearchViewModel: ObservableObject {
     @Published var expandedShowIds: Set<String> = []
     @Published var showDetails: [String: ShowExpandedData] = [:] // TMDB ID -> ShowExpandedData
     @Published var loadingDetails: Set<String> = [] // TMDB IDs currently loading
+    @Published var loadingSeason: Set<String> = [] // Keys: "<tmdbId>-s<season>" currently loading episodes
     @Published var settingProgressFor: Set<String> = [] // keys: "<tmdbId>-s<season>-e<episode>"
     @Published var localProgress: [String: Int] = [:] // keys: "<tmdbId>-s<season>" -> last watched episode number
+    @Published var serverProgress: [String: Int] = [:]
 
     private var currentSearchTask: Task<Void, Never>? = nil
     private var detailsTasks: [String: Task<Void, Never>] = [:] // TMDB ID -> Task
@@ -178,30 +180,19 @@ class SearchViewModel: ObservableObject {
                 // Step 2: Get the latest season episodes
                 var seasons: [ExpandedSeason] = []
                 if !analysis.seasonInfo.isEmpty {
-                    // Get the latest season (highest season number)
-                    let latestSeasonNumber = analysis.seasonInfo.map { $0.seasonNumber }.max() ?? 1
-
-                    do {
-                        let seasonData = try await api.getSeasonRaw(tmdbId: tmdbId, season: latestSeasonNumber)
-
-                        // Check if task was cancelled
-                        guard !Task.isCancelled else { return }
-
-                        // Convert to ExpandedSeason format
-                        let season = ExpandedSeason(
-                            seasonNumber: seasonData.seasonNumber,
-                            name: "Season \(seasonData.seasonNumber)",
-                            episodeCount: seasonData.episodes.count,
-                            episodes: seasonData.episodes
+                    // Pre-populate all seasons from analysis (episodes loaded lazily)
+                    seasons = analysis.seasonInfo.map { info in
+                        ExpandedSeason(
+                            seasonNumber: info.seasonNumber,
+                            name: "Season \(info.seasonNumber)",
+                            episodeCount: info.episodeCount,
+                            episodes: []
                         )
-                        seasons.append(season)
+                    }.sorted { $0.seasonNumber < $1.seasonNumber }
 
-                    } catch {
-                        // Continue even if season fetch fails
-                        #if DEBUG
-                        print("Failed to fetch season \(latestSeasonNumber) for \(show.title): \(error)")
-                        #endif
-                    }
+                    // Load latest season episodes immediately
+                    let latestSeasonNumber = analysis.seasonInfo.map { $0.seasonNumber }.max() ?? 1
+                    await loadSeasonEpisodesInternal(api: api, tmdbId: tmdbId, seasonNumber: latestSeasonNumber, existingSeasons: &seasons)
                 }
 
                 // Check if task was cancelled
@@ -255,6 +246,41 @@ class SearchViewModel: ObservableObject {
         }
     }
 
+    private func loadSeasonEpisodesInternal(api: ApiClient, tmdbId: Int, seasonNumber: Int, existingSeasons: inout [ExpandedSeason]) async {
+        let key = "\(tmdbId)-s\(seasonNumber)"
+        if loadingSeason.contains(key) { return }
+        loadingSeason.insert(key)
+        defer { loadingSeason.remove(key) }
+
+        do {
+            let seasonData = try await api.getSeasonRaw(tmdbId: tmdbId, season: seasonNumber)
+            if let idx = existingSeasons.firstIndex(where: { $0.seasonNumber == seasonNumber }) {
+                existingSeasons[idx] = ExpandedSeason(
+                    seasonNumber: seasonData.seasonNumber,
+                    name: "Season \(seasonData.seasonNumber)",
+                    episodeCount: seasonData.episodes.count,
+                    episodes: seasonData.episodes
+                )
+            }
+        } catch {
+            #if DEBUG
+            print("Failed to fetch season \(seasonNumber) episodes: \(error)")
+            #endif
+        }
+    }
+
+    func ensureSeasonEpisodesLoaded(api: ApiClient, tmdbId: Int, seasonNumber: Int) async {
+        let tmdbIdString = String(tmdbId)
+        guard var data = showDetails[tmdbIdString] else { return }
+        if let season = data.seasons.first(where: { $0.seasonNumber == seasonNumber }), !season.episodes.isEmpty {
+            return
+        }
+        var seasonsCopy = data.seasons
+        await loadSeasonEpisodesInternal(api: api, tmdbId: tmdbId, seasonNumber: seasonNumber, existingSeasons: &seasonsCopy)
+        data = ShowExpandedData(analysis: data.analysis, seasons: seasonsCopy)
+        showDetails[tmdbIdString] = data
+    }
+
     func setProgressUpToEpisode(api: ApiClient, tmdbId: Int, season: Int, episode: Int) async {
         let key = "\(tmdbId)-s\(season)-e\(episode)"
         if settingProgressFor.contains(key) { return }
@@ -278,6 +304,28 @@ class SearchViewModel: ObservableObject {
             localProgress[seasonKey] = max(localProgress[seasonKey] ?? 0, episode)
         } catch {
             self.error = mapErrorToUserFriendlyMessage(error)
+        }
+    }
+
+    func readbackProgress(api: ApiClient, tmdbId: Int) async {
+        do {
+            let data = try await api.getShowProgress(tmdbId: tmdbId)
+            // data.seasons keys are season numbers as strings
+            for (seasonKey, items) in data.seasons {
+                let seasonNum = Int(seasonKey) ?? 0
+                var lastWatched = 0
+                for item in items {
+                    if item.status == "watched" {
+                        lastWatched = max(lastWatched, item.episodeNumber)
+                    }
+                }
+                let key = "\(tmdbId)-s\(seasonNum)"
+                serverProgress[key] = lastWatched
+            }
+        } catch {
+            #if DEBUG
+            print("Readback progress failed: \(error)")
+            #endif
         }
     }
 
