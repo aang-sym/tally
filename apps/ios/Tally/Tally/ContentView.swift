@@ -37,6 +37,7 @@ struct ContentView: View {
                     .textFieldStyle(.roundedBorder)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
+                .buttonStyle(.bordered)
                 Button("Ping API") {
                     Task {
                         await load()
@@ -49,8 +50,6 @@ struct ContentView: View {
                 NavigationLink("Search", destination: SearchView(api: api))
                     .buttonStyle(.bordered)
                 NavigationLink("Calendar", destination: CalendarView(api: api))
-                    .buttonStyle(.bordered)
-                NavigationLink("Calendar 2", destination: Calendar2View(api: api))
                     .buttonStyle(.bordered)
             }
             .padding()
@@ -75,6 +74,7 @@ struct ContentView: View {
         do {
             let authenticatedUser = try await api.login(email: email, password: password)
             token = authenticatedUser.token
+            print("Auth token: \(authenticatedUser.token)")
             api.setAuthentication(user: authenticatedUser)
             status = "Logged in as \(authenticatedUser.displayName)"
         } catch {

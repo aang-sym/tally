@@ -1,380 +1,231 @@
-//
-//  CalendarView.swift
-//  Tally
-//
-//  Monthly calendar showing streaming provider indicators per day
-//
-
 import SwiftUI
 
 struct CalendarView: View {
     @ObservedObject var api: ApiClient
-    @StateObject private var viewModel = CalendarViewModel()
-    @State private var selectedDay: CalendarDay?
-    @State private var showingDaySheet = false
+    @StateObject private var vm = CalendarViewModel()
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Header with navigation and country selector
-                HeaderView()
-
-                // Content area
-                Group {
-                    if viewModel.isLoading {
-                        LoadingView()
-                    } else if let errorMessage = viewModel.error {
-                        ErrorView(message: errorMessage) {
-                            viewModel.clearError()
-                        }
-                    } else {
-                        MonthGridView()
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            .navigationTitle("Calendar")
-            .sheet(isPresented: $showingDaySheet, content: {
-                if let day = selectedDay {
-                    DayDetailSheet(day: day)
-                        .presentationDetents([.medium])
-                        .presentationDragIndicator(.visible)
-                }
-            })
+        VStack(alignment: .leading, spacing: 12) {
+            header
+            if vm.isLoading { ProgressView("Loading month…") }
+            grid
         }
-        .environmentObject(viewModel)
-        .onAppear {
-            viewModel.api = api
-            Task {
-                await viewModel.loadForMonth()
-            }
-        }
+        .padding()
+        .task { await vm.reload(api: api) }
+        .onChange(of: vm.country) { _, _ in Task { await vm.reload(api: api) } }
     }
 
-    // MARK: - Header View
-    private func HeaderView() -> some View {
-        VStack(spacing: 12) {
-            // Month navigation
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Button(action: {
-                    viewModel.previousMonth()
-                    Task { await viewModel.loadForMonth() }
-                }) {
-                    Image(systemName: "chevron.left")
-                        .font(.title2)
-                        .foregroundColor(.blue)
-                }
-
-                Spacer()
-
-                VStack(spacing: 2) {
-                    Text(viewModel.monthTitle)
-                        .font(.title2)
-                        .fontWeight(.semibold)
-
-                    Text("\(viewModel.yearTitle)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Button(action: {
-                    viewModel.nextMonth()
-                    Task { await viewModel.loadForMonth() }
-                }) {
-                    Image(systemName: "chevron.right")
-                        .font(.title2)
-                        .foregroundColor(.blue)
-                }
+                Button(action: { vm.changeMonth(by: -1); Task { await vm.reload(api: api) } }) { Image(systemName: "chevron.left") }
+                Spacer(minLength: 10)
+                Text(monthTitle(vm.monthAnchor)).font(.headline)
+                Spacer(minLength: 10)
+                Button(action: { vm.changeMonth(by: +1); Task { await vm.reload(api: api) } }) { Image(systemName: "chevron.right") }
             }
-
-            // Country selector and Today button
             HStack {
-                Menu("Country: \(viewModel.country)") {
+                Menu("Country: \(vm.country)") {
                     ForEach(CountryManager.all, id: \.self) { code in
                         Button(code) {
-                            viewModel.setCountry(code)
-                            Task { await viewModel.loadForMonth() }
+                            vm.country = code
+                            CountryManager.set(code)
                         }
                     }
                 }
-                .font(.subheadline)
-
                 Spacer()
-
                 Button("Today") {
-                    viewModel.goToToday()
-                    Task { await viewModel.loadForMonth() }
+                    vm.monthAnchor = CalendarViewModel.firstOfMonth(Date())
+                    Task { await vm.reload(api: api) }
                 }
-                .buttonStyle(.bordered)
-                .font(.subheadline)
             }
         }
-        .padding()
-        .background(Color(.systemGroupedBackground))
     }
 
-    // MARK: - Loading View
-    private func LoadingView() -> some View {
-        VStack(spacing: 12) {
-            ProgressView()
-                .scaleEffect(1.2)
-            Text("Loading calendar...")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    // MARK: - Error View
-    private func ErrorView(message: String, onRetry: @escaping () -> Void) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 32))
-                .foregroundStyle(.orange)
-
-            Text(message)
-                .font(.subheadline)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
-
-            Button("Dismiss") {
-                onRetry()
-            }
-            .buttonStyle(.bordered)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
-    }
-
-    // MARK: - Month Grid View
-    private func MonthGridView() -> some View {
-        VStack(spacing: 0) {
-            // Day headers (Sun, Mon, Tue, ...)
+    private var grid: some View {
+        VStack(spacing: 4) {
             HStack {
-                ForEach(viewModel.weekDayNames, id: \.self) { dayName in
-                    Text(dayName)
-                        .font(.caption)
+                ForEach(["SUN","MON","TUE","WED","THU","FRI","SAT"], id: \.self) { day in
+                    Text(day)
+                        .font(.caption2)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
+                        .foregroundStyle(.secondary)
                 }
             }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-
-            // Calendar grid (6 rows x 7 columns)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
-                ForEach(viewModel.visibleDays, id: \.date) { day in
-                    DayCell(day: day) {
-                        selectedDay = day
-                        showingDaySheet = true
-                    }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7), spacing: 2) {
+                ForEach(vm.days) { day in
+                    Calendar2DayCell(
+                        day: day,
+                        providers: vm.dailyProviders[day.id] ?? [],
+                        primaryProvider: vm.primaryProvider(for: day.id),
+                        secondaryProviders: vm.secondaryProviders(for: day.id)
+                    )
                 }
             }
-            .padding(.horizontal)
         }
+        .onAppear { vm.makeMonthGrid() }
+    }
+
+    private func monthTitle(_ date: Date) -> String {
+        let f = DateFormatter(); f.dateFormat = "LLLL, yyyy"; return f.string(from: date)
     }
 }
 
-// MARK: - Day Cell
-private struct DayCell: View {
-    let day: CalendarDay
-    let onTap: () -> Void
-    @EnvironmentObject private var viewModel: CalendarViewModel
+private struct Calendar2DayCell: View {
+    let day: Calendar2Day
+    let providers: [ProviderBadge]
+    let primaryProvider: ProviderBadge?
+    let secondaryProviders: [ProviderBadge]
 
     private var isToday: Bool {
         Calendar.current.isDateInToday(day.date)
     }
 
-    private var isCurrentMonth: Bool {
-        let calendar = Calendar.current
-        let dayMonth = calendar.component(.month, from: day.date)
-        let currentMonth = calendar.component(.month, from: viewModel.monthAnchor)
-        return dayMonth == currentMonth
+    private var cellWidth: CGFloat {
+        // Estimate cell width from screen bounds for icon sizing
+        let screenWidth = UIScreen.main.bounds.width
+        let padding: CGFloat = 24 // approximate horizontal padding
+        let spacing: CGFloat = 2 * 6 // 6 spacings between 7 columns
+        return (screenWidth - padding - spacing) / 7
     }
 
-    private var dayNumber: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d"
-        return formatter.string(from: day.date)
+    private var iconSize: CGFloat {
+        min(cellWidth * 0.58, 46)
     }
 
     var body: some View {
-        Button(action: onTap) {
-            VStack(spacing: 4) {
-                Text(dayNumber)
-                    .font(.subheadline)
-                    .fontWeight(isToday ? .bold : .regular)
-                    .foregroundColor(dayTextColor)
-
-                // Provider indicators
-                if !day.providers.isEmpty {
-                    if day.providers.count <= 3 {
-                        // Show provider logos when 3 or fewer
-                        HStack(spacing: 2) {
-                            ForEach(Array(day.providers.prefix(3)), id: \.id) { provider in
-                                AsyncImage(url: URL(string: provider.logo ?? "")) { image in
-                                    image
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                } placeholder: {
-                                    Circle()
-                                        .fill(providerColor(for: provider))
-                                        .frame(width: 6, height: 6)
-                                }
-                                .frame(width: 12, height: 12)
+        VStack(spacing: 0) {
+            // Top region: 4/5 height, icon centered
+            ZStack {
+                if let primary = primaryProvider {
+                    AsyncImage(url: URL(string: primary.logo ?? "")) { phase in
+                        if case .success(let image) = phase {
+                            image
+                                .resizable()
+                                .scaledToFit()
                                 .clipShape(Circle())
-                            }
-                        }
-                    } else {
-                        // Show colored dots + overflow indicator
-                        VStack(spacing: 1) {
-                            HStack(spacing: 2) {
-                                ForEach(Array(day.providers.prefix(3)), id: \.id) { provider in
-                                    Circle()
-                                        .fill(providerColor(for: provider))
-                                        .frame(width: 6, height: 6)
-                                }
-                            }
-                            Text("+\(day.providers.count - 3)")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                        } else {
+                            Circle().fill(color(for: primary.name))
                         }
                     }
-                } else {
-                    // Placeholder to maintain consistent height
-                    Spacer()
-                        .frame(height: 16)
-                }
-            }
-            .frame(width: 40, height: 60)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isToday ? Color.blue.opacity(0.2) : Color.clear)
+                    .frame(width: iconSize, height: iconSize)
+                } else if providers.count > 1 {
+                    ZStack {
+                        Circle()
+                            .fill(Color(.systemGray4))
+                        Text("+\(providers.count)")
+                            .font(.caption2)
+                            .foregroundColor(.primary)
+                    }
+                    .frame(width: iconSize, height: iconSize)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(isToday ? Color.blue : Color.clear, lineWidth: 2)
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-        .opacity(isCurrentMonth ? 1.0 : 0.3)
-    }
-
-    private var dayTextColor: Color {
-        if isToday {
-            return .blue
-        } else if isCurrentMonth {
-            return .primary
-        } else {
-            return .secondary
-        }
-    }
-
-    private func providerColor(for provider: Provider) -> Color {
-        // Simple hash-based color assignment for consistency
-        let colors: [Color] = [.blue, .green, .orange, .purple, .red, .pink, .yellow, .cyan]
-        let index = abs(provider.name.hashValue) % colors.count
-        return colors[index]
-    }
-}
-
-// MARK: - Day Detail Sheet
-private struct DayDetailSheet: View {
-    let day: CalendarDay
-
-    private var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .full
-        return formatter.string(from: day.date)
-    }
-
-    var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                // Date header
-                Text(formattedDate)
-                    .font(.headline)
-                    .padding(.horizontal)
-
-                if day.providers.isEmpty {
-                    // Empty state
-                    VStack(spacing: 12) {
-                        Image(systemName: "calendar.badge.exclamationmark")
-                            .font(.system(size: 32))
-                            .foregroundStyle(.secondary)
-
-                        Text("No shows airing today")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    // Provider list
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(day.providers, id: \.id) { provider in
-                                ProviderRow(provider: provider)
+                        HStack(spacing: 2) {
+                            ForEach(providers.prefix(3), id: \.id) { p in
+                                Circle()
+                                    .fill(color(for: p.name))
+                                    .frame(width: 4, height: 4)
                             }
                         }
-                        .padding(.horizontal)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.trailing, 4)
+                        , alignment: .bottomTrailing
+                    )
+                } else if let single = providers.first {
+                    AsyncImage(url: URL(string: single.logo ?? "")) { phase in
+                        if case .success(let image) = phase {
+                            image
+                                .resizable()
+                                .scaledToFit()
+                                .clipShape(Circle())
+                        } else {
+                            Circle().fill(color(for: single.name))
+                        }
                     }
+                    .frame(width: iconSize, height: iconSize)
                 }
-
-                Spacer()
             }
-            .navigationTitle("Shows")
-            .navigationBarTitleDisplayMode(.inline)
+            .frame(height: cellWidth * 0.8)  // center within top 4/5
+
+            // Bottom region: 1/5 height, day number aligned to bottom
+            Text(dayNumber2Digits(day.date))
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .foregroundStyle(day.inMonth ? .secondary : .tertiary)
+                .frame(height: cellWidth * 0.2, alignment: .bottom)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.secondarySystemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(isToday ? Color.blue : Color(.tertiaryLabel),
+                                lineWidth: isToday ? 2 : (day.inMonth ? 0.6 : 0.3))
+                )
+        )
+        .aspectRatio(1, contentMode: .fit)
+        .frame(height: cellWidth)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private func dayNumber(_ d: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "d"
+        return f.string(from: d)
+    }
+
+    private func dayNumber2Digits(_ d: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "dd"
+        return f.string(from: d)
+    }
+
+    private var accessibilityText: String {
+        let dayFormatter = DateFormatter()
+        dayFormatter.dateFormat = "EEEE d MMMM"
+        let dateString = dayFormatter.string(from: day.date)
+
+        if let primary = primaryProvider {
+            return "\(primary.name) on \(dateString)"
+        } else if !providers.isEmpty {
+            let providerNames = providers.prefix(3).map { $0.name }.joined(separator: ", ")
+            return "\(providerNames) on \(dateString)"
+        } else {
+            return dateString
+        }
+    }
+
+    private func color(for name: String) -> Color {
+        let n = name.lowercased()
+        if n.contains("netflix") { return .red }
+        if n.contains("prime") || n.contains("amazon") { return Color(.systemBlue) }
+        if n.contains("disney") { return Color(.systemBlue) }
+        if n.contains("hbo") || n.contains("max") { return .purple }
+        if n.contains("hulu") { return .green }
+        return Color(.systemGray)
     }
 }
 
-// MARK: - Provider Row
-private struct ProviderRow: View {
-    let provider: Provider
+#if DEBUG
+enum PreviewSecrets {
+    static let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmN2Y2YmIyYy1lNTM2LTQ2MzUtYWY4NS0xNjI4NjY1NDViNWQiLCJlbWFpbCI6InRlc3QyQGV4YW1wbGUuY29tIiwiZGlzcGxheU5hbWUiOiJ0ZXN0MkBleGFtcGxlLmNvbSIsImlhdCI6MTc1ODA4MjYzOSwiZXhwIjoxNzU4Njg3NDM5fQ.fVF1-qqQtWQ8h0_tK_6cVSxfeQJL7jPbHkJ_rUfXYBk"
+}
 
-    var body: some View {
-        HStack(spacing: 12) {
-            // Provider logo
-            AsyncImage(url: URL(string: provider.logo ?? "")) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-            } placeholder: {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color(.systemGray5))
-                    .overlay {
-                        Image(systemName: "tv")
-                            .foregroundStyle(.secondary)
-                    }
-            }
-            .frame(width: 32, height: 32)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
-
-            // Provider info
-            VStack(alignment: .leading, spacing: 2) {
-                Text(provider.name)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-
-                // TODO: Add show titles when available in provider model
-                Text("Shows available")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
+struct CalendarView_Previews: PreviewProvider {
+    final class PreviewApiClient: ApiClient {
+        init(previewToken: String = PreviewSecrets.token) {
+            super.init()
+            self.setTokenForPreview(previewToken)
         }
-        .padding(.vertical, 4)
-        .background(Color(.systemGray6))
-        .cornerRadius(8)
+    }
+
+    static var previews: some View {
+        CalendarView(api: PreviewApiClient())
+            .previewDisplayName("CalendarView Preview")
+            .preferredColorScheme(.dark)
+            .previewLayout(.sizeThatFits)
+            .padding()
     }
 }
-
-// MARK: - Previews
-#Preview {
-    let api = ApiClient()
-    return CalendarView(api: api)
-}
+#endif

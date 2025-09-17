@@ -330,6 +330,25 @@ class ApiClient: ObservableObject {
         self.token = token
     }
 
+#if DEBUG
+    /// Inject a JWT only (used when you don't need user-specific endpoints).
+    public func setTokenForPreview(_ token: String) {
+        self.token = token
+    }
+
+    /// Inject both token and a lightweight user so user-scoped endpoints (like /users/:id/...) work in previews.
+    public func setPreviewAuth(token: String,
+                               userId: String = "preview-user",
+                               email: String = "preview@example.com",
+                               displayName: String = "Preview User") {
+        self.token = token
+        self.currentUser = AuthenticatedUser(id: userId,
+                                             email: email,
+                                             displayName: displayName,
+                                             token: token)
+    }
+#endif
+
     // Set authentication credentials in place
     func setAuthentication(user: AuthenticatedUser) {
         self.token = user.token

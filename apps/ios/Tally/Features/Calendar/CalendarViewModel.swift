@@ -1,262 +1,192 @@
-//
-//  CalendarViewModel.swift
-//  Tally
-//
-//  ViewModel for calendar functionality with provider indicators per day
-//
-
-import SwiftUI
 import Foundation
+import SwiftUI
 
-@MainActor
-class CalendarViewModel: ObservableObject {
-    // MARK: - Published Properties
-    @Published var country: String = CountryManager.get()
-    @Published var monthAnchor: Date = Calendar.current.startOfMonth(for: Date()) ?? Date()
-    @Published var isLoading = false
-    @Published var error: String?
-
-    // Calendar data
-    @Published var dailyProviders: [String: [Provider]] = [:]
-
-    // Internal properties
-    var api: ApiClient?
-    private var cache: [String: [String: [Provider]]] = [:]  // [monthKey: [dayKey: providers]]
-
-    // MARK: - Computed Properties
-
-    var visibleDays: [CalendarDay] {
-        generateCalendarDays()
-    }
-
-    var monthTitle: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM"
-        return formatter.string(from: monthAnchor)
-    }
-
-    var yearTitle: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy"
-        return formatter.string(from: monthAnchor)
-    }
-
-    var weekDayNames: [String] {
-        let formatter = DateFormatter()
-        return formatter.shortWeekdaySymbols
-    }
-
-    // MARK: - Cache Key Helpers
-
-    private func monthKey(for date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM"
-        return "\(formatter.string(from: date))-\(country)"
-    }
-
-    private func dayKey(for date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
-    }
-
-    // MARK: - Public Methods
-
-    func setCountry(_ newCountry: String) {
-        country = newCountry
-        CountryManager.set(newCountry)
-    }
-
-    func previousMonth() {
-        monthAnchor = Calendar.current.date(byAdding: .month, value: -1, to: monthAnchor) ?? monthAnchor
-    }
-
-    func nextMonth() {
-        monthAnchor = Calendar.current.date(byAdding: .month, value: 1, to: monthAnchor) ?? monthAnchor
-    }
-
-    func goToToday() {
-        monthAnchor = Calendar.current.startOfMonth(for: Date()) ?? Date()
-    }
-
-    func clearError() {
-        error = nil
-    }
-
-    // MARK: - Data Loading
-
-    func loadForMonth() async {
-        guard let api = api else { return }
-
-        let key = monthKey(for: monthAnchor)
-
-        // Check cache first
-        if let cachedData = cache[key] {
-            dailyProviders = cachedData
-            return
-        }
-
-        isLoading = true
-        error = nil
-
-        do {
-            // Fetch user's watching shows
-            let watchingShows = try await api.getWatchlist(status: .watching)
-
-            // Build daily providers dictionary
-            var newDailyProviders: [String: [Provider]] = [:]
-
-            // Process each watching show
-            for userShow in watchingShows.prefix(20) { // Limit to 20 shows for MVP
-                guard let tmdbId = userShow.show.tmdbId else { continue }
-
-                do {
-                    // Get show analysis to find providers
-                    let analysis = try await api.analyzeShow(tmdbId: tmdbId, country: country)
-
-                    // Convert WatchProviders to Providers
-                    let providers = analysis.watchProviders?.compactMap { watchProvider in
-                        Provider(
-                            id: watchProvider.providerId,
-                            name: watchProvider.name,
-                            logo: watchProvider.logo
-                        )
-                    } ?? []
-
-                    // Get season information to find episode air dates
-                    for season in analysis.seasonInfo {
-                        guard season.seasonNumber > 0 else { continue } // Skip specials
-
-                        do {
-                            let seasonData = try await api.getSeasonRaw(
-                                tmdbId: tmdbId,
-                                season: season.seasonNumber,
-                                country: country
-                            )
-
-                            // Process episodes and their air dates
-                            for episode in seasonData.episodes {
-                                guard let airDateString = episode.airDate,
-                                      let airDate = parseAirDate(airDateString),
-                                      isDateInCurrentMonth(airDate) else { continue }
-
-                                let dayKey = dayKey(for: airDate)
-
-                                // Add providers for this day if not already present
-                                if newDailyProviders[dayKey] == nil {
-                                    newDailyProviders[dayKey] = []
-                                }
-
-                                // Add unique providers for this day
-                                for provider in providers {
-                                    if !newDailyProviders[dayKey]!.contains(where: { $0.id == provider.id }) {
-                                        newDailyProviders[dayKey]!.append(provider)
-                                    }
-                                }
-                            }
-                        } catch {
-                            // Continue processing other seasons if one fails
-                            print("Failed to load season \(season.seasonNumber) for show \(tmdbId): \(error)")
-                        }
-                    }
-                } catch {
-                    // Continue processing other shows if one fails
-                    print("Failed to analyze show \(tmdbId): \(error)")
-                }
-            }
-
-            // Update UI and cache
-            dailyProviders = newDailyProviders
-            cache[key] = newDailyProviders
-
-        } catch {
-            self.error = mapErrorToUserFriendlyMessage(error)
-        }
-
-        isLoading = false
-    }
-
-    // MARK: - Helper Methods
-
-    private func generateCalendarDays() -> [CalendarDay] {
-        let calendar = Calendar.current
-        let startOfMonth = monthAnchor
-
-        // Get first day of the month and the weekday it falls on
-        let firstWeekday = calendar.component(.weekday, from: startOfMonth)
-        let daysFromPreviousMonth = firstWeekday - 1
-
-        // Calculate start date (may include days from previous month)
-        let startDate = calendar.date(byAdding: .day, value: -daysFromPreviousMonth, to: startOfMonth) ?? startOfMonth
-
-        // Generate 42 days (6 weeks)
-        var days: [CalendarDay] = []
-        for i in 0..<42 {
-            if let date = calendar.date(byAdding: .day, value: i, to: startDate) {
-                let dayKey = dayKey(for: date)
-                let providers = dailyProviders[dayKey] ?? []
-                days.append(CalendarDay(date: date, providers: providers))
-            }
-        }
-
-        return days
-    }
-
-    private func parseAirDate(_ dateString: String) -> Date? {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.date(from: dateString)
-    }
-
-    private func isDateInCurrentMonth(_ date: Date) -> Bool {
-        let calendar = Calendar.current
-        let dateComponents = calendar.dateComponents([.year, .month], from: date)
-        let monthComponents = calendar.dateComponents([.year, .month], from: monthAnchor)
-
-        return dateComponents.year == monthComponents.year &&
-               dateComponents.month == monthComponents.month
-    }
-
-    private func mapErrorToUserFriendlyMessage(_ error: Error) -> String {
-        if let apiError = error as? ApiError {
-            switch apiError {
-            case .unauthorized:
-                return "Please log in to view your calendar"
-            case .network:
-                return "Network error. Please check your connection"
-            case .timeout:
-                return "Request timed out. Please try again"
-            case .badStatus(let code):
-                return "Server error (\(code)). Please try again"
-            case .cannotParse:
-                return "Invalid response from server"
-            case .underlying(let underlyingError):
-                return "Error: \(underlyingError.localizedDescription)"
-            }
-        }
-
-        return "Something went wrong. Please try again"
-    }
-}
-
-// MARK: - Supporting Types
-
-struct CalendarDay {
+struct Calendar2Day: Identifiable {
+    let id: String // yyyy-MM-dd
     let date: Date
-    let providers: [Provider]
+    let inMonth: Bool
 }
 
-struct Provider: Identifiable {
+struct ProviderBadge: Identifiable, Hashable {
     let id: Int
     let name: String
     let logo: String?
 }
 
-// MARK: - Calendar Extensions
+@MainActor
+final class CalendarViewModel: ObservableObject {
+    @Published var country: String = CountryManager.get()
+    @Published var monthAnchor: Date = CalendarViewModel.firstOfMonth(Date())
+    @Published var days: [Calendar2Day] = []
+    @Published var dailyProviders: [String: [ProviderBadge]] = [:]
+    @Published var primaryProviderByDate: [String: ProviderBadge] = [:]
+    @Published var isLoading: Bool = false
+    @Published var error: String?
 
-extension Calendar {
-    func startOfMonth(for date: Date) -> Date? {
-        let components = dateComponents([.year, .month], from: date)
-        return self.date(from: components)
+    // MARK: - Month helpers
+    static func firstOfMonth(_ date: Date) -> Date {
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.year, .month], from: date)
+        return cal.date(from: comps) ?? date
+    }
+
+    func changeMonth(by delta: Int) {
+        if let newDate = Calendar.current.date(byAdding: .month, value: delta, to: monthAnchor) {
+            monthAnchor = CalendarViewModel.firstOfMonth(newDate)
+        }
+    }
+
+    func makeMonthGrid() {
+        let cal = Calendar.current
+        let start = monthAnchor
+        guard let range = cal.range(of: .day, in: .month, for: start) else { return }
+        let firstWeekday = cal.component(.weekday, from: start) // 1=Sun ... 7=Sat
+        let leading = (firstWeekday + 6) % 7 // 0..6 for Monday-first visual
+
+        var grid: [Calendar2Day] = []
+        if leading > 0, let prev = cal.date(byAdding: .day, value: -leading, to: start) {
+            for i in 0..<leading {
+                let d = cal.date(byAdding: .day, value: i, to: prev)!
+                grid.append(Calendar2Day(id: Self.key(for: d), date: d, inMonth: false))
+            }
+        }
+        for day in range {
+            let d = cal.date(byAdding: .day, value: day - 1, to: start)!
+            grid.append(Calendar2Day(id: Self.key(for: d), date: d, inMonth: true))
+        }
+        while grid.count % 7 != 0 { grid.append(nextDay(from: grid.last!.date, inMonth: false)) }
+        while grid.count < 42 { grid.append(nextDay(from: grid.last!.date, inMonth: false)) }
+        days = grid
+    }
+
+    private func nextDay(from date: Date, inMonth: Bool) -> Calendar2Day {
+        let d = Calendar.current.date(byAdding: .day, value: 1, to: date)!
+        return Calendar2Day(id: Self.key(for: d), date: d, inMonth: inMonth)
+    }
+
+    static func key(for date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.timeZone = .current
+        return f.string(from: date)
+    }
+
+    // MARK: - Data loading (minimal: first/last air dates + provider)
+    func reload(api: ApiClient) async {
+        isLoading = true
+        error = nil
+        makeMonthGrid()
+        dailyProviders = [:]
+        primaryProviderByDate = [:]
+        do {
+            let watching = try await api.getWatchlist(status: .watching)
+            let subs = try? await api.subscriptions() // best-effort; may not have logos
+            let monthBounds = visibleMonthRange()
+
+            for userShow in watching.prefix(25) { // keep it snappy
+                guard let tmdbId = userShow.show.tmdbId else { continue }
+
+                // Prefer the user's selected provider when available
+                var provider: ProviderBadge?
+                if let p = userShow.streamingProvider {
+                    provider = ProviderBadge(id: p.id, name: p.name, logo: p.logoPath)
+                }
+
+                // First/Last air dates
+                var first = userShow.show.firstAirDate // yyyy-MM-dd
+                var last: String? = nil
+
+                if last == nil || provider == nil || first == nil {
+                    let analysis = try await api.analyzeShow(tmdbId: tmdbId, country: country)
+                    if first == nil { first = analysis.showDetails.firstAirDate }
+                    if last == nil { last = analysis.showDetails.lastAirDate }
+                    if provider == nil, let wp = analysis.watchProviders?.first {
+                        provider = ProviderBadge(id: wp.providerId, name: wp.name, logo: wp.logo)
+                    }
+                }
+
+                if let prov = provider {
+                    place(badge: prov, first: first, last: last, within: monthBounds)
+                }
+            }
+            // Fill pips for every in-month day from active subscriptions (overview style)
+            if let subs = subs, !subs.isEmpty {
+                let badges = subs.map { ProviderBadge(id: $0.serviceName?.hashValue ?? 0, name: $0.serviceName ?? "Provider", logo: nil) }
+                for d in days where d.inMonth {
+                    let k = Self.key(for: d.date)
+                    var arr = dailyProviders[k] ?? []
+                    // merge without duplicates
+                    for b in badges { if !arr.contains(b) { arr.append(b) } }
+                    dailyProviders[k] = arr
+                }
+            }
+
+            // Calculate primary providers for each day
+            calculatePrimaryProviders()
+        } catch {
+            self.error = error.localizedDescription
+        }
+        isLoading = false
+    }
+
+    // MARK: - Primary Provider Selection
+    private func calculatePrimaryProviders() {
+        for (dayKey, providers) in dailyProviders {
+            if let primary = selectPrimaryProvider(from: providers) {
+                primaryProviderByDate[dayKey] = primary
+            }
+        }
+    }
+
+    private func selectPrimaryProvider(from providers: [ProviderBadge]) -> ProviderBadge? {
+        // Only consider days with 1-3 providers that have logos
+        guard providers.count >= 1 && providers.count <= 3 else { return nil }
+
+        let providersWithLogos = providers.filter { $0.logo != nil && !$0.logo!.isEmpty }
+        guard !providersWithLogos.isEmpty else { return nil }
+
+        // Sort by name length (more characters = more popular/detailed) then by ID for stability
+        let sorted = providersWithLogos.sorted { lhs, rhs in
+            if lhs.name.count != rhs.name.count {
+                return lhs.name.count > rhs.name.count
+            }
+            return lhs.id < rhs.id
+        }
+
+        return sorted.first
+    }
+
+    // MARK: - Public accessors for UI
+    func primaryProvider(for dayKey: String) -> ProviderBadge? {
+        return primaryProviderByDate[dayKey]
+    }
+
+    func secondaryProviders(for dayKey: String) -> [ProviderBadge] {
+        guard let providers = dailyProviders[dayKey],
+              let primary = primaryProviderByDate[dayKey] else {
+            return dailyProviders[dayKey] ?? []
+        }
+
+        return providers.filter { $0.id != primary.id }
+    }
+
+    private func place(badge: ProviderBadge, first: String?, last: String?, within range: (Date, Date)) {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
+        if let s = first, let d = f.date(from: s), d >= range.0 && d <= range.1 { add(badge, for: d) }
+        if let s = last, let d = f.date(from: s), d >= range.0 && d <= range.1 { add(badge, for: d) }
+    }
+
+    private func add(_ badge: ProviderBadge, for date: Date) {
+        let k = Self.key(for: date)
+        var arr = dailyProviders[k] ?? []
+        if !arr.contains(badge) { arr.append(badge) }
+        dailyProviders[k] = arr
+    }
+
+    private func visibleMonthRange() -> (Date, Date) {
+        let cal = Calendar.current
+        let start = monthAnchor
+        let end = cal.date(byAdding: DateComponents(month: 1, day: -1), to: start) ?? start
+        return (start, end)
     }
 }
