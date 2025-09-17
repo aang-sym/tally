@@ -321,6 +321,120 @@ private struct SearchResult: Codable {
     }
 }
 
+// MARK: - TV Guide Models
+struct TVGuideEpisode: Codable, Identifiable {
+    let id: String
+    let episodeNumber: Int?
+    let seasonNumber: Int?
+    let airDate: String
+    let title: String
+    let overview: String?
+    let isWatched: Bool
+    let tmdbId: Int
+
+    enum CodingKeys: String, CodingKey {
+        case episodeNumber, seasonNumber, airDate, title, overview, isWatched, tmdbId
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        episodeNumber = try container.decodeIfPresent(Int.self, forKey: .episodeNumber)
+        seasonNumber = try container.decodeIfPresent(Int.self, forKey: .seasonNumber)
+        airDate = try container.decode(String.self, forKey: .airDate)
+        title = try container.decode(String.self, forKey: .title)
+        overview = try container.decodeIfPresent(String.self, forKey: .overview)
+        isWatched = try container.decode(Bool.self, forKey: .isWatched)
+        tmdbId = try container.decode(Int.self, forKey: .tmdbId)
+        // Generate unique ID
+        let season = seasonNumber ?? 1
+        let episode = episodeNumber ?? 0
+        id = "\(tmdbId)-s\(season)e\(episode)"
+    }
+}
+
+struct TVGuideStreamingService: Codable, Identifiable {
+    let id: Int
+    let name: String
+    let logo: String?
+    let color: String?
+    let textColor: String?
+}
+
+struct TVGuideShow: Codable, Identifiable {
+    let id: String
+    let tmdbId: Int
+    let title: String
+    let poster: String?
+    let overview: String?
+    let status: String?
+    let streamingServices: [TVGuideStreamingService]
+    let nextEpisodeDate: String?
+    let activeWindow: TVGuideActiveWindow?
+    let upcomingEpisodes: [TVGuideEpisode]
+    let userProgress: TVGuideUserProgress?
+    let pattern: String?
+    let confidence: Double?
+    let bufferDays: Int?
+    let country: String?
+
+    enum CodingKeys: String, CodingKey {
+        case tmdbId, title, poster, overview, status, streamingServices, nextEpisodeDate, activeWindow, upcomingEpisodes, userProgress, pattern, confidence, bufferDays, country
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        tmdbId = try container.decode(Int.self, forKey: .tmdbId)
+        title = try container.decode(String.self, forKey: .title)
+        poster = try container.decodeIfPresent(String.self, forKey: .poster)
+        overview = try container.decodeIfPresent(String.self, forKey: .overview)
+        status = try container.decodeIfPresent(String.self, forKey: .status)
+        streamingServices = try container.decode([TVGuideStreamingService].self, forKey: .streamingServices)
+        nextEpisodeDate = try container.decodeIfPresent(String.self, forKey: .nextEpisodeDate)
+        activeWindow = try container.decodeIfPresent(TVGuideActiveWindow.self, forKey: .activeWindow)
+        upcomingEpisodes = try container.decode([TVGuideEpisode].self, forKey: .upcomingEpisodes)
+        userProgress = try container.decodeIfPresent(TVGuideUserProgress.self, forKey: .userProgress)
+        pattern = try container.decodeIfPresent(String.self, forKey: .pattern)
+        confidence = try container.decodeIfPresent(Double.self, forKey: .confidence)
+        bufferDays = try container.decodeIfPresent(Int.self, forKey: .bufferDays)
+        country = try container.decodeIfPresent(String.self, forKey: .country)
+        // Generate unique ID
+        id = "\(tmdbId)"
+    }
+}
+
+struct TVGuideActiveWindow: Codable {
+    let start: String
+    let end: String
+}
+
+struct TVGuideUserProgress: Codable {
+    let currentSeason: Int
+    let currentEpisode: Int
+    let watchedEpisodes: [String]
+}
+
+struct TVGuideServiceGroup: Codable {
+    let service: TVGuideStreamingService
+    let shows: [TVGuideShow]
+}
+
+struct TVGuideDateRange: Codable {
+    let startDate: String
+    let endDate: String
+}
+
+struct TVGuideData: Codable {
+    let services: [TVGuideServiceGroup]
+    let dateRange: TVGuideDateRange
+    let totalShows: Int
+    let totalEpisodes: Int
+}
+
+private struct TVGuideResponse: Codable {
+    let success: Bool
+    let data: TVGuideData
+}
+
 class ApiClient: ObservableObject {
     private let baseURL = URL(string: "http://localhost:4000")!
     private var token: String?
@@ -886,6 +1000,54 @@ class ApiClient: ObservableObject {
                 throw ApiError.badStatus(http.statusCode)
             }
             // Response body not used currently
+        } catch {
+            throw mapToApiError(error)
+        }
+    }
+
+    // MARK: - TV Guide
+    @MainActor
+    func getTVGuide(startDate: String? = nil, endDate: String? = nil, country: String? = nil) async throws -> TVGuideData {
+        var comps = URLComponents(url: baseURL.appendingPathComponent("/api/tv-guide"), resolvingAgainstBaseURL: false)!
+        var queryItems: [URLQueryItem] = []
+
+        if let startDate = startDate {
+            queryItems.append(URLQueryItem(name: "startDate", value: startDate))
+        }
+        if let endDate = endDate {
+            queryItems.append(URLQueryItem(name: "endDate", value: endDate))
+        }
+        if let country = country {
+            queryItems.append(URLQueryItem(name: "country", value: country))
+        }
+
+        if !queryItems.isEmpty {
+            comps.queryItems = queryItems
+        }
+
+        var req = URLRequest(url: comps.url!)
+        req.httpMethod = "GET"
+        addAuthHeaders(&req)
+
+        do {
+            let (data, resp) = try await session.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { throw ApiError.badStatus(-1) }
+            guard (200..<300).contains(http.statusCode) else {
+                if http.statusCode == 401 { throw ApiError.unauthorized }
+                #if DEBUG
+                if let body = String(data: data, encoding: .utf8) { print("TV Guide error:", body) }
+                #endif
+                throw ApiError.badStatus(http.statusCode)
+            }
+
+            #if DEBUG
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("TV Guide API Response:", responseString)
+            }
+            #endif
+
+            let response = try JSONDecoder().decode(TVGuideResponse.self, from: data)
+            return response.data
         } catch {
             throw mapToApiError(error)
         }

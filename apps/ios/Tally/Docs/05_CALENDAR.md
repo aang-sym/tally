@@ -9,7 +9,7 @@ Goal ✅ COMPLETED
 **COMPLETED** - Calendar feature fully implemented and integrated into the app:
 
 - ✅ **Files Created**: `Features/Calendar/CalendarView.swift` and `Features/Calendar/CalendarViewModel.swift`
-- ✅ **Files Created**: `Features/Calendar/Calendar2View.swift` and `Features/Calendar/Calendar2ViewModel.swift`
+- ✅ **Files Created**: `Features/Calendar/CalendarView.swift` and `Features/Calendar/CalendarViewModel.swift`
 - ✅ **Navigation**: Added Calendar link to main ContentView navigation
 - ✅ **Core Features**: Month grid, provider indicators, day tap functionality, country switching
 - ✅ **Data Integration**: Fetches from user watchlist, analyzes shows, maps episodes to calendar days
@@ -46,7 +46,7 @@ Screens and components ✅ IMPLEMENTED
     - ✅ Today indicator with blue highlighting and border
     - ✅ Overflow indicator (+N) when >3 providers
   - ✅ **Day tap**: Opens detail sheet showing providers/shows for that day
-- ✅ **Calendar2View (screen)**:
+- ✅ **CalendarView (screen)**:
   - ✅ **Enhanced Header**: Improved accessibility and layout for month/year and navigation controls
   - ✅ **Country Selector**: Inline updates with smoother transitions
   - ✅ **Optimized Grid**: LazyVGrid with better memory management and faster rendering
@@ -58,7 +58,7 @@ Implementation steps ✅ ALL COMPLETED
 
 1. ✅ **Scaffolding**
    - ✅ Added `Features/Calendar/CalendarView.swift` (SwiftUI) and `Features/Calendar/CalendarViewModel.swift`
-   - ✅ Added `Features/Calendar/Calendar2View.swift` (SwiftUI) and `Features/Calendar/Calendar2ViewModel.swift`
+   - ✅ Added `Features/Calendar/CalendarView.swift` (SwiftUI) and `Features/Calendar/CalendarViewModel.swift`
 
 2. ✅ **ViewModel state**
    - ✅ `@Published var country: String = CountryManager.get()`
@@ -66,7 +66,7 @@ Implementation steps ✅ ALL COMPLETED
    - ✅ Computed `visibleDays: [CalendarDay]` covering 6×7 grid (pad leading/trailing days)
    - ✅ `@Published var dailyProviders: [String: [Provider]]` keyed by yyyy-MM-dd
    - ✅ Added caching, loading states, and error handling
-   - ✅ Calendar2ViewModel refines state management for improved performance and reduced complexity
+   - ✅ CalendarViewModel refines state management for improved performance and reduced complexity
 
 3. ✅ **Data fetching**
    - ✅ `loadForMonth()` implementation:
@@ -77,7 +77,7 @@ Implementation steps ✅ ALL COMPLETED
      - ✅ Normalizes providers to `{ id, name, logo }`
      - ✅ Builds dailyProviders keyed by yyyy-MM-dd
      - ✅ Caches results in-memory by (month, country)
-     - ✅ Calendar2ViewModel optimizes data fetching to minimize redundant calls and improve responsiveness
+     - ✅ CalendarViewModel optimizes data fetching to minimize redundant calls and improve responsiveness
 
 4. ✅ **UI grid rendering**
    - ✅ MonthGridView: LazyVGrid with 7 columns, dynamic rows
@@ -87,20 +87,20 @@ Implementation steps ✅ ALL COMPLETED
      - ✅ Overflow +N badge when >3 providers
    - ✅ Navigation: chevrons change monthAnchor by ±1 month; Today button snaps to current month
    - ✅ Country menu in header: changes country and reloads month inline
-   - ✅ Calendar2View implements improved LazyVGrid usage and AsyncImage caching for smoother UI
+   - ✅ CalendarView implements improved LazyVGrid usage and AsyncImage caching for smoother UI
 
 5. ✅ **Day interaction**
    - ✅ Tap a day → shows detail sheet listing providers for that day
    - ✅ Sheet shows provider logos and names
    - ✅ Proper sheet presentation with medium detent and drag indicator
-   - ✅ Calendar2View enhances sheet animations and accessibility
+   - ✅ CalendarView enhances sheet animations and accessibility
 
 6. ✅ **Performance optimizations**
    - ✅ Limit per-show analyze calls (watching only; top 20)
    - ✅ In-memory cache by (month, country) key
    - ✅ Loading indicators: "Loading calendar..." with ProgressView
    - ✅ Non-blocking UI with proper async/await handling
-   - ✅ Calendar2ViewModel introduces refined caching and state updates for faster month navigation
+   - ✅ CalendarViewModel introduces refined caching and state updates for faster month navigation
 
 7. ✅ **Integration**
    - ✅ Added NavigationLink to Calendar in main ContentView
@@ -133,7 +133,7 @@ Implement these in **small PRs**, one at a time (A → B → C). Use the screens
    - ✅ Renders small dots for secondary providers along bottom edge
    - ✅ Falls back to dot cluster with `+N` overflow for >3 providers or missing logos
    - ✅ Chooses primary provider by sorting by `(name.count DESC, id ASC)` for stable results
-   - ✅ Added `primaryProviderByDate` and `secondaryProviders()` to Calendar2ViewModel
+   - ✅ Added `primaryProviderByDate` and `secondaryProviders()` to CalendarViewModel
 4. ✅ **A11y**
    - ✅ Added `accessibilityLabel`: "Netflix on Monday 1 September" format
    - ✅ Provides descriptive labels for all provider states
@@ -177,7 +177,7 @@ Implement these in **small PRs**, one at a time (A → B → C). Use the screens
 - ✅ Icons appear 33% larger and perfectly circular, centered inside square rounded day tiles
 - ✅ Grid has visibly less padding (4pt vs 8pt), fitting more content without clipping
 - ✅ Layout fully matches proportions shown in img 1
-- ✅ **Visual Verification**: Calendar2View now precisely matches target design with large circular logos in square cells
+- ✅ **Visual Verification**: CalendarView now precisely matches target design with large circular logos in square cells
 
 ### B) Show icons **only** on days with an episode airing
 
@@ -185,7 +185,7 @@ Implement these in **small PRs**, one at a time (A → B → C). Use the screens
 
 **Implementation steps**
 
-1. In `Calendar2ViewModel`, introduce `episodesByDate: [String: [EpisodeRef]]` (keyed by `yyyy-MM-dd`) alongside `dailyProviders`.
+1. In `CalendarViewModel`, introduce `episodesByDate: [String: [EpisodeRef]]` (keyed by `yyyy-MM-dd`) alongside `dailyProviders`.
 2. During `loadForMonth()`, build `episodesByDate` from episode air dates, then derive `dailyProviders` strictly from keys present in `episodesByDate` (no carry‑over when paging months).
 3. Add `primaryProviderByDate: [String: Provider]` to support step A selection logic.
 4. **Gemini usage**: instruct Claude to **use Gemini to scan the codebase** (web + API) for any existing **TV guide / episode list routing** that returns episode air dates for a given show/season/month. Prefer reusing that route for fast retrieval. If nothing suitable exists, propose a lightweight API endpoint that returns a month schedule per TMDB ID + country.
@@ -209,7 +209,7 @@ Implement these in **small PRs**, one at a time (A → B → C). Use the screens
    - Add `pricesByProvider[countryCode: String]: [ProviderID: Decimal]` (seed with existing pricing or a small static map; can be replaced later by API).
    - For the selected date, map `episodesByDate[date]` → distinct providers → rows; sum prices for header total.
 3. Navigation
-   - Reuse existing `sheet(item:)` in `Calendar2View`; present `DayDetailListView` when a date is tapped. Days with no shows should not present a sheet.
+   - Reuse existing `sheet(item:)` in `CalendarView`; present `DayDetailListView` when a date is tapped. Days with no shows should not present a sheet.
 4. A11y
    - VoiceOver for rows: "<Provider>, <Price>, airing today".
 
@@ -230,8 +230,8 @@ Implement these in **small PRs**, one at a time (A → B → C). Use the screens
 
 - `Features/Calendar/CalendarView.swift` (287 lines) - Main calendar screen with full UI
 - `Features/Calendar/CalendarViewModel.swift` (239 lines) - State management and data fetching
-- `Features/Calendar2/Calendar2View.swift` (202 lines) - Enhanced calendar screen with centered logo implementation
-- `Features/Calendar2/Calendar2ViewModel.swift` (247 lines) - Optimized state management with primary provider selection
+- `Features/Calendar2/CalendarView.swift` (202 lines) - Enhanced calendar screen with centered logo implementation
+- `Features/Calendar2/CalendarViewModel.swift` (247 lines) - Optimized state management with primary provider selection
 - `Features/Calendar2/ProviderLogoView.swift` (67 lines) - Reusable provider logo component with AsyncImage fallbacks
 - Updated `Tally/ContentView.swift` - Added calendar navigation links
 
@@ -242,7 +242,7 @@ Implement these in **small PRs**, one at a time (A → B → C). Use the screens
 - Added comprehensive error handling with user-friendly messages
 - Used LazyVGrid for performance with large calendar grids
 - Implemented proper caching strategy to minimize API calls
-- **Calendar2View/Calendar2ViewModel improvements:**
+- **CalendarView/CalendarViewModel improvements:**
   - Optimized LazyVGrid usage to reduce memory footprint and improve scroll performance
   - Enhanced AsyncImage caching for provider logos to reduce flicker and loading times
   - Simplified data flow in ViewModel, reducing redundant API calls and improving responsiveness
@@ -276,7 +276,7 @@ Implement these in **small PRs**, one at a time (A → B → C). Use the screens
 - ✅ Successfully compiles without errors on Xcode
 - ✅ All Swift types properly aligned with existing ApiClient models
 - ✅ Follows app's established patterns and conventions
-- ✅ **Step A Implementation**: Calendar2View builds successfully with centered logo enhancement
+- ✅ **Step A Implementation**: CalendarView builds successfully with centered logo enhancement
 - ✅ **Step A.2 Implementation**: Visual refinements build successfully with perfect circular logos and square cells
 - ✅ **UI Verification**: Calendar2DayCell now precisely matches target design (Image 1) with large circular provider logos in square day tiles
 - ✅ **Visual Verification**: 33% larger icons, perfect circles, 4pt spacing, and 8pt corner radius achieve target design

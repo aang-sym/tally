@@ -13,11 +13,21 @@ struct ProviderBadge: Identifiable, Hashable {
     let logo: String?
 }
 
+struct EpisodeRef: Identifiable, Hashable {
+    let id: String
+    let tmdbId: Int
+    let seasonNumber: Int
+    let episodeNumber: Int
+    let title: String
+    let airDate: String
+}
+
 @MainActor
 final class CalendarViewModel: ObservableObject {
     @Published var country: String = CountryManager.get()
     @Published var monthAnchor: Date = CalendarViewModel.firstOfMonth(Date())
     @Published var days: [Calendar2Day] = []
+    @Published var episodesByDate: [String: [EpisodeRef]] = [:]
     @Published var dailyProviders: [String: [ProviderBadge]] = [:]
     @Published var primaryProviderByDate: [String: ProviderBadge] = [:]
     @Published var isLoading: Bool = false
@@ -71,59 +81,129 @@ final class CalendarViewModel: ObservableObject {
         return f.string(from: date)
     }
 
-    // MARK: - Data loading (minimal: first/last air dates + provider)
+    // MARK: - Data loading using TV Guide API (Step B implementation)
     func reload(api: ApiClient) async {
         isLoading = true
         error = nil
         makeMonthGrid()
+        episodesByDate = [:]
         dailyProviders = [:]
         primaryProviderByDate = [:]
+
         do {
-            let watching = try await api.getWatchlist(status: .watching)
-            let subs = try? await api.subscriptions() // best-effort; may not have logos
             let monthBounds = visibleMonthRange()
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd"
 
-            for userShow in watching.prefix(25) { // keep it snappy
-                guard let tmdbId = userShow.show.tmdbId else { continue }
+            let startDate = formatter.string(from: monthBounds.0)
+            let endDate = formatter.string(from: monthBounds.1)
 
-                // Prefer the user's selected provider when available
-                var provider: ProviderBadge?
-                if let p = userShow.streamingProvider {
-                    provider = ProviderBadge(id: p.id, name: p.name, logo: p.logoPath)
-                }
+            print("📅 Calendar: Loading TV Guide data for \(startDate) to \(endDate), country: \(country)")
 
-                // First/Last air dates
-                var first = userShow.show.firstAirDate // yyyy-MM-dd
-                var last: String? = nil
+            // Fetch TV guide data for the month
+            let tvGuideData = try await api.getTVGuide(
+                startDate: startDate,
+                endDate: endDate,
+                country: country
+            )
 
-                if last == nil || provider == nil || first == nil {
-                    let analysis = try await api.analyzeShow(tmdbId: tmdbId, country: country)
-                    if first == nil { first = analysis.showDetails.firstAirDate }
-                    if last == nil { last = analysis.showDetails.lastAirDate }
-                    if provider == nil, let wp = analysis.watchProviders?.first {
-                        provider = ProviderBadge(id: wp.providerId, name: wp.name, logo: wp.logo)
+            print("📺 TV Guide Response: \(tvGuideData.services.count) services, \(tvGuideData.totalShows) shows, \(tvGuideData.totalEpisodes) episodes")
+
+            // Helper to convert ISO 8601 date to yyyy-MM-dd format
+            let isoDateFormatter = DateFormatter()
+            isoDateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+            isoDateFormatter.timeZone = TimeZone(abbreviation: "UTC")
+
+            let dayFormatter = DateFormatter()
+            dayFormatter.dateFormat = "yyyy-MM-dd"
+            dayFormatter.timeZone = .current
+
+            // Build episodesByDate from TV guide data
+            for serviceGroup in tvGuideData.services {
+                print("🎬 Service: \(serviceGroup.service.name) (ID: \(serviceGroup.service.id)) - \(serviceGroup.shows.count) shows")
+
+                for show in serviceGroup.shows {
+                    print("  📱 Show: \(show.title) (TMDB: \(show.tmdbId)) - \(show.upcomingEpisodes.count) episodes")
+
+                    for episode in show.upcomingEpisodes {
+                        print("    📅 Episode: '\(episode.title)' airDate: '\(episode.airDate)'")
+
+                        // Convert ISO 8601 date to yyyy-MM-dd format
+                        let dayKey: String
+                        if let isoDate = isoDateFormatter.date(from: episode.airDate) {
+                            dayKey = dayFormatter.string(from: isoDate)
+                            print("      ✅ Converted '\(episode.airDate)' -> '\(dayKey)'")
+                        } else {
+                            // Fallback: try to extract just the date part if it's already in the right format
+                            if episode.airDate.contains("T") {
+                                dayKey = String(episode.airDate.prefix(10))
+                                print("      ⚠️  Fallback: extracted '\(dayKey)' from '\(episode.airDate)'")
+                            } else {
+                                dayKey = episode.airDate
+                                print("      ⚠️  Using raw date: '\(dayKey)'")
+                            }
+                        }
+
+                        // Handle missing episode/season numbers gracefully
+                        let episodeNumber = episode.episodeNumber ?? 0
+                        let seasonNumber = episode.seasonNumber ?? 1
+
+                        let episodeRef = EpisodeRef(
+                            id: "\(show.tmdbId)-s\(seasonNumber)e\(episodeNumber)",
+                            tmdbId: show.tmdbId,
+                            seasonNumber: seasonNumber,
+                            episodeNumber: episodeNumber,
+                            title: episode.title,
+                            airDate: episode.airDate
+                        )
+
+                        var episodes = episodesByDate[dayKey] ?? []
+                        if !episodes.contains(episodeRef) {
+                            episodes.append(episodeRef)
+                        }
+                        episodesByDate[dayKey] = episodes
+                        print("      📝 Added episode to day '\(dayKey)' (total: \(episodes.count))")
+
+                        // Derive providers strictly from episodes (only days with episodes get providers)
+                        for service in show.streamingServices {
+                            let providerBadge = ProviderBadge(
+                                id: service.id,
+                                name: service.name,
+                                logo: service.logo
+                            )
+
+                            var providers = dailyProviders[dayKey] ?? []
+                            if !providers.contains(providerBadge) {
+                                providers.append(providerBadge)
+                                print("      🏷️  Added provider '\(service.name)' to day '\(dayKey)' (total: \(providers.count))")
+                            }
+                            dailyProviders[dayKey] = providers
+                        }
                     }
                 }
-
-                if let prov = provider {
-                    place(badge: prov, first: first, last: last, within: monthBounds)
-                }
-            }
-            // Fill pips for every in-month day from active subscriptions (overview style)
-            if let subs = subs, !subs.isEmpty {
-                let badges = subs.map { ProviderBadge(id: $0.serviceName?.hashValue ?? 0, name: $0.serviceName ?? "Provider", logo: nil) }
-                for d in days where d.inMonth {
-                    let k = Self.key(for: d.date)
-                    var arr = dailyProviders[k] ?? []
-                    // merge without duplicates
-                    for b in badges { if !arr.contains(b) { arr.append(b) } }
-                    dailyProviders[k] = arr
-                }
             }
 
-            // Calculate primary providers for each day
+            print("📊 Final results:")
+            print("   Episodes by date: \(episodesByDate.count) days")
+            for (dayKey, episodes) in episodesByDate.sorted(by: { $0.key < $1.key }) {
+                print("     \(dayKey): \(episodes.count) episodes")
+            }
+            print("   Providers by date: \(dailyProviders.count) days")
+            for (dayKey, providers) in dailyProviders.sorted(by: { $0.key < $1.key }) {
+                let providerNames = providers.map { $0.name }.joined(separator: ", ")
+                print("     \(dayKey): \(providers.count) providers (\(providerNames))")
+            }
+
+            // Calculate primary providers for each day (only for days with episodes)
             calculatePrimaryProviders()
+
+            print("   Primary providers: \(primaryProviderByDate.count) days")
+            for (dayKey, provider) in primaryProviderByDate.sorted(by: { $0.key < $1.key }) {
+                print("     \(dayKey): \(provider.name)")
+            }
+
         } catch {
+            print("❌ Calendar reload error: \(error)")
             self.error = error.localizedDescription
         }
         isLoading = false
@@ -170,17 +250,13 @@ final class CalendarViewModel: ObservableObject {
         return providers.filter { $0.id != primary.id }
     }
 
-    private func place(badge: ProviderBadge, first: String?, last: String?, within range: (Date, Date)) {
-        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
-        if let s = first, let d = f.date(from: s), d >= range.0 && d <= range.1 { add(badge, for: d) }
-        if let s = last, let d = f.date(from: s), d >= range.0 && d <= range.1 { add(badge, for: d) }
+    // MARK: - Episode access for UI
+    func episodes(for dayKey: String) -> [EpisodeRef] {
+        return episodesByDate[dayKey] ?? []
     }
 
-    private func add(_ badge: ProviderBadge, for date: Date) {
-        let k = Self.key(for: date)
-        var arr = dailyProviders[k] ?? []
-        if !arr.contains(badge) { arr.append(badge) }
-        dailyProviders[k] = arr
+    func hasEpisodes(for dayKey: String) -> Bool {
+        return !(episodesByDate[dayKey]?.isEmpty ?? true)
     }
 
     private func visibleMonthRange() -> (Date, Date) {

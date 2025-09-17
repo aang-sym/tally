@@ -1,16 +1,20 @@
 import SwiftUI
 
+// TODO (preview): Fade between months on vertical scroll
 struct CalendarView: View {
     @ObservedObject var api: ApiClient
     @StateObject private var vm = CalendarViewModel()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            header
-            if vm.isLoading { ProgressView("Loading month…") }
-            grid
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                header
+                if vm.isLoading { ProgressView("Loading month…") }
+                grid
+            }
+            .padding(.vertical, 17)
+            .padding(.horizontal, 10)
         }
-        .padding()
         .task { await vm.reload(api: api) }
         .onChange(of: vm.country) { _, _ in Task { await vm.reload(api: api) } }
     }
@@ -18,11 +22,9 @@ struct CalendarView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Button(action: { vm.changeMonth(by: -1); Task { await vm.reload(api: api) } }) { Image(systemName: "chevron.left") }
                 Spacer(minLength: 10)
                 Text(monthTitle(vm.monthAnchor)).font(.headline)
                 Spacer(minLength: 10)
-                Button(action: { vm.changeMonth(by: +1); Task { await vm.reload(api: api) } }) { Image(systemName: "chevron.right") }
             }
             HStack {
                 Menu("Country: \(vm.country)") {
@@ -53,7 +55,7 @@ struct CalendarView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7), spacing: 2) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 1), count: 7), spacing: 1) {
                 ForEach(vm.days) { day in
                     Calendar2DayCell(
                         day: day,
@@ -156,16 +158,11 @@ private struct Calendar2DayCell: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 14)
                 .fill(Color(.secondarySystemBackground))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(isToday ? Color.blue : Color(.tertiaryLabel),
-                                lineWidth: isToday ? 2 : (day.inMonth ? 0.6 : 0.3))
-                )
         )
         .aspectRatio(1, contentMode: .fit)
-        .frame(height: cellWidth)
+        .padding(2)
         .accessibilityLabel(accessibilityText)
     }
 
@@ -209,7 +206,7 @@ private struct Calendar2DayCell: View {
 
 #if DEBUG
 enum PreviewSecrets {
-    static let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmN2Y2YmIyYy1lNTM2LTQ2MzUtYWY4NS0xNjI4NjY1NDViNWQiLCJlbWFpbCI6InRlc3QyQGV4YW1wbGUuY29tIiwiZGlzcGxheU5hbWUiOiJ0ZXN0MkBleGFtcGxlLmNvbSIsImlhdCI6MTc1ODA4MjYzOSwiZXhwIjoxNzU4Njg3NDM5fQ.fVF1-qqQtWQ8h0_tK_6cVSxfeQJL7jPbHkJ_rUfXYBk"
+    static let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmN2Y2YmIyYy1lNTM2LTQ2MzUtYWY4NS0xNjI4NjY1NDViNWQiLCJlbWFpbCI6InRlc3QyQGV4YW1wbGUuY29tIiwiZGlzcGxheU5hbWUiOiJ0ZXN0MkBleGFtcGxlLmNvbSIsImlhdCI6MTc1ODA4OTAxNCwiZXhwIjoxNzU4NjkzODE0fQ.vxlMVx00lV3ztXINwLcnwNWVKg-WwgbFFOd4ALKJx5g"
 }
 
 struct CalendarView_Previews: PreviewProvider {
