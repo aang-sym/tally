@@ -48,6 +48,10 @@ struct ContentView: View {
                     .buttonStyle(.bordered)
                 NavigationLink("Search", destination: SearchView(api: api))
                     .buttonStyle(.bordered)
+                NavigationLink("Calendar", destination: CalendarView(api: api))
+                    .buttonStyle(.bordered)
+                NavigationLink("Calendar 2", destination: Calendar2View(api: api))
+                    .buttonStyle(.bordered)
             }
             .padding()
             .task {
@@ -82,4 +86,3 @@ struct ContentView: View {
 #Preview {
     ContentView()
 }
-
