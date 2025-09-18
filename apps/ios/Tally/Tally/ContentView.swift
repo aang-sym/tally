@@ -51,6 +51,8 @@ struct ContentView: View {
                     .buttonStyle(.bordered)
                 NavigationLink("Calendar", destination: CalendarView(api: api))
                     .buttonStyle(.bordered)
+                NavigationLink("TV Guide", destination: TVGuideView(api: api))
+                    .buttonStyle(.bordered)
             }
             .padding()
             .task {

@@ -1,11 +1,15 @@
 import SwiftUI
 
 // TODO (preview): Fade between months on vertical scroll
+
+// MARK: - Calendar View (Screen)
 struct CalendarView: View {
+    // MARK: - State
     @ObservedObject var api: ApiClient
     @StateObject private var vm = CalendarViewModel()
     @State private var selectedDay: Calendar2Day?
 
+    // MARK: - Body
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
@@ -23,6 +27,7 @@ struct CalendarView: View {
         }
     }
 
+    // MARK: - Header
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -48,6 +53,7 @@ struct CalendarView: View {
         }
     }
 
+    // MARK: - Grid
     private var grid: some View {
         VStack(spacing: 4) {
             HStack {
@@ -79,11 +85,13 @@ struct CalendarView: View {
         .onAppear { vm.makeMonthGrid() }
     }
 
+    // MARK: - Helpers
     private func monthTitle(_ date: Date) -> String {
         let f = DateFormatter(); f.dateFormat = "LLLL, yyyy"; return f.string(from: date)
     }
 }
 
+// MARK: - Day Cell
 private struct Calendar2DayCell: View {
     let day: Calendar2Day
     let providers: [ProviderBadge]
@@ -219,6 +227,7 @@ private struct Calendar2DayCell: View {
 }
 
 #if DEBUG
+// MARK: - Previews
 enum PreviewSecrets {
     static let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmN2Y2YmIyYy1lNTM2LTQ2MzUtYWY4NS0xNjI4NjY1NDViNWQiLCJlbWFpbCI6InRlc3QyQGV4YW1wbGUuY29tIiwiZGlzcGxheU5hbWUiOiJ0ZXN0MkBleGFtcGxlLmNvbSIsImlhdCI6MTc1ODA4OTAxNCwiZXhwIjoxNzU4NjkzODE0fQ.vxlMVx00lV3ztXINwLcnwNWVKg-WwgbFFOd4ALKJx5g"
 }
