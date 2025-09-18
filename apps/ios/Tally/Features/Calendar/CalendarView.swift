@@ -4,6 +4,7 @@ import SwiftUI
 struct CalendarView: View {
     @ObservedObject var api: ApiClient
     @StateObject private var vm = CalendarViewModel()
+    @State private var selectedDay: Calendar2Day?
 
     var body: some View {
         ScrollView {
@@ -17,6 +18,9 @@ struct CalendarView: View {
         }
         .task { await vm.reload(api: api) }
         .onChange(of: vm.country) { _, _ in Task { await vm.reload(api: api) } }
+        .sheet(item: $selectedDay) { day in
+            DayDetailListView(day: day, viewModel: vm)
+        }
     }
 
     private var header: some View {
@@ -61,7 +65,13 @@ struct CalendarView: View {
                         day: day,
                         providers: vm.dailyProviders[day.id] ?? [],
                         primaryProvider: vm.primaryProvider(for: day.id),
-                        secondaryProviders: vm.secondaryProviders(for: day.id)
+                        secondaryProviders: vm.secondaryProviders(for: day.id),
+                        onTap: {
+                            // Only show sheet for days with episodes/providers
+                            if vm.hasEpisodes(for: day.id) {
+                                selectedDay = day
+                            }
+                        }
                     )
                 }
             }
@@ -79,6 +89,7 @@ private struct Calendar2DayCell: View {
     let providers: [ProviderBadge]
     let primaryProvider: ProviderBadge?
     let secondaryProviders: [ProviderBadge]
+    let onTap: () -> Void
 
     private var isToday: Bool {
         Calendar.current.isDateInToday(day.date)
@@ -164,6 +175,9 @@ private struct Calendar2DayCell: View {
         .aspectRatio(1, contentMode: .fit)
         .padding(2)
         .accessibilityLabel(accessibilityText)
+        .onTapGesture {
+            onTap()
+        }
     }
 
     private func dayNumber(_ d: Date) -> String {

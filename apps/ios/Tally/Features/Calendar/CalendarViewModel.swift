@@ -1,10 +1,18 @@
 import Foundation
 import SwiftUI
 
-struct Calendar2Day: Identifiable {
+struct Calendar2Day: Identifiable, Hashable {
     let id: String // yyyy-MM-dd
     let date: Date
     let inMonth: Bool
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
+    static func == (lhs: Calendar2Day, rhs: Calendar2Day) -> Bool {
+        lhs.id == rhs.id
+    }
 }
 
 struct ProviderBadge: Identifiable, Hashable {
@@ -22,6 +30,20 @@ struct EpisodeRef: Identifiable, Hashable {
     let airDate: String
 }
 
+struct ProviderPrice {
+    let providerId: Int
+    let providerName: String
+    let price: Decimal
+    let currency: String
+
+    var formattedPrice: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = currency
+        return formatter.string(from: NSDecimalNumber(decimal: price)) ?? "$0.00"
+    }
+}
+
 @MainActor
 final class CalendarViewModel: ObservableObject {
     @Published var country: String = CountryManager.get()
@@ -32,6 +54,30 @@ final class CalendarViewModel: ObservableObject {
     @Published var primaryProviderByDate: [String: ProviderBadge] = [:]
     @Published var isLoading: Bool = false
     @Published var error: String?
+
+    // Static pricing data (to be replaced by API in the future)
+    private let staticPricing: [String: [Int: ProviderPrice]] = [
+        "AU": [
+            1899: ProviderPrice(providerId: 1899, providerName: "HBO Max", price: 19.99, currency: "AUD"),
+            4888: ProviderPrice(providerId: 4888, providerName: "Paramount+ with Showtime", price: 11.99, currency: "AUD"),
+            8: ProviderPrice(providerId: 8, providerName: "Netflix", price: 16.99, currency: "AUD"),
+            119: ProviderPrice(providerId: 119, providerName: "Amazon Prime Video", price: 8.99, currency: "AUD"),
+            337: ProviderPrice(providerId: 337, providerName: "Disney+", price: 13.99, currency: "AUD"),
+            15: ProviderPrice(providerId: 15, providerName: "Hulu", price: 15.99, currency: "AUD"),
+            2: ProviderPrice(providerId: 2, providerName: "Apple TV+", price: 9.99, currency: "AUD"),
+            531: ProviderPrice(providerId: 531, providerName: "Paramount+", price: 9.99, currency: "AUD")
+        ],
+        "US": [
+            1899: ProviderPrice(providerId: 1899, providerName: "HBO Max", price: 15.99, currency: "USD"),
+            4888: ProviderPrice(providerId: 4888, providerName: "Paramount+ with Showtime", price: 11.99, currency: "USD"),
+            8: ProviderPrice(providerId: 8, providerName: "Netflix", price: 15.49, currency: "USD"),
+            119: ProviderPrice(providerId: 119, providerName: "Amazon Prime Video", price: 8.99, currency: "USD"),
+            337: ProviderPrice(providerId: 337, providerName: "Disney+", price: 7.99, currency: "USD"),
+            15: ProviderPrice(providerId: 15, providerName: "Hulu", price: 7.99, currency: "USD"),
+            2: ProviderPrice(providerId: 2, providerName: "Apple TV+", price: 6.99, currency: "USD"),
+            531: ProviderPrice(providerId: 531, providerName: "Paramount+", price: 5.99, currency: "USD")
+        ]
+    ]
 
     // MARK: - Month helpers
     static func firstOfMonth(_ date: Date) -> Date {
@@ -257,6 +303,39 @@ final class CalendarViewModel: ObservableObject {
 
     func hasEpisodes(for dayKey: String) -> Bool {
         return !(episodesByDate[dayKey]?.isEmpty ?? true)
+    }
+
+    // MARK: - Day Detail Data
+    func getProviderPrices(for dayKey: String) -> [ProviderPrice] {
+        guard let providers = dailyProviders[dayKey] else { return [] }
+        let countryPricing = staticPricing[country] ?? staticPricing["US"] ?? [:]
+
+        return providers.compactMap { provider in
+            countryPricing[provider.id]
+        }.sorted { $0.providerName < $1.providerName }
+    }
+
+    func getTotalCost(for dayKey: String) -> String {
+        let prices = getProviderPrices(for: dayKey)
+        guard !prices.isEmpty else { return "$0.00" }
+
+        let total = prices.reduce(Decimal(0)) { $0 + $1.price }
+        let currency = prices.first?.currency ?? "USD"
+
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = currency
+        return formatter.string(from: NSDecimalNumber(decimal: total)) ?? "$0.00"
+    }
+
+    func getShowsAiringOnDay(_ dayKey: String) -> [String] {
+        let episodes = episodes(for: dayKey)
+        // Group episodes by tmdbId to get unique shows
+        let uniqueShows = Set(episodes.map { $0.tmdbId })
+        return Array(uniqueShows).map { tmdbId in
+            // Return the first episode's title for that show
+            episodes.first { $0.tmdbId == tmdbId }?.title ?? "Unknown Show"
+        }.sorted()
     }
 
     private func visibleMonthRange() -> (Date, Date) {
