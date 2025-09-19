@@ -202,6 +202,77 @@ Tracking checklist
   - Add explicit `TVGuideHeader`, `ProviderRail`, `ShowRail`, `GuideGrid` component files (currently implemented inline in `TVGuideView`).
   - Skeleton placeholders during loading; retry button on error.
 
+# v1.0 TV Guide Redesign Brief
+
+## Context
+We are building the **TV Guide view** in the Tally app.  
+This view is *not* for content discovery. Instead, it only shows shows the user has marked as **“watching”**.  
+
+- A show appears in the guide **1 week before a season premiere**.  
+- The guide should focus on **clarity and utility**, not browsing or recommendations.  
+
+## Requirements
+
+### 1. Layout & Structure
+- **Frozen Poster Column**:
+  - Left column displays static posters of shows the user is watching.
+  - Posters should be consistent in aspect ratio (3:4), with slight corner radius (8–12pt).
+  - If a show has no new episodes in the current week, dim or gray out its poster.
+
+- **Calendar Grid**:
+  - Top row shows days of the current week (e.g., 01–07 Sep).
+  - Highlight *today* with a filled accent circle.
+  - Use vertical gridlines to visually align dates with episode cells.
+  - Default to the *current week auto-expanded*, with swipe gestures to navigate to future/past weeks.
+
+- **Episode Markers**:
+  - By default, each release cell shows shorthand like `S1E8`.
+  - On tap, expand inline to show episode details.
+
+### 2. Episode Expansion
+When a user taps on `S1E8`, expand the cell to show:
+- Episode code + title (e.g., `S1E8: The Lord of the Tides`)
+- Air date + runtime
+- Short synopsis (2–3 lines)
+- Quick actions:
+  - ⭐ Add to Watchlist
+  - 🔔 Set Reminder
+- Expanded card should collapse back when tapped again.
+
+### 3. Season Premieres
+- One week before a season starts, display show with a **“Premieres in 7d”** badge instead of an episode code.
+- Once the release date arrives, switch to standard `SxEy` format.
+
+### 4. Interaction & Navigation
+- Horizontal swipe on the calendar row to move between weeks.
+- Auto-scroll the grid to bring the nearest new release into view.
+- Pinch-to-zoom (optional) to toggle between **week view** and **month view**.
+
+### 5. Visual Design & iOS Guidelines
+- Follow **Apple Human Interface Guidelines (HIG)**:
+  - Use **SF Pro Text** for typography.
+    - Show title = 17pt Semibold
+    - Episode details = 13pt Regular (70% opacity)
+  - Accent colors should align with system dynamic colors (blue for highlights, or service-brand colors where subtle).
+- Provide strong contrast for readability (e.g., text at 85–90% white on dark background).
+- Use **SF Symbols** for icons (bell, star, plus).
+- Motion:
+  - Smooth expansion/collapse animations for episode cards.
+  - Week transitions should slide horizontally like Apple Calendar.
+
+### 6. Empty States
+- If no shows have new episodes in the current week:
+  - Display posters dimmed.
+  - Provide a friendly message like “No new episodes this week — check back soon.”
+
+---
+
+## References
+- **Apple Human Interface Guidelines**: https://developer.apple.com/design/human-interface-guidelines/
+- **Apple Calendar (week view)**: for grid navigation patterns.
+- **Apple TV app (Up Next row)**: for poster/episode association.
+- **Mobbin**: design pattern references for streaming + schedule apps.
+
 ### v1.1 – API Enhancements + Deterministic Ordering
 
 - Scope: Add richer episode metadata and server‑assisted day keys; update client ordering and mapping.

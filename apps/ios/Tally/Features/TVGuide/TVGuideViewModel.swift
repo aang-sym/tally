@@ -28,9 +28,10 @@ final class TVGuideViewModel: ObservableObject {
     static func defaultRange() -> (String, String) {
         let cal = Calendar.current
         let now = Date()
-        let start = cal.date(from: cal.dateComponents([.year, .month], from: now)) ?? now
-        let days = cal.range(of: .day, in: .month, for: start)?.count ?? 30
-        let end = cal.date(byAdding: .day, value: days - 1, to: start) ?? start
+        // Start from today
+        let start = cal.startOfDay(for: now)
+        // Show 7 days from today
+        let end = cal.date(byAdding: .day, value: 6, to: start) ?? start
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.timeZone = .current
         return (f.string(from: start), f.string(from: end))
     }
@@ -53,13 +54,42 @@ final class TVGuideViewModel: ObservableObject {
     func reload(api: ApiClient) async {
         isLoading = true; error = nil
         do {
-            let guide = try await api.getTVGuide(startDate: dateRange.start, endDate: dateRange.end, country: country)
+            var guide = try await api.getTVGuide(startDate: dateRange.start, endDate: dateRange.end, country: country)
+            // Filter to user's watching shows if available so the guide matches MyShows
+            if let watching = try? await api.getWatchlist(status: .watching) {
+                let watchIds = Set(watching.map { $0.show.tmdbId })
+                let filteredServices = guide.services.compactMap { group -> TVGuideServiceGroup? in
+                    let shows = group.shows.filter { watchIds.contains($0.tmdbId) }
+                    return shows.isEmpty ? nil : TVGuideServiceGroup(service: group.service, shows: shows)
+                }
+                let totalShows = filteredServices.reduce(0) { $0 + $1.shows.count }
+                let totalEpisodes = filteredServices.reduce(0) { acc, grp in acc + grp.shows.reduce(0) { $0 + $1.upcomingEpisodes.count } }
+                guide = TVGuideData(services: filteredServices, dateRange: guide.dateRange, totalShows: totalShows, totalEpisodes: totalEpisodes)
+            }
             self.data = guide
             buildIndex()
         } catch {
             self.error = error.localizedDescription
         }
         isLoading = false
+    }
+
+    func navigateToWeek(offset: Int, api: ApiClient) async {
+        let cal = Calendar.current
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.timeZone = .current
+
+        guard let currentStart = f.date(from: dateRange.start) else { return }
+        let newStart = cal.date(byAdding: .weekOfYear, value: offset, to: currentStart) ?? currentStart
+        let newEnd = cal.date(byAdding: .day, value: 6, to: newStart) ?? newStart
+
+        dateRange = (f.string(from: newStart), f.string(from: newEnd))
+        await reload(api: api)
+    }
+
+    func isToday(_ dayKey: String) -> Bool {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.timeZone = .current
+        let today = f.string(from: Date())
+        return dayKey == today
     }
 
     private func buildIndex() {

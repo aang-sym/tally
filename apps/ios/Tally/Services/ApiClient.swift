@@ -321,6 +321,194 @@ private struct SearchResult: Codable {
     }
 }
 
+// MARK: - TVGuide2 Models (UIKit Excel-like Grid)
+struct TVGuide2Episode: Codable, Identifiable, Hashable {
+    let id: String
+    let episodeNumber: Int
+    let seasonNumber: Int
+    let airDate: String
+    let title: String
+    let overview: String?
+    let isWatched: Bool
+    let tmdbId: Int
+    let rating: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case episodeNumber = "episode_number"
+        case seasonNumber = "season_number"
+        case airDate = "air_date"
+        case title, overview, isWatched = "watched", tmdbId, rating
+    }
+
+    init(id: String, episodeNumber: Int, seasonNumber: Int, airDate: String, title: String, overview: String?, isWatched: Bool, tmdbId: Int, rating: Double?) {
+        self.id = id
+        self.episodeNumber = episodeNumber
+        self.seasonNumber = seasonNumber
+        self.airDate = airDate
+        self.title = title
+        self.overview = overview
+        self.isWatched = isWatched
+        self.tmdbId = tmdbId
+        self.rating = rating
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        episodeNumber = try container.decode(Int.self, forKey: .episodeNumber)
+        seasonNumber = try container.decode(Int.self, forKey: .seasonNumber)
+        airDate = try container.decode(String.self, forKey: .airDate)
+        title = try container.decode(String.self, forKey: .title)
+        overview = try container.decodeIfPresent(String.self, forKey: .overview)
+        isWatched = try container.decodeIfPresent(Bool.self, forKey: .isWatched) ?? false
+        tmdbId = try container.decode(Int.self, forKey: .tmdbId)
+        rating = try container.decodeIfPresent(Double.self, forKey: .rating)
+        id = "\(tmdbId)-s\(seasonNumber)e\(episodeNumber)"
+    }
+
+    static func createManually(
+        tmdbId: Int,
+        seasonNumber: Int,
+        episodeNumber: Int,
+        airDate: String,
+        title: String,
+        overview: String?,
+        isWatched: Bool,
+        rating: Double?
+    ) -> TVGuide2Episode {
+        return TVGuide2Episode(
+            id: "\(tmdbId)-s\(seasonNumber)e\(episodeNumber)",
+            episodeNumber: episodeNumber,
+            seasonNumber: seasonNumber,
+            airDate: airDate,
+            title: title,
+            overview: overview,
+            isWatched: isWatched,
+            tmdbId: tmdbId,
+            rating: rating
+        )
+    }
+}
+
+struct TVGuide2Show: Codable, Identifiable, Hashable {
+    let id: String
+    let tmdbId: Int
+    let title: String
+    let posterPath: String?
+    let episodes: [TVGuide2Episode]
+    let countryCode: String?
+    let bufferDays: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case tmdbId = "tmdb_id"
+        case title
+        case posterPath = "poster_path"
+        case episodes
+        case countryCode = "country_code"
+        case bufferDays = "buffer_days"
+    }
+
+    init(id: String, tmdbId: Int, title: String, posterPath: String?, episodes: [TVGuide2Episode], countryCode: String?, bufferDays: Int?) {
+        self.id = id
+        self.tmdbId = tmdbId
+        self.title = title
+        self.posterPath = posterPath
+        self.episodes = episodes
+        self.countryCode = countryCode
+        self.bufferDays = bufferDays
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        tmdbId = try container.decode(Int.self, forKey: .tmdbId)
+        title = try container.decode(String.self, forKey: .title)
+        posterPath = try container.decodeIfPresent(String.self, forKey: .posterPath)
+        episodes = try container.decode([TVGuide2Episode].self, forKey: .episodes)
+        countryCode = try container.decodeIfPresent(String.self, forKey: .countryCode)
+        bufferDays = try container.decodeIfPresent(Int.self, forKey: .bufferDays)
+        id = "\(tmdbId)"
+    }
+
+    static func createManually(
+        tmdbId: Int,
+        title: String,
+        posterPath: String?,
+        episodes: [TVGuide2Episode],
+        countryCode: String?,
+        bufferDays: Int?
+    ) -> TVGuide2Show {
+        return TVGuide2Show(
+            id: "\(tmdbId)",
+            tmdbId: tmdbId,
+            title: title,
+            posterPath: posterPath,
+            episodes: episodes,
+            countryCode: countryCode,
+            bufferDays: bufferDays
+        )
+    }
+}
+
+struct TVGuide2Provider: Codable, Identifiable, Hashable {
+    let id: Int
+    let name: String
+    let logoPath: String?
+    let shows: [TVGuide2Show]
+
+    enum CodingKeys: String, CodingKey {
+        case id, name
+        case logoPath = "logo_path"
+        case shows
+    }
+
+    init(id: Int, name: String, logoPath: String?, shows: [TVGuide2Show]) {
+        self.id = id
+        self.name = name
+        self.logoPath = logoPath
+        self.shows = shows
+    }
+
+    static func createManually(
+        id: Int,
+        name: String,
+        logoPath: String?,
+        shows: [TVGuide2Show]
+    ) -> TVGuide2Provider {
+        return TVGuide2Provider(
+            id: id,
+            name: name,
+            logoPath: logoPath,
+            shows: shows
+        )
+    }
+}
+
+struct TVGuide2DateColumn: Codable, Identifiable, Hashable {
+    let id: String
+    let date: String
+    let dayOfWeek: String
+    let dayNumber: String
+
+    init(date: String, dayOfWeek: String, dayNumber: String) {
+        self.date = date
+        self.dayOfWeek = dayOfWeek
+        self.dayNumber = dayNumber
+        self.id = date
+    }
+}
+
+struct TVGuide2Data: Codable {
+    let providers: [TVGuide2Provider]
+    let startDate: String
+    let endDate: String
+    let totalShows: Int
+    let totalEpisodes: Int
+}
+
+private struct TVGuide2Response: Codable {
+    let success: Bool
+    let data: TVGuide2Data
+}
+
 // MARK: - TV Guide Models
 struct TVGuideEpisode: Codable, Identifiable {
     let id: String
@@ -1003,6 +1191,239 @@ class ApiClient: ObservableObject {
         } catch {
             throw mapToApiError(error)
         }
+    }
+
+    // MARK: - TVGuide2 API Methods
+    @MainActor
+    func getTVGuide2Data(startDate: String? = nil, endDate: String? = nil, country: String? = nil) async throws -> TVGuide2Data {
+        // Build the data by combining watchlist shows with episode data
+        let watchingShows = try await getWatchlist(status: .watching)
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+
+        let today = Date()
+        // Expand date range to capture more episodes - check past 7 days and next 60 days
+        let startDateObj = Calendar.current.date(byAdding: .day, value: -7, to: today) ?? today
+        let endDateObj = Calendar.current.date(byAdding: .day, value: 60, to: today) ?? today
+        let start = startDate ?? dateFormatter.string(from: startDateObj)
+        let end = endDate ?? dateFormatter.string(from: endDateObj)
+
+        #if DEBUG
+        print("TVGuide2: Searching for episodes between \(start) and \(end)")
+        #endif
+
+        var providerGroups: [Int: TVGuide2Provider] = [:]
+        var totalEpisodes = 0
+
+        for (index, userShow) in watchingShows.enumerated() {
+            guard let tmdbId = userShow.show.tmdbId else { continue }
+
+            // Use proper country code - fallback to US if not provided
+            let showCountry = country ?? "US"
+
+            // Start with more recent seasons (typically where new episodes air)
+            // Only fetch seasons that are likely to have current episodes
+            var allEpisodes: [TVGuide2Episode] = []
+            let seasonsToCheck = getRelevantSeasons(for: userShow.show)
+
+            // Add small delay between requests to avoid overwhelming the API
+            if index > 0 {
+                try await Task.sleep(nanoseconds: 100_000_000) // 100ms delay
+            }
+
+            for season in seasonsToCheck {
+                do {
+                    #if DEBUG
+                    print("Fetching season \(season) for show \(userShow.show.title) (tmdbId: \(tmdbId)) with country: \(showCountry)")
+                    #endif
+
+                    let seasonData = try await getSeasonRaw(tmdbId: tmdbId, season: season, country: showCountry)
+
+                    // Convert episodes to TVGuide2Episode format
+                    let tvGuide2Episodes = seasonData.episodes.compactMap { episode -> TVGuide2Episode? in
+                        guard let airDate = episode.airDate,
+                              airDate >= start && airDate <= end else { return nil }
+
+                        // Create a manual TVGuide2Episode since we need more control
+                        let tvGuide2Episode = TVGuide2Episode.createManually(
+                            tmdbId: tmdbId,
+                            seasonNumber: season,
+                            episodeNumber: episode.episodeNumber,
+                            airDate: airDate,
+                            title: episode.name ?? "Episode \(episode.episodeNumber)",
+                            overview: episode.overview,
+                            isWatched: false, // TODO: Get from progress API
+                            rating: nil
+                        )
+                        return tvGuide2Episode
+                    }
+
+                    allEpisodes.append(contentsOf: tvGuide2Episodes)
+                    totalEpisodes += tvGuide2Episodes.count
+
+                    #if DEBUG
+                    print("Found \(tvGuide2Episodes.count) episodes for season \(season) of \(userShow.show.title)")
+                    #endif
+
+                    // Small delay between season requests
+                    if season != seasonsToCheck.last {
+                        try await Task.sleep(nanoseconds: 50_000_000) // 50ms delay
+                    }
+
+                } catch ApiError.badStatus(let statusCode) where statusCode >= 500 {
+                    #if DEBUG
+                    print("Server error (\(statusCode)) fetching season \(season) for show \(userShow.show.title) - skipping")
+                    #endif
+                    // Server errors - skip this season but continue
+                    continue
+                } catch ApiError.badStatus(404) {
+                    #if DEBUG
+                    print("Season \(season) not found for show \(userShow.show.title) - skipping")
+                    #endif
+                    // Season doesn't exist - skip this season but continue
+                    continue
+                } catch {
+                    #if DEBUG
+                    print("Failed to fetch season \(season) for show \(userShow.show.title): \(error)")
+                    #endif
+                    // Other errors - continue to next season
+                    continue
+                }
+            }
+
+            // Only include shows that have episodes in the date range
+            // This prevents empty show rows from appearing in the TV guide
+            if !allEpisodes.isEmpty {
+                // Group by streaming provider
+                let providerId = userShow.streamingProvider?.id ?? 0
+                let providerName = userShow.streamingProvider?.name ?? "Unknown"
+                let logoPath = userShow.streamingProvider?.logoPath
+
+                let tvGuide2Show = TVGuide2Show.createManually(
+                    tmdbId: tmdbId,
+                    title: userShow.show.title,
+                    posterPath: userShow.show.posterPath,
+                    episodes: allEpisodes,
+                    countryCode: showCountry,
+                    bufferDays: 3 // Default buffer
+                )
+
+                if let existingProvider = providerGroups[providerId] {
+                    var updatedShows = existingProvider.shows
+                    updatedShows.append(tvGuide2Show)
+                    providerGroups[providerId] = TVGuide2Provider.createManually(
+                        id: existingProvider.id,
+                        name: existingProvider.name,
+                        logoPath: existingProvider.logoPath,
+                        shows: updatedShows
+                    )
+                } else {
+                    providerGroups[providerId] = TVGuide2Provider.createManually(
+                        id: providerId,
+                        name: providerName,
+                        logoPath: logoPath,
+                        shows: [tvGuide2Show]
+                    )
+                }
+
+                #if DEBUG
+                print("Added show \(userShow.show.title) with \(allEpisodes.count) episodes to provider \(providerName)")
+                #endif
+            } else {
+                #if DEBUG
+                print("Skipping show \(userShow.show.title) - no episodes found in date range")
+                #endif
+            }
+        }
+
+        let finalData = TVGuide2Data(
+            providers: Array(providerGroups.values).sorted { $0.name < $1.name },
+            startDate: start,
+            endDate: end,
+            totalShows: watchingShows.count,
+            totalEpisodes: totalEpisodes
+        )
+
+        #if DEBUG
+        print("\n=== TVGuide2 FINAL SUMMARY ===")
+        print("Date Range: \(start) to \(end)")
+        print("Total Watching Shows: \(watchingShows.count)")
+        print("Providers with Episodes: \(finalData.providers.count)")
+        print("Total Episodes Found: \(totalEpisodes)")
+
+        for provider in finalData.providers {
+            print("\n📺 \(provider.name): \(provider.shows.count) shows")
+            for show in provider.shows {
+                print("  • \(show.title): \(show.episodes.count) episodes")
+                for episode in show.episodes.prefix(3) {
+                    print("    - S\(episode.seasonNumber)E\(episode.episodeNumber) on \(episode.airDate)")
+                }
+                if show.episodes.count > 3 {
+                    print("    ... and \(show.episodes.count - 3) more")
+                }
+            }
+        }
+
+        if finalData.providers.isEmpty {
+            print("⚠️  NO PROVIDERS WITH EPISODES FOUND")
+            print("This means either:")
+            print("1. No shows in watchlist have episodes in date range")
+            print("2. All API calls failed")
+            print("3. Date filtering is too restrictive")
+        }
+        print("=== END SUMMARY ===\n")
+        #endif
+
+        return finalData
+    }
+
+    // Helper method to determine which seasons to check for current episodes
+    private func getRelevantSeasons(for show: Show) -> [Int] {
+        // Optimization: Only check the latest season as it tells us if there are current episodes
+        // This dramatically reduces API calls while maintaining effectiveness
+
+        if let totalSeasons = show.totalSeasons, totalSeasons > 0 {
+            // Only check the most recent season
+            return [totalSeasons]
+        } else {
+            // If we don't know total seasons, check season 1 only as a conservative start
+            // Most current shows would have season info, so this is a rare fallback
+            return [1]
+        }
+    }
+
+    // Helper method to generate date columns for the grid
+    func generateDateColumns(from startDate: String, to endDate: String) -> [TVGuide2DateColumn] {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+
+        let dayFormatter = DateFormatter()
+        dayFormatter.dateFormat = "EEE"
+
+        let numberFormatter = DateFormatter()
+        numberFormatter.dateFormat = "dd"
+
+        guard let start = dateFormatter.date(from: startDate),
+              let end = dateFormatter.date(from: endDate) else { return [] }
+
+        var columns: [TVGuide2DateColumn] = []
+        var currentDate = start
+
+        while currentDate <= end {
+            let dateString = dateFormatter.string(from: currentDate)
+            let dayOfWeek = dayFormatter.string(from: currentDate).uppercased()
+            let dayNumber = numberFormatter.string(from: currentDate)
+
+            columns.append(TVGuide2DateColumn(
+                date: dateString,
+                dayOfWeek: dayOfWeek,
+                dayNumber: dayNumber
+            ))
+
+            currentDate = Calendar.current.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
+        }
+
+        return columns
     }
 
     // MARK: - TV Guide

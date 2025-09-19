@@ -1,26 +1,28 @@
 import SwiftUI
 
 struct ProviderRail: View {
-    let groups: [TVGuideServiceGroup]
+    // segments: array of (service, showCount)
+    let segments: [(service: TVGuideStreamingService, count: Int)]
     let width: CGFloat
     let rowHeight: CGFloat
+    let rowSpacing: CGFloat
 
     var body: some View {
-        VStack(spacing: 8) {
-            ForEach(groups, id: \.service.id) { group in
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(Color(hex: group.service.color ?? "#6B7280").opacity(0.35))
-                    .overlay(
-                        VStack {
-                            Spacer()
-                            AsyncImage(url: URL(string: group.service.logo ?? "")) { img in
-                                img.resizable().scaledToFit()
-                            } placeholder: { Circle().fill(.secondary.opacity(0.2)) }
-                            .frame(width: 48, height: 48)
-                            Spacer()
-                        }
-                    )
-                    .frame(width: width, height: rowHeight)
+        VStack(spacing: rowSpacing) {
+            ForEach(Array(segments.enumerated()), id: \.offset) { _, seg in
+                ZStack {
+                    Color.clear
+                    VStack {
+                        Spacer()
+                        AsyncImage(url: URL(string: seg.service.logo ?? "")) { img in
+                            img.resizable().scaledToFill()
+                        } placeholder: { Circle().fill(Color(.systemGray4)) }
+                        .frame(width: min(25, width - 2), height: min(25, width - 2))
+                        .clipShape(Circle())
+                        Spacer()
+                    }
+                }
+                .frame(width: width, height: CGFloat(seg.count) * rowHeight + CGFloat(max(0, seg.count - 1)) * rowSpacing)
             }
         }
         .frame(width: width)
