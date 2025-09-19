@@ -1,6 +1,6 @@
-# TVGuide2 — Align to *img 1 and 2* (desired) from *img 3* (current)
+# TVGuide2 — Align to _img 1 and 2_ (desired) from _img 3_ (current)
 
-Goal: Update the existing TVGuide2 implementation so it matches *img 2* (and the dark-theme mock, later called *img 3*):
+Goal: Update the existing TVGuide2 implementation so it matches _img 2_ (and the dark-theme mock, later called _img 3_):
 
 - One global date header row (NOT repeated per provider).
 - A frozen left column consisting of:
@@ -17,13 +17,14 @@ We are editing (not rewriting) the current TVGuide2 code.
 
 To achieve the Excel-like frozen panes and avoid per-section date headers, we use three synchronized collection views inside TVGuide2View:
 
-View | Purpose | Scrolling
----- | ------- | ---------
-TopHeaderCV | Renders the global day/date header row once | Horizontal (programmatic)
-LeftFrozenCV | Renders the provider rail (merged) + posters | Vertical (user)
-MainGridCV | Renders the episodes matrix (show × day cells) | Both (user)
+| View         | Purpose                                        | Scrolling                 |
+| ------------ | ---------------------------------------------- | ------------------------- |
+| TopHeaderCV  | Renders the global day/date header row once    | Horizontal (programmatic) |
+| LeftFrozenCV | Renders the provider rail (merged) + posters   | Vertical (user)           |
+| MainGridCV   | Renders the episodes matrix (show × day cells) | Both (user)               |
 
 Synchronization:
+
 - MainGridCV.contentOffset.x → drives TopHeaderCV.contentOffset.x (header slides with columns).
 - MainGridCV.contentOffset.y ↔ drives LeftFrozenCV.contentOffset.y (left column follows vertical scroll).
 
@@ -34,16 +35,16 @@ This removes the repeated date header per provider and lets us truly “merge”
 ## Shared layout constants
 
 enum GuideMetrics {
-  static let railWidth: CGFloat    = 88    // provider rail width (merged logo column)
-  static let posterWidth: CGFloat  = 72    // frozen poster strip width
-  static let posterHeight: CGFloat = 108   // 2:3
-  static let rowHeight: CGFloat    = 132   // one show row (poster+gutter)
-  static let columnWidth: CGFloat  = 120   // one day column width
-  static let headerHeight: CGFloat = 56    // global header (weekday+date)
+static let railWidth: CGFloat = 88 // provider rail width (merged logo column)
+static let posterWidth: CGFloat = 72 // frozen poster strip width
+static let posterHeight: CGFloat = 108 // 2:3
+static let rowHeight: CGFloat = 132 // one show row (poster+gutter)
+static let columnWidth: CGFloat = 120 // one day column width
+static let headerHeight: CGFloat = 56 // global header (weekday+date)
 }
 
 extension GuideMetrics {
-  static var frozenLeadingWidth: CGFloat { railWidth + posterWidth }
+static var frozenLeadingWidth: CGFloat { railWidth + posterWidth }
 }
 
 - Important: columnWidth must be shared by TopHeaderCV and MainGridCV.
@@ -54,30 +55,31 @@ extension GuideMetrics {
 ## File-by-file changes
 
 1. TVGuide2Kinds.swift
-Add/confirm element kinds (only used inside compositional layouts if needed later):
+   Add/confirm element kinds (only used inside compositional layouts if needed later):
 
 enum TVGuide2Kinds {
-  static let providerRail = "provider-rail"
+static let providerRail = "provider-rail"
 }
 
 Note: With the three-view approach we don’t need a provider-rail supplementary in MainGridCV. The rail lives in LeftFrozenCV.
 
 2. ProviderRailView.swift
-Use this as the section header of LeftFrozenCV. It should center the provider logo vertically and draw the trailing 1px separator line.
+   Use this as the section header of LeftFrozenCV. It should center the provider logo vertically and draw the trailing 1px separator line.
 
 3. DateHeaderView.swift + DateHeaderCell.swift
-These power TopHeaderCV. The cell should render weekday (MON/TUE…) and day number stacked. Leading inset must equal GuideMetrics.frozenLeadingWidth. Remove any date boundary supplementary in MainGridCV.
+   These power TopHeaderCV. The cell should render weekday (MON/TUE…) and day number stacked. Leading inset must equal GuideMetrics.frozenLeadingWidth. Remove any date boundary supplementary in MainGridCV.
 
 4. ShowPosterCell.swift
-Item in LeftFrozenCV under each provider section. Size = posterWidth × rowHeight. Poster image centered. No horizontal scroll. Divider optional.
+   Item in LeftFrozenCV under each provider section. Size = posterWidth × rowHeight. Poster image centered. No horizontal scroll. Divider optional.
 
 5. EpisodeCell.swift + EmptyCell.swift
-Remain in MainGridCV. Height = rowHeight, width = columnWidth.
+   Remain in MainGridCV. Height = rowHeight, width = columnWidth.
 
 6. ShowRowCell.swift / ProviderCell.swift
-If these were used to fake merged provider cells inside the grid, stop using them in MainGridCV. The rail should only exist in LeftFrozenCV.
+   If these were used to fake merged provider cells inside the grid, stop using them in MainGridCV. The rail should only exist in LeftFrozenCV.
 
 7. TVGuide2View.swift
+
 - Add three collection views (headerCV, leftCV, gridCV).
 - Sync scroll offsets: headerCV follows horizontal scroll, leftCV follows vertical scroll.
 - Layouts: header layout uses leading inset frozenLeadingWidth, left layout uses provider rail header with fractionalHeight(1.0), grid layout uses frozenLeadingWidth inset.
@@ -89,6 +91,7 @@ If these were used to fake merged provider cells inside the grid, stop using the
 Provider rail is a section header in LeftFrozenCV with height = fractionalHeight(1.0), spanning all show rows. One logo per provider, centered vertically. No provider cells in MainGridCV.
 
 Check:
+
 - ProviderRailView centers image with centerYAnchor.
 - Section header zIndex ≤ posters.
 - Poster counts match show rows exactly.

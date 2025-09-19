@@ -109,7 +109,6 @@ class TVGuide2ViewController: UIViewController {
         // Register cells and headers
         collectionView.register(ShowRowCell.self, forCellWithReuseIdentifier: ShowRowCell.identifier)
         collectionView.register(DateHeaderView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: DateHeaderView.identifier)
-        collectionView.register(ProviderRailView.self, forSupplementaryViewOfKind: TVGuide2Kinds.providerRail, withReuseIdentifier: ProviderRailView.identifier)
     }
 
     private func createLayout() -> UICollectionViewLayout {
@@ -144,10 +143,10 @@ class TVGuide2ViewController: UIViewController {
         let section = NSCollectionLayoutSection(group: group)
         section.interGroupSpacing = 1
 
-        // IMPORTANT: Add content insets to leave space for the provider rail
+        // No content insets needed
         section.contentInsets = NSDirectionalEdgeInsets(
             top: 0,
-            leading: providerWidth, // Leave space for provider rail
+            leading: 0,
             bottom: 0,
             trailing: 0
         )
@@ -164,19 +163,7 @@ class TVGuide2ViewController: UIViewController {
         )
         header.pinToVisibleBounds = true
 
-        // Create provider rail that spans the full section height
-        let providerRail = NSCollectionLayoutSupplementaryItem(
-            layoutSize: NSCollectionLayoutSize(
-                widthDimension: .absolute(providerWidth),
-                heightDimension: .fractionalHeight(1.0) // Full section height
-            ),
-            elementKind: TVGuide2Kinds.providerRail,
-            containerAnchor: NSCollectionLayoutAnchor(edges: [.leading])
-        )
-        providerRail.zIndex = -1 // Draw behind cells
-
-        // Add the provider rail to the group
-        group.supplementaryItems = [providerRail]
+        // No provider rail supplementary items
         section.boundarySupplementaryItems = [header]
 
         return section
@@ -201,7 +188,7 @@ class TVGuide2ViewController: UIViewController {
             }
         }
 
-        // Configure supplementary view provider for headers and provider rails
+        // Configure supplementary view provider for headers only
         dataSource.supplementaryViewProvider = { [weak self] collectionView, kind, indexPath in
             guard let self = self else { return nil }
 
@@ -213,18 +200,6 @@ class TVGuide2ViewController: UIViewController {
                 ) as! DateHeaderView
                 header.configure(with: self.dateColumns, viewController: self)
                 return header
-            } else if kind == TVGuide2Kinds.providerRail {
-                let rail = collectionView.dequeueReusableSupplementaryView(
-                    ofKind: kind,
-                    withReuseIdentifier: ProviderRailView.identifier,
-                    for: indexPath
-                ) as! ProviderRailView
-
-                // Get the provider for this section
-                if let section = self.dataSource.sectionIdentifier(for: indexPath.section) {
-                    rail.configure(with: section.provider)
-                }
-                return rail
             }
 
             return nil

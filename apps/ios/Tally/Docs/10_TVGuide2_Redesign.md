@@ -1,6 +1,6 @@
-# TVGuide2 — Align to *img 2* (desired) from *img 1* (current)
+# TVGuide2 — Align to _img 2_ (desired) from _img 1_ (current)
 
-> **Goal:** Update the **existing** TVGuide2 implementation so it matches *img 2* (and the dark-theme mock, later called *img 3*):
+> **Goal:** Update the **existing** TVGuide2 implementation so it matches _img 2_ (and the dark-theme mock, later called _img 3_):
 >
 > - **One global date header row** (NOT repeated per provider).
 > - A frozen **left column** consisting of:
@@ -17,13 +17,14 @@ We are **editing** (not rewriting) the current TVGuide2 code.
 
 To achieve the Excel-like frozen panes and avoid per-section date headers, we use **three synchronized collection views** inside `TVGuide2View`:
 
-| View            | Purpose                                                | Scrolling |
-|-----------------|--------------------------------------------------------|-----------|
-| **TopHeaderCV** | Renders the **global day/date** header row once        | Horizontal (programmatic) |
-| **LeftFrozenCV**| Renders the **provider rail** (merged) + **posters**   | Vertical (user) |
-| **MainGridCV**  | Renders the **episodes matrix** (show × day cells)     | Both (user) |
+| View             | Purpose                                              | Scrolling                 |
+| ---------------- | ---------------------------------------------------- | ------------------------- |
+| **TopHeaderCV**  | Renders the **global day/date** header row once      | Horizontal (programmatic) |
+| **LeftFrozenCV** | Renders the **provider rail** (merged) + **posters** | Vertical (user)           |
+| **MainGridCV**   | Renders the **episodes matrix** (show × day cells)   | Both (user)               |
 
 **Synchronization:**
+
 - `MainGridCV.contentOffset.x` → drives `TopHeaderCV.contentOffset.x` (header slides with columns).
 - `MainGridCV.contentOffset.y` ↔ drives `LeftFrozenCV.contentOffset.y` (left column follows vertical scroll).
 
