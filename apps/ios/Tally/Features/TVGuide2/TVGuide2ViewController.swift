@@ -187,9 +187,9 @@ class TVGuide2ViewController: UIViewController {
             monthLabel.topAnchor.constraint(equalTo: leftRailContainer.topAnchor, constant: 8),
             monthLabel.leadingAnchor.constraint(equalTo: leftRailContainer.leadingAnchor, constant: 8),
             monthLabel.trailingAnchor.constraint(equalTo: leftRailContainer.trailingAnchor, constant: -8),
-            monthLabel.heightAnchor.constraint(equalToConstant: 32),
+            monthLabel.heightAnchor.constraint(equalToConstant: dateHeaderHeight),
 
-            leftRailScrollView.topAnchor.constraint(equalTo: monthLabel.bottomAnchor, constant: 12),
+            leftRailScrollView.topAnchor.constraint(equalTo: monthLabel.bottomAnchor),
             leftRailScrollView.leadingAnchor.constraint(equalTo: leftRailContainer.leadingAnchor),
             leftRailScrollView.trailingAnchor.constraint(equalTo: leftRailContainer.trailingAnchor),
             leftRailScrollView.bottomAnchor.constraint(equalTo: leftRailContainer.bottomAnchor),
@@ -389,11 +389,10 @@ class TVGuide2ViewController: UIViewController {
 
         print("TVGuide2ViewController: Applying snapshot with \(data.providers.count) provider sections")
         expandedEpisodeContexts = expandedEpisodeContexts.filter { $0.key < globalRowIndex }
-        dataSource.apply(snapshot, animatingDifferences: true) { [weak self] in
-            guard let self = self else { return }
-            self.refreshLeftRail(with: data.providers)
-            self.collectionView.reloadData()
-        }
+        dataSource.apply(snapshot, animatingDifferences: true)
+
+        refreshLeftRail(with: data.providers)
+        collectionView.reloadData()
     }
 
     private func showEmptyState() {
@@ -465,12 +464,6 @@ class TVGuide2ViewController: UIViewController {
             subview.removeFromSuperview()
         }
 
-        let headerSpacer = UIView()
-        headerSpacer.translatesAutoresizingMaskIntoConstraints = false
-        headerSpacer.backgroundColor = .clear
-        headerSpacer.heightAnchor.constraint(equalToConstant: dateHeaderHeight).isActive = true
-        providerStackView.addArrangedSubview(headerSpacer)
-
         guard !providers.isEmpty else {
             syncLeftRailVerticalOffset()
             return
@@ -478,25 +471,20 @@ class TVGuide2ViewController: UIViewController {
 
         collectionView.layoutIfNeeded()
 
-        let logoDiameter: CGFloat = 44
-
         for (sectionIndex, provider) in providers.enumerated() {
-            var providerHeight: CGFloat = 0
+            var providerHeight: CGFloat = CGFloat(provider.shows.count) * ShowRowCell.baseRowHeight
 
-            if collectionView.numberOfSections > sectionIndex {
-                for itemIndex in provider.shows.indices {
-                    let indexPath = IndexPath(item: itemIndex, section: sectionIndex)
-                    if let attributes = collectionView.layoutAttributesForItem(at: indexPath) {
-                        providerHeight += attributes.size.height
-                    } else {
-                        providerHeight += ShowRowCell.baseRowHeight
-                    }
-                }
-            } else {
-                providerHeight = CGFloat(provider.shows.count) * ShowRowCell.baseRowHeight
+            if collectionView.numberOfSections > sectionIndex,
+               let firstIndex = provider.shows.indices.first,
+               let lastIndex = provider.shows.indices.last,
+               let firstAttributes = collectionView.layoutAttributesForItem(at: IndexPath(item: firstIndex, section: sectionIndex)),
+               let lastAttributes = collectionView.layoutAttributesForItem(at: IndexPath(item: lastIndex, section: sectionIndex)) {
+                let top = firstAttributes.frame.minY
+                let bottom = lastAttributes.frame.maxY
+                providerHeight = max(bottom - top, 0)
             }
 
-            let providerView = createProviderLogoView(for: provider, height: providerHeight, diameter: logoDiameter)
+            let providerView = createProviderLogoView(for: provider, height: providerHeight)
             providerStackView.addArrangedSubview(providerView)
         }
 
@@ -511,7 +499,7 @@ class TVGuide2ViewController: UIViewController {
         leftRailScrollView.contentOffset.y = target.isFinite ? target : 0
     }
 
-    private func createProviderLogoView(for provider: TVGuide2Provider, height: CGFloat, diameter: CGFloat) -> UIView {
+    private func createProviderLogoView(for provider: TVGuide2Provider, height: CGFloat) -> UIView {
         let container = UIView()
         container.translatesAutoresizingMaskIntoConstraints = false
         container.backgroundColor = .clear
@@ -527,7 +515,7 @@ class TVGuide2ViewController: UIViewController {
         logoImageView.translatesAutoresizingMaskIntoConstraints = false
         logoImageView.contentMode = .scaleAspectFit
         logoImageView.backgroundColor = .secondarySystemBackground
-        logoImageView.layer.cornerRadius = diameter / 2
+        logoImageView.layer.cornerRadius = 22
         logoImageView.layer.masksToBounds = true
 
         container.addSubview(logoImageView)
@@ -537,16 +525,19 @@ class TVGuide2ViewController: UIViewController {
         separator.backgroundColor = .separator
         container.addSubview(separator)
 
+        let heightConstraint = container.heightAnchor.constraint(equalToConstant: max(height, ShowRowCell.baseRowHeight))
+        heightConstraint.priority = .defaultHigh
+        heightConstraint.isActive = true
+
         NSLayoutConstraint.activate([
-            container.heightAnchor.constraint(equalToConstant: max(height, diameter)),
             backgroundView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             backgroundView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             backgroundView.topAnchor.constraint(equalTo: container.topAnchor),
             backgroundView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
             logoImageView.centerXAnchor.constraint(equalTo: container.centerXAnchor),
             logoImageView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-            logoImageView.widthAnchor.constraint(equalToConstant: diameter),
-            logoImageView.heightAnchor.constraint(equalToConstant: diameter),
+            logoImageView.widthAnchor.constraint(equalToConstant: 44),
+            logoImageView.heightAnchor.constraint(equalToConstant: 44),
             separator.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             separator.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             separator.bottomAnchor.constraint(equalTo: container.bottomAnchor),
@@ -651,18 +642,15 @@ class TVGuide2ViewController: UIViewController {
         }
 
         snapshot.reloadItems([item])
+        dataSource.apply(snapshot, animatingDifferences: true)
 
-        dataSource.apply(snapshot, animatingDifferences: true) { [weak self] in
-            guard let self = self else { return }
+        if let providers = tvGuideData?.providers {
+            refreshLeftRail(with: providers)
+        }
 
-            if let providers = self.tvGuideData?.providers {
-                self.refreshLeftRail(with: providers)
-            }
-
-            if !isCurrentlyExpanded,
-               let refreshedIndexPath = self.dataSource.indexPath(for: item) {
-                self.collectionView.scrollToItem(at: refreshedIndexPath, at: .centeredVertically, animated: true)
-            }
+        if !isCurrentlyExpanded,
+           let refreshedIndexPath = dataSource.indexPath(for: item) {
+            collectionView.scrollToItem(at: refreshedIndexPath, at: .centeredVertically, animated: true)
         }
     }
 
