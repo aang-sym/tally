@@ -16,12 +16,13 @@ class DateHeaderView: UICollectionReusableView {
     private let headerStackView = UIStackView()
     private let showHeaderLabel = UILabel()
     private let separatorView = UIView()
+    private var scrollContentWidthConstraint: NSLayoutConstraint?
 
     // MARK: - Properties
     weak var viewController: TVGuide2ViewController?
 
     // MARK: - Layout Constants
-    private let showPosterWidth: CGFloat = 90
+    private let leadingFrozenWidth: CGFloat = ShowRowCell.frozenLeadingWidth
     private let dateCellWidth: CGFloat = 100
     private let headerHeight: CGFloat = 60
 
@@ -50,16 +51,15 @@ class DateHeaderView: UICollectionReusableView {
         showHeaderLabel.text = ""  // No text as requested
         showHeaderLabel.font = .systemFont(ofSize: 16, weight: .semibold)
         showHeaderLabel.textAlignment = .center
-        showHeaderLabel.backgroundColor = .systemGray6
-        showHeaderLabel.layer.cornerRadius = 8
-        showHeaderLabel.clipsToBounds = true
+        showHeaderLabel.backgroundColor = .clear
+        showHeaderLabel.isHidden = true
         showHeaderLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(showHeaderLabel) // Add directly to header, not scroll view
 
         // Setup date headers container
         headerStackView.axis = .horizontal
         headerStackView.distribution = .fillEqually
-        headerStackView.spacing = 1
+        headerStackView.spacing = 0
         headerStackView.translatesAutoresizingMaskIntoConstraints = false
         scrollContentView.addSubview(headerStackView)
 
@@ -71,7 +71,7 @@ class DateHeaderView: UICollectionReusableView {
         NSLayoutConstraint.activate([
             // Scroll view constraints (starts after poster column)
             scrollView.topAnchor.constraint(equalTo: topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: showPosterWidth),
+            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: leadingFrozenWidth),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
@@ -85,7 +85,7 @@ class DateHeaderView: UICollectionReusableView {
             // Show header (frozen left column)
             showHeaderLabel.topAnchor.constraint(equalTo: topAnchor, constant: 4),
             showHeaderLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
-            showHeaderLabel.widthAnchor.constraint(equalToConstant: showPosterWidth - 8),
+            showHeaderLabel.widthAnchor.constraint(equalToConstant: leadingFrozenWidth - 8),
             showHeaderLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
 
             // Date headers container
@@ -100,6 +100,9 @@ class DateHeaderView: UICollectionReusableView {
             separatorView.bottomAnchor.constraint(equalTo: bottomAnchor),
             separatorView.heightAnchor.constraint(equalToConstant: 1)
         ])
+
+        scrollContentWidthConstraint = scrollContentView.widthAnchor.constraint(equalToConstant: 0)
+        scrollContentWidthConstraint?.isActive = true
     }
 
     func configure(with dateColumns: [TVGuide2DateColumn], viewController: TVGuide2ViewController? = nil) {
@@ -120,14 +123,12 @@ class DateHeaderView: UICollectionReusableView {
         }
 
         // Update content view width based on number of date columns
-        scrollContentView.widthAnchor.constraint(equalToConstant: CGFloat(dateColumns.count) * dateCellWidth).isActive = true
+        scrollContentWidthConstraint?.constant = CGFloat(max(dateColumns.count, 1)) * dateCellWidth
     }
 
     private func createDateHeaderView(for dateColumn: TVGuide2DateColumn) -> UIView {
         let dateHeaderView = UIView()
-        dateHeaderView.backgroundColor = .systemGray6
-        dateHeaderView.layer.cornerRadius = 8
-        dateHeaderView.clipsToBounds = true
+        dateHeaderView.backgroundColor = .clear
         dateHeaderView.translatesAutoresizingMaskIntoConstraints = false
 
         // Add right border

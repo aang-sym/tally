@@ -16,17 +16,42 @@ class TVGuide2ViewController: UIViewController {
     private var tvGuideData: TVGuide2Data?
     private var dateColumns: [TVGuide2DateColumn] = []
     private var isLoading = false
-    private var expandedRowIndices: Set<Int> = []
-    private var scrollViewsForSync: [UIScrollView] = []
+    private var scrollViewsForSync = NSHashTable<UIScrollView>.weakObjects()
+
+    private struct ExpandedEpisodeContext {
+        let date: String
+        let episode: TVGuide2Episode
+    }
+
+    private var expandedEpisodeContexts: [Int: ExpandedEpisodeContext] = [:]
+
+    // MARK: - Left Rail UI
+    private let leftRailContainer = UIView()
+    private let monthLabel = UILabel()
+    private let leftRailDivider = UIView()
 
     // MARK: - Layout Constants
-    private let providerWidth: CGFloat = 60
+    private let monthRailWidth: CGFloat = 64
     private let showPosterWidth: CGFloat = 90
-    private let frozenColumnWidth: CGFloat = 150  // providerWidth + showPosterWidth
     private let showRowHeight: CGFloat = 120  // Taller for full poster
-    private let expandedRowHeight: CGFloat = 180
     private let dateHeaderHeight: CGFloat = 60
     private let episodeCellWidth: CGFloat = 100
+
+    // MARK: - Date Formatting
+    private lazy var isoDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }()
+
+    private lazy var monthFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM"
+        return formatter
+    }()
+
+    private var currentMonthLabelText: String?
 
     // MARK: - Data Types (Provider-section structure)
     enum Section: Hashable {
@@ -49,6 +74,7 @@ class TVGuide2ViewController: UIViewController {
         let show: TVGuide2Show
         let episodes: [String: TVGuide2Episode] // [date: episode]
         let rowIndex: Int
+        let provider: TVGuide2Provider
 
         static func == (lhs: ShowRowData, rhs: ShowRowData) -> Bool {
             return lhs.show.id == rhs.show.id && lhs.rowIndex == rhs.rowIndex
@@ -84,6 +110,8 @@ class TVGuide2ViewController: UIViewController {
         title = "TV Guide"
         view.backgroundColor = .systemBackground
 
+        setupLeftRail()
+
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             barButtonSystemItem: .refresh,
             target: self,
@@ -101,7 +129,7 @@ class TVGuide2ViewController: UIViewController {
 
         NSLayoutConstraint.activate([
             collectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            collectionView.leadingAnchor.constraint(equalTo: leftRailDivider.trailingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
@@ -111,47 +139,52 @@ class TVGuide2ViewController: UIViewController {
         collectionView.register(DateHeaderView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: DateHeaderView.identifier)
     }
 
+    private func setupLeftRail() {
+        leftRailContainer.translatesAutoresizingMaskIntoConstraints = false
+        leftRailContainer.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.4)
+        view.addSubview(leftRailContainer)
+
+        monthLabel.translatesAutoresizingMaskIntoConstraints = false
+        monthLabel.font = .systemFont(ofSize: 18, weight: .bold)
+        monthLabel.textAlignment = .center
+        monthLabel.textColor = .label
+        monthLabel.numberOfLines = 1
+        monthLabel.adjustsFontSizeToFitWidth = true
+        monthLabel.minimumScaleFactor = 0.6
+        monthLabel.text = ""
+
+        leftRailDivider.translatesAutoresizingMaskIntoConstraints = false
+        leftRailDivider.backgroundColor = .separator
+        view.addSubview(leftRailDivider)
+
+        leftRailContainer.addSubview(monthLabel)
+
+        NSLayoutConstraint.activate([
+            leftRailContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            leftRailContainer.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            leftRailContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            leftRailContainer.widthAnchor.constraint(equalToConstant: monthRailWidth),
+
+            monthLabel.topAnchor.constraint(equalTo: leftRailContainer.topAnchor, constant: 8),
+            monthLabel.leadingAnchor.constraint(equalTo: leftRailContainer.leadingAnchor, constant: 8),
+            monthLabel.trailingAnchor.constraint(equalTo: leftRailContainer.trailingAnchor, constant: -8),
+            monthLabel.heightAnchor.constraint(equalToConstant: 32),
+
+            leftRailDivider.leadingAnchor.constraint(equalTo: leftRailContainer.trailingAnchor),
+            leftRailDivider.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            leftRailDivider.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            leftRailDivider.widthAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale)
+        ])
+    }
+
     private func createLayout() -> UICollectionViewLayout {
         let layout = UICollectionViewCompositionalLayout { [weak self] sectionIndex, environment in
             guard let self = self else { return nil }
             return self.createProviderSection()
         }
 
-        // Add configuration for sticky headers (dates)
+        // Add configuration for sticky date header across all sections
         let config = UICollectionViewCompositionalLayoutConfiguration()
-        layout.configuration = config
-
-        return layout
-    }
-
-    private func createProviderSection() -> NSCollectionLayoutSection {
-        // Create item for each row (show)
-        let itemSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(1.0),
-            heightDimension: .absolute(showRowHeight)
-        )
-        let item = NSCollectionLayoutItem(layoutSize: itemSize)
-
-        // Create group for each row
-        let groupSize = NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(1.0),
-            heightDimension: .absolute(showRowHeight)
-        )
-        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
-
-        // Create section
-        let section = NSCollectionLayoutSection(group: group)
-        section.interGroupSpacing = 1
-
-        // No content insets needed
-        section.contentInsets = NSDirectionalEdgeInsets(
-            top: 0,
-            leading: 0,
-            bottom: 0,
-            trailing: 0
-        )
-
-        // Add sticky date header
         let headerSize = NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(1.0),
             heightDimension: .absolute(dateHeaderHeight)
@@ -162,18 +195,39 @@ class TVGuide2ViewController: UIViewController {
             alignment: .top
         )
         header.pinToVisibleBounds = true
+        config.boundarySupplementaryItems = [header]
+        layout.configuration = config
 
-        // No provider rail supplementary items
-        section.boundarySupplementaryItems = [header]
+        return layout
+    }
+
+    private func createProviderSection() -> NSCollectionLayoutSection {
+        // Create item for each row (show)
+        let itemSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .estimated(showRowHeight)
+        )
+        let item = NSCollectionLayoutItem(layoutSize: itemSize)
+
+        // Create group for each row
+        let groupSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .estimated(showRowHeight)
+        )
+        let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
+
+        // Create section
+        let section = NSCollectionLayoutSection(group: group)
+        section.interGroupSpacing = 0
+        section.contentInsets = NSDirectionalEdgeInsets(
+            top: 0,
+            leading: 0,
+            bottom: 0,
+            trailing: 0
+        )
 
         return section
     }
-
-    private func updateFrozenColumnVisibility(visibleItems: [NSCollectionLayoutVisibleItem], scrollOffset: CGPoint) {
-        // Implementation for keeping frozen columns visible during horizontal scroll
-        // This would involve updating cell frames or using transform
-    }
-
 
     // MARK: - Data Source
     private func setupDataSource() {
@@ -183,7 +237,13 @@ class TVGuide2ViewController: UIViewController {
             switch item {
             case .showRow(let showRowData):
                 let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ShowRowCell.identifier, for: indexPath) as! ShowRowCell
-                cell.configure(with: showRowData, dateColumns: self.dateColumns, viewController: self)
+                let expandedContext = self.expandedEpisodeContexts[showRowData.rowIndex]
+                cell.configure(
+                    with: showRowData,
+                    dateColumns: self.dateColumns,
+                    expandedContext: expandedContext.map { ($0.date, $0.episode) },
+                    viewController: self
+                )
                 return cell
             }
         }
@@ -220,6 +280,8 @@ class TVGuide2ViewController: UIViewController {
                 let data = try await apiClient.getTVGuide2Data()
                 self.tvGuideData = data
                 self.dateColumns = apiClient.generateDateColumns(from: data.startDate, to: data.endDate)
+                self.expandedEpisodeContexts.removeAll()
+                self.updateMonthLabel(forVisibleColumnIndex: 0)
                 self.updateSnapshot()
                 self.isLoading = false
             } catch {
@@ -229,6 +291,7 @@ class TVGuide2ViewController: UIViewController {
         }
     }
 
+    @MainActor
     private func updateSnapshot() {
         guard let data = tvGuideData else {
             print("TVGuide2ViewController: No data to display")
@@ -241,11 +304,13 @@ class TVGuide2ViewController: UIViewController {
         if data.providers.isEmpty {
             print("TVGuide2ViewController: No providers found, showing empty state")
             showEmptyState()
+            scrollViewsForSync.removeAllObjects()
             dataSource.apply(snapshot, animatingDifferences: true)
             return
         }
 
         hideEmptyState()
+        scrollViewsForSync.removeAllObjects()
 
         print("TVGuide2ViewController: Creating snapshot with \(data.providers.count) providers")
 
@@ -276,7 +341,8 @@ class TVGuide2ViewController: UIViewController {
                 let showRowData = ShowRowData(
                     show: show,
                     episodes: episodesDict,
-                    rowIndex: globalRowIndex
+                    rowIndex: globalRowIndex,
+                    provider: provider
                 )
 
                 providerShowRows.append(.showRow(showRowData))
@@ -290,6 +356,7 @@ class TVGuide2ViewController: UIViewController {
         }
 
         print("TVGuide2ViewController: Applying snapshot with \(data.providers.count) provider sections")
+        expandedEpisodeContexts = expandedEpisodeContexts.filter { $0.key < globalRowIndex }
         dataSource.apply(snapshot, animatingDifferences: true)
     }
 
@@ -353,6 +420,60 @@ class TVGuide2ViewController: UIViewController {
 
     private func findEpisode(for show: TVGuide2Show, on date: String) -> TVGuide2Episode? {
         return show.episodes.first { $0.airDate == date }
+    }
+
+    @MainActor
+    private func updateMonthLabel(forContentOffsetX offsetX: CGFloat) {
+        guard !dateColumns.isEmpty else { return }
+
+        let columnWidth = episodeCellWidth
+        guard columnWidth > 0 else { return }
+
+        let adjustedOffset = max(offsetX, 0)
+        let index = min(dateColumns.count - 1, Int(floor(adjustedOffset / columnWidth)))
+        updateMonthLabel(forVisibleColumnIndex: index)
+    }
+
+    @MainActor
+    private func updateMonthLabel(forVisibleColumnIndex index: Int) {
+        guard dateColumns.indices.contains(index) else { return }
+
+        let dateString = dateColumns[index].date
+        if let date = isoDateFormatter.date(from: dateString) {
+            let monthText = monthFormatter.string(from: date).uppercased()
+            if monthText != currentMonthLabelText {
+                currentMonthLabelText = monthText
+                monthLabel.text = monthText
+            }
+        } else if currentMonthLabelText != dateString {
+            currentMonthLabelText = dateString
+            monthLabel.text = dateString
+        }
+    }
+
+    @MainActor
+    func toggleEpisodeExpansion(for showRowData: ShowRowData, on date: String) {
+        guard let episode = showRowData.episodes[date] else { return }
+
+        let rowIndex = showRowData.rowIndex
+        let isCurrentlyExpanded = expandedEpisodeContexts[rowIndex]?.date == date
+
+        if isCurrentlyExpanded {
+            expandedEpisodeContexts.removeValue(forKey: rowIndex)
+        } else {
+            expandedEpisodeContexts[rowIndex] = ExpandedEpisodeContext(date: date, episode: episode)
+        }
+
+        let item = Item.showRow(showRowData)
+        guard let indexPath = dataSource.indexPath(for: item) else { return }
+
+        collectionView.reloadItems(at: [indexPath])
+        collectionView.collectionViewLayout.invalidateLayout()
+        collectionView.layoutIfNeeded()
+
+        if !isCurrentlyExpanded {
+            collectionView.scrollToItem(at: indexPath, at: .centeredVertically, animated: true)
+        }
     }
 
     private func showError(_ error: Error) {
@@ -518,17 +639,30 @@ extension TVGuide2ViewController: UICollectionViewDelegate {
 
     // MARK: - Scroll Synchronization
     func registerScrollViewForSync(_ scrollView: UIScrollView) {
-        scrollViewsForSync.append(scrollView)
+        let existingOffset = scrollViewsForSync.allObjects.first?.contentOffset.x ?? scrollView.contentOffset.x
+
+        if scrollView.contentOffset.x != existingOffset {
+            scrollView.setContentOffset(CGPoint(x: existingOffset, y: scrollView.contentOffset.y), animated: false)
+        }
+
+        if !scrollViewsForSync.allObjects.contains(where: { $0 === scrollView }) {
+            scrollViewsForSync.add(scrollView)
+        }
+
         scrollView.delegate = self
+        updateMonthLabel(forContentOffsetX: existingOffset)
     }
 }
 
 // MARK: - UIScrollViewDelegate
 extension TVGuide2ViewController: UIScrollViewDelegate {
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        // Sync all registered scroll views to the same horizontal position
-        for syncScrollView in scrollViewsForSync {
-            if syncScrollView !== scrollView {
+        guard scrollView !== collectionView else { return }
+
+        updateMonthLabel(forContentOffsetX: scrollView.contentOffset.x)
+
+        for syncScrollView in scrollViewsForSync.allObjects where syncScrollView !== scrollView {
+            if abs(syncScrollView.contentOffset.x - scrollView.contentOffset.x) > .ulpOfOne {
                 syncScrollView.contentOffset.x = scrollView.contentOffset.x
             }
         }
