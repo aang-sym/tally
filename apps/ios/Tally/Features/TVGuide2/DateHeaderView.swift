@@ -10,6 +10,8 @@ import UIKit
 class DateHeaderView: UICollectionReusableView {
     static let identifier = "DateHeaderView"
 
+    static var providerColumnWidth: CGFloat = 0
+
     private static let isoFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -30,12 +32,16 @@ class DateHeaderView: UICollectionReusableView {
     private let showHeaderLabel = UILabel()
     private let separatorView = UIView()
     private var scrollContentWidthConstraint: NSLayoutConstraint?
+    private var scrollLeadingConstraint: NSLayoutConstraint?
+    private var showHeaderWidthConstraint: NSLayoutConstraint?
 
     // MARK: - Properties
     weak var viewController: TVGuide2ViewController?
 
     // MARK: - Layout Constants
-    private let leadingFrozenWidth: CGFloat = ShowRowCell.frozenLeadingWidth
+    private var leadingFrozenWidth: CGFloat {
+        ShowRowCell.frozenLeadingWidth + DateHeaderView.providerColumnWidth
+    }
     private let dateCellWidth: CGFloat = ShowRowCell.episodeColumnWidth
     private let headerHeight: CGFloat = 60
 
@@ -46,6 +52,11 @@ class DateHeaderView: UICollectionReusableView {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        updateLeadingConstraints()
     }
 
     private func setupUI() {
@@ -61,11 +72,13 @@ class DateHeaderView: UICollectionReusableView {
         scrollView.addSubview(scrollContentView)
 
         // Setup show header (frozen left column - only poster column now)
-        showHeaderLabel.text = ""  // No text as requested
-        showHeaderLabel.font = .systemFont(ofSize: 16, weight: .semibold)
+        showHeaderLabel.text = ""
+        showHeaderLabel.font = .systemFont(ofSize: 16, weight: .bold)
         showHeaderLabel.textAlignment = .center
         showHeaderLabel.backgroundColor = .clear
         showHeaderLabel.isHidden = true
+        showHeaderLabel.numberOfLines = 0
+        showHeaderLabel.adjustsFontSizeToFitWidth = true
         showHeaderLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(showHeaderLabel) // Add directly to header, not scroll view
 
@@ -84,7 +97,6 @@ class DateHeaderView: UICollectionReusableView {
         NSLayoutConstraint.activate([
             // Scroll view constraints (starts after poster column)
             scrollView.topAnchor.constraint(equalTo: topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: leadingFrozenWidth),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
@@ -98,7 +110,6 @@ class DateHeaderView: UICollectionReusableView {
             // Show header (frozen left column)
             showHeaderLabel.topAnchor.constraint(equalTo: topAnchor, constant: 4),
             showHeaderLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
-            showHeaderLabel.widthAnchor.constraint(equalToConstant: leadingFrozenWidth - 8),
             showHeaderLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
 
             // Date headers container
@@ -114,12 +125,21 @@ class DateHeaderView: UICollectionReusableView {
             separatorView.heightAnchor.constraint(equalToConstant: 1)
         ])
 
+        scrollLeadingConstraint = scrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: leadingFrozenWidth)
+        scrollLeadingConstraint?.isActive = true
+
+        showHeaderWidthConstraint = showHeaderLabel.widthAnchor.constraint(equalToConstant: leadingFrozenWidth - 8)
+        showHeaderWidthConstraint?.isActive = true
+
         scrollContentWidthConstraint = scrollContentView.widthAnchor.constraint(equalToConstant: 0)
         scrollContentWidthConstraint?.isActive = true
     }
 
-    func configure(with dateColumns: [TVGuide2DateColumn], viewController: TVGuide2ViewController? = nil) {
+    func configure(with dateColumns: [TVGuide2DateColumn], monthText: String?, viewController: TVGuide2ViewController? = nil) {
         self.viewController = viewController
+
+        updateLeadingConstraints()
+        updateMonthLabel(monthText)
 
         // Register scroll view for synchronization
         if let vc = viewController {
@@ -184,5 +204,21 @@ class DateHeaderView: UICollectionReusableView {
         ])
 
         return dateHeaderView
+    }
+
+    func updateMonthLabel(_ text: String?) {
+        if let text = text, !text.isEmpty {
+            showHeaderLabel.text = text
+            showHeaderLabel.isHidden = false
+        } else {
+            showHeaderLabel.text = nil
+            showHeaderLabel.isHidden = true
+        }
+    }
+
+    private func updateLeadingConstraints() {
+        let constant = leadingFrozenWidth
+        scrollLeadingConstraint?.constant = constant
+        showHeaderWidthConstraint?.constant = constant - 8
     }
 }
