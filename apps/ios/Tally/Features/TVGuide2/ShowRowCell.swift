@@ -9,9 +9,13 @@ import UIKit
 
 class ShowRowCell: UICollectionViewCell {
     static let identifier = "ShowRowCell"
-    static let providerColumnWidth: CGFloat = 60
-    static let posterColumnWidth: CGFloat = 90
-    static let frozenLeadingWidth: CGFloat = providerColumnWidth + posterColumnWidth
+
+    static let posterWidth: CGFloat = 90
+    static let horizontalPadding: CGFloat = 12
+    static let posterVerticalPadding: CGFloat = 8
+    static let baseRowHeight: CGFloat = 120
+    static let episodeColumnWidth: CGFloat = 100
+    static let frozenLeadingWidth: CGFloat = posterWidth + horizontalPadding * 2
 
     private static let isoDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -29,34 +33,28 @@ class ShowRowCell: UICollectionViewCell {
     // MARK: - UI Elements
     private let contentStackView = UIStackView()
     private let mainRowContainer = UIView()
-    private let providerLogoImageView = UIImageView()
+    private let posterImageView = UIImageView()
     private let scrollView = UIScrollView()
     private let scrollContentView = UIView()
-    private let showPosterImageView = UIImageView()
-    private let episodeCellsContainer = UIStackView()
+    private let episodeStackView = UIStackView()
     private let separatorView = UIView()
+
     private let detailContainer = UIView()
     private let detailStackView = UIStackView()
     private let detailTitleLabel = UILabel()
     private let detailStatusLabel = UILabel()
     private let detailOverviewLabel = UILabel()
-    private var scrollContentWidthConstraint: NSLayoutConstraint?
+
     private var posterHeightConstraint: NSLayoutConstraint?
+    private var scrollContentWidthConstraint: NSLayoutConstraint?
 
-    // MARK: - Properties
+    // MARK: - State
     weak var viewController: TVGuide2ViewController?
-
-    private let providerLogoWidth: CGFloat = ShowRowCell.providerColumnWidth
-    private let providerLogoHeight: CGFloat = 48
-    private let showPosterWidth: CGFloat = ShowRowCell.posterColumnWidth
-    private let episodeCellWidth: CGFloat = 100
-    private let baseRowHeight: CGFloat = 120
-
-    private var currentDateColumns: [TVGuide2DateColumn] = []
     private var currentShowRowData: TVGuide2ViewController.ShowRowData?
+    private var currentDateColumns: [TVGuide2DateColumn] = []
     private var currentExpandedContext: (date: String, episode: TVGuide2Episode)?
-    private var providerLogoTask: Task<Void, Never>?
 
+    // MARK: - Lifecycle
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
@@ -68,24 +66,22 @@ class ShowRowCell: UICollectionViewCell {
 
     override func prepareForReuse() {
         super.prepareForReuse()
-        showPosterImageView.image = UIImage(systemName: "photo")
-        providerLogoImageView.image = nil
-        providerLogoTask?.cancel()
-        providerLogoTask = nil
-        currentDateColumns = []
+        posterImageView.image = UIImage(systemName: "photo")
         currentShowRowData = nil
+        currentDateColumns = []
         currentExpandedContext = nil
         viewController = nil
         detailContainer.isHidden = true
         detailTitleLabel.text = nil
         detailStatusLabel.text = nil
         detailOverviewLabel.text = nil
-        episodeCellsContainer.arrangedSubviews.forEach { view in
-            episodeCellsContainer.removeArrangedSubview(view)
+        episodeStackView.arrangedSubviews.forEach { view in
+            episodeStackView.removeArrangedSubview(view)
             view.removeFromSuperview()
         }
     }
 
+    // MARK: - Setup
     private func setupUI() {
         contentView.backgroundColor = .systemBackground
 
@@ -103,92 +99,66 @@ class ShowRowCell: UICollectionViewCell {
 
         mainRowContainer.translatesAutoresizingMaskIntoConstraints = false
         contentStackView.addArrangedSubview(mainRowContainer)
-        mainRowContainer.heightAnchor.constraint(equalToConstant: baseRowHeight).isActive = true
+        mainRowContainer.heightAnchor.constraint(equalToConstant: ShowRowCell.baseRowHeight).isActive = true
 
-        // Provider logo column
-        providerLogoImageView.contentMode = .scaleAspectFit
-        providerLogoImageView.layer.cornerRadius = 12
-        providerLogoImageView.clipsToBounds = true
-        providerLogoImageView.backgroundColor = .secondarySystemBackground
-        providerLogoImageView.translatesAutoresizingMaskIntoConstraints = false
-        mainRowContainer.addSubview(providerLogoImageView)
+        posterImageView.contentMode = .scaleAspectFit
+        posterImageView.clipsToBounds = true
+        posterImageView.layer.cornerRadius = 10
+        posterImageView.backgroundColor = .systemGray6
+        posterImageView.translatesAutoresizingMaskIntoConstraints = false
+        mainRowContainer.addSubview(posterImageView)
 
-        // Setup scroll view for horizontal scrolling
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         mainRowContainer.addSubview(scrollView)
 
-        // Setup content view
         scrollContentView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.addSubview(scrollContentView)
 
-        // Setup show poster (leading frozen column)
-        showPosterImageView.contentMode = .scaleAspectFill
-        showPosterImageView.backgroundColor = .systemGray6
-        showPosterImageView.clipsToBounds = true
-        showPosterImageView.layer.cornerRadius = 8
-        showPosterImageView.translatesAutoresizingMaskIntoConstraints = false
-        mainRowContainer.addSubview(showPosterImageView)
+        episodeStackView.axis = .horizontal
+        episodeStackView.distribution = .fill
+        episodeStackView.spacing = 0
+        episodeStackView.translatesAutoresizingMaskIntoConstraints = false
+        scrollContentView.addSubview(episodeStackView)
 
-        // Setup episode cells container
-        episodeCellsContainer.axis = .horizontal
-        episodeCellsContainer.distribution = .fillEqually
-        episodeCellsContainer.spacing = 0
-        episodeCellsContainer.translatesAutoresizingMaskIntoConstraints = false
-        scrollContentView.addSubview(episodeCellsContainer)
-
-        // Setup separator
         separatorView.backgroundColor = .separator
         separatorView.translatesAutoresizingMaskIntoConstraints = false
         mainRowContainer.addSubview(separatorView)
 
         NSLayoutConstraint.activate([
-            providerLogoImageView.leadingAnchor.constraint(equalTo: mainRowContainer.leadingAnchor, constant: 8),
-            providerLogoImageView.centerYAnchor.constraint(equalTo: mainRowContainer.centerYAnchor),
-            providerLogoImageView.widthAnchor.constraint(equalToConstant: providerLogoWidth - 16),
-            providerLogoImageView.heightAnchor.constraint(equalToConstant: providerLogoHeight),
+            posterImageView.leadingAnchor.constraint(equalTo: mainRowContainer.leadingAnchor, constant: ShowRowCell.horizontalPadding),
+            posterImageView.centerYAnchor.constraint(equalTo: mainRowContainer.centerYAnchor),
+            posterImageView.widthAnchor.constraint(equalToConstant: ShowRowCell.posterWidth),
 
-            // Scroll view constraints (starts after poster)
+            scrollView.leadingAnchor.constraint(equalTo: posterImageView.trailingAnchor, constant: ShowRowCell.horizontalPadding),
             scrollView.topAnchor.constraint(equalTo: mainRowContainer.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: showPosterImageView.trailingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: mainRowContainer.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: mainRowContainer.bottomAnchor),
 
-            // Content view constraints
             scrollContentView.topAnchor.constraint(equalTo: scrollView.topAnchor),
             scrollContentView.leadingAnchor.constraint(equalTo: scrollView.leadingAnchor),
             scrollContentView.trailingAnchor.constraint(equalTo: scrollView.trailingAnchor),
             scrollContentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
             scrollContentView.heightAnchor.constraint(equalTo: scrollView.heightAnchor),
 
-            // Show poster (leading frozen column)
-            showPosterImageView.topAnchor.constraint(greaterThanOrEqualTo: mainRowContainer.topAnchor, constant: 8),
-            showPosterImageView.leadingAnchor.constraint(equalTo: providerLogoImageView.trailingAnchor, constant: 8),
-            showPosterImageView.widthAnchor.constraint(equalToConstant: showPosterWidth),
-            showPosterImageView.centerYAnchor.constraint(equalTo: mainRowContainer.centerYAnchor),
-            showPosterImageView.bottomAnchor.constraint(lessThanOrEqualTo: mainRowContainer.bottomAnchor, constant: -8),
+            episodeStackView.topAnchor.constraint(equalTo: scrollContentView.topAnchor),
+            episodeStackView.leadingAnchor.constraint(equalTo: scrollContentView.leadingAnchor),
+            episodeStackView.trailingAnchor.constraint(equalTo: scrollContentView.trailingAnchor),
+            episodeStackView.bottomAnchor.constraint(equalTo: scrollContentView.bottomAnchor),
 
-            // Episode cells container
-            episodeCellsContainer.topAnchor.constraint(equalTo: scrollContentView.topAnchor),
-            episodeCellsContainer.leadingAnchor.constraint(equalTo: scrollContentView.leadingAnchor),
-            episodeCellsContainer.trailingAnchor.constraint(equalTo: scrollContentView.trailingAnchor),
-            episodeCellsContainer.bottomAnchor.constraint(equalTo: scrollContentView.bottomAnchor),
-
-            // Separator
             separatorView.leadingAnchor.constraint(equalTo: mainRowContainer.leadingAnchor),
             separatorView.trailingAnchor.constraint(equalTo: mainRowContainer.trailingAnchor),
             separatorView.bottomAnchor.constraint(equalTo: mainRowContainer.bottomAnchor),
             separatorView.heightAnchor.constraint(equalToConstant: 1)
         ])
 
-        scrollContentWidthConstraint = scrollContentView.widthAnchor.constraint(equalToConstant: 0)
-        scrollContentWidthConstraint?.isActive = true
-
-        posterHeightConstraint = showPosterImageView.heightAnchor.constraint(equalToConstant: baseRowHeight - 16)
+        posterHeightConstraint = posterImageView.heightAnchor.constraint(equalToConstant: ShowRowCell.baseRowHeight - ShowRowCell.posterVerticalPadding * 2)
         posterHeightConstraint?.priority = .defaultHigh
         posterHeightConstraint?.isActive = true
 
-        // Detail container setup
+        scrollContentWidthConstraint = scrollContentView.widthAnchor.constraint(equalToConstant: 0)
+        scrollContentWidthConstraint?.isActive = true
+
         detailContainer.translatesAutoresizingMaskIntoConstraints = false
         detailContainer.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.7)
         detailContainer.layer.cornerRadius = 12
@@ -227,10 +197,11 @@ class ShowRowCell: UICollectionViewCell {
         ])
     }
 
+    // MARK: - Configuration
     func configure(
         with showRowData: TVGuide2ViewController.ShowRowData,
         dateColumns: [TVGuide2DateColumn],
-        expandedContext: (date: String, episode: TVGuide2Episode)?,
+        expandedContext: (date: String, episode: TVGuide2Episode)? = nil,
         viewController: TVGuide2ViewController? = nil
     ) {
         self.viewController = viewController
@@ -242,20 +213,20 @@ class ShowRowCell: UICollectionViewCell {
             vc.registerScrollViewForSync(scrollView)
         }
 
-        loadProviderLogo(for: showRowData.provider)
         loadPosterImage(from: showRowData.show.posterPath)
 
-        episodeCellsContainer.arrangedSubviews.forEach { view in
-            episodeCellsContainer.removeArrangedSubview(view)
+        episodeStackView.arrangedSubviews.forEach { view in
+            episodeStackView.removeArrangedSubview(view)
             view.removeFromSuperview()
         }
 
         for (index, dateColumn) in dateColumns.enumerated() {
             let episodeView = createEpisodeView(for: dateColumn, columnIndex: index, showRowData: showRowData)
-            episodeCellsContainer.addArrangedSubview(episodeView)
+            episodeStackView.addArrangedSubview(episodeView)
         }
 
-        scrollContentWidthConstraint?.constant = CGFloat(max(dateColumns.count, 1)) * episodeCellWidth
+        let columnCount = max(dateColumns.count, 1)
+        scrollContentWidthConstraint?.constant = CGFloat(columnCount) * ShowRowCell.episodeColumnWidth
         updateDetailSection()
     }
 
@@ -276,7 +247,7 @@ class ShowRowCell: UICollectionViewCell {
         episodeView.addSubview(borderView)
 
         NSLayoutConstraint.activate([
-            episodeView.widthAnchor.constraint(equalToConstant: episodeCellWidth),
+            episodeView.widthAnchor.constraint(equalToConstant: ShowRowCell.episodeColumnWidth),
             borderView.trailingAnchor.constraint(equalTo: episodeView.trailingAnchor),
             borderView.topAnchor.constraint(equalTo: episodeView.topAnchor),
             borderView.bottomAnchor.constraint(equalTo: episodeView.bottomAnchor),
@@ -425,33 +396,8 @@ class ShowRowCell: UICollectionViewCell {
         viewController?.toggleEpisodeExpansion(for: rowData, on: dateColumn.date)
     }
 
-    private func loadProviderLogo(for provider: TVGuide2Provider) {
-        providerLogoTask?.cancel()
-        providerLogoImageView.image = ShowRowCell.providerPlaceholderImage(for: provider.name)
-
-        guard let logoPath = provider.logoPath, !logoPath.isEmpty,
-              let url = URL(string: "https://image.tmdb.org/t/p/w92\(logoPath)") else {
-            return
-        }
-
-        providerLogoTask = Task { [weak self] in
-            do {
-                let (data, _) = try await URLSession.shared.data(from: url)
-                if let image = UIImage(data: data) {
-                    await MainActor.run {
-                        guard let self = self,
-                              self.currentShowRowData?.provider.id == provider.id else { return }
-                        self.providerLogoImageView.image = image
-                    }
-                }
-            } catch {
-                // Ignore and keep placeholder
-            }
-        }
-    }
-
     private func loadPosterImage(from path: String?) {
-        showPosterImageView.image = UIImage(systemName: "photo")
+        posterImageView.image = UIImage(systemName: "photo")
 
         guard let path = path, !path.isEmpty,
               let url = URL(string: "https://image.tmdb.org/t/p/w342\(path)") else { return }
@@ -461,39 +407,13 @@ class ShowRowCell: UICollectionViewCell {
                 let (data, _) = try await URLSession.shared.data(from: url)
                 if let image = UIImage(data: data) {
                     await MainActor.run {
-                        if self.currentShowRowData?.show.posterPath == path {
-                            self.showPosterImageView.image = image
-                        }
+                        guard self.currentShowRowData?.show.posterPath == path else { return }
+                        self.posterImageView.image = image
                     }
                 }
             } catch {
-                // Fallback handled by placeholder above
+                // Ignore and keep placeholder
             }
-        }
-    }
-
-    private static func providerPlaceholderImage(for name: String) -> UIImage? {
-        let size = CGSize(width: 48, height: 48)
-        let renderer = UIGraphicsImageRenderer(size: size)
-        let initials = String(name.prefix(1)).uppercased()
-        let backgroundColor = UIColor.systemGray5.withAlphaComponent(0.6)
-        let textAttributes: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 16, weight: .semibold),
-            .foregroundColor: UIColor.label
-        ]
-
-        return renderer.image { context in
-            backgroundColor.setFill()
-            context.fill(CGRect(origin: .zero, size: size))
-
-            let textSize = initials.size(withAttributes: textAttributes)
-            let rect = CGRect(
-                x: (size.width - textSize.width) / 2,
-                y: (size.height - textSize.height) / 2,
-                width: textSize.width,
-                height: textSize.height
-            )
-            initials.draw(in: rect, withAttributes: textAttributes)
         }
     }
 }

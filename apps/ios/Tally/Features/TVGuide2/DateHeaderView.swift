@@ -10,6 +10,19 @@ import UIKit
 class DateHeaderView: UICollectionReusableView {
     static let identifier = "DateHeaderView"
 
+    private static let isoFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return formatter
+    }()
+
+    private static let dayNumberFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd"
+        return formatter
+    }()
+
     // MARK: - UI Elements
     private let scrollView = UIScrollView()
     private let scrollContentView = UIView()
@@ -23,7 +36,7 @@ class DateHeaderView: UICollectionReusableView {
 
     // MARK: - Layout Constants
     private let leadingFrozenWidth: CGFloat = ShowRowCell.frozenLeadingWidth
-    private let dateCellWidth: CGFloat = 100
+    private let dateCellWidth: CGFloat = ShowRowCell.episodeColumnWidth
     private let headerHeight: CGFloat = 60
 
     override init(frame: CGRect) {
@@ -123,7 +136,8 @@ class DateHeaderView: UICollectionReusableView {
         }
 
         // Update content view width based on number of date columns
-        scrollContentWidthConstraint?.constant = CGFloat(max(dateColumns.count, 1)) * dateCellWidth
+        let columnCount = max(dateColumns.count, 1)
+        scrollContentWidthConstraint?.constant = CGFloat(columnCount) * dateCellWidth
     }
 
     private func createDateHeaderView(for dateColumn: TVGuide2DateColumn) -> UIView {
@@ -131,54 +145,42 @@ class DateHeaderView: UICollectionReusableView {
         dateHeaderView.backgroundColor = .clear
         dateHeaderView.translatesAutoresizingMaskIntoConstraints = false
 
-        // Add right border
+        let dayLabel = UILabel()
+        dayLabel.font = .systemFont(ofSize: 15, weight: .semibold)
+        dayLabel.textColor = .label
+        dayLabel.textAlignment = .center
+        dayLabel.translatesAutoresizingMaskIntoConstraints = false
+        dateHeaderView.addSubview(dayLabel)
+
         let borderView = UIView()
         borderView.backgroundColor = .separator
         borderView.translatesAutoresizingMaskIntoConstraints = false
         dateHeaderView.addSubview(borderView)
 
-        // Date label
-        let dateLabel = UILabel()
+        var isToday = false
 
-        // Parse date and format nicely
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        if let date = formatter.date(from: dateColumn.date) {
-            let displayFormatter = DateFormatter()
-            displayFormatter.dateFormat = "MMM d"
-            dateLabel.text = displayFormatter.string(from: date)
-
-            // Highlight today
-            if Calendar.current.isDateInToday(date) {
-                dateHeaderView.backgroundColor = .systemBlue.withAlphaComponent(0.2)
-                dateLabel.textColor = .systemBlue
-                dateLabel.font = .systemFont(ofSize: 12, weight: .bold)
-            } else {
-                dateLabel.textColor = .label
-                dateLabel.font = .systemFont(ofSize: 12, weight: .medium)
-            }
+        if let date = DateHeaderView.isoFormatter.date(from: dateColumn.date) {
+            dayLabel.text = DateHeaderView.dayNumberFormatter.string(from: date)
+            isToday = Calendar.current.isDateInToday(date)
         } else {
-            dateLabel.text = dateColumn.date
-            dateLabel.textColor = .label
-            dateLabel.font = .systemFont(ofSize: 12, weight: .medium)
+            dayLabel.text = dateColumn.dayNumber
         }
 
-        dateLabel.textAlignment = .center
-        dateLabel.translatesAutoresizingMaskIntoConstraints = false
-        dateHeaderView.addSubview(dateLabel)
+        if isToday {
+            dayLabel.textColor = .systemBlue
+            dayLabel.font = .systemFont(ofSize: 15, weight: .bold)
+        }
 
         NSLayoutConstraint.activate([
             dateHeaderView.widthAnchor.constraint(equalToConstant: dateCellWidth),
 
+            dayLabel.centerXAnchor.constraint(equalTo: dateHeaderView.centerXAnchor),
+            dayLabel.centerYAnchor.constraint(equalTo: dateHeaderView.centerYAnchor),
+
             borderView.trailingAnchor.constraint(equalTo: dateHeaderView.trailingAnchor),
             borderView.topAnchor.constraint(equalTo: dateHeaderView.topAnchor),
             borderView.bottomAnchor.constraint(equalTo: dateHeaderView.bottomAnchor),
-            borderView.widthAnchor.constraint(equalToConstant: 1),
-
-            dateLabel.centerXAnchor.constraint(equalTo: dateHeaderView.centerXAnchor),
-            dateLabel.centerYAnchor.constraint(equalTo: dateHeaderView.centerYAnchor),
-            dateLabel.leadingAnchor.constraint(greaterThanOrEqualTo: dateHeaderView.leadingAnchor, constant: 4),
-            dateLabel.trailingAnchor.constraint(lessThanOrEqualTo: dateHeaderView.trailingAnchor, constant: -4)
+            borderView.widthAnchor.constraint(equalToConstant: 1)
         ])
 
         return dateHeaderView

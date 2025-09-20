@@ -28,14 +28,14 @@ class TVGuide2ViewController: UIViewController {
     // MARK: - Left Rail UI
     private let leftRailContainer = UIView()
     private let monthLabel = UILabel()
+    private let leftRailScrollView = UIScrollView()
+    private let providerStackView = UIStackView()
     private let leftRailDivider = UIView()
 
     // MARK: - Layout Constants
     private let monthRailWidth: CGFloat = 64
-    private let showPosterWidth: CGFloat = 90
     private let showRowHeight: CGFloat = 120  // Taller for full poster
     private let dateHeaderHeight: CGFloat = 60
-    private let episodeCellWidth: CGFloat = 100
 
     // MARK: - Date Formatting
     private lazy var isoDateFormatter: DateFormatter = {
@@ -105,6 +105,11 @@ class TVGuide2ViewController: UIViewController {
         loadData()
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        syncLeftRailVerticalOffset()
+    }
+
     // MARK: - Setup
     private func setupUI() {
         title = "TV Guide"
@@ -153,11 +158,25 @@ class TVGuide2ViewController: UIViewController {
         monthLabel.minimumScaleFactor = 0.6
         monthLabel.text = ""
 
+        leftRailScrollView.translatesAutoresizingMaskIntoConstraints = false
+        leftRailScrollView.showsVerticalScrollIndicator = false
+        leftRailScrollView.showsHorizontalScrollIndicator = false
+        leftRailScrollView.isScrollEnabled = false
+        leftRailScrollView.backgroundColor = .clear
+
+        providerStackView.translatesAutoresizingMaskIntoConstraints = false
+        providerStackView.axis = .vertical
+        providerStackView.alignment = .fill
+        providerStackView.distribution = .fill
+        providerStackView.spacing = 0
+
         leftRailDivider.translatesAutoresizingMaskIntoConstraints = false
         leftRailDivider.backgroundColor = .separator
         view.addSubview(leftRailDivider)
 
         leftRailContainer.addSubview(monthLabel)
+        leftRailContainer.addSubview(leftRailScrollView)
+        leftRailScrollView.addSubview(providerStackView)
 
         NSLayoutConstraint.activate([
             leftRailContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -169,6 +188,17 @@ class TVGuide2ViewController: UIViewController {
             monthLabel.leadingAnchor.constraint(equalTo: leftRailContainer.leadingAnchor, constant: 8),
             monthLabel.trailingAnchor.constraint(equalTo: leftRailContainer.trailingAnchor, constant: -8),
             monthLabel.heightAnchor.constraint(equalToConstant: 32),
+
+            leftRailScrollView.topAnchor.constraint(equalTo: monthLabel.bottomAnchor, constant: 12),
+            leftRailScrollView.leadingAnchor.constraint(equalTo: leftRailContainer.leadingAnchor),
+            leftRailScrollView.trailingAnchor.constraint(equalTo: leftRailContainer.trailingAnchor),
+            leftRailScrollView.bottomAnchor.constraint(equalTo: leftRailContainer.bottomAnchor),
+
+            providerStackView.topAnchor.constraint(equalTo: leftRailScrollView.contentLayoutGuide.topAnchor),
+            providerStackView.leadingAnchor.constraint(equalTo: leftRailScrollView.contentLayoutGuide.leadingAnchor),
+            providerStackView.trailingAnchor.constraint(equalTo: leftRailScrollView.contentLayoutGuide.trailingAnchor),
+            providerStackView.bottomAnchor.constraint(equalTo: leftRailScrollView.contentLayoutGuide.bottomAnchor),
+            providerStackView.widthAnchor.constraint(equalTo: leftRailScrollView.frameLayoutGuide.widthAnchor),
 
             leftRailDivider.leadingAnchor.constraint(equalTo: leftRailContainer.trailingAnchor),
             leftRailDivider.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
@@ -286,6 +316,7 @@ class TVGuide2ViewController: UIViewController {
                 self.isLoading = false
             } catch {
                 self.showError(error)
+                self.refreshLeftRail(with: [])
                 self.isLoading = false
             }
         }
@@ -304,6 +335,7 @@ class TVGuide2ViewController: UIViewController {
         if data.providers.isEmpty {
             print("TVGuide2ViewController: No providers found, showing empty state")
             showEmptyState()
+            refreshLeftRail(with: [])
             scrollViewsForSync.removeAllObjects()
             dataSource.apply(snapshot, animatingDifferences: true)
             return
@@ -357,7 +389,11 @@ class TVGuide2ViewController: UIViewController {
 
         print("TVGuide2ViewController: Applying snapshot with \(data.providers.count) provider sections")
         expandedEpisodeContexts = expandedEpisodeContexts.filter { $0.key < globalRowIndex }
-        dataSource.apply(snapshot, animatingDifferences: true)
+        dataSource.apply(snapshot, animatingDifferences: true) { [weak self] in
+            guard let self = self else { return }
+            self.refreshLeftRail(with: data.providers)
+            self.collectionView.reloadData()
+        }
     }
 
     private func showEmptyState() {
@@ -423,10 +459,150 @@ class TVGuide2ViewController: UIViewController {
     }
 
     @MainActor
+    private func refreshLeftRail(with providers: [TVGuide2Provider]) {
+        providerStackView.arrangedSubviews.forEach { subview in
+            providerStackView.removeArrangedSubview(subview)
+            subview.removeFromSuperview()
+        }
+
+        let headerSpacer = UIView()
+        headerSpacer.translatesAutoresizingMaskIntoConstraints = false
+        headerSpacer.backgroundColor = .clear
+        headerSpacer.heightAnchor.constraint(equalToConstant: dateHeaderHeight).isActive = true
+        providerStackView.addArrangedSubview(headerSpacer)
+
+        guard !providers.isEmpty else {
+            syncLeftRailVerticalOffset()
+            return
+        }
+
+        collectionView.layoutIfNeeded()
+
+        let logoDiameter: CGFloat = 44
+
+        for (sectionIndex, provider) in providers.enumerated() {
+            var providerHeight: CGFloat = 0
+
+            if collectionView.numberOfSections > sectionIndex {
+                for itemIndex in provider.shows.indices {
+                    let indexPath = IndexPath(item: itemIndex, section: sectionIndex)
+                    if let attributes = collectionView.layoutAttributesForItem(at: indexPath) {
+                        providerHeight += attributes.size.height
+                    } else {
+                        providerHeight += ShowRowCell.baseRowHeight
+                    }
+                }
+            } else {
+                providerHeight = CGFloat(provider.shows.count) * ShowRowCell.baseRowHeight
+            }
+
+            let providerView = createProviderLogoView(for: provider, height: providerHeight, diameter: logoDiameter)
+            providerStackView.addArrangedSubview(providerView)
+        }
+
+        syncLeftRailVerticalOffset()
+    }
+
+    @MainActor
+    private func syncLeftRailVerticalOffset() {
+        let maxOffset = max(leftRailScrollView.contentSize.height - leftRailScrollView.bounds.height, 0)
+        let reference = collectionView.contentOffset.y
+        let target = max(0, min(reference, maxOffset))
+        leftRailScrollView.contentOffset.y = target.isFinite ? target : 0
+    }
+
+    private func createProviderLogoView(for provider: TVGuide2Provider, height: CGFloat, diameter: CGFloat) -> UIView {
+        let container = UIView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.backgroundColor = .clear
+
+        let backgroundView = UIView()
+        backgroundView.translatesAutoresizingMaskIntoConstraints = false
+        backgroundView.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.3)
+        backgroundView.layer.cornerRadius = 18
+        backgroundView.layer.masksToBounds = true
+        container.addSubview(backgroundView)
+
+        let logoImageView = UIImageView()
+        logoImageView.translatesAutoresizingMaskIntoConstraints = false
+        logoImageView.contentMode = .scaleAspectFit
+        logoImageView.backgroundColor = .secondarySystemBackground
+        logoImageView.layer.cornerRadius = diameter / 2
+        logoImageView.layer.masksToBounds = true
+
+        container.addSubview(logoImageView)
+
+        let separator = UIView()
+        separator.translatesAutoresizingMaskIntoConstraints = false
+        separator.backgroundColor = .separator
+        container.addSubview(separator)
+
+        NSLayoutConstraint.activate([
+            container.heightAnchor.constraint(equalToConstant: max(height, diameter)),
+            backgroundView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            backgroundView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            backgroundView.topAnchor.constraint(equalTo: container.topAnchor),
+            backgroundView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            logoImageView.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+            logoImageView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            logoImageView.widthAnchor.constraint(equalToConstant: diameter),
+            logoImageView.heightAnchor.constraint(equalToConstant: diameter),
+            separator.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            separator.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            separator.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            separator.heightAnchor.constraint(equalToConstant: 1)
+        ])
+
+        logoImageView.image = providerPlaceholderImage(for: provider.name)
+
+        if let logoPath = provider.logoPath, !logoPath.isEmpty,
+           let url = URL(string: "https://image.tmdb.org/t/p/w92\(logoPath)") {
+            Task {
+                do {
+                    let (data, _) = try await URLSession.shared.data(from: url)
+                    if let image = UIImage(data: data) {
+                        await MainActor.run {
+                            logoImageView.image = image
+                        }
+                    }
+                } catch {
+                    // Keep placeholder on failure
+                }
+            }
+        }
+
+        return container
+    }
+
+    private func providerPlaceholderImage(for name: String) -> UIImage? {
+        let size = CGSize(width: 44, height: 44)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let initial = String(name.prefix(1)).uppercased()
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 18, weight: .semibold),
+            .foregroundColor: UIColor.label
+        ]
+
+        return renderer.image { context in
+            UIColor.systemGray5.withAlphaComponent(0.6).setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+
+            let textSize = initial.size(withAttributes: attributes)
+            let rect = CGRect(
+                x: (size.width - textSize.width) / 2,
+                y: (size.height - textSize.height) / 2,
+                width: textSize.width,
+                height: textSize.height
+            )
+            initial.draw(in: rect, withAttributes: attributes)
+        }
+    }
+
+    @MainActor
     private func updateMonthLabel(forContentOffsetX offsetX: CGFloat) {
         guard !dateColumns.isEmpty else { return }
 
-        let columnWidth = episodeCellWidth
+        let columnWidth = ShowRowCell.episodeColumnWidth
         guard columnWidth > 0 else { return }
 
         let adjustedOffset = max(offsetX, 0)
@@ -458,6 +634,8 @@ class TVGuide2ViewController: UIViewController {
         let rowIndex = showRowData.rowIndex
         let isCurrentlyExpanded = expandedEpisodeContexts[rowIndex]?.date == date
 
+        print("[TVGuide2] toggleEpisodeExpansion rowIndex=\(rowIndex) show=\(showRowData.show.title) date=\(date) expanding=\(!isCurrentlyExpanded)")
+
         if isCurrentlyExpanded {
             expandedEpisodeContexts.removeValue(forKey: rowIndex)
         } else {
@@ -465,14 +643,26 @@ class TVGuide2ViewController: UIViewController {
         }
 
         let item = Item.showRow(showRowData)
-        guard let indexPath = dataSource.indexPath(for: item) else { return }
 
-        collectionView.reloadItems(at: [indexPath])
-        collectionView.collectionViewLayout.invalidateLayout()
-        collectionView.layoutIfNeeded()
+        var snapshot = dataSource.snapshot()
+        guard snapshot.indexOfItem(item) != nil else {
+            print("[TVGuide2] toggleEpisodeExpansion missing item for show row")
+            return
+        }
 
-        if !isCurrentlyExpanded {
-            collectionView.scrollToItem(at: indexPath, at: .centeredVertically, animated: true)
+        snapshot.reloadItems([item])
+
+        dataSource.apply(snapshot, animatingDifferences: true) { [weak self] in
+            guard let self = self else { return }
+
+            if let providers = self.tvGuideData?.providers {
+                self.refreshLeftRail(with: providers)
+            }
+
+            if !isCurrentlyExpanded,
+               let refreshedIndexPath = self.dataSource.indexPath(for: item) {
+                self.collectionView.scrollToItem(at: refreshedIndexPath, at: .centeredVertically, animated: true)
+            }
         }
     }
 
@@ -657,7 +847,10 @@ extension TVGuide2ViewController: UICollectionViewDelegate {
 // MARK: - UIScrollViewDelegate
 extension TVGuide2ViewController: UIScrollViewDelegate {
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        guard scrollView !== collectionView else { return }
+        if scrollView === collectionView {
+            syncLeftRailVerticalOffset()
+            return
+        }
 
         updateMonthLabel(forContentOffsetX: scrollView.contentOffset.x)
 
