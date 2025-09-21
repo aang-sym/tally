@@ -6,6 +6,7 @@ final class ProviderSupplementaryView: UICollectionReusableView {
     private let backgroundView = UIView()
     private let logoImageView = UIImageView()
     private var loadTask: Task<Void, Never>?
+    private var preferredHeight: CGFloat = 0
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -21,9 +22,11 @@ final class ProviderSupplementaryView: UICollectionReusableView {
         loadTask?.cancel()
         loadTask = nil
         logoImageView.image = nil
+        preferredHeight = 0
     }
 
-    func configure(with provider: TVGuide2Provider) {
+    func configure(with provider: TVGuide2Provider, preferredHeight: CGFloat) {
+        self.preferredHeight = preferredHeight
         loadTask?.cancel()
         logoImageView.image = placeholderImage(for: provider.name)
 
@@ -44,6 +47,25 @@ final class ProviderSupplementaryView: UICollectionReusableView {
                 // Keep placeholder if request fails
             }
         }
+    }
+
+    func updatePreferredHeight(_ height: CGFloat) {
+        preferredHeight = height
+        invalidateIntrinsicContentSize()
+        setNeedsLayout()
+    }
+
+    override func preferredLayoutAttributesFitting(_ layoutAttributes: UICollectionViewLayoutAttributes) -> UICollectionViewLayoutAttributes {
+        let attributes = super.preferredLayoutAttributesFitting(layoutAttributes)
+        if preferredHeight > 0 {
+            attributes.size.height = preferredHeight
+        }
+        return attributes
+    }
+
+    override var intrinsicContentSize: CGSize {
+        guard preferredHeight > 0 else { return super.intrinsicContentSize }
+        return CGSize(width: UIView.noIntrinsicMetric, height: preferredHeight)
     }
 
     private func setupUI() {

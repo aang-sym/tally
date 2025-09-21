@@ -35,6 +35,8 @@ class TVGuide2ViewController: UIViewController {
     private let dateHeaderHeight: CGFloat = 60
     private let rowSpacing: CGFloat = 0
 
+    private var itemHeights: [Item: CGFloat] = [:]
+
     // MARK: - Date Formatting
     private lazy var isoDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -185,7 +187,7 @@ class TVGuide2ViewController: UIViewController {
         let providerSupplementary = NSCollectionLayoutBoundarySupplementaryItem(
             layoutSize: NSCollectionLayoutSize(
                 widthDimension: .absolute(providerColumnWidth),
-                heightDimension: .fractionalHeight(1.0)
+                heightDimension: .estimated(showRowHeight)
             ),
             elementKind: SupplementaryKind.providerLeading,
             alignment: .leading
@@ -214,6 +216,12 @@ class TVGuide2ViewController: UIViewController {
                     expandedContext: expandedContext.map { ($0.date, $0.episode) },
                     viewController: self
                 )
+                cell.setNeedsLayout()
+                cell.layoutIfNeeded()
+                let measuredHeight = cell.contentView.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height
+                if measuredHeight > 0 {
+                    self.itemHeights[item] = max(measuredHeight, self.showRowHeight)
+                }
                 return cell
             }
         }
@@ -229,7 +237,8 @@ class TVGuide2ViewController: UIViewController {
                     for: indexPath
                 ) as! ProviderSupplementaryView
                 let section = self.dataSource.snapshot().sectionIdentifiers[indexPath.section]
-                providerView.configure(with: section.provider)
+                let sectionHeight = self.providerSectionHeight(forSectionAt: indexPath.section)
+                providerView.configure(with: section.provider, preferredHeight: sectionHeight)
                 return providerView
             }
 
@@ -286,6 +295,7 @@ class TVGuide2ViewController: UIViewController {
             print("TVGuide2ViewController: No providers found, showing empty state")
             showEmptyState()
             scrollViewsForSync.removeAllObjects()
+            itemHeights.removeAll()
             dataSource.apply(snapshot, animatingDifferences: true)
             return
         }
@@ -338,6 +348,7 @@ class TVGuide2ViewController: UIViewController {
 
         print("TVGuide2ViewController: Applying snapshot with \(data.providers.count) provider sections")
         expandedEpisodeContexts = expandedEpisodeContexts.filter { $0.key < globalRowIndex }
+        itemHeights = itemHeights.filter { snapshot.indexOfItem($0.key) != nil }
         dataSource.apply(snapshot, animatingDifferences: true)
 
         collectionView.collectionViewLayout.invalidateLayout()
@@ -401,6 +412,35 @@ class TVGuide2ViewController: UIViewController {
 
     private func hideEmptyState() {
         view.subviews.first { $0.tag == 999 }?.removeFromSuperview()
+    }
+
+    private func providerSectionHeight(forSectionAt sectionIndex: Int) -> CGFloat {
+        let snapshot = dataSource.snapshot()
+        guard snapshot.sectionIdentifiers.indices.contains(sectionIndex) else { return showRowHeight }
+
+        let sectionIdentifier = snapshot.sectionIdentifiers[sectionIndex]
+        let items = snapshot.itemIdentifiers(inSection: sectionIdentifier)
+        guard !items.isEmpty else { return showRowHeight }
+
+        let itemsHeight = items.reduce(CGFloat(0)) { partialResult, item in
+            partialResult + (itemHeights[item] ?? showRowHeight)
+        }
+
+        let spacingTotal = rowSpacing * CGFloat(max(items.count - 1, 0))
+        return max(showRowHeight, itemsHeight + spacingTotal)
+    }
+
+    private func invalidateProviderHeight(forSection sectionIndex: Int) {
+        let indexPath = IndexPath(item: 0, section: sectionIndex)
+
+        if let providerView = collectionView.supplementaryView(
+            forElementKind: SupplementaryKind.providerLeading,
+            at: indexPath
+        ) as? ProviderSupplementaryView {
+            providerView.updatePreferredHeight(providerSectionHeight(forSectionAt: sectionIndex))
+        }
+
+        collectionView.collectionViewLayout.invalidateLayout()
     }
 
     private func findEpisode(for show: TVGuide2Show, on date: String) -> TVGuide2Episode? {
@@ -487,6 +527,16 @@ class TVGuide2ViewController: UIViewController {
 
 // MARK: - UICollectionViewDelegate
 extension TVGuide2ViewController: UICollectionViewDelegate {
+    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        guard let item = dataSource.itemIdentifier(for: indexPath) else { return }
+        let newHeight = cell.bounds.height
+        let previousHeight = itemHeights[item] ?? 0
+        if abs(newHeight - previousHeight) > 0.5 {
+            itemHeights[item] = newHeight
+            invalidateProviderHeight(forSection: indexPath.section)
+        }
+    }
+
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         collectionView.deselectItem(at: indexPath, animated: true)
 
