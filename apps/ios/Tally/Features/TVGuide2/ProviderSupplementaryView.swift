@@ -69,6 +69,10 @@ final class ProviderSupplementaryView: UICollectionReusableView {
     }
 
     private func setupUI() {
+        // Lower z-position and transparent background to avoid masking date header
+        layer.zPosition = 0
+        backgroundColor = .clear
+
         backgroundView.translatesAutoresizingMaskIntoConstraints = false
         backgroundView.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.3)
         backgroundView.layer.cornerRadius = 18

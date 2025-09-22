@@ -1,0 +1,448 @@
+{
+  "" : {
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Tally-master.dia",
+    "emit-module-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Tally-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Tally-master-emit-module.dia",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Tally-master.swiftdeps"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/App/Config/Environment.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Environment.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Environment.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Environment.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Environment.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Environment.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Environment.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Environment.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Environment~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Core/Models/Subscription.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Subscription.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Subscription.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Subscription.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Subscription.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Subscription.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Subscription.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Subscription.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Subscription~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Core/Networking/HTTP.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/HTTP.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/HTTP.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/HTTP.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/HTTP.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/HTTP.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/HTTP.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/HTTP.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/HTTP~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Core/Persistence/UserDefaultsStore.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/UserDefaultsStore.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/UserDefaultsStore.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/UserDefaultsStore.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/UserDefaultsStore.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/UserDefaultsStore.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/UserDefaultsStore.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/UserDefaultsStore.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/UserDefaultsStore~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Core/Utilities/DateFormatting.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateFormatting.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateFormatting.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateFormatting.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateFormatting.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateFormatting.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateFormatting.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateFormatting.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateFormatting~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/Auth/AuthViewModel.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/AuthViewModel.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/AuthViewModel.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/AuthViewModel.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/AuthViewModel.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/AuthViewModel.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/AuthViewModel.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/AuthViewModel.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/AuthViewModel~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/Auth/LoginView.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoginView.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoginView.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoginView.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoginView.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoginView.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoginView.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoginView.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoginView~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/Calendar/CalendarView.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarView.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarView.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarView.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarView.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarView.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarView.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarView.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarView~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/Calendar/CalendarViewModel.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarViewModel.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarViewModel.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarViewModel.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarViewModel.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarViewModel.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarViewModel.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarViewModel.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CalendarViewModel~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/Calendar/DayDetailListView.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DayDetailListView.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DayDetailListView.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DayDetailListView.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DayDetailListView.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DayDetailListView.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DayDetailListView.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DayDetailListView.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DayDetailListView~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/Calendar/ProviderLogoView.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderLogoView.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderLogoView.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderLogoView.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderLogoView.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderLogoView.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderLogoView.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderLogoView.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderLogoView~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/Search/SearchView.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchView.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchView.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchView.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchView.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchView.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchView.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchView.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchView~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/Search/SearchViewModel.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchViewModel.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchViewModel.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchViewModel.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchViewModel.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchViewModel.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchViewModel.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchViewModel.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SearchViewModel~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/Settings/SettingsView.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SettingsView.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SettingsView.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SettingsView.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SettingsView.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SettingsView.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SettingsView.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SettingsView.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SettingsView~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/Subscriptions/SubscriptionsView.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsView.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsView.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsView.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsView.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsView.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsView.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsView.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsView~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/Subscriptions/SubscriptionsViewModel.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModel.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModel.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModel.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModel.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModel.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModel.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModel.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModel~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide/Components/ProviderRail.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderRail.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderRail.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderRail.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderRail.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderRail.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderRail.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderRail.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderRail~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide/Components/ShowRail.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRail.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRail.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRail.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRail.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRail.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRail.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRail.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRail~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide/Components/TVGuideHeader.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideHeader.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideHeader.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideHeader.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideHeader.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideHeader.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideHeader.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideHeader.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideHeader~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide/TVGuideView+Helpers.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView+Helpers.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView+Helpers.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView+Helpers.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView+Helpers.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView+Helpers.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView+Helpers.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView+Helpers.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView+Helpers~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide/TVGuideView.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideView~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide/TVGuideViewModel.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideViewModel.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideViewModel.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideViewModel.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideViewModel.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideViewModel.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideViewModel.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideViewModel.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuideViewModel~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide2/DateHeaderCell.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderCell.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderCell.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderCell.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderCell.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderCell.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderCell.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderCell.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderCell~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide2/DateHeaderView.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderView.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderView.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderView.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderView.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderView.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderView.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderView.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/DateHeaderView~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide2/EmptyCell.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EmptyCell.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EmptyCell.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EmptyCell.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EmptyCell.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EmptyCell.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EmptyCell.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EmptyCell.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EmptyCell~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide2/EpisodeCell.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EpisodeCell.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EpisodeCell.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EpisodeCell.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EpisodeCell.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EpisodeCell.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EpisodeCell.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EpisodeCell.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/EpisodeCell~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide2/ProviderCell.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderCell.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderCell.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderCell.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderCell.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderCell.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderCell.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderCell.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderCell~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide2/ProviderSupplementaryView.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderSupplementaryView.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderSupplementaryView.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderSupplementaryView.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderSupplementaryView.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderSupplementaryView.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderSupplementaryView.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderSupplementaryView.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ProviderSupplementaryView~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide2/ShowPosterCell.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowPosterCell.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowPosterCell.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowPosterCell.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowPosterCell.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowPosterCell.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowPosterCell.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowPosterCell.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowPosterCell~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide2/ShowRowCell.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRowCell.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRowCell.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRowCell.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRowCell.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRowCell.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRowCell.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRowCell.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ShowRowCell~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide2/TVGuide2View.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2View.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2View.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2View.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2View.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2View.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2View.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2View.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2View~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/TVGuide2/TVGuide2ViewController.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2ViewController.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2ViewController.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2ViewController.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2ViewController.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2ViewController.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2ViewController.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2ViewController.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TVGuide2ViewController~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/Watchlist/WatchlistView.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistView.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistView.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistView.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistView.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistView.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistView.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistView.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistView~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Features/Watchlist/WatchlistViewModel.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistViewModel.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistViewModel.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistViewModel.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistViewModel.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistViewModel.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistViewModel.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistViewModel.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/WatchlistViewModel~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Services/ApiClient.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClient.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClient.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClient.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClient.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClient.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClient.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClient.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClient~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Services/CountryManager.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CountryManager.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CountryManager.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CountryManager.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CountryManager.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CountryManager.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CountryManager.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CountryManager.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/CountryManager~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Tally/ContentView.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ContentView.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ContentView.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ContentView.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ContentView.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ContentView.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ContentView~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Tally/TallyApp.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TallyApp.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TallyApp.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TallyApp.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TallyApp.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TallyApp.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TallyApp.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TallyApp.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/TallyApp~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Tests/ApiClientTests.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClientTests.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClientTests.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClientTests.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClientTests.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClientTests.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClientTests.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClientTests.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ApiClientTests~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/Tests/SubscriptionsViewModelTests.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModelTests.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModelTests.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModelTests.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModelTests.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModelTests.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModelTests.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModelTests.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/SubscriptionsViewModelTests~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/UI/Components/ErrorBanner.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ErrorBanner.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ErrorBanner.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ErrorBanner.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ErrorBanner.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ErrorBanner.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ErrorBanner.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ErrorBanner.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/ErrorBanner~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/UI/Components/LoadingView.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoadingView.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoadingView.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoadingView.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoadingView.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoadingView.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoadingView.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoadingView.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/LoadingView~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/UI/Theme/Typography.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Typography.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Typography.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Typography.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Typography.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Typography.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Typography.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Typography.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/Typography~partial.swiftmodule"
+  },
+  "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/anguss/dev/tally/apps/ios/Tally/build/Tally.build/Debug-iphoneos/Tally.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}

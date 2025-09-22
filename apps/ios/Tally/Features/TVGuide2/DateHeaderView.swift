@@ -47,11 +47,14 @@ class DateHeaderView: UICollectionReusableView {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
+        print("[TVGuide2] DateHeaderView.init(frame:) called")
         setupUI()
     }
 
     required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+        super.init(coder: coder)
+        print("[TVGuide2] DateHeaderView.init(coder:) called")
+        setupUI()
     }
 
     override func layoutSubviews() {
@@ -61,9 +64,14 @@ class DateHeaderView: UICollectionReusableView {
 
     private func setupUI() {
         backgroundColor = .systemBackground
+        layer.zPosition = 1000
+        layer.borderWidth = 2
+        layer.borderColor = UIColor.systemPink.cgColor
 
         // Setup scroll view for horizontal scrolling (matches row cells)
         scrollView.showsHorizontalScrollIndicator = false
+        if #available(iOS 11.0, *) { scrollView.contentInsetAdjustmentBehavior = .never }
+        scrollView.isUserInteractionEnabled = false // header mirrors content scroll; touch passes to grid
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(scrollView)
 
@@ -124,6 +132,7 @@ class DateHeaderView: UICollectionReusableView {
             separatorView.bottomAnchor.constraint(equalTo: bottomAnchor),
             separatorView.heightAnchor.constraint(equalToConstant: 1)
         ])
+        heightAnchor.constraint(greaterThanOrEqualToConstant: headerHeight).isActive = true
 
         scrollLeadingConstraint = scrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: leadingFrozenWidth)
         scrollLeadingConstraint?.isActive = true
@@ -136,6 +145,7 @@ class DateHeaderView: UICollectionReusableView {
     }
 
     func configure(with dateColumns: [TVGuide2DateColumn], monthText: String?, viewController: TVGuide2ViewController? = nil) {
+        print("[TVGuide2] DateHeaderView.configure dateColumns=\(dateColumns.count) monthText=\(monthText ?? "nil")")
         self.viewController = viewController
 
         updateLeadingConstraints()
@@ -157,7 +167,10 @@ class DateHeaderView: UICollectionReusableView {
 
         // Update content view width based on number of date columns
         let columnCount = max(dateColumns.count, 1)
-        scrollContentWidthConstraint?.constant = CGFloat(columnCount) * dateCellWidth
+        let width = CGFloat(columnCount) * dateCellWidth
+        scrollContentWidthConstraint?.constant = width
+        // Also size the scroll view’s content to ensure it renders immediately
+        scrollView.contentSize = CGSize(width: width, height: headerHeight)
     }
 
     private func createDateHeaderView(for dateColumn: TVGuide2DateColumn) -> UIView {
@@ -193,6 +206,7 @@ class DateHeaderView: UICollectionReusableView {
 
         NSLayoutConstraint.activate([
             dateHeaderView.widthAnchor.constraint(equalToConstant: dateCellWidth),
+            dateHeaderView.heightAnchor.constraint(equalToConstant: headerHeight),
 
             dayLabel.centerXAnchor.constraint(equalTo: dateHeaderView.centerXAnchor),
             dayLabel.centerYAnchor.constraint(equalTo: dateHeaderView.centerYAnchor),
@@ -207,18 +221,27 @@ class DateHeaderView: UICollectionReusableView {
     }
 
     func updateMonthLabel(_ text: String?) {
-        if let text = text, !text.isEmpty {
-            showHeaderLabel.text = text
-            showHeaderLabel.isHidden = false
-        } else {
-            showHeaderLabel.text = nil
-            showHeaderLabel.isHidden = true
-        }
+        let hasText = (text?.isEmpty == false)
+        showHeaderLabel.text = hasText ? text : nil
+        showHeaderLabel.isHidden = !hasText
+        // If provider column width is zero, still reserve some space so month label shows
+        let minLeading: CGFloat = leadingFrozenWidth > 0 ? leadingFrozenWidth - 8 : 64
+        showHeaderWidthConstraint?.constant = max(minLeading, 64)
+        layoutIfNeeded()
     }
 
     private func updateLeadingConstraints() {
-        let constant = leadingFrozenWidth
+        let base = ShowRowCell.frozenLeadingWidth
+        let extra = DateHeaderView.providerColumnWidth
+        let constant = max(0, base + extra)
         scrollLeadingConstraint?.constant = constant
-        showHeaderWidthConstraint?.constant = constant - 8
+        showHeaderWidthConstraint?.constant = max(constant - 8, 64)
+    }
+
+    override func preferredLayoutAttributesFitting(_ layoutAttributes: UICollectionViewLayoutAttributes) -> UICollectionViewLayoutAttributes {
+        let attrs = super.preferredLayoutAttributesFitting(layoutAttributes)
+        attrs.size.height = headerHeight
+        print("[TVGuide2] DateHeaderView preferred size = \(attrs.size)")
+        return attrs
     }
 }

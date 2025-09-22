@@ -53,6 +53,19 @@ class TVGuide2ViewController: UIViewController {
 
     private var currentMonthLabelText: String?
 
+    /// Helper to build date columns and set initial month label, then refresh header
+    private func rebuildDateColumns(from start: String, to end: String) {
+        // Build date columns via existing ApiClient helper
+        self.dateColumns = apiClient.generateDateColumns(from: start, to: end)
+        // Set initial month label based on the first day (if available)
+        if let first = self.dateColumns.first, let d = isoDateFormatter.date(from: first.date) {
+            self.currentMonthLabelText = monthFormatter.string(from: d).uppercased()
+        }
+        // Ensure the global header reconfigures after data arrives
+        collectionView.reloadData()
+        updateVisibleMonthLabels()
+    }
+
     // MARK: - Data Types (Provider-section structure)
     enum Section: Hashable {
         case provider(TVGuide2Provider)
@@ -103,6 +116,9 @@ class TVGuide2ViewController: UIViewController {
         setupUI()
         setupCollectionView()
         setupDataSource()
+        // Set a placeholder month label so the header shows text before data loads
+        let now = Date()
+        self.currentMonthLabelText = monthFormatter.string(from: now).uppercased()
         loadData()
     }
 
@@ -158,6 +174,7 @@ class TVGuide2ViewController: UIViewController {
             alignment: .top
         )
         header.pinToVisibleBounds = true
+        header.zIndex = 1000
         config.boundarySupplementaryItems = [header]
         layout.configuration = config
 
@@ -249,6 +266,8 @@ class TVGuide2ViewController: UIViewController {
                     for: indexPath
                 ) as! DateHeaderView
                 header.configure(with: self.dateColumns, monthText: self.currentMonthLabelText, viewController: self)
+                header.updateMonthLabel(self.currentMonthLabelText)
+                print("[TVGuide2] Dequeued DateHeaderView for indexPath: \(indexPath)")
                 return header
             }
 
@@ -269,9 +288,8 @@ class TVGuide2ViewController: UIViewController {
             do {
                 let data = try await apiClient.getTVGuide2Data()
                 self.tvGuideData = data
-                self.dateColumns = apiClient.generateDateColumns(from: data.startDate, to: data.endDate)
                 self.expandedEpisodeContexts.removeAll()
-                self.updateMonthLabel(forVisibleColumnIndex: 0)
+                self.rebuildDateColumns(from: data.startDate, to: data.endDate)
                 self.updateSnapshot()
                 self.isLoading = false
             } catch {
@@ -350,6 +368,8 @@ class TVGuide2ViewController: UIViewController {
         expandedEpisodeContexts = expandedEpisodeContexts.filter { $0.key < globalRowIndex }
         itemHeights = itemHeights.filter { snapshot.indexOfItem($0.key) != nil }
         dataSource.apply(snapshot, animatingDifferences: true)
+        // Refresh the header view to guarantee it is reconfigured with latest date columns
+        collectionView.reloadData()
 
         collectionView.collectionViewLayout.invalidateLayout()
         collectionView.layoutIfNeeded()
@@ -481,6 +501,7 @@ class TVGuide2ViewController: UIViewController {
         let text = currentMonthLabelText
         let visibleHeaders = collectionView.visibleSupplementaryViews(ofKind: UICollectionView.elementKindSectionHeader)
         visibleHeaders.compactMap { $0 as? DateHeaderView }.forEach { $0.updateMonthLabel(text) }
+        collectionView.collectionViewLayout.invalidateLayout()
     }
 
     @MainActor
