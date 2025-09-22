@@ -65,8 +65,6 @@ class DateHeaderView: UICollectionReusableView {
     private func setupUI() {
         backgroundColor = .systemBackground
         layer.zPosition = 1000
-        layer.borderWidth = 2
-        layer.borderColor = UIColor.systemPink.cgColor
 
         // Setup scroll view for horizontal scrolling (matches row cells)
         scrollView.showsHorizontalScrollIndicator = false

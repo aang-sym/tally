@@ -20,20 +20,18 @@ struct TVGuide2View: UIViewControllerRepresentable {
     }
 }
 
+#if DEBUG
 // MARK: - SwiftUI Preview
 struct TVGuide2View_Previews: PreviewProvider {
+    final class PreviewApiClient: ApiClient {
+        init(previewToken: String = PreviewSecrets.token) {
+            super.init()
+            self.setTokenForPreview(previewToken)
+        }
+    }
+    
     static var previews: some View {
-        TVGuide2View(apiClient: ApiClient.previewClient)
+        TVGuide2View(apiClient: PreviewApiClient())
     }
 }
-
-// MARK: - Preview ApiClient Extension
-extension ApiClient {
-    static var previewClient: ApiClient {
-        let client = ApiClient()
-        #if DEBUG
-        client.setPreviewAuth(token: "preview-token")
-        #endif
-        return client
-    }
-}
+#endif

@@ -35,6 +35,12 @@ class TVGuide2ViewController: UIViewController {
     private let dateHeaderHeight: CGFloat = 60
     private let rowSpacing: CGFloat = 0
 
+    // Calendar window config (anchor on today; allow one week back)
+    private let backfillDays: Int = 7
+    private let forwardDays: Int = 60
+    private var hasSeededInitialOffset = false
+    private var initialContentOffsetX: CGFloat { CGFloat(backfillDays) * ShowRowCell.episodeColumnWidth }
+
     private var itemHeights: [Item: CGFloat] = [:]
 
     // MARK: - Date Formatting
@@ -62,6 +68,33 @@ class TVGuide2ViewController: UIViewController {
             self.currentMonthLabelText = monthFormatter.string(from: d).uppercased()
         }
         // Ensure the global header reconfigures after data arrives
+        collectionView.reloadData()
+        updateVisibleMonthLabels()
+    }
+
+    /// Build date columns anchored on today, with window [today-backfillDays, today+forwardDays]
+    private func rebuildDateColumnsAnchoredOnToday() {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        guard let start = cal.date(byAdding: .day, value: -backfillDays, to: today),
+              let end = cal.date(byAdding: .day, value: forwardDays, to: today) else { return }
+
+        let weekdayFormatter = DateFormatter()
+        weekdayFormatter.dateFormat = "E" // Mon, Tue, etc.
+        let dayNumberFormatter = DateFormatter()
+        dayNumberFormatter.dateFormat = "d" // 1..31
+
+        var cursor = start
+        var cols: [TVGuide2DateColumn] = []
+        while cursor <= end {
+            let ds = isoDateFormatter.string(from: cursor)
+            let dow = weekdayFormatter.string(from: cursor)
+            let dayNum = dayNumberFormatter.string(from: cursor)
+            cols.append(TVGuide2DateColumn(date: ds, dayOfWeek: dow, dayNumber: dayNum))
+            cursor = cal.date(byAdding: .day, value: 1, to: cursor)!
+        }
+        self.dateColumns = cols
+        self.currentMonthLabelText = monthFormatter.string(from: today).uppercased()
         collectionView.reloadData()
         updateVisibleMonthLabels()
     }
@@ -116,9 +149,10 @@ class TVGuide2ViewController: UIViewController {
         setupUI()
         setupCollectionView()
         setupDataSource()
-        // Set a placeholder month label so the header shows text before data loads
+        // Pre-seed month label and columns so header shows immediately
         let now = Date()
         self.currentMonthLabelText = monthFormatter.string(from: now).uppercased()
+        rebuildDateColumnsAnchoredOnToday()
         loadData()
     }
 
@@ -289,7 +323,7 @@ class TVGuide2ViewController: UIViewController {
                 let data = try await apiClient.getTVGuide2Data()
                 self.tvGuideData = data
                 self.expandedEpisodeContexts.removeAll()
-                self.rebuildDateColumns(from: data.startDate, to: data.endDate)
+                self.rebuildDateColumnsAnchoredOnToday()
                 self.updateSnapshot()
                 self.isLoading = false
             } catch {
@@ -374,6 +408,15 @@ class TVGuide2ViewController: UIViewController {
         collectionView.collectionViewLayout.invalidateLayout()
         collectionView.layoutIfNeeded()
         updateVisibleMonthLabels()
+
+        // Seed initial horizontal offset so today is the first visible column
+        if !hasSeededInitialOffset {
+            hasSeededInitialOffset = true
+            for sv in scrollViewsForSync.allObjects {
+                sv.setContentOffset(CGPoint(x: initialContentOffsetX, y: sv.contentOffset.y), animated: false)
+            }
+            updateMonthLabel(forContentOffsetX: initialContentOffsetX)
+        }
     }
 
     private func showEmptyState() {
@@ -712,8 +755,11 @@ extension TVGuide2ViewController: UICollectionViewDelegate {
 
     // MARK: - Scroll Synchronization
     func registerScrollViewForSync(_ scrollView: UIScrollView) {
-        let existingOffset = scrollViewsForSync.allObjects.first?.contentOffset.x ?? scrollView.contentOffset.x
-
+        var baselineOffset = scrollViewsForSync.allObjects.first?.contentOffset.x
+        if baselineOffset == nil {
+            baselineOffset = initialContentOffsetX
+        }
+        let existingOffset = baselineOffset ?? scrollView.contentOffset.x
         if scrollView.contentOffset.x != existingOffset {
             scrollView.setContentOffset(CGPoint(x: existingOffset, y: scrollView.contentOffset.y), animated: false)
         }
