@@ -633,19 +633,32 @@ extension TVGuide2ViewController: UICollectionViewDelegate {
     }
 
     private func showPosterZoom(for show: TVGuide2Show) {
-        // Create poster zoom overlay
-        let overlay = UIView(frame: view.bounds)
-        overlay.backgroundColor = UIColor.black.withAlphaComponent(0.6)
+        let overlay = UIView()
+        overlay.translatesAutoresizingMaskIntoConstraints = false
+        overlay.backgroundColor = .clear
+        overlay.tag = 777
         overlay.alpha = 0
 
+        // Blur background
+        let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialDark))
+        blur.translatesAutoresizingMaskIntoConstraints = false
+        blur.alpha = 0
+        overlay.addSubview(blur)
+
+        // Dim overlay
+        let dim = UIView()
+        dim.translatesAutoresizingMaskIntoConstraints = false
+        dim.backgroundColor = UIColor.black.withAlphaComponent(0.35)
+        dim.alpha = 0
+        overlay.addSubview(dim)
+
+        // Poster
         let posterImageView = UIImageView()
         posterImageView.contentMode = .scaleAspectFit
-        posterImageView.layer.cornerRadius = 12
         posterImageView.clipsToBounds = true
-        posterImageView.backgroundColor = .systemGray6
         posterImageView.translatesAutoresizingMaskIntoConstraints = false
+        posterImageView.isUserInteractionEnabled = true
 
-        // Load poster image
         if let posterPath = show.posterPath, !posterPath.isEmpty {
             loadPosterImageForZoom(posterImageView, from: posterPath)
         }
@@ -654,31 +667,46 @@ extension TVGuide2ViewController: UICollectionViewDelegate {
         view.addSubview(overlay)
 
         NSLayoutConstraint.activate([
+            overlay.topAnchor.constraint(equalTo: view.topAnchor),
+            overlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            overlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            overlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            blur.topAnchor.constraint(equalTo: overlay.topAnchor),
+            blur.leadingAnchor.constraint(equalTo: overlay.leadingAnchor),
+            blur.trailingAnchor.constraint(equalTo: overlay.trailingAnchor),
+            blur.bottomAnchor.constraint(equalTo: overlay.bottomAnchor),
+
+            dim.topAnchor.constraint(equalTo: overlay.topAnchor),
+            dim.leadingAnchor.constraint(equalTo: overlay.leadingAnchor),
+            dim.trailingAnchor.constraint(equalTo: overlay.trailingAnchor),
+            dim.bottomAnchor.constraint(equalTo: overlay.bottomAnchor),
+
             posterImageView.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
             posterImageView.centerYAnchor.constraint(equalTo: overlay.centerYAnchor),
-            posterImageView.widthAnchor.constraint(equalTo: overlay.widthAnchor, multiplier: 0.6),
-            posterImageView.heightAnchor.constraint(equalTo: overlay.heightAnchor, multiplier: 0.8)
+            posterImageView.widthAnchor.constraint(equalTo: overlay.widthAnchor, multiplier: 0.9),
+            posterImageView.heightAnchor.constraint(lessThanOrEqualTo: overlay.heightAnchor, multiplier: 0.9)
         ])
 
-        // Add tap gesture to dismiss
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissPosterZoom))
         overlay.addGestureRecognizer(tapGesture)
 
-        // Add pan gesture for flick to dismiss
         let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePosterPan(_:)))
         posterImageView.addGestureRecognizer(panGesture)
-        posterImageView.isUserInteractionEnabled = true
 
         // Animate in
-        UIView.animate(withDuration: 0.3) {
+        posterImageView.transform = CGAffineTransform(scaleX: 0.96, y: 0.96)
+        UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseOut], animations: {
             overlay.alpha = 1
-        }
+            blur.alpha = 1
+            dim.alpha = 1
+            posterImageView.transform = .identity
+        }, completion: nil)
     }
 
     @objc private func dismissPosterZoom() {
-        guard let overlay = view.subviews.last(where: { $0.backgroundColor == UIColor.black.withAlphaComponent(0.6) }) else { return }
-
-        UIView.animate(withDuration: 0.3, animations: {
+        guard let overlay = view.viewWithTag(777) else { return }
+        UIView.animate(withDuration: 0.25, animations: {
             overlay.alpha = 0
         }) { _ in
             overlay.removeFromSuperview()

@@ -38,6 +38,7 @@ class ShowRowCell: UICollectionViewCell {
     private let scrollContentView = UIView()
     private let episodeStackView = UIStackView()
     private let separatorView = UIView()
+    private var posterAspectConstraint: NSLayoutConstraint?
 
     private let detailContainer = UIView()
     private let detailStackView = UIStackView()
@@ -103,13 +104,17 @@ class ShowRowCell: UICollectionViewCell {
 
         posterImageView.contentMode = .scaleAspectFit
         posterImageView.clipsToBounds = true
-        posterImageView.layer.cornerRadius = 10
-        posterImageView.backgroundColor = .systemGray6
+        posterImageView.layer.cornerRadius = 0
+        posterImageView.backgroundColor = .clear
         posterImageView.translatesAutoresizingMaskIntoConstraints = false
+        posterImageView.layer.borderWidth = 2
+        posterImageView.layer.borderColor = UIColor.blue.cgColor
         mainRowContainer.addSubview(posterImageView)
 
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.layer.borderWidth = 2
+        scrollView.layer.borderColor = UIColor.blue.cgColor
         mainRowContainer.addSubview(scrollView)
 
         scrollContentView.translatesAutoresizingMaskIntoConstraints = false
@@ -128,7 +133,6 @@ class ShowRowCell: UICollectionViewCell {
         NSLayoutConstraint.activate([
             posterImageView.leadingAnchor.constraint(equalTo: mainRowContainer.leadingAnchor, constant: ShowRowCell.horizontalPadding),
             posterImageView.centerYAnchor.constraint(equalTo: mainRowContainer.centerYAnchor),
-            posterImageView.widthAnchor.constraint(equalToConstant: ShowRowCell.posterWidth),
 
             scrollView.leadingAnchor.constraint(equalTo: posterImageView.trailingAnchor, constant: ShowRowCell.horizontalPadding),
             scrollView.topAnchor.constraint(equalTo: mainRowContainer.topAnchor),
@@ -151,9 +155,18 @@ class ShowRowCell: UICollectionViewCell {
             separatorView.bottomAnchor.constraint(equalTo: mainRowContainer.bottomAnchor),
             separatorView.heightAnchor.constraint(equalToConstant: 1)
         ])
+        // Width derives from height × aspect; start with a 2:3 placeholder
+        posterAspectConstraint?.isActive = false
+        posterAspectConstraint = posterImageView.widthAnchor.constraint(equalTo: posterImageView.heightAnchor, multiplier: 2.0/3.0)
+        posterAspectConstraint?.priority = .required
+        posterAspectConstraint?.isActive = true
 
-        posterHeightConstraint = posterImageView.heightAnchor.constraint(equalToConstant: ShowRowCell.baseRowHeight - ShowRowCell.posterVerticalPadding * 2)
-        posterHeightConstraint?.priority = .defaultHigh
+        // Tie poster height to the actual row height so the poster and row stay aligned
+        posterHeightConstraint = posterImageView.heightAnchor.constraint(
+            equalTo: mainRowContainer.heightAnchor,
+            constant: -ShowRowCell.posterVerticalPadding * 2
+        )
+        posterHeightConstraint?.priority = .required
         posterHeightConstraint?.isActive = true
 
         scrollContentWidthConstraint = scrollContentView.widthAnchor.constraint(equalToConstant: 0)
@@ -396,6 +409,21 @@ class ShowRowCell: UICollectionViewCell {
         viewController?.toggleEpisodeExpansion(for: rowData, on: dateColumn.date)
     }
 
+    private func updatePosterAspect(for image: UIImage?) {
+        let defaultAspect: CGFloat = 2.0/3.0
+        let aspect: CGFloat
+        if let img = image, img.size.height > 0 {
+            aspect = img.size.width / img.size.height
+        } else {
+            aspect = defaultAspect
+        }
+        posterAspectConstraint?.isActive = false
+        let new = posterImageView.widthAnchor.constraint(equalTo: posterImageView.heightAnchor, multiplier: aspect)
+        new.priority = .required
+        new.isActive = true
+        posterAspectConstraint = new
+    }
+
     private func loadPosterImage(from path: String?) {
         posterImageView.image = UIImage(systemName: "photo")
 
@@ -409,6 +437,9 @@ class ShowRowCell: UICollectionViewCell {
                     await MainActor.run {
                         guard self.currentShowRowData?.show.posterPath == path else { return }
                         self.posterImageView.image = image
+                        self.updatePosterAspect(for: image)
+                        self.setNeedsLayout()
+                        self.layoutIfNeeded()
                     }
                 }
             } catch {

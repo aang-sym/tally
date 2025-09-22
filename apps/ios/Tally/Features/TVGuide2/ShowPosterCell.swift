@@ -28,9 +28,8 @@ class ShowPosterCell: UICollectionViewCell {
 
         // Poster image
         posterImageView.contentMode = .scaleAspectFit
-        posterImageView.layer.cornerRadius = 6
+        posterImageView.layer.cornerRadius = 0
         posterImageView.clipsToBounds = true
-        posterImageView.backgroundColor = .systemGray6
         posterImageView.translatesAutoresizingMaskIntoConstraints = false
 
         // Title label
@@ -44,26 +43,26 @@ class ShowPosterCell: UICollectionViewCell {
         separatorView.backgroundColor = .separator
         separatorView.translatesAutoresizingMaskIntoConstraints = false
 
-        addSubview(posterImageView)
-        addSubview(titleLabel)
-        addSubview(separatorView)
+        contentView.addSubview(posterImageView)
+        contentView.addSubview(titleLabel)
+        contentView.addSubview(separatorView)
 
         NSLayoutConstraint.activate([
             // Poster on left side
-            posterImageView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            posterImageView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            posterImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 8),
+            posterImageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
             posterImageView.widthAnchor.constraint(equalToConstant: 45),
             posterImageView.heightAnchor.constraint(equalToConstant: 60),
 
             // Title to the right of poster
             titleLabel.leadingAnchor.constraint(equalTo: posterImageView.trailingAnchor, constant: 8),
             titleLabel.trailingAnchor.constraint(equalTo: separatorView.leadingAnchor, constant: -8),
-            titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            titleLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
 
             // Separator on right edge
-            separatorView.topAnchor.constraint(equalTo: topAnchor),
-            separatorView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            separatorView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            separatorView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            separatorView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            separatorView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
             separatorView.widthAnchor.constraint(equalToConstant: 1)
         ])
     }

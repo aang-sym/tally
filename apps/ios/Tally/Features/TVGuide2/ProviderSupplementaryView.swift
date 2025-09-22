@@ -72,6 +72,9 @@ final class ProviderSupplementaryView: UICollectionReusableView {
         // Lower z-position and transparent background to avoid masking date header
         layer.zPosition = 0
         backgroundColor = .clear
+        // Red debug border to outline the provider column
+        layer.borderWidth = 2
+        layer.borderColor = UIColor.red.cgColor
 
         backgroundView.translatesAutoresizingMaskIntoConstraints = false
         backgroundView.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.3)
