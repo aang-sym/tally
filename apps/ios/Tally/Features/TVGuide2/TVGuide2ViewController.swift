@@ -161,11 +161,26 @@ class TVGuide2ViewController: UIViewController {
         title = "TV Guide"
         view.backgroundColor = .systemBackground
 
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
+        // Add buttons for refresh and vertical layout toggle
+        let refreshButton = UIBarButtonItem(
             barButtonSystemItem: .refresh,
             target: self,
             action: #selector(refreshData)
         )
+
+        let verticalButton = UIBarButtonItem(
+            image: UIImage(systemName: "rectangle.split.1x3"),
+            style: .plain,
+            target: self,
+            action: #selector(switchToVerticalLayout)
+        )
+
+        navigationItem.rightBarButtonItems = [refreshButton, verticalButton]
+    }
+
+    @objc private func switchToVerticalLayout() {
+        let verticalGuide = TVGuideVertViewController(apiClient: apiClient)
+        navigationController?.pushViewController(verticalGuide, animated: true)
     }
 
     private func setupCollectionView() {
