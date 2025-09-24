@@ -31,17 +31,6 @@ class DateHeaderView: UICollectionReusableView {
     private let headerStackView = UIStackView()
     private let showHeaderLabel = UILabel()
     private let separatorView = UIView()
-    private lazy var flipButton: UIButton = {
-        let b = UIButton(type: .system)
-        if #available(iOS 13.0, *) {
-            b.setImage(UIImage(systemName: "arrow.triangle.2.circlepath"), for: .normal)
-        } else {
-            b.setTitle("Flip", for: .normal)
-        }
-        b.tintColor = .label
-        b.translatesAutoresizingMaskIntoConstraints = false
-        return b
-    }()
     private var scrollContentWidthConstraint: NSLayoutConstraint?
     private var scrollLeadingConstraint: NSLayoutConstraint?
     private var showHeaderWidthConstraint: NSLayoutConstraint?
@@ -110,8 +99,6 @@ class DateHeaderView: UICollectionReusableView {
         separatorView.backgroundColor = .separator
         separatorView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(separatorView)
-        // Add Flip button on the right
-        addSubview(flipButton)
 
         NSLayoutConstraint.activate([
             // Scroll view constraints (starts after poster column)
@@ -141,13 +128,7 @@ class DateHeaderView: UICollectionReusableView {
             separatorView.leadingAnchor.constraint(equalTo: leadingAnchor),
             separatorView.trailingAnchor.constraint(equalTo: trailingAnchor),
             separatorView.bottomAnchor.constraint(equalTo: bottomAnchor),
-            separatorView.heightAnchor.constraint(equalToConstant: 1),
-
-            // Flip button constraints
-            flipButton.centerYAnchor.constraint(equalTo: centerYAnchor),
-            flipButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-            flipButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            flipButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
+            separatorView.heightAnchor.constraint(equalToConstant: 1)
         ])
         heightAnchor.constraint(greaterThanOrEqualToConstant: headerHeight).isActive = true
 
@@ -188,12 +169,6 @@ class DateHeaderView: UICollectionReusableView {
         scrollContentWidthConstraint?.constant = width
         // Also size the scroll view’s content to ensure it renders immediately
         scrollView.contentSize = CGSize(width: width, height: headerHeight)
-
-        // Wire Flip button to the owning view controller if provided
-        flipButton.removeTarget(nil, action: nil, for: .allEvents)
-        if let vc = viewController {
-            flipButton.addTarget(vc, action: #selector(TVGuide2ViewController.flipMode), for: .touchUpInside)
-        }
     }
 
     private func createDateHeaderView(for dateColumn: TVGuide2DateColumn) -> UIView {

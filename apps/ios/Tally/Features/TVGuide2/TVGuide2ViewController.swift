@@ -18,13 +18,6 @@ class TVGuide2ViewController: UIViewController {
     private var isLoading = false
     private var scrollViewsForSync = NSHashTable<UIScrollView>.weakObjects()
 
-    private enum GuideMode: String {
-        case horizontal, vertical
-    }
-
-    private let modeKey = "tvguide2.mode.v1"
-    private var mode: GuideMode = .horizontal
-
     private struct ExpandedEpisodeContext {
         let date: String
         let episode: TVGuide2Episode
@@ -34,7 +27,6 @@ class TVGuide2ViewController: UIViewController {
 
     private enum SupplementaryKind {
         static let providerLeading = "provider.leading"
-        static let dayHeader = "day.header"
     }
 
     // MARK: - Layout Constants
@@ -47,9 +39,7 @@ class TVGuide2ViewController: UIViewController {
     private let backfillDays: Int = 7
     private let forwardDays: Int = 60
     private var hasSeededInitialOffset = false
-    private var initialContentOffsetX: CGFloat {
-        CGFloat(backfillDays) * ShowRowCell.episodeColumnWidth
-    }
+    private var initialContentOffsetX: CGFloat { CGFloat(backfillDays) * ShowRowCell.episodeColumnWidth }
 
     private var itemHeights: [Item: CGFloat] = [:]
 
@@ -87,13 +77,12 @@ class TVGuide2ViewController: UIViewController {
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
         guard let start = cal.date(byAdding: .day, value: -backfillDays, to: today),
-            let end = cal.date(byAdding: .day, value: forwardDays, to: today)
-        else { return }
+              let end = cal.date(byAdding: .day, value: forwardDays, to: today) else { return }
 
         let weekdayFormatter = DateFormatter()
-        weekdayFormatter.dateFormat = "E"  // Mon, Tue, etc.
+        weekdayFormatter.dateFormat = "E" // Mon, Tue, etc.
         let dayNumberFormatter = DateFormatter()
-        dayNumberFormatter.dateFormat = "d"  // 1..31
+        dayNumberFormatter.dateFormat = "d" // 1..31
 
         var cursor = start
         var cols: [TVGuide2DateColumn] = []
@@ -113,14 +102,11 @@ class TVGuide2ViewController: UIViewController {
     // MARK: - Data Types (Provider-section structure)
     enum Section: Hashable {
         case provider(TVGuide2Provider)
-        case day(String)  // yyyy-MM-dd for vertical mode
 
         var provider: TVGuide2Provider {
             switch self {
             case .provider(let provider):
                 return provider
-            case .day:
-                return TVGuide2Provider(id: -1, name: "", logoPath: nil, shows: [])
             }
         }
     }
@@ -132,7 +118,7 @@ class TVGuide2ViewController: UIViewController {
     // Represents one show row: poster + episodes across dates
     struct ShowRowData: Hashable {
         let show: TVGuide2Show
-        let episodes: [String: TVGuide2Episode]  // [date: episode]
+        let episodes: [String: TVGuide2Episode] // [date: episode]
         let rowIndex: Int
         let provider: TVGuide2Provider
 
@@ -160,11 +146,6 @@ class TVGuide2ViewController: UIViewController {
     // MARK: - Lifecycle
     override func viewDidLoad() {
         super.viewDidLoad()
-        if let saved = UserDefaults.standard.string(forKey: modeKey),
-            let savedMode = GuideMode(rawValue: saved)
-        {
-            mode = savedMode
-        }
         setupUI()
         setupCollectionView()
         setupDataSource()
@@ -180,21 +161,15 @@ class TVGuide2ViewController: UIViewController {
         title = "TV Guide"
         view.backgroundColor = .systemBackground
 
-        let flipButton = UIBarButtonItem(
-            image: UIImage(
-                systemName: mode == .horizontal ? "rectangle.split.3x1" : "rectangle.split.1x3"),
-            style: .plain,
+        navigationItem.rightBarButtonItem = UIBarButtonItem(
+            barButtonSystemItem: .refresh,
             target: self,
-            action: #selector(flipMode)
+            action: #selector(refreshData)
         )
-        navigationItem.rightBarButtonItem = flipButton
     }
 
     private func setupCollectionView() {
-        collectionView = UICollectionView(
-            frame: .zero,
-            collectionViewLayout: (mode == .horizontal
-                ? makeHorizontalLayout() : makeVerticalLayout()))
+        collectionView = UICollectionView(frame: .zero, collectionViewLayout: createLayout())
         collectionView.translatesAutoresizingMaskIntoConstraints = false
         collectionView.backgroundColor = .systemBackground
         collectionView.delegate = self
@@ -205,41 +180,16 @@ class TVGuide2ViewController: UIViewController {
             collectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
         // Register cells and headers
-        collectionView.register(
-            ShowRowCell.self, forCellWithReuseIdentifier: ShowRowCell.identifier)
-        collectionView.register(
-            DateHeaderView.self,
-            forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader,
-            withReuseIdentifier: DateHeaderView.identifier)
-        collectionView.register(
-            ProviderSupplementaryView.self,
-            forSupplementaryViewOfKind: SupplementaryKind.providerLeading,
-            withReuseIdentifier: ProviderSupplementaryView.reuseIdentifier)
-        // Register day header for vertical mode
-        collectionView.register(
-            UICollectionReusableView.self,
-            forSupplementaryViewOfKind: SupplementaryKind.dayHeader,
-            withReuseIdentifier: "DayHeader")
-        // Dummy registrations for fallback
-        collectionView.register(
-            UICollectionReusableView.self,
-            forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader,
-            withReuseIdentifier: "DummyHeader")
-        collectionView.register(
-            UICollectionReusableView.self,
-            forSupplementaryViewOfKind: SupplementaryKind.providerLeading,
-            withReuseIdentifier: "DummyProvider")
-        collectionView.register(
-            UICollectionReusableView.self,
-            forSupplementaryViewOfKind: SupplementaryKind.dayHeader,
-            withReuseIdentifier: "DummyDayHeader")
+        collectionView.register(ShowRowCell.self, forCellWithReuseIdentifier: ShowRowCell.identifier)
+        collectionView.register(DateHeaderView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader, withReuseIdentifier: DateHeaderView.identifier)
+        collectionView.register(ProviderSupplementaryView.self, forSupplementaryViewOfKind: SupplementaryKind.providerLeading, withReuseIdentifier: ProviderSupplementaryView.reuseIdentifier)
     }
 
-    private func createLayout() -> UICollectionViewCompositionalLayout {
+    private func createLayout() -> UICollectionViewLayout {
         DateHeaderView.providerColumnWidth = providerColumnWidth
         let layout = UICollectionViewCompositionalLayout { [weak self] sectionIndex, environment in
             guard let self = self else { return nil }
@@ -282,8 +232,7 @@ class TVGuide2ViewController: UIViewController {
 
         let section = NSCollectionLayoutSection(group: group)
         section.interGroupSpacing = rowSpacing
-        section.contentInsets = NSDirectionalEdgeInsets(
-            top: 0, leading: providerColumnWidth, bottom: 0, trailing: 0)
+        section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: providerColumnWidth, bottom: 0, trailing: 0)
         section.supplementariesFollowContentInsets = false
 
         let providerSupplementary = NSCollectionLayoutBoundarySupplementaryItem(
@@ -305,16 +254,12 @@ class TVGuide2ViewController: UIViewController {
 
     // MARK: - Data Source
     private func setupDataSource() {
-        dataSource = UICollectionViewDiffableDataSource<Section, Item>(
-            collectionView: collectionView
-        ) { [weak self] collectionView, indexPath, item in
+        dataSource = UICollectionViewDiffableDataSource<Section, Item>(collectionView: collectionView) { [weak self] collectionView, indexPath, item in
             guard let self = self else { return UICollectionViewCell() }
 
             switch item {
             case .showRow(let showRowData):
-                let cell =
-                    collectionView.dequeueReusableCell(
-                        withReuseIdentifier: ShowRowCell.identifier, for: indexPath) as! ShowRowCell
+                let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ShowRowCell.identifier, for: indexPath) as! ShowRowCell
                 let expandedContext = self.expandedEpisodeContexts[showRowData.rowIndex]
                 cell.configure(
                     with: showRowData,
@@ -324,9 +269,7 @@ class TVGuide2ViewController: UIViewController {
                 )
                 cell.setNeedsLayout()
                 cell.layoutIfNeeded()
-                let measuredHeight = cell.contentView.systemLayoutSizeFitting(
-                    UIView.layoutFittingCompressedSize
-                ).height
+                let measuredHeight = cell.contentView.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height
                 if measuredHeight > 0 {
                     self.itemHeights[item] = max(measuredHeight, self.showRowHeight)
                 }
@@ -336,79 +279,33 @@ class TVGuide2ViewController: UIViewController {
 
         // Configure supplementary view provider for headers only
         dataSource.supplementaryViewProvider = { [weak self] collectionView, kind, indexPath in
-            guard let self = self else {
-                return collectionView.dequeueReusableSupplementaryView(
-                    ofKind: kind,
-                    withReuseIdentifier: kind == SupplementaryKind.providerLeading
-                        ? "DummyProvider"
-                        : (kind == SupplementaryKind.dayHeader ? "DummyDayHeader" : "DummyHeader"),
-                    for: indexPath
-                )
-            }
+            guard let self = self else { return nil }
 
-            if kind == SupplementaryKind.providerLeading, self.mode == .horizontal {
-                let providerView =
-                    collectionView.dequeueReusableSupplementaryView(
-                        ofKind: kind,
-                        withReuseIdentifier: ProviderSupplementaryView.reuseIdentifier,
-                        for: indexPath
-                    ) as! ProviderSupplementaryView
+            if kind == SupplementaryKind.providerLeading {
+                let providerView = collectionView.dequeueReusableSupplementaryView(
+                    ofKind: kind,
+                    withReuseIdentifier: ProviderSupplementaryView.reuseIdentifier,
+                    for: indexPath
+                ) as! ProviderSupplementaryView
                 let section = self.dataSource.snapshot().sectionIdentifiers[indexPath.section]
                 let sectionHeight = self.providerSectionHeight(forSectionAt: indexPath.section)
                 providerView.configure(with: section.provider, preferredHeight: sectionHeight)
                 return providerView
             }
 
-            if kind == UICollectionView.elementKindSectionHeader, self.mode == .horizontal {
-                let header =
-                    collectionView.dequeueReusableSupplementaryView(
-                        ofKind: kind,
-                        withReuseIdentifier: DateHeaderView.identifier,
-                        for: indexPath
-                    ) as! DateHeaderView
-                header.configure(
-                    with: self.dateColumns, monthText: self.currentMonthLabelText,
-                    viewController: self)
+            if kind == UICollectionView.elementKindSectionHeader {
+                let header = collectionView.dequeueReusableSupplementaryView(
+                    ofKind: kind,
+                    withReuseIdentifier: DateHeaderView.identifier,
+                    for: indexPath
+                ) as! DateHeaderView
+                header.configure(with: self.dateColumns, monthText: self.currentMonthLabelText, viewController: self)
                 header.updateMonthLabel(self.currentMonthLabelText)
+                print("[TVGuide2] Dequeued DateHeaderView for indexPath: \(indexPath)")
                 return header
             }
 
-            if kind == SupplementaryKind.dayHeader, self.mode == .vertical {
-                let headerView = collectionView.dequeueReusableSupplementaryView(
-                    ofKind: kind,
-                    withReuseIdentifier: "DayHeader",
-                    for: indexPath
-                )
-                headerView.subviews.forEach { $0.removeFromSuperview() }
-                let label = UILabel(frame: headerView.bounds.insetBy(dx: 16, dy: 0))
-                label.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-                label.font = .systemFont(ofSize: 18, weight: .semibold)
-                label.textColor = .label
-
-                let sectionId = self.dataSource.snapshot().sectionIdentifiers[indexPath.section]
-                switch sectionId {
-                case .day(let dateString):
-                    if let date = self.isoDateFormatter.date(from: dateString) {
-                        let df = DateFormatter()
-                        df.dateFormat = "EEEE, MMM d"
-                        label.text = df.string(from: date)
-                    } else {
-                        label.text = dateString
-                    }
-                default:
-                    label.text = ""
-                }
-
-                headerView.addSubview(label)
-                return headerView
-            }
-
-            let reuse =
-                (kind == SupplementaryKind.providerLeading)
-                ? "DummyProvider"
-                : (kind == SupplementaryKind.dayHeader ? "DummyDayHeader" : "DummyHeader")
-            return collectionView.dequeueReusableSupplementaryView(
-                ofKind: kind, withReuseIdentifier: reuse, for: indexPath)
+            return nil
         }
     }
 
@@ -494,20 +391,14 @@ class TVGuide2ViewController: UIViewController {
                 providerShowRows.append(.showRow(showRowData))
                 globalRowIndex += 1
 
-                print(
-                    "TVGuide2ViewController: Adding show row for \(show.title) in provider section \(provider.name) with \(show.episodes.count) episodes"
-                )
+                print("TVGuide2ViewController: Adding show row for \(show.title) in provider section \(provider.name) with \(show.episodes.count) episodes")
             }
 
             snapshot.appendItems(providerShowRows, toSection: providerSection)
-            print(
-                "TVGuide2ViewController: Created section for \(provider.name) with \(providerShowRows.count) shows"
-            )
+            print("TVGuide2ViewController: Created section for \(provider.name) with \(providerShowRows.count) shows")
         }
 
-        print(
-            "TVGuide2ViewController: Applying snapshot with \(data.providers.count) provider sections"
-        )
+        print("TVGuide2ViewController: Applying snapshot with \(data.providers.count) provider sections")
         expandedEpisodeContexts = expandedEpisodeContexts.filter { $0.key < globalRowIndex }
         itemHeights = itemHeights.filter { snapshot.indexOfItem($0.key) != nil }
         dataSource.apply(snapshot, animatingDifferences: true)
@@ -522,8 +413,7 @@ class TVGuide2ViewController: UIViewController {
         if !hasSeededInitialOffset {
             hasSeededInitialOffset = true
             for sv in scrollViewsForSync.allObjects {
-                sv.setContentOffset(
-                    CGPoint(x: initialContentOffsetX, y: sv.contentOffset.y), animated: false)
+                sv.setContentOffset(CGPoint(x: initialContentOffsetX, y: sv.contentOffset.y), animated: false)
             }
             updateMonthLabel(forContentOffsetX: initialContentOffsetX)
         }
@@ -552,8 +442,7 @@ class TVGuide2ViewController: UIViewController {
         titleLabel.textAlignment = .center
 
         let messageLabel = UILabel()
-        messageLabel.text =
-            "No upcoming episodes found for your watching shows in the selected date range."
+        messageLabel.text = "No upcoming episodes found for your watching shows in the selected date range."
         messageLabel.font = .systemFont(ofSize: 14)
         messageLabel.textColor = .secondaryLabel
         messageLabel.textAlignment = .center
@@ -574,16 +463,14 @@ class TVGuide2ViewController: UIViewController {
 
             stackView.centerXAnchor.constraint(equalTo: emptyStateView.centerXAnchor),
             stackView.centerYAnchor.constraint(equalTo: emptyStateView.centerYAnchor),
-            stackView.leadingAnchor.constraint(
-                greaterThanOrEqualTo: emptyStateView.leadingAnchor, constant: 32),
-            stackView.trailingAnchor.constraint(
-                lessThanOrEqualTo: emptyStateView.trailingAnchor, constant: -32),
+            stackView.leadingAnchor.constraint(greaterThanOrEqualTo: emptyStateView.leadingAnchor, constant: 32),
+            stackView.trailingAnchor.constraint(lessThanOrEqualTo: emptyStateView.trailingAnchor, constant: -32),
 
             imageView.widthAnchor.constraint(equalToConstant: 80),
-            imageView.heightAnchor.constraint(equalToConstant: 80),
+            imageView.heightAnchor.constraint(equalToConstant: 80)
         ])
 
-        emptyStateView.tag = 999  // Tag for easy removal
+        emptyStateView.tag = 999 // Tag for easy removal
     }
 
     private func hideEmptyState() {
@@ -592,9 +479,7 @@ class TVGuide2ViewController: UIViewController {
 
     private func providerSectionHeight(forSectionAt sectionIndex: Int) -> CGFloat {
         let snapshot = dataSource.snapshot()
-        guard snapshot.sectionIdentifiers.indices.contains(sectionIndex) else {
-            return showRowHeight
-        }
+        guard snapshot.sectionIdentifiers.indices.contains(sectionIndex) else { return showRowHeight }
 
         let sectionIdentifier = snapshot.sectionIdentifiers[sectionIndex]
         let items = snapshot.itemIdentifiers(inSection: sectionIdentifier)
@@ -657,8 +542,7 @@ class TVGuide2ViewController: UIViewController {
     @MainActor
     private func updateVisibleMonthLabels() {
         let text = currentMonthLabelText
-        let visibleHeaders = collectionView.visibleSupplementaryViews(
-            ofKind: UICollectionView.elementKindSectionHeader)
+        let visibleHeaders = collectionView.visibleSupplementaryViews(ofKind: UICollectionView.elementKindSectionHeader)
         visibleHeaders.compactMap { $0 as? DateHeaderView }.forEach { $0.updateMonthLabel(text) }
         collectionView.collectionViewLayout.invalidateLayout()
     }
@@ -670,9 +554,7 @@ class TVGuide2ViewController: UIViewController {
         let rowIndex = showRowData.rowIndex
         let isCurrentlyExpanded = expandedEpisodeContexts[rowIndex]?.date == date
 
-        print(
-            "[TVGuide2] toggleEpisodeExpansion rowIndex=\(rowIndex) show=\(showRowData.show.title) date=\(date) expanding=\(!isCurrentlyExpanded)"
-        )
+        print("[TVGuide2] toggleEpisodeExpansion rowIndex=\(rowIndex) show=\(showRowData.show.title) date=\(date) expanding=\(!isCurrentlyExpanded)")
 
         if isCurrentlyExpanded {
             expandedEpisodeContexts.removeValue(forKey: rowIndex)
@@ -695,88 +577,21 @@ class TVGuide2ViewController: UIViewController {
         updateVisibleMonthLabels()
 
         if !isCurrentlyExpanded,
-            let refreshedIndexPath = dataSource.indexPath(for: item)
-        {
-            collectionView.scrollToItem(
-                at: refreshedIndexPath, at: .centeredVertically, animated: true)
+           let refreshedIndexPath = dataSource.indexPath(for: item) {
+            collectionView.scrollToItem(at: refreshedIndexPath, at: .centeredVertically, animated: true)
         }
     }
 
     private func showError(_ error: Error) {
-        let alert = UIAlertController(
-            title: "Error", message: error.localizedDescription, preferredStyle: .alert)
+        let alert = UIAlertController(title: "Error", message: error.localizedDescription, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
-    }
-
-    @objc func flipMode() {
-        mode = (mode == .horizontal) ? .vertical : .horizontal
-        UserDefaults.standard.set(mode.rawValue, forKey: modeKey)
-
-        let newLayout = (mode == .horizontal) ? makeHorizontalLayout() : makeVerticalLayout()
-        collectionView.setCollectionViewLayout(newLayout, animated: true)
-
-        // update button icon
-        navigationItem.rightBarButtonItem?.image = UIImage(
-            systemName: mode == .horizontal ? "rectangle.split.3x1" : "rectangle.split.1x3"
-        )
-    }
-
-    private func makeHorizontalLayout() -> UICollectionViewCompositionalLayout {
-        return createLayout()  // reuse existing
-    }
-
-    private func makeVerticalLayout() -> UICollectionViewCompositionalLayout {
-        // Each section is a day, each item is a show (vertical list per day)
-        let layout = UICollectionViewCompositionalLayout { [weak self] sectionIndex, environment in
-            guard let self = self else { return nil }
-
-            // Item: one show cell per row
-            let itemSize = NSCollectionLayoutSize(
-                widthDimension: .fractionalWidth(1.0),
-                heightDimension: .absolute(self.showRowHeight)
-            )
-            let item = NSCollectionLayoutItem(layoutSize: itemSize)
-            item.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8)
-
-            // Group: vertical group, one item per row
-            let groupSize = NSCollectionLayoutSize(
-                widthDimension: .fractionalWidth(1.0),
-                heightDimension: .estimated(self.showRowHeight * 10)
-            )
-            let group = NSCollectionLayoutGroup.vertical(layoutSize: groupSize, subitems: [item])
-            group.interItemSpacing = .fixed(8)
-
-            // Section: represents a day
-            let section = NSCollectionLayoutSection(group: group)
-            section.interGroupSpacing = 8
-            section.contentInsets = NSDirectionalEdgeInsets(
-                top: 16, leading: 0, bottom: 16, trailing: 0)
-
-            // Add boundary supplementary for day header
-            let headerSize = NSCollectionLayoutSize(
-                widthDimension: .fractionalWidth(1.0),
-                heightDimension: .absolute(44)
-            )
-            let header = NSCollectionLayoutBoundarySupplementaryItem(
-                layoutSize: headerSize,
-                elementKind: SupplementaryKind.dayHeader,
-                alignment: .top
-            )
-            section.boundarySupplementaryItems = [header]
-            return section
-        }
-        return layout
     }
 }
 
 // MARK: - UICollectionViewDelegate
-
 extension TVGuide2ViewController: UICollectionViewDelegate {
-    func collectionView(
-        _ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell,
-        forItemAt indexPath: IndexPath
-    ) {
+    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
         guard let item = dataSource.itemIdentifier(for: indexPath) else { return }
         let newHeight = cell.bounds.height
         let previousHeight = itemHeights[item] ?? 0
@@ -805,15 +620,12 @@ extension TVGuide2ViewController: UICollectionViewDelegate {
 
     private func handleEpisodeTap(episode: TVGuide2Episode) {
         // Show episode details
-        let alert = UIAlertController(
-            title: episode.title, message: episode.overview ?? "Summary unavailable",
-            preferredStyle: .alert)
+        let alert = UIAlertController(title: episode.title, message: episode.overview ?? "Summary unavailable", preferredStyle: .alert)
 
         if !episode.isWatched {
-            alert.addAction(
-                UIAlertAction(title: "Mark as Watched", style: .default) { [weak self] _ in
-                    self?.markEpisodeAsWatched(episode)
-                })
+            alert.addAction(UIAlertAction(title: "Mark as Watched", style: .default) { [weak self] _ in
+                self?.markEpisodeAsWatched(episode)
+            })
         }
 
         alert.addAction(UIAlertAction(title: "Close", style: .cancel))
@@ -873,45 +685,37 @@ extension TVGuide2ViewController: UICollectionViewDelegate {
             posterImageView.centerXAnchor.constraint(equalTo: overlay.centerXAnchor),
             posterImageView.centerYAnchor.constraint(equalTo: overlay.centerYAnchor),
             posterImageView.widthAnchor.constraint(equalTo: overlay.widthAnchor, multiplier: 0.9),
-            posterImageView.heightAnchor.constraint(
-                lessThanOrEqualTo: overlay.heightAnchor, multiplier: 0.9),
+            posterImageView.heightAnchor.constraint(lessThanOrEqualTo: overlay.heightAnchor, multiplier: 0.9)
         ])
 
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(dismissPosterZoom))
         overlay.addGestureRecognizer(tapGesture)
 
-        let panGesture = UIPanGestureRecognizer(
-            target: self, action: #selector(handlePosterPan(_:)))
+        let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePosterPan(_:)))
         posterImageView.addGestureRecognizer(panGesture)
 
         // Animate in
         posterImageView.transform = CGAffineTransform(scaleX: 0.96, y: 0.96)
-        UIView.animate(
-            withDuration: 0.25, delay: 0, options: [.curveEaseOut],
-            animations: {
-                overlay.alpha = 1
-                blur.alpha = 1
-                dim.alpha = 1
-                posterImageView.transform = .identity
-            }, completion: nil)
+        UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseOut], animations: {
+            overlay.alpha = 1
+            blur.alpha = 1
+            dim.alpha = 1
+            posterImageView.transform = .identity
+        }, completion: nil)
     }
 
     @objc private func dismissPosterZoom() {
         guard let overlay = view.viewWithTag(777) else { return }
-        UIView.animate(
-            withDuration: 0.25,
-            animations: {
-                overlay.alpha = 0
-            }
-        ) { _ in
+        UIView.animate(withDuration: 0.25, animations: {
+            overlay.alpha = 0
+        }) { _ in
             overlay.removeFromSuperview()
         }
     }
 
     @objc private func handlePosterPan(_ gesture: UIPanGestureRecognizer) {
         guard let posterView = gesture.view,
-            let overlay = posterView.superview
-        else { return }
+              let overlay = posterView.superview else { return }
 
         let translation = gesture.translation(in: overlay)
         let velocity = gesture.velocity(in: overlay)
@@ -921,16 +725,12 @@ extension TVGuide2ViewController: UICollectionViewDelegate {
             posterView.transform = CGAffineTransform(translationX: translation.x, y: translation.y)
         case .ended:
             let magnitude = sqrt(velocity.x * velocity.x + velocity.y * velocity.y)
-            if magnitude > 500 {  // Fast flick
+            if magnitude > 500 { // Fast flick
                 // Animate out in direction of flick
-                UIView.animate(
-                    withDuration: 0.3,
-                    animations: {
-                        posterView.transform = CGAffineTransform(
-                            translationX: translation.x * 3, y: translation.y * 3)
-                        overlay.alpha = 0
-                    }
-                ) { _ in
+                UIView.animate(withDuration: 0.3, animations: {
+                    posterView.transform = CGAffineTransform(translationX: translation.x * 3, y: translation.y * 3)
+                    overlay.alpha = 0
+                }) { _ in
                     overlay.removeFromSuperview()
                 }
             } else {
@@ -980,6 +780,7 @@ extension TVGuide2ViewController: UICollectionViewDelegate {
         }
     }
 
+
     // MARK: - Scroll Synchronization
     func registerScrollViewForSync(_ scrollView: UIScrollView) {
         var baselineOffset = scrollViewsForSync.allObjects.first?.contentOffset.x
@@ -988,8 +789,7 @@ extension TVGuide2ViewController: UICollectionViewDelegate {
         }
         let existingOffset = baselineOffset ?? scrollView.contentOffset.x
         if scrollView.contentOffset.x != existingOffset {
-            scrollView.setContentOffset(
-                CGPoint(x: existingOffset, y: scrollView.contentOffset.y), animated: false)
+            scrollView.setContentOffset(CGPoint(x: existingOffset, y: scrollView.contentOffset.y), animated: false)
         }
 
         if !scrollViewsForSync.allObjects.contains(where: { $0 === scrollView }) {
