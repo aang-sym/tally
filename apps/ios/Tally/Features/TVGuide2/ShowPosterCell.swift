@@ -11,8 +11,9 @@ class ShowPosterCell: UICollectionViewCell {
     static let identifier = "ShowPosterCell"
 
     enum DisplaySize {
-        case row    // Horizontal row layout (original)
-        case grid   // Vertical grid layout (new)
+        case row       // Horizontal row layout (original)
+        case grid      // Vertical grid layout (new)
+        case poster    // Static posters row (no text, no badge)
     }
 
     private let posterImageView = UIImageView()
@@ -36,17 +37,17 @@ class ShowPosterCell: UICollectionViewCell {
     }
 
     private func setupUI() {
-        backgroundColor = .black // Dark theme for grid mode
+        backgroundColor = .systemBackground // Light theme
 
         // Poster image
         posterImageView.contentMode = .scaleAspectFit
-        posterImageView.layer.cornerRadius = 8
+        posterImageView.layer.cornerRadius = 0 // Square corners to match horizontal guide
         posterImageView.clipsToBounds = true
         posterImageView.translatesAutoresizingMaskIntoConstraints = false
 
         // Title label
         titleLabel.font = .systemFont(ofSize: 11, weight: .medium)
-        titleLabel.textColor = .white // Dark theme
+        titleLabel.textColor = .label // Light theme
         titleLabel.numberOfLines = 2
         titleLabel.textAlignment = .center
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -128,8 +129,8 @@ class ShowPosterCell: UICollectionViewCell {
         contentView.addSubview(titleLabel)
         contentView.addSubview(episodeBadge)
 
-        posterWidthConstraint = posterImageView.widthAnchor.constraint(equalToConstant: 90)
-        posterHeightConstraint = posterImageView.heightAnchor.constraint(equalToConstant: 120)
+        posterWidthConstraint = posterImageView.widthAnchor.constraint(equalToConstant: TVGV.posterWidth)
+        posterHeightConstraint = posterImageView.heightAnchor.constraint(equalToConstant: TVGV.posterWidth * TVGV.posterAspect)
         titleTopConstraint = titleLabel.topAnchor.constraint(equalTo: posterImageView.bottomAnchor, constant: 4)
 
         NSLayoutConstraint.activate([
@@ -155,23 +156,60 @@ class ShowPosterCell: UICollectionViewCell {
         episodeBadge.isHidden = false
     }
 
+    private func setupPosterLayout() {
+        currentSize = .poster
+
+        // Clear existing constraints
+        contentView.subviews.forEach { $0.removeFromSuperview() }
+
+        // Only add poster image for static posters row
+        contentView.addSubview(posterImageView)
+
+        posterWidthConstraint = posterImageView.widthAnchor.constraint(equalToConstant: TVGV.posterWidth)
+        posterHeightConstraint = posterImageView.heightAnchor.constraint(equalToConstant: TVGV.posterWidth * TVGV.posterAspect)
+
+        NSLayoutConstraint.activate([
+            // Poster centered in cell
+            posterImageView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
+            posterImageView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
+            posterWidthConstraint!,
+            posterHeightConstraint!
+        ])
+
+        // Hide all other elements
+        separatorView.isHidden = true
+        episodeBadge.isHidden = true
+    }
+
     func configure(with show: TVGuide2Show, episode: TVGuide2Episode? = nil, size: DisplaySize = .row) {
         if currentSize != size {
-            if size == .grid {
+            switch size {
+            case .grid:
                 setupGridLayout()
-            } else {
+            case .poster:
+                setupPosterLayout()
+            case .row:
                 setupRowLayout()
             }
         }
 
-        titleLabel.text = show.title
+        // Only show title for row and grid layouts (not for static posters)
+        if size != .poster {
+            titleLabel.text = show.title
+        }
 
-        // Configure episode badge for grid layout
+        // Configure episode badge for grid layout only
         if let episode = episode, size == .grid {
             episodeBadge.text = " S\(episode.seasonNumber)E\(episode.episodeNumber) "
             episodeBadge.isHidden = false
         } else {
             episodeBadge.isHidden = true
+        }
+
+        // Set accessibility label for static posters (since no text is shown)
+        if size == .poster {
+            accessibilityLabel = show.title
+            accessibilityHint = "Show poster"
         }
 
         // Load poster image
@@ -213,7 +251,10 @@ class ShowPosterCell: UICollectionViewCell {
             imageSize = CGSize(width: 45, height: 60)
             fontSize = 10
         case .grid:
-            imageSize = CGSize(width: 90, height: 120)
+            imageSize = CGSize(width: TVGV.posterWidth, height: TVGV.posterWidth * TVGV.posterAspect)
+            fontSize = 14
+        case .poster:
+            imageSize = CGSize(width: TVGV.posterWidth, height: TVGV.posterWidth * TVGV.posterAspect)
             fontSize = 14
         }
 
@@ -245,6 +286,27 @@ class ShowPosterCell: UICollectionViewCell {
 
             displayText.draw(in: textRect, withAttributes: attributes)
         }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if TVGV.debugBordersEnabled {
+            contentView.layer.borderColor = TVGV.debugPosterColor
+            contentView.layer.borderWidth = 0.5
+
+            // Add debug border to poster image
+            posterImageView.layer.cornerRadius = 0 // per spec: no rounded corners
+            posterImageView.clipsToBounds = true
+            posterImageView.layer.borderColor = TVGV.debugPosterColor
+            posterImageView.layer.borderWidth = 0.5
+        } else {
+            contentView.layer.borderWidth = 0.0
+            posterImageView.layer.borderWidth = 0.0
+        }
+
+        // Debug border for poster cells alignment
+        layer.borderColor = UIColor.green.cgColor
+        layer.borderWidth = 1
     }
 
     override func prepareForReuse() {

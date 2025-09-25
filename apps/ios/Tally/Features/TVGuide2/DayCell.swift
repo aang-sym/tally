@@ -1,7 +1,7 @@
 import UIKit
 
-class DaySupplementaryView: UICollectionViewCell {
-    static let identifier = "DaySupplementaryView"
+class TVG2DayCell: UICollectionViewCell {
+    static let identifier = "TVG2DayCell"
 
     // MARK: - UI Elements
     private let dayNumberLabel = UILabel()
@@ -21,12 +21,18 @@ class DaySupplementaryView: UICollectionViewCell {
     }
 
     private func setupUI() {
-        backgroundColor = .black // Dark theme
+        backgroundColor = .systemBackground // Light theme
+        contentView.backgroundColor = .clear // Avoid painting over the header
         layer.cornerRadius = 0
+
+        // Remove all hidden offsets
+        contentView.layoutMargins = .zero
+        contentView.directionalLayoutMargins = .zero
+        contentView.insetsLayoutMarginsFromSafeArea = false
 
         // Day number label
         dayNumberLabel.font = .systemFont(ofSize: 24, weight: .semibold)
-        dayNumberLabel.textColor = .white // Dark theme
+        dayNumberLabel.textColor = .label // Light theme
         dayNumberLabel.textAlignment = .center
         dayNumberLabel.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(dayNumberLabel)
@@ -47,9 +53,9 @@ class DaySupplementaryView: UICollectionViewCell {
         contentView.addSubview(episodeCountLabel)
 
         NSLayoutConstraint.activate([
-            // Day number - centered
+            // Day number - positioned at top of cell without offset
             dayNumberLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
-            dayNumberLabel.centerYAnchor.constraint(equalTo: contentView.centerYAnchor, constant: -8),
+            dayNumberLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 4),
 
             // Episode dot - below day number
             episodeDot.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
@@ -81,11 +87,31 @@ class DaySupplementaryView: UICollectionViewCell {
         if isToday {
             dayNumberLabel.textColor = .systemBlue
             dayNumberLabel.font = .systemFont(ofSize: 24, weight: .bold)
-            backgroundColor = .systemBlue.withAlphaComponent(0.2) // More visible on dark
+            backgroundColor = .systemBlue.withAlphaComponent(0.1) // Light theme highlight
         } else {
-            dayNumberLabel.textColor = .white // Dark theme
+            dayNumberLabel.textColor = .label // Light theme
             dayNumberLabel.font = .systemFont(ofSize: 24, weight: .semibold)
-            backgroundColor = .black // Dark theme
+            backgroundColor = .systemBackground // Light theme
+        }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if TVGV.debugBordersEnabled {
+            layer.borderColor = TVGV.debugHeaderColor
+            layer.borderWidth = 0.5
+        } else {
+            layer.borderWidth = 0.0
+        }
+
+        // Debug border for day rail cell alignment
+        contentView.layer.borderColor = UIColor.blue.cgColor
+        contentView.layer.borderWidth = 1
+
+        // Debug frame logging for first few cells
+        if let dayText = dayNumberLabel.text, let dayNum = Int(dayText), dayNum <= 20 {
+            print("🔵 TVG2DayCell (\(dayText)) frame: \(frame), top Y: \(frame.minY)")
+            print("🔵 TVG2DayCell (\(dayText)) contentView frame: \(contentView.frame)")
         }
     }
 
@@ -93,8 +119,8 @@ class DaySupplementaryView: UICollectionViewCell {
         super.prepareForReuse()
         episodeDot.isHidden = true
         episodeCountLabel.isHidden = true
-        dayNumberLabel.textColor = .white // Dark theme
+        dayNumberLabel.textColor = .label // Light theme
         dayNumberLabel.font = .systemFont(ofSize: 24, weight: .semibold)
-        backgroundColor = .black // Dark theme
+        backgroundColor = .systemBackground // Light theme
     }
 }

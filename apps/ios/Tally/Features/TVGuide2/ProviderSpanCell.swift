@@ -1,17 +1,19 @@
 //
-//  ProviderCell.swift
+//  ProviderSpanCell.swift
 //  Tally
 //
-//  Created by Angus Symons on 12/9/2025.
+//  Created by Angus Symons on 24/9/2025.
 //
 
 import UIKit
 
-class ProviderCell: UICollectionViewCell {
-    static let identifier = "ProviderCell"
+class ProviderSpanCell: UICollectionViewCell {
+    static let identifier = "ProviderSpanCell"
 
     private let logoImageView = UIImageView()
-    private let separatorView = UIView()
+
+    // Dynamic width constraint that can be updated based on span
+    private var logoWidthConstraint: NSLayoutConstraint!
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -32,29 +34,27 @@ class ProviderCell: UICollectionViewCell {
         logoImageView.backgroundColor = .clear
         logoImageView.translatesAutoresizingMaskIntoConstraints = false
 
-        // Separator
-        separatorView.backgroundColor = .separator
-        separatorView.translatesAutoresizingMaskIntoConstraints = false
-
         addSubview(logoImageView)
-        addSubview(separatorView)
+
+        // Store reference to width constraint for dynamic resizing
+        logoWidthConstraint = logoImageView.widthAnchor.constraint(equalToConstant: 48)
 
         NSLayoutConstraint.activate([
-            // Logo centered - larger for header cell
+            // Logo centered
             logoImageView.centerXAnchor.constraint(equalTo: centerXAnchor),
             logoImageView.centerYAnchor.constraint(equalTo: centerYAnchor),
-            logoImageView.widthAnchor.constraint(equalToConstant: 48),
-            logoImageView.heightAnchor.constraint(equalToConstant: 48),
-
-            // Separator on right
-            separatorView.topAnchor.constraint(equalTo: topAnchor),
-            separatorView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            separatorView.bottomAnchor.constraint(equalTo: bottomAnchor),
-            separatorView.widthAnchor.constraint(equalToConstant: 1)
+            logoWidthConstraint,
+            logoImageView.heightAnchor.constraint(equalToConstant: 48)
         ])
     }
 
-    func configure(with provider: TVGuide2Provider, span: Int = 1) {
+    func configure(with providerSpan: Any) {
+        // Type casting since we can't import the ViewController's nested struct here
+        guard let spanMirror = Mirror(reflecting: providerSpan).children.first?.value,
+              let provider = Mirror(reflecting: spanMirror).children.first(where: { $0.label == "provider" })?.value as? TVGuide2Provider else {
+            return
+        }
+
         // Load provider logo
         if let logoPath = provider.logoPath, !logoPath.isEmpty {
             loadImage(from: logoPath)
@@ -62,6 +62,10 @@ class ProviderCell: UICollectionViewCell {
             // Fallback to first letter of provider name
             logoImageView.image = createPlaceholderImage(for: provider.name)
         }
+
+        // Set accessibility label since we removed text labels
+        accessibilityLabel = provider.name
+        accessibilityHint = "Provider logo"
     }
 
     private func loadImage(from path: String) {
@@ -88,7 +92,7 @@ class ProviderCell: UICollectionViewCell {
     }
 
     private func createPlaceholderImage(for name: String) -> UIImage? {
-        let size = CGSize(width: 40, height: 40)
+        let size = CGSize(width: 48, height: 48)
         let renderer = UIGraphicsImageRenderer(size: size)
 
         return renderer.image { context in
@@ -99,7 +103,7 @@ class ProviderCell: UICollectionViewCell {
             // First letter
             let firstLetter = String(name.prefix(1)).uppercased()
             let attributes: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: 16, weight: .semibold),
+                .font: UIFont.systemFont(ofSize: 18, weight: .semibold),
                 .foregroundColor: UIColor.label
             ]
 
@@ -139,5 +143,11 @@ class ProviderCell: UICollectionViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         logoImageView.image = nil
+    }
+
+    override func preferredLayoutAttributesFitting(_ layoutAttributes: UICollectionViewLayoutAttributes) -> UICollectionViewLayoutAttributes {
+        // Allow the cell to dynamically size based on provider span width
+        let attributes = super.preferredLayoutAttributesFitting(layoutAttributes)
+        return attributes
     }
 }

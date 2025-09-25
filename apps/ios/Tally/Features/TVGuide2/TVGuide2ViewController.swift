@@ -248,7 +248,14 @@ class TVGuide2ViewController: UIViewController {
         let section = NSCollectionLayoutSection(group: group)
         section.interGroupSpacing = rowSpacing
         section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: providerColumnWidth, bottom: 0, trailing: 0)
-        section.supplementariesFollowContentInsets = false
+        if #available(iOS 16.0, *) {
+            // On this SDK, `boundarySupplementaryItemsFollowContentInsets` is unavailable.
+            // We rely on `providerSupplementary.extendsBoundary = true` below to keep headers outside section insets.
+            // No call needed here.
+        } else {
+            // iOS 15 and earlier
+            section.supplementariesFollowContentInsets = false
+        }
 
         let providerSupplementary = NSCollectionLayoutBoundarySupplementaryItem(
             layoutSize: NSCollectionLayoutSize(

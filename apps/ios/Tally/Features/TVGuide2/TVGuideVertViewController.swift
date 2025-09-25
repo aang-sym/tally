@@ -9,12 +9,22 @@ class TVGuideVertViewController: UIViewController {
     // Data
     private var tvGuideData: TVGuide2Data?
     private var dateColumns: [TVGuide2DateColumn] = []
-    private var providers: [TVGuide2Provider] = []
 
-    // Data sources
+    // New flattened structure for columns
+    private var showColumns: [ShowColumn] = []
+    private var providerSpans: [ViewControllerProviderSpan] = []
+
+    // MARK: - Day Rail Item Types
+    enum DayRailItem: Hashable {
+        case spacer
+        case date(TVGuide2DateColumn)
+    }
+
+    // Data sources for 3-rail system
     private var gridDataSource: UICollectionViewDiffableDataSource<Int, GridItem>!
-    private var providerHeaderDataSource: UICollectionViewDiffableDataSource<Int, TVGuide2Provider>!
-    private var dayRailDataSource: UICollectionViewDiffableDataSource<Int, TVGuide2DateColumn>!
+    private var providerHeaderDataSource: UICollectionViewDiffableDataSource<Int, ViewControllerProviderSpan>!
+    private var postersRowDataSource: UICollectionViewDiffableDataSource<Int, ShowColumn>!
+    private var dayRailDataSource: UICollectionViewDiffableDataSource<Int, DayRailItem>!
 
     // Date formatting
     private lazy var isoDateFormatter: DateFormatter = {
@@ -35,21 +45,58 @@ class TVGuideVertViewController: UIViewController {
     private let forwardDays: Int = 60
 
     // Mapping helpers
-    private var providerToColumnMap: [Int: Int] = [:]
     private var dateToRowMap: [String: Int] = [:]
+
+    // Inline expansion
+    private var expandedDayIndex: Int? = nil
+    private let expandedRowHeight: CGFloat = 160 // Height when expanded
 
     // MARK: - Data Types
 
+    // Show column represents one column in the grid (one show)
+    struct ShowColumn: Hashable {
+        let show: TVGuide2Show
+        let provider: TVGuide2Provider
+        let columnIndex: Int
+
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(show.id)
+            hasher.combine(columnIndex)
+        }
+
+        static func == (lhs: ShowColumn, rhs: ShowColumn) -> Bool {
+            return lhs.show.id == rhs.show.id && lhs.columnIndex == rhs.columnIndex
+        }
+    }
+
+    // Provider span for merged header cells
+    struct ViewControllerProviderSpan: Hashable {
+        let provider: TVGuide2Provider
+        let startColumn: Int
+        let endColumn: Int
+        let showCount: Int
+
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(provider.id)
+            hasher.combine(startColumn)
+            hasher.combine(endColumn)
+        }
+
+        static func == (lhs: ViewControllerProviderSpan, rhs: ViewControllerProviderSpan) -> Bool {
+            return lhs.provider.id == rhs.provider.id && lhs.startColumn == rhs.startColumn && lhs.endColumn == rhs.endColumn
+        }
+    }
+
     enum GridItem: Hashable {
         case empty(id: String)
-        case episode(show: TVGuide2Show, episode: TVGuide2Episode, provider: TVGuide2Provider)
+        case episodeBadge(show: TVGuide2Show, episode: TVGuide2Episode, columnIndex: Int)
 
         var id: String {
             switch self {
             case .empty(let id):
                 return id
-            case .episode(let show, let episode, _):
-                return "\(show.id)-\(episode.id)"
+            case .episodeBadge(let show, let episode, let columnIndex):
+                return "\(show.id)-\(episode.id)-\(columnIndex)"
             }
         }
     }
@@ -89,7 +136,7 @@ class TVGuideVertViewController: UIViewController {
 
     private func setupUI() {
         title = "TV Guide (Vertical)"
-        view.backgroundColor = .black // Dark theme
+        view.backgroundColor = .systemBackground // Light theme
 
         let refreshButton = UIBarButtonItem(
             barButtonSystemItem: .refresh,
@@ -119,18 +166,51 @@ class TVGuideVertViewController: UIViewController {
             return self?.configureGridCell(collectionView, indexPath: indexPath, item: item)
         }
 
-        // Provider header data source
-        providerHeaderDataSource = UICollectionViewDiffableDataSource<Int, TVGuide2Provider>(
+        // Provider header data source (now using ProviderSpan)
+        providerHeaderDataSource = UICollectionViewDiffableDataSource<Int, ViewControllerProviderSpan>(
             collectionView: tvGuideView.providerHeaderCollectionView
-        ) { [weak self] collectionView, indexPath, provider in
-            return self?.configureProviderHeaderCell(collectionView, indexPath: indexPath, provider: provider)
+        ) { [weak self] collectionView, indexPath, providerSpan in
+            return self?.configureProviderHeaderCell(collectionView, indexPath: indexPath, providerSpan: providerSpan)
+        }
+
+        // Static posters row data source
+        postersRowDataSource = UICollectionViewDiffableDataSource<Int, ShowColumn>(
+            collectionView: tvGuideView.postersRowCollectionView
+        ) { [weak self] collectionView, indexPath, showColumn in
+            return self?.configurePostersRowCell(collectionView, indexPath: indexPath, showColumn: showColumn)
         }
 
         // Day rail data source
-        dayRailDataSource = UICollectionViewDiffableDataSource<Int, TVGuide2DateColumn>(
+        dayRailDataSource = UICollectionViewDiffableDataSource<Int, DayRailItem>(
             collectionView: tvGuideView.dayRailCollectionView
-        ) { [weak self] collectionView, indexPath, dateColumn in
-            return self?.configureDayRailCell(collectionView, indexPath: indexPath, dateColumn: dateColumn)
+        ) { [weak self] collectionView, indexPath, item in
+            guard let self = self else {
+                assertionFailure("Self is nil in day rail data source")
+                let fallbackCell = collectionView.dequeueReusableCell(withReuseIdentifier: "SpacerCell", for: indexPath)
+                return fallbackCell
+            }
+
+            switch item {
+            case .spacer:
+                return self.configureSpacerCell(collectionView, indexPath: indexPath)
+            case .date(let dateColumn):
+                return self.configureDayCell(collectionView, indexPath: indexPath, dateColumn: dateColumn)
+            }
+        }
+
+        // Provide the month header supplementary
+        dayRailDataSource.supplementaryViewProvider = { [weak self] collectionView, kind, indexPath in
+            guard kind == MonthHeaderView.elementKind,
+                  let header = collectionView.dequeueReusableSupplementaryView(
+                      ofKind: MonthHeaderView.elementKind,
+                      withReuseIdentifier: MonthHeaderView.reuseID,
+                      for: indexPath
+                  ) as? MonthHeaderView,
+                  let month = self?.tvGuideView.monthText else {
+                return UICollectionReusableView()
+            }
+            header.configure(monthText: month)
+            return header
         }
 
         // Register cell types
@@ -138,32 +218,49 @@ class TVGuideVertViewController: UIViewController {
     }
 
     private func registerCellTypes() {
-        // Grid cells - reuse ShowPosterCell from horizontal version
+        // Grid cells - use EpisodeBadgeCell for episode badges
         tvGuideView.gridCollectionView.register(
-            ShowPosterCell.self,
-            forCellWithReuseIdentifier: ShowPosterCell.identifier
+            EpisodeBadgeCell.self,
+            forCellWithReuseIdentifier: EpisodeBadgeCell.identifier
         )
         tvGuideView.gridCollectionView.register(
             UICollectionViewCell.self,
             forCellWithReuseIdentifier: "EmptyCell"
         )
 
-        // Provider header cells - reuse ProviderSupplementaryView as cell
+        // Provider header cells - use ProviderSpanCell for merged cells
+        tvGuideView.providerHeaderCollectionView.register(
+            ProviderSpanCell.self,
+            forCellWithReuseIdentifier: ProviderSpanCell.identifier
+        )
         tvGuideView.providerHeaderCollectionView.register(
             ProviderCell.self,
-            forCellWithReuseIdentifier: "ProviderCell"
+            forCellWithReuseIdentifier: ProviderCell.identifier
+        )
+
+        // Static posters row cells - use ShowPosterCell in poster mode
+        tvGuideView.postersRowCollectionView.register(
+            ShowPosterCell.self,
+            forCellWithReuseIdentifier: ShowPosterCell.identifier
         )
 
         // Day rail cells
         tvGuideView.dayRailCollectionView.register(
-            DaySupplementaryView.self,
-            forCellWithReuseIdentifier: DaySupplementaryView.identifier
+            TVG2DayCell.self,
+            forCellWithReuseIdentifier: TVG2DayCell.identifier
+        )
+
+        // Day rail spacer cells
+        tvGuideView.dayRailCollectionView.register(
+            UICollectionViewCell.self,
+            forCellWithReuseIdentifier: "SpacerCell"
         )
     }
 
     private func setupScrollViewDelegates() {
         tvGuideView.gridCollectionView.delegate = self
         tvGuideView.providerHeaderCollectionView.delegate = self
+        tvGuideView.postersRowCollectionView.delegate = self
         tvGuideView.dayRailCollectionView.delegate = self
     }
 
@@ -229,19 +326,61 @@ class TVGuideVertViewController: UIViewController {
     private func updateMappings() {
         guard let data = tvGuideData else { return }
 
-        // Build provider-to-column mapping
-        providerToColumnMap.removeAll()
-        for (index, provider) in data.providers.enumerated() {
-            providerToColumnMap[provider.id] = index
-        }
-
-        providers = data.providers
+        // Build flattened show columns and provider spans
+        buildShowColumnsAndProviderSpans(with: data)
+        tvGuideView.setProviderSpans(convertToLayoutProviderSpans(providerSpans))
 
         // Update layouts with actual dimensions
         tvGuideView.updateLayouts(
-            columnCount: data.providers.count,
+            columnCount: showColumns.count,
             rowCount: dateColumns.count
         )
+    }
+
+    private func buildShowColumnsAndProviderSpans(with data: TVGuide2Data) {
+        showColumns.removeAll()
+        providerSpans.removeAll()
+
+        var columnIndex = 0
+
+        for provider in data.providers {
+            let startColumn = columnIndex
+
+            // Add a column for each show in this provider
+            for show in provider.shows {
+                let showColumn = ShowColumn(
+                    show: show,
+                    provider: provider,
+                    columnIndex: columnIndex
+                )
+                showColumns.append(showColumn)
+                columnIndex += 1
+            }
+
+            let endColumn = columnIndex - 1
+
+            // Create provider span (merged cell)
+            if !provider.shows.isEmpty {
+                let providerSpan = ViewControllerProviderSpan(
+                    provider: provider,
+                    startColumn: startColumn,
+                    endColumn: endColumn,
+                    showCount: provider.shows.count
+                )
+                providerSpans.append(providerSpan)
+            }
+        }
+
+        print("Built \(showColumns.count) show columns and \(providerSpans.count) provider spans")
+    }
+
+    private func convertToLayoutProviderSpans(_ spans: [ViewControllerProviderSpan]) -> [ProviderSpan] {
+        return spans.map { span in
+            ProviderSpan(
+                startColumn: span.startColumn,
+                endColumn: span.endColumn
+            )
+        }
     }
 
     // MARK: - Cell Configuration
@@ -251,30 +390,57 @@ class TVGuideVertViewController: UIViewController {
         case .empty:
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "EmptyCell", for: indexPath)
             cell.backgroundColor = .clear
+
+            // Add debug border to empty cells
+            if TVGV.debugBordersEnabled {
+                cell.contentView.layer.borderColor = TVGV.debugGridColor
+                cell.contentView.layer.borderWidth = 0.25
+            } else {
+                cell.contentView.layer.borderWidth = 0.0
+            }
             return cell
 
-        case .episode(let show, let episode, _):
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ShowPosterCell.identifier, for: indexPath) as! ShowPosterCell
-
-            // Configure for grid display (smaller size)
-            cell.configure(
-                with: show,
-                episode: episode,
-                size: .grid // Will need to add this size option
-            )
-
+        case .episodeBadge(let show, let episode, _):
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: EpisodeBadgeCell.identifier, for: indexPath) as! EpisodeBadgeCell
+            cell.configure(with: episode, show: show)
             return cell
         }
     }
 
-    private func configureProviderHeaderCell(_ collectionView: UICollectionView, indexPath: IndexPath, provider: TVGuide2Provider) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "ProviderCell", for: indexPath) as! ProviderCell
-        cell.configure(with: provider)
+    private func configureProviderHeaderCell(_ collectionView: UICollectionView, indexPath: IndexPath, providerSpan: ViewControllerProviderSpan) -> UICollectionViewCell {
+        if providerSpan.showCount > 1 {
+            // Multiple shows - use ProviderSpanCell for merged display
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ProviderSpanCell.identifier, for: indexPath) as! ProviderSpanCell
+            cell.configure(with: providerSpan)
+            return cell
+        } else {
+            // Single show - use regular ProviderCell
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ProviderCell.identifier, for: indexPath) as! ProviderCell
+            cell.configure(with: providerSpan.provider)
+            return cell
+        }
+    }
+
+    private func configurePostersRowCell(_ collectionView: UICollectionView, indexPath: IndexPath, showColumn: ShowColumn) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ShowPosterCell.identifier, for: indexPath) as! ShowPosterCell
+        cell.configure(with: showColumn.show, size: .poster)
         return cell
     }
 
-    private func configureDayRailCell(_ collectionView: UICollectionView, indexPath: IndexPath, dateColumn: TVGuide2DateColumn) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: DaySupplementaryView.identifier, for: indexPath) as! DaySupplementaryView
+    private func configureSpacerCell(_ collectionView: UICollectionView, indexPath: IndexPath) -> UICollectionViewCell {
+        // Properly dequeue spacer cell with registered identifier
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "SpacerCell", for: indexPath)
+        cell.backgroundColor = .clear
+        cell.isHidden = true  // Make it completely invisible
+        return cell
+    }
+
+    private func configureDayCell(_ collectionView: UICollectionView, indexPath: IndexPath, dateColumn: TVGuide2DateColumn) -> UICollectionViewCell {
+        guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: TVG2DayCell.identifier, for: indexPath) as? TVG2DayCell else {
+            assertionFailure("Failed to dequeue TVG2DayCell with identifier: \(TVG2DayCell.identifier)")
+            // Return a basic cell as fallback to prevent crashes
+            return collectionView.dequeueReusableCell(withReuseIdentifier: "SpacerCell", for: indexPath)
+        }
 
         // Calculate episode count for this day
         let episodeCount = calculateEpisodeCount(for: dateColumn.date)
@@ -313,10 +479,21 @@ extension TVGuideVertViewController {
     private func updateSnapshots() {
         guard let data = tvGuideData else { return }
 
+        // First build the flattened show columns and provider spans
+        buildShowColumnsAndProviderSpans(with: data)
+        tvGuideView.setProviderSpans(convertToLayoutProviderSpans(providerSpans))
+
+        // Then update all collection view snapshots
         updateGridSnapshot(with: data)
-        updateProviderHeaderSnapshot(with: data)
+        updateProviderHeaderSnapshot()
+        updatePostersRowSnapshot()
         updateDayRailSnapshot()
         updateTodayIndicator()
+
+        // Update collection view layouts with new dimensions
+        let columnCount = showColumns.count
+        let rowCount = dateColumns.count
+        tvGuideView.updateLayouts(columnCount: columnCount, rowCount: rowCount)
     }
 
     private func updateGridSnapshot(with data: TVGuide2Data) {
@@ -325,12 +502,12 @@ extension TVGuideVertViewController {
 
         var gridItems: [GridItem] = []
 
-        // Populate grid in row-major order (days x providers)
+        // Populate grid in row-major order (days x show columns)
         for (rowIndex, dateColumn) in dateColumns.enumerated() {
-            for (columnIndex, provider) in data.providers.enumerated() {
+            for (columnIndex, showColumn) in showColumns.enumerated() {
                 let gridItem = createGridItem(
                     for: dateColumn.date,
-                    provider: provider,
+                    showColumn: showColumn,
                     row: rowIndex,
                     column: columnIndex
                 )
@@ -342,30 +519,52 @@ extension TVGuideVertViewController {
         gridDataSource.apply(snapshot, animatingDifferences: false)
     }
 
-    private func updateProviderHeaderSnapshot(with data: TVGuide2Data) {
-        var snapshot = NSDiffableDataSourceSnapshot<Int, TVGuide2Provider>()
+    private func updateProviderHeaderSnapshot() {
+        var snapshot = NSDiffableDataSourceSnapshot<Int, ViewControllerProviderSpan>()
         snapshot.appendSections([0])
-        snapshot.appendItems(data.providers, toSection: 0)
+        snapshot.appendItems(providerSpans, toSection: 0)
         providerHeaderDataSource.apply(snapshot, animatingDifferences: false)
     }
 
-    private func updateDayRailSnapshot() {
-        var snapshot = NSDiffableDataSourceSnapshot<Int, TVGuide2DateColumn>()
+    private func updatePostersRowSnapshot() {
+        var snapshot = NSDiffableDataSourceSnapshot<Int, ShowColumn>()
         snapshot.appendSections([0])
-        snapshot.appendItems(dateColumns, toSection: 0)
+        snapshot.appendItems(showColumns, toSection: 0)
+        postersRowDataSource.apply(snapshot, animatingDifferences: false)
+    }
+
+    private func updateDayRailSnapshot() {
+        var snapshot = NSDiffableDataSourceSnapshot<Int, DayRailItem>()
+        snapshot.appendSections([0])
+
+        // Add spacer as first item
+        var items: [DayRailItem] = [.spacer]
+
+        // Add date columns with safety check
+        guard !dateColumns.isEmpty else {
+            assertionFailure("dateColumns is empty when creating day rail snapshot")
+            // Still apply empty snapshot to avoid crashes
+            snapshot.appendItems(items, toSection: 0)
+            dayRailDataSource.apply(snapshot, animatingDifferences: false)
+            return
+        }
+
+        for dateColumn in dateColumns {
+            items.append(.date(dateColumn))
+        }
+
+        snapshot.appendItems(items, toSection: 0)
         dayRailDataSource.apply(snapshot, animatingDifferences: false)
     }
 
-    private func createGridItem(for date: String, provider: TVGuide2Provider, row: Int, column: Int) -> GridItem {
-        // Search for an episode on this date for this provider
-        for show in provider.shows {
-            if let episode = show.episodes.first(where: { $0.airDate == date }) {
-                return .episode(show: show, episode: episode, provider: provider)
-            }
+    private func createGridItem(for date: String, showColumn: ShowColumn, row: Int, column: Int) -> GridItem {
+        // Check if this specific show has an episode on this date
+        if let episode = showColumn.show.episodes.first(where: { $0.airDate == date }) {
+            return .episodeBadge(show: showColumn.show, episode: episode, columnIndex: showColumn.columnIndex)
         }
 
         // No episode found - create empty cell
-        return .empty(id: "\(date)-\(provider.id)")
+        return .empty(id: "\(date)-\(showColumn.show.id)")
     }
 
     private func updateTodayIndicator() {
@@ -384,7 +583,7 @@ extension TVGuideVertViewController {
 
 extension TVGuideVertViewController {
     func columnIndex(for providerID: Int) -> Int? {
-        return providerToColumnMap[providerID]
+        return showColumns.first(where: { $0.provider.id == providerID })?.columnIndex
     }
 
     func rowIndex(for date: Date) -> Int? {
@@ -402,8 +601,8 @@ extension TVGuideVertViewController {
     }
 
     func provider(for column: Int) -> TVGuide2Provider? {
-        guard column >= 0 && column < providers.count else { return nil }
-        return providers[column]
+        guard column >= 0 && column < showColumns.count else { return nil }
+        return showColumns[column].provider
     }
 }
 
@@ -432,9 +631,10 @@ extension TVGuideVertViewController: UICollectionViewDelegate {
         case .empty:
             // No action for empty cells
             break
-        case .episode(let show, let episode, _):
-            // Bubble selection to delegate (same as horizontal guide)
-            tvGuideView.delegate?.tvGuideVertView(tvGuideView, didSelectShow: show, episode: episode)
+        case .episodeBadge(let show, let episode, _):
+            // Calculate which day row this belongs to
+            let rowIndex = indexPath.item / showColumns.count
+            toggleRowExpansion(at: rowIndex, show: show, episode: episode)
         }
     }
 
@@ -450,19 +650,100 @@ extension TVGuideVertViewController: UICollectionViewDelegate {
         }
     }
 
+    private func toggleRowExpansion(at rowIndex: Int, show: TVGuide2Show, episode: TVGuide2Episode) {
+        // If same row is tapped, collapse it
+        if expandedDayIndex == rowIndex {
+            expandedDayIndex = nil
+        } else {
+            // Expand new row, collapse any previous
+            expandedDayIndex = rowIndex
+        }
+
+        // Update layout with new row heights
+        updateGridLayoutForExpansion()
+
+        // Show episode details in expanded area (implement later)
+        // For now, just log the selection
+        print("Row \(rowIndex) expansion: \(expandedDayIndex != nil ? "expanded" : "collapsed")")
+        print("Episode: \(show.title) - \(episode.title)")
+    }
+
+    private func updateGridLayoutForExpansion() {
+        // Update the grid layout to support variable row heights
+        let columnCount = showColumns.count
+        let rowCount = dateColumns.count
+
+        tvGuideView.gridCollectionView.collectionViewLayout = TVGuideVertLayout.createGridLayoutWithExpansion(
+            columnCount: columnCount,
+            rowCount: rowCount,
+            expandedRowIndex: expandedDayIndex,
+            normalRowHeight: TVGV.rowHeight,
+            expandedRowHeight: expandedRowHeight
+        )
+
+        // Also update day rail to match
+        tvGuideView.dayRailCollectionView.collectionViewLayout = TVGuideVertLayout.createDayRailLayoutWithExpansion(
+            rowCount: rowCount,
+            expandedRowIndex: expandedDayIndex,
+            normalRowHeight: TVGV.rowHeight,
+            expandedRowHeight: expandedRowHeight
+        )
+
+        // Force layout before clearing content insets
+        tvGuideView.dayRailCollectionView.layoutIfNeeded()
+        tvGuideView.gridCollectionView.layoutIfNeeded()
+
+        // Clear content insets - positioning handled by layout constraints and section insets
+        tvGuideView.dayRailCollectionView.contentInset = .zero
+        tvGuideView.dayRailCollectionView.scrollIndicatorInsets = .zero
+        tvGuideView.gridCollectionView.contentInset = .zero
+
+        // Force final layout calculations
+        tvGuideView.dayRailCollectionView.layoutIfNeeded()
+        tvGuideView.gridCollectionView.layoutIfNeeded()
+    }
+
+    // MARK: - Month Header Update
+
+    private func updateMonthFromVisibleDate() {
+        // Find the smallest visible index (topmost date cell), accounting for spacer at index 0
+        let visible = tvGuideView.dayRailCollectionView.indexPathsForVisibleItems
+        let dateItemIndexPaths = visible.filter { $0.item > 0 } // Skip spacer at index 0
+        guard let top = dateItemIndexPaths.min(by: { $0.item < $1.item }) else { return }
+
+        // Convert to dateColumns index (subtract 1 for spacer)
+        let dateIndex = top.item - 1
+        guard dateIndex >= 0 && dateIndex < dateColumns.count else { return }
+
+        let dateString = dateColumns[dateIndex].date
+        guard let date = isoDateFormatter.date(from: dateString) else { return }
+
+        let newMonth = monthFormatter.string(from: date).uppercased()
+        if newMonth != tvGuideView.monthText {
+            tvGuideView.updateMonthLabel(newMonth)
+        }
+    }
+
     // MARK: - Scroll View Delegate Methods
 
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
         // Identify which collection view is scrolling
         if scrollView == tvGuideView.gridCollectionView {
-            // Grid is scrolling - sync both header and day rail
+            // Grid is scrolling - sync header, posters row, and day rail
             syncScrollViews(from: tvGuideView.gridCollectionView)
+            // Grid drives vertical scroll too; keep month in sync
+            updateMonthFromVisibleDate()
         } else if scrollView == tvGuideView.providerHeaderCollectionView {
-            // Provider header is scrolling - sync grid's X axis only
-            syncGridFromProviderHeader()
+            // Provider header is scrolling - sync grid and posters row X axis only
+            syncFromProviderHeader()
+        } else if scrollView == tvGuideView.postersRowCollectionView {
+            // Posters row is scrolling - sync grid and header X axis only
+            syncFromPostersRow()
         } else if scrollView == tvGuideView.dayRailCollectionView {
             // Day rail is scrolling - sync grid's Y axis only
             syncGridFromDayRail()
+            // Update month header based on visible date cells
+            updateMonthFromVisibleDate()
         }
     }
 
@@ -480,6 +761,14 @@ extension TVGuideVertViewController: UICollectionViewDelegate {
             )
         }
 
+        // Sync posters row's X axis
+        if tvGuideView.postersRowCollectionView.contentOffset.x != sourceOffset.x {
+            tvGuideView.postersRowCollectionView.setContentOffset(
+                CGPoint(x: sourceOffset.x, y: 0),
+                animated: false
+            )
+        }
+
         // Sync day rail's Y axis
         if tvGuideView.dayRailCollectionView.contentOffset.y != sourceOffset.y {
             tvGuideView.dayRailCollectionView.setContentOffset(
@@ -489,7 +778,7 @@ extension TVGuideVertViewController: UICollectionViewDelegate {
         }
     }
 
-    private func syncGridFromProviderHeader() {
+    private func syncFromProviderHeader() {
         guard tvGuideView.providerHeaderCollectionView.isTracking ||
               tvGuideView.providerHeaderCollectionView.isDecelerating else { return }
 
@@ -500,6 +789,38 @@ extension TVGuideVertViewController: UICollectionViewDelegate {
         if currentGridOffset.x != headerOffset.x {
             tvGuideView.gridCollectionView.setContentOffset(
                 CGPoint(x: headerOffset.x, y: currentGridOffset.y),
+                animated: false
+            )
+        }
+
+        // Update posters row's X axis
+        if tvGuideView.postersRowCollectionView.contentOffset.x != headerOffset.x {
+            tvGuideView.postersRowCollectionView.setContentOffset(
+                CGPoint(x: headerOffset.x, y: 0),
+                animated: false
+            )
+        }
+    }
+
+    private func syncFromPostersRow() {
+        guard tvGuideView.postersRowCollectionView.isTracking ||
+              tvGuideView.postersRowCollectionView.isDecelerating else { return }
+
+        let postersOffset = tvGuideView.postersRowCollectionView.contentOffset
+        let currentGridOffset = tvGuideView.gridCollectionView.contentOffset
+
+        // Update grid's X axis only
+        if currentGridOffset.x != postersOffset.x {
+            tvGuideView.gridCollectionView.setContentOffset(
+                CGPoint(x: postersOffset.x, y: currentGridOffset.y),
+                animated: false
+            )
+        }
+
+        // Update provider header's X axis
+        if tvGuideView.providerHeaderCollectionView.contentOffset.x != postersOffset.x {
+            tvGuideView.providerHeaderCollectionView.setContentOffset(
+                CGPoint(x: postersOffset.x, y: 0),
                 animated: false
             )
         }

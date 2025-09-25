@@ -13,17 +13,22 @@ class TVGuideVertView: UIView {
     // MARK: - Collection Views
     private(set) var gridCollectionView: UICollectionView!
     private(set) var providerHeaderCollectionView: UICollectionView!
+    private(set) var postersRowCollectionView: UICollectionView!
     private(set) var dayRailCollectionView: UICollectionView!
 
-    // MARK: - Month Label
-    private let monthLabel = UILabel()
+    // MARK: - Month Text
+    public private(set) var monthText: String = "SEP"
 
     // MARK: - Today Indicator
     private let todayIndicator = UIView()
 
+    // MARK: - Debug Guide Line
+    private let debugGuideLine = UIView()
+
     // MARK: - Layout Properties
     private var columnCount: Int = 0
     private var rowCount: Int = 0
+    private var providerSpans: [ProviderSpan] = []
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -36,21 +41,13 @@ class TVGuideVertView: UIView {
     }
 
     private func setupUI() {
-        backgroundColor = .black // Match reference image dark theme
-        setupMonthLabel()
+        backgroundColor = .systemBackground // Light theme
         setupTodayIndicator()
+        setupDebugGuideLine()
         setupCollectionViews()
         setupConstraints()
     }
 
-    private func setupMonthLabel() {
-        monthLabel.font = .systemFont(ofSize: 18, weight: .bold)
-        monthLabel.textColor = .white // Dark theme
-        monthLabel.text = "SEP" // Default, will be updated
-        monthLabel.textAlignment = .center
-        monthLabel.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(monthLabel)
-    }
 
     private func setupTodayIndicator() {
         todayIndicator.backgroundColor = .systemBlue
@@ -58,6 +55,12 @@ class TVGuideVertView: UIView {
         todayIndicator.isHidden = true
         todayIndicator.translatesAutoresizingMaskIntoConstraints = false
         addSubview(todayIndicator)
+    }
+
+    private func setupDebugGuideLine() {
+        debugGuideLine.backgroundColor = .systemGreen
+        debugGuideLine.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(debugGuideLine)
     }
 
     private func setupCollectionViews() {
@@ -78,7 +81,7 @@ class TVGuideVertView: UIView {
 
         // Main grid collection view
         gridCollectionView = UICollectionView(frame: .zero, collectionViewLayout: placeholderLayout)
-        gridCollectionView.backgroundColor = .black // Dark theme
+        gridCollectionView.backgroundColor = .systemBackground // Light theme
         gridCollectionView.translatesAutoresizingMaskIntoConstraints = false
         gridCollectionView.showsVerticalScrollIndicator = false
         gridCollectionView.showsHorizontalScrollIndicator = false
@@ -86,49 +89,80 @@ class TVGuideVertView: UIView {
 
         // Provider header collection view
         providerHeaderCollectionView = UICollectionView(frame: .zero, collectionViewLayout: placeholderLayout)
-        providerHeaderCollectionView.backgroundColor = .black // Dark theme
+        providerHeaderCollectionView.backgroundColor = .systemBackground // Light theme
         providerHeaderCollectionView.translatesAutoresizingMaskIntoConstraints = false
         providerHeaderCollectionView.showsVerticalScrollIndicator = false
         providerHeaderCollectionView.showsHorizontalScrollIndicator = false
         providerHeaderCollectionView.isScrollEnabled = true // Enable horizontal scrolling
         addSubview(providerHeaderCollectionView)
+        providerHeaderCollectionView.register(ProviderSpanCell.self, forCellWithReuseIdentifier: "ProviderSpanCell")
+        providerHeaderCollectionView.register(ProviderCell.self, forCellWithReuseIdentifier: "ProviderCell")
+
+        // Static posters row collection view
+        postersRowCollectionView = UICollectionView(frame: .zero, collectionViewLayout: placeholderLayout)
+        postersRowCollectionView.backgroundColor = .systemBackground // Light theme
+        postersRowCollectionView.translatesAutoresizingMaskIntoConstraints = false
+        postersRowCollectionView.showsVerticalScrollIndicator = false
+        postersRowCollectionView.showsHorizontalScrollIndicator = false
+        postersRowCollectionView.isScrollEnabled = true // Enable horizontal scrolling
+        addSubview(postersRowCollectionView)
 
         // Day rail collection view
         dayRailCollectionView = UICollectionView(frame: .zero, collectionViewLayout: placeholderLayout)
-        dayRailCollectionView.backgroundColor = .black // Dark theme
+        dayRailCollectionView.backgroundColor = .systemGray6 // Debug background
         dayRailCollectionView.translatesAutoresizingMaskIntoConstraints = false
         dayRailCollectionView.showsVerticalScrollIndicator = false
         dayRailCollectionView.showsHorizontalScrollIndicator = false
         dayRailCollectionView.isScrollEnabled = true // Enable vertical scrolling
+        dayRailCollectionView.contentInsetAdjustmentBehavior = .never
+        dayRailCollectionView.automaticallyAdjustsScrollIndicatorInsets = false
         addSubview(dayRailCollectionView)
+
+        // Register month header supplementary view
+        dayRailCollectionView.register(
+            MonthHeaderView.self,
+            forSupplementaryViewOfKind: MonthHeaderView.elementKind,
+            withReuseIdentifier: MonthHeaderView.reuseID
+        )
     }
 
     private func setupConstraints() {
         NSLayoutConstraint.activate([
-            // Month label - top left, above day rail
-            monthLabel.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
-            monthLabel.leadingAnchor.constraint(equalTo: leadingAnchor),
-            monthLabel.widthAnchor.constraint(equalToConstant: TVGuideVertLayout.dayRailWidth),
-            monthLabel.heightAnchor.constraint(equalToConstant: TVGuideVertLayout.monthLabelHeight),
-
-            // Provider header - top right, horizontal strip
+            // Provider header - top right, horizontal strip (Row 1)
             providerHeaderCollectionView.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
-            providerHeaderCollectionView.leadingAnchor.constraint(equalTo: monthLabel.trailingAnchor),
+            providerHeaderCollectionView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: TVGuideVertLayout.dayRailWidth),
             providerHeaderCollectionView.trailingAnchor.constraint(equalTo: trailingAnchor),
             providerHeaderCollectionView.heightAnchor.constraint(equalToConstant: TVGuideVertLayout.providerHeaderHeight),
 
-            // Day rail - left side, vertical strip
-            dayRailCollectionView.topAnchor.constraint(equalTo: monthLabel.bottomAnchor),
+            // Static posters row - under provider header (Row 2)
+            postersRowCollectionView.topAnchor.constraint(equalTo: providerHeaderCollectionView.bottomAnchor),
+            postersRowCollectionView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: TVGuideVertLayout.dayRailWidth),
+            postersRowCollectionView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            postersRowCollectionView.heightAnchor.constraint(equalToConstant: TVGuideVertLayout.postersRowHeight),
+
+            // Day rail - left side, vertical strip (aligned with provider row bottom)
+            dayRailCollectionView.topAnchor.constraint(equalTo: providerHeaderCollectionView.bottomAnchor),
             dayRailCollectionView.leadingAnchor.constraint(equalTo: leadingAnchor),
             dayRailCollectionView.widthAnchor.constraint(equalToConstant: TVGuideVertLayout.dayRailWidth),
             dayRailCollectionView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            // Main grid - fills remaining area
-            gridCollectionView.topAnchor.constraint(equalTo: providerHeaderCollectionView.bottomAnchor),
+            // Main grid - fills remaining area (below posters row)
+            gridCollectionView.topAnchor.constraint(equalTo: postersRowCollectionView.bottomAnchor),
             gridCollectionView.leadingAnchor.constraint(equalTo: dayRailCollectionView.trailingAnchor),
             gridCollectionView.trailingAnchor.constraint(equalTo: trailingAnchor),
             gridCollectionView.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
+
+        // Debug guide line - positioned at provider header bottom + posters row height
+        NSLayoutConstraint.activate([
+            debugGuideLine.leadingAnchor.constraint(equalTo: leadingAnchor),
+            debugGuideLine.trailingAnchor.constraint(equalTo: trailingAnchor),
+            debugGuideLine.topAnchor.constraint(equalTo: providerHeaderCollectionView.bottomAnchor, constant: TVGV.postersRowHeight),
+            debugGuideLine.heightAnchor.constraint(equalToConstant: 1)
+        ])
+
+        bringSubviewToFront(providerHeaderCollectionView)
+        bringSubviewToFront(debugGuideLine)
     }
 
     // MARK: - Layout Updates
@@ -144,16 +178,43 @@ class TVGuideVertView: UIView {
         )
 
         providerHeaderCollectionView.collectionViewLayout = TVGuideVertLayout.createProviderHeaderLayout(
+            providerSpans: providerSpans
+        )
+
+        postersRowCollectionView.collectionViewLayout = TVGuideVertLayout.createPostersRowLayout(
             columnCount: columnCount
         )
 
         dayRailCollectionView.collectionViewLayout = TVGuideVertLayout.createDayRailLayout(
             rowCount: rowCount
         )
+
+        // Force layout before setting content insets
+        dayRailCollectionView.layoutIfNeeded()
+
+        // Clear content insets - positioning handled by layout constraints and section insets
+        dayRailCollectionView.contentInset = .zero
+        dayRailCollectionView.scrollIndicatorInsets = .zero
+
+        // Grid still needs content inset to align with day rail
+        gridCollectionView.contentInset = .zero
+
+        // Force final layout calculations
+        dayRailCollectionView.layoutIfNeeded()
+        gridCollectionView.layoutIfNeeded()
+    }
+
+    // Inject provider spans and rebuild the header layout
+    func setProviderSpans(_ spans: [ProviderSpan]) {
+        self.providerSpans = spans
+        providerHeaderCollectionView.collectionViewLayout = TVGuideVertLayout.createProviderHeaderLayout(providerSpans: spans)
+        providerHeaderCollectionView.setNeedsLayout()
+        providerHeaderCollectionView.layoutIfNeeded()
     }
 
     func updateMonthLabel(_ text: String) {
-        monthLabel.text = text
+        monthText = text
+        dayRailCollectionView.reloadData() // Refresh the month header
     }
 
     func showTodayIndicator(at rowIndex: Int) {
