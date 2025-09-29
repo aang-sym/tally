@@ -45,8 +45,5 @@ final class MonthHeaderView: UICollectionReusableView {
         label.layer.borderColor = UIColor.orange.cgColor
         label.layer.borderWidth = 1
 
-        // Debug frame logging
-        print("🟣 MonthHeaderView frame: \(frame), height: \(frame.height)")
-        print("🟣 MonthHeaderView bottom Y: \(frame.maxY)")
     }
 }

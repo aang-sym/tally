@@ -374,7 +374,6 @@ class TVGuideVertViewController: UIViewController {
             }
         }
 
-        print("Built \(showColumns.count) show columns and \(providerSpans.count) provider spans")
     }
 
     private func convertToLayoutProviderSpans(_ spans: [ViewControllerProviderSpan]) -> [ProviderSpan] {
@@ -640,13 +639,11 @@ extension TVGuideVertViewController: UICollectionViewDelegate {
 
     private func handleProviderHeaderSelection(at indexPath: IndexPath) {
         // Optional: Could implement provider filtering or info display
-        print("Selected provider at index: \(indexPath.item)")
     }
 
     private func handleDayRailSelection(at indexPath: IndexPath) {
         // Optional: Could implement date navigation
         if let dateColumn = dateColumn(for: indexPath.item) {
-            print("Selected date: \(dateColumn.date)")
         }
     }
 
@@ -664,8 +661,6 @@ extension TVGuideVertViewController: UICollectionViewDelegate {
 
         // Show episode details in expanded area (implement later)
         // For now, just log the selection
-        print("Row \(rowIndex) expansion: \(expandedDayIndex != nil ? "expanded" : "collapsed")")
-        print("Episode: \(show.title) - \(episode.title)")
     }
 
     private func updateGridLayoutForExpansion() {

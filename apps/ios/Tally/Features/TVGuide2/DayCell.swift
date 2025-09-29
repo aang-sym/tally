@@ -112,11 +112,6 @@ class TVG2DayCell: UICollectionViewCell {
         contentView.layer.borderColor = UIColor.blue.cgColor
         contentView.layer.borderWidth = 1
 
-        // Debug frame logging for first few cells
-        if let dayText = dayNumberLabel.text, let dayNum = Int(dayText), dayNum <= 20 {
-            print("🔵 TVG2DayCell (\(dayText)) frame: \(frame), top Y: \(frame.minY)")
-            print("🔵 TVG2DayCell (\(dayText)) contentView frame: \(contentView.frame)")
-        }
     }
 
     override func prepareForReuse() {

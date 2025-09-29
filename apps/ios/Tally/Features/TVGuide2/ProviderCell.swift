@@ -55,36 +55,66 @@ class ProviderCell: UICollectionViewCell {
     }
 
     func configure(with provider: TVGuide2Provider, span: Int = 1) {
+        print("ProviderCell: configure called for provider=\(provider.name) logoPath=\(provider.logoPath ?? "nil")")
         // Load provider logo
         if let logoPath = provider.logoPath, !logoPath.isEmpty {
-            loadImage(from: logoPath)
+            loadImage(from: logoPath, providerName: provider.name)
         } else {
-            // Fallback to first letter of provider name
+            print("ProviderCell: missing logoPath for provider \(provider.name)")
             logoImageView.image = createPlaceholderImage(for: provider.name)
         }
     }
 
-    private func loadImage(from path: String) {
-        // Simple image loading - in production, use a proper image cache
-        guard let url = URL(string: "https://image.tmdb.org/t/p/w92\(path)") else {
-            logoImageView.image = createPlaceholderImage(for: "")
+    private func loadImage(from path: String, providerName: String) {
+        guard let url = normalizeLogoURL(from: path) else {
+            print("ProviderCell: invalid logo URL for provider \(providerName): \(path)")
             return
         }
 
+        print("ProviderCell: fetching logo for \(providerName) path=\(path) resolvedURL=\(url.absoluteString)")
+
         Task {
             do {
-                let (data, _) = try await URLSession.shared.data(from: url)
+                let (data, response) = try await URLSession.shared.data(from: url)
+
+                if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
+                    print("ProviderCell: HTTP \(httpResponse.statusCode) for provider \(providerName) at URL \(url)")
+                }
+
                 if let image = UIImage(data: data) {
                     await MainActor.run {
                         logoImageView.image = image
+                        print("ProviderCell: applied logo image for \(providerName)")
                     }
+                } else {
+                    print("ProviderCell: received empty image data for provider \(providerName) from \(url)")
                 }
             } catch {
-                await MainActor.run {
-                    logoImageView.image = createPlaceholderImage(for: "")
-                }
+                print("ProviderCell: failed to load logo for provider \(providerName) from \(url): \(error)")
             }
         }
+    }
+
+    private func normalizeLogoURL(from rawPath: String) -> URL? {
+        let trimmed = rawPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        if let absoluteURL = URL(string: trimmed), absoluteURL.scheme != nil {
+            if absoluteURL.host?.contains("image.tmdb.org") == true,
+               let markerRange = absoluteURL.absoluteString.range(of: "/t/p/", options: [.caseInsensitive, .backwards]) {
+                let suffix = absoluteURL.absoluteString[markerRange.lowerBound...]
+                return URL(string: "https://image.tmdb.org\(suffix)")
+            }
+            return absoluteURL
+        }
+
+        if let markerRange = trimmed.range(of: "/t/p/", options: [.caseInsensitive, .backwards]) {
+            let suffix = trimmed[markerRange.lowerBound...]
+            return URL(string: "https://image.tmdb.org\(suffix)")
+        }
+
+        let ensuredLeadingSlash = trimmed.hasPrefix("/") ? trimmed : "/\(trimmed)"
+        return URL(string: "https://image.tmdb.org\(ensuredLeadingSlash)")
     }
 
     private func createPlaceholderImage(for name: String) -> UIImage? {

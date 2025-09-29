@@ -143,7 +143,6 @@ class DateHeaderView: UICollectionReusableView {
     }
 
     func configure(with dateColumns: [TVGuide2DateColumn], monthText: String?, viewController: TVGuide2ViewController? = nil) {
-        print("[TVGuide2] DateHeaderView.configure dateColumns=\(dateColumns.count) monthText=\(monthText ?? "nil")")
         self.viewController = viewController
 
         updateLeadingConstraints()
@@ -239,7 +238,6 @@ class DateHeaderView: UICollectionReusableView {
     override func preferredLayoutAttributesFitting(_ layoutAttributes: UICollectionViewLayoutAttributes) -> UICollectionViewLayoutAttributes {
         let attrs = super.preferredLayoutAttributesFitting(layoutAttributes)
         attrs.size.height = headerHeight
-        print("[TVGuide2] DateHeaderView preferred size = \(attrs.size)")
         return attrs
     }
 }

@@ -323,7 +323,6 @@ class TVGuide2ViewController: UIViewController {
                 ) as! DateHeaderView
                 header.configure(with: self.dateColumns, monthText: self.currentMonthLabelText, viewController: self)
                 header.updateMonthLabel(self.currentMonthLabelText)
-                print("[TVGuide2] Dequeued DateHeaderView for indexPath: \(indexPath)")
                 return header
             }
 
@@ -358,7 +357,6 @@ class TVGuide2ViewController: UIViewController {
     @MainActor
     private func updateSnapshot() {
         guard let data = tvGuideData else {
-            print("TVGuide2ViewController: No data to display")
             return
         }
 
@@ -366,7 +364,6 @@ class TVGuide2ViewController: UIViewController {
 
         // Check if we have any data to display
         if data.providers.isEmpty {
-            print("TVGuide2ViewController: No providers found, showing empty state")
             showEmptyState()
             scrollViewsForSync.removeAllObjects()
             itemHeights.removeAll()
@@ -377,13 +374,10 @@ class TVGuide2ViewController: UIViewController {
         hideEmptyState()
         scrollViewsForSync.removeAllObjects()
 
-        print("TVGuide2ViewController: Creating snapshot with \(data.providers.count) providers")
 
         // Debug: Print provider structure
         for (providerIndex, provider) in data.providers.enumerated() {
-            print("Provider \(providerIndex): \(provider.name) with \(provider.shows.count) shows")
             for (showIndex, show) in provider.shows.enumerated() {
-                print("  Show \(showIndex): \(show.title)")
             }
         }
 
@@ -413,14 +407,11 @@ class TVGuide2ViewController: UIViewController {
                 providerShowRows.append(.showRow(showRowData))
                 globalRowIndex += 1
 
-                print("TVGuide2ViewController: Adding show row for \(show.title) in provider section \(provider.name) with \(show.episodes.count) episodes")
             }
 
             snapshot.appendItems(providerShowRows, toSection: providerSection)
-            print("TVGuide2ViewController: Created section for \(provider.name) with \(providerShowRows.count) shows")
         }
 
-        print("TVGuide2ViewController: Applying snapshot with \(data.providers.count) provider sections")
         expandedEpisodeContexts = expandedEpisodeContexts.filter { $0.key < globalRowIndex }
         itemHeights = itemHeights.filter { snapshot.indexOfItem($0.key) != nil }
         dataSource.apply(snapshot, animatingDifferences: true)
@@ -576,7 +567,6 @@ class TVGuide2ViewController: UIViewController {
         let rowIndex = showRowData.rowIndex
         let isCurrentlyExpanded = expandedEpisodeContexts[rowIndex]?.date == date
 
-        print("[TVGuide2] toggleEpisodeExpansion rowIndex=\(rowIndex) show=\(showRowData.show.title) date=\(date) expanding=\(!isCurrentlyExpanded)")
 
         if isCurrentlyExpanded {
             expandedEpisodeContexts.removeValue(forKey: rowIndex)
@@ -588,7 +578,6 @@ class TVGuide2ViewController: UIViewController {
 
         var snapshot = dataSource.snapshot()
         guard snapshot.indexOfItem(item) != nil else {
-            print("[TVGuide2] toggleEpisodeExpansion missing item for show row")
             return
         }
 
@@ -637,7 +626,6 @@ extension TVGuide2ViewController: UICollectionViewDelegate {
     private func handleShowTap(show: TVGuide2Show) {
         // Show poster zoom overlay
         showPosterZoom(for: show)
-        print("TVGuide2ViewController: Tapped show \(show.title)")
     }
 
     private func handleEpisodeTap(episode: TVGuide2Episode) {

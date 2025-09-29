@@ -1039,12 +1039,6 @@ class ApiClient: ObservableObject {
                 throw ApiError.badStatus(http.statusCode)
             }
 
-            #if DEBUG
-            if let responseString = String(data: data, encoding: .utf8) {
-                print("Season Raw API Response:", responseString)
-            }
-            #endif
-
             let response = try JSONDecoder().decode(SeasonRawResponse.self, from: data)
             return response.raw.season
         } catch {
@@ -1208,10 +1202,6 @@ class ApiClient: ObservableObject {
         let start = startDate ?? dateFormatter.string(from: startDateObj)
         let end = endDate ?? dateFormatter.string(from: endDateObj)
 
-        #if DEBUG
-        print("TVGuide2: Searching for episodes between \(start) and \(end)")
-        #endif
-
         var providerGroups: [Int: TVGuide2Provider] = [:]
         var totalEpisodes = 0
 
@@ -1233,10 +1223,6 @@ class ApiClient: ObservableObject {
 
             for season in seasonsToCheck {
                 do {
-                    #if DEBUG
-                    print("Fetching season \(season) for show \(userShow.show.title) (tmdbId: \(tmdbId)) with country: \(showCountry)")
-                    #endif
-
                     let seasonData = try await getSeasonRaw(tmdbId: tmdbId, season: season, country: showCountry)
 
                     // Convert episodes to TVGuide2Episode format
@@ -1260,10 +1246,6 @@ class ApiClient: ObservableObject {
 
                     allEpisodes.append(contentsOf: tvGuide2Episodes)
                     totalEpisodes += tvGuide2Episodes.count
-
-                    #if DEBUG
-                    print("Found \(tvGuide2Episodes.count) episodes for season \(season) of \(userShow.show.title)")
-                    #endif
 
                     // Small delay between season requests
                     if season != seasonsToCheck.last {
@@ -1299,6 +1281,14 @@ class ApiClient: ObservableObject {
                 let providerName = userShow.streamingProvider?.name ?? "Unknown"
                 let logoPath = userShow.streamingProvider?.logoPath
 
+                #if DEBUG
+                if let logoPath = logoPath, !logoPath.isEmpty {
+                    print("TVGuide2: provider \(providerName) (id: \(providerId)) logoPath=\(logoPath)")
+                } else {
+                    print("TVGuide2: provider \(providerName) (id: \(providerId)) missing logoPath")
+                }
+                #endif
+
                 let tvGuide2Show = TVGuide2Show.createManually(
                     tmdbId: tmdbId,
                     title: userShow.show.title,
@@ -1327,11 +1317,9 @@ class ApiClient: ObservableObject {
                 }
 
                 #if DEBUG
-                print("Added show \(userShow.show.title) with \(allEpisodes.count) episodes to provider \(providerName)")
                 #endif
             } else {
                 #if DEBUG
-                print("Skipping show \(userShow.show.title) - no episodes found in date range")
                 #endif
             }
         }
