@@ -8,16 +8,22 @@ final class MonthHeaderView: UICollectionReusableView {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
+        preservesSuperviewLayoutMargins = false
+        layoutMargins = .zero
+        directionalLayoutMargins = .zero
         backgroundColor = .systemBackground
 
         label.translatesAutoresizingMaskIntoConstraints = false
         label.font = UIFont.systemFont(ofSize: 18, weight: .bold)
+        label.textAlignment = .center
         label.textColor = .label
         addSubview(label)
 
         NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor)
+            label.topAnchor.constraint(equalTo: topAnchor, constant: 0),
+            label.bottomAnchor.constraint(equalTo: bottomAnchor, constant: 0),
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 0),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: 0)
         ])
     }
 

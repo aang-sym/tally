@@ -16,7 +16,6 @@ class TVGuideVertViewController: UIViewController {
 
     // MARK: - Day Rail Item Types
     enum DayRailItem: Hashable {
-        case spacer
         case date(TVGuide2DateColumn)
     }
 
@@ -25,6 +24,9 @@ class TVGuideVertViewController: UIViewController {
     private var providerHeaderDataSource: UICollectionViewDiffableDataSource<Int, ViewControllerProviderSpan>!
     private var postersRowDataSource: UICollectionViewDiffableDataSource<Int, ShowColumn>!
     private var dayRailDataSource: UICollectionViewDiffableDataSource<Int, DayRailItem>!
+
+    // Scroll coordination
+    private var didResetInitialScrollOffsets = false
 
     // Date formatting
     private lazy var isoDateFormatter: DateFormatter = {
@@ -186,13 +188,10 @@ class TVGuideVertViewController: UIViewController {
         ) { [weak self] collectionView, indexPath, item in
             guard let self = self else {
                 assertionFailure("Self is nil in day rail data source")
-                let fallbackCell = collectionView.dequeueReusableCell(withReuseIdentifier: "SpacerCell", for: indexPath)
-                return fallbackCell
+                return UICollectionViewCell()
             }
 
             switch item {
-            case .spacer:
-                return self.configureSpacerCell(collectionView, indexPath: indexPath)
             case .date(let dateColumn):
                 return self.configureDayCell(collectionView, indexPath: indexPath, dateColumn: dateColumn)
             }
@@ -210,6 +209,14 @@ class TVGuideVertViewController: UIViewController {
                 return UICollectionReusableView()
             }
             header.configure(monthText: month)
+            // Zero out margins and disable preserving layout margins
+            header.preservesSuperviewLayoutMargins = false
+            header.directionalLayoutMargins = .zero
+            header.layoutMargins = .zero
+            if let stack = header.subviews.compactMap({ $0 as? UIStackView }).first {
+                stack.isLayoutMarginsRelativeArrangement = false
+                stack.layoutMargins = .zero
+            }
             return header
         }
 
@@ -249,12 +256,6 @@ class TVGuideVertViewController: UIViewController {
             TVG2DayCell.self,
             forCellWithReuseIdentifier: TVG2DayCell.identifier
         )
-
-        // Day rail spacer cells
-        tvGuideView.dayRailCollectionView.register(
-            UICollectionViewCell.self,
-            forCellWithReuseIdentifier: "SpacerCell"
-        )
     }
 
     private func setupScrollViewDelegates() {
@@ -267,6 +268,8 @@ class TVGuideVertViewController: UIViewController {
     // MARK: - Date Column Management
 
     private func rebuildDateColumnsAnchoredOnToday() {
+        didResetInitialScrollOffsets = false
+
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
         guard let start = cal.date(byAdding: .day, value: -backfillDays, to: today),
@@ -427,19 +430,11 @@ class TVGuideVertViewController: UIViewController {
         return cell
     }
 
-    private func configureSpacerCell(_ collectionView: UICollectionView, indexPath: IndexPath) -> UICollectionViewCell {
-        // Properly dequeue spacer cell with registered identifier
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "SpacerCell", for: indexPath)
-        cell.backgroundColor = .clear
-        cell.isHidden = true  // Make it completely invisible
-        return cell
-    }
-
     private func configureDayCell(_ collectionView: UICollectionView, indexPath: IndexPath, dateColumn: TVGuide2DateColumn) -> UICollectionViewCell {
         guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: TVG2DayCell.identifier, for: indexPath) as? TVG2DayCell else {
             assertionFailure("Failed to dequeue TVG2DayCell with identifier: \(TVG2DayCell.identifier)")
             // Return a basic cell as fallback to prevent crashes
-            return collectionView.dequeueReusableCell(withReuseIdentifier: "SpacerCell", for: indexPath)
+            return UICollectionViewCell()
         }
 
         // Calculate episode count for this day
@@ -494,6 +489,7 @@ extension TVGuideVertViewController {
         let columnCount = showColumns.count
         let rowCount = dateColumns.count
         tvGuideView.updateLayouts(columnCount: columnCount, rowCount: rowCount)
+        resetInitialScrollOffsetsIfNeeded()
     }
 
     private func updateGridSnapshot(with data: TVGuide2Data) {
@@ -537,21 +533,13 @@ extension TVGuideVertViewController {
         var snapshot = NSDiffableDataSourceSnapshot<Int, DayRailItem>()
         snapshot.appendSections([0])
 
-        // Add spacer as first item
-        var items: [DayRailItem] = [.spacer]
-
-        // Add date columns with safety check
         guard !dateColumns.isEmpty else {
             assertionFailure("dateColumns is empty when creating day rail snapshot")
-            // Still apply empty snapshot to avoid crashes
-            snapshot.appendItems(items, toSection: 0)
             dayRailDataSource.apply(snapshot, animatingDifferences: false)
             return
         }
 
-        for dateColumn in dateColumns {
-            items.append(.date(dateColumn))
-        }
+        let items = dateColumns.map { DayRailItem.date($0) }
 
         snapshot.appendItems(items, toSection: 0)
         dayRailDataSource.apply(snapshot, animatingDifferences: false)
@@ -576,6 +564,18 @@ extension TVGuideVertViewController {
         } else {
             tvGuideView.hideTodayIndicator()
         }
+    }
+
+    private func resetInitialScrollOffsetsIfNeeded() {
+        guard didResetInitialScrollOffsets == false else { return }
+
+        let zero = CGPoint(x: 0, y: 0)
+        tvGuideView.gridCollectionView.setContentOffset(zero, animated: false)
+        tvGuideView.providerHeaderCollectionView.setContentOffset(zero, animated: false)
+        tvGuideView.postersRowCollectionView.setContentOffset(zero, animated: false)
+        tvGuideView.dayRailCollectionView.setContentOffset(zero, animated: false)
+
+        didResetInitialScrollOffsets = true
     }
 }
 
@@ -706,13 +706,11 @@ extension TVGuideVertViewController: UICollectionViewDelegate {
     // MARK: - Month Header Update
 
     private func updateMonthFromVisibleDate() {
-        // Find the smallest visible index (topmost date cell), accounting for spacer at index 0
+        // Find the smallest visible index (topmost date cell)
         let visible = tvGuideView.dayRailCollectionView.indexPathsForVisibleItems
-        let dateItemIndexPaths = visible.filter { $0.item > 0 } // Skip spacer at index 0
-        guard let top = dateItemIndexPaths.min(by: { $0.item < $1.item }) else { return }
+        guard let top = visible.min(by: { $0.item < $1.item }) else { return }
 
-        // Convert to dateColumns index (subtract 1 for spacer)
-        let dateIndex = top.item - 1
+        let dateIndex = top.item
         guard dateIndex >= 0 && dateIndex < dateColumns.count else { return }
 
         let dateString = dateColumns[dateIndex].date

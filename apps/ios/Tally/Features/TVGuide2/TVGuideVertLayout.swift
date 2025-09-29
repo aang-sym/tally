@@ -101,7 +101,6 @@ struct TVGuideVertLayout {
             // Section - vertical stack of all days
             let section = NSCollectionLayoutSection(group: group)
             section.interGroupSpacing = 0 // No spacing between rows
-            section.interGroupSpacing = 0
 section.contentInsets = .zero
 if #available(iOS 16.0, *) {
     // No-op on iOS 16+: use boundary supplementary configuration instead.
@@ -285,10 +284,11 @@ if #available(iOS 16.0, *) {
                 subitems: rowGroups
             )
 
-            // Section - top inset equals posters row height, no spacing between rows
+            // Section - no spacing between rows; no top inset (header height provides the offset)
             let section = NSCollectionLayoutSection(group: containerGroup)
             section.interGroupSpacing = 0
-            section.contentInsets = .init(top: TVGV.postersRowHeight, leading: 0, bottom: 0, trailing: 0)
+            section.contentInsets = .zero
+            section.contentInsetsReference = .none
             if #available(iOS 16.0, *) {
                 // No-op on iOS 16+: rely on boundary supplementary configuration instead of section API.
             } else {
@@ -305,6 +305,7 @@ if #available(iOS 16.0, *) {
                 elementKind: "MonthHeaderElementKind",
                 alignment: .top
             )
+            header.contentInsets = .zero
             header.pinToVisibleBounds = true
             header.extendsBoundary = true
 
@@ -381,7 +382,6 @@ if #available(iOS 16.0, *) {
             )
 
             let section = NSCollectionLayoutSection(group: containerGroup)
-            section.interGroupSpacing = 0
             section.interGroupSpacing = 0
 section.contentInsets = .zero
 if #available(iOS 16.0, *) {
@@ -471,7 +471,8 @@ if #available(iOS 16.0, *) {
             // Section - no content insets
             let section = NSCollectionLayoutSection(group: containerGroup)
             section.interGroupSpacing = 0
-            section.contentInsets = .init(top: TVGV.postersRowHeight, leading: 0, bottom: 0, trailing: 0)
+            section.contentInsets = .zero
+            section.contentInsetsReference = .none
             if #available(iOS 16.0, *) {
                 // No-op on iOS 16+: use boundary supplementary configuration instead.
             } else {
@@ -488,6 +489,7 @@ if #available(iOS 16.0, *) {
                 elementKind: "MonthHeaderElementKind",
                 alignment: .top
             )
+            header.contentInsets = .zero
             header.pinToVisibleBounds = true
             header.extendsBoundary = true
 

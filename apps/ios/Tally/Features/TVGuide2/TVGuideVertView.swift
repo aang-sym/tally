@@ -141,7 +141,7 @@ class TVGuideVertView: UIView {
             postersRowCollectionView.heightAnchor.constraint(equalToConstant: TVGuideVertLayout.postersRowHeight),
 
             // Day rail - left side, vertical strip (aligned with provider row bottom)
-            dayRailCollectionView.topAnchor.constraint(equalTo: providerHeaderCollectionView.bottomAnchor),
+            dayRailCollectionView.topAnchor.constraint(equalTo: postersRowCollectionView.topAnchor),
             dayRailCollectionView.leadingAnchor.constraint(equalTo: leadingAnchor),
             dayRailCollectionView.widthAnchor.constraint(equalToConstant: TVGuideVertLayout.dayRailWidth),
             dayRailCollectionView.bottomAnchor.constraint(equalTo: bottomAnchor),
@@ -157,7 +157,7 @@ class TVGuideVertView: UIView {
         NSLayoutConstraint.activate([
             debugGuideLine.leadingAnchor.constraint(equalTo: leadingAnchor),
             debugGuideLine.trailingAnchor.constraint(equalTo: trailingAnchor),
-            debugGuideLine.topAnchor.constraint(equalTo: providerHeaderCollectionView.bottomAnchor, constant: TVGV.postersRowHeight),
+            debugGuideLine.topAnchor.constraint(equalTo: providerHeaderCollectionView.bottomAnchor, constant: TVGuideVertLayout.postersRowHeight),
             debugGuideLine.heightAnchor.constraint(equalToConstant: 1)
         ])
 
@@ -192,7 +192,7 @@ class TVGuideVertView: UIView {
         // Force layout before setting content insets
         dayRailCollectionView.layoutIfNeeded()
 
-        // Clear content insets - positioning handled by layout constraints and section insets
+        // Day rail should start immediately below provider header; no extra inset
         dayRailCollectionView.contentInset = .zero
         dayRailCollectionView.scrollIndicatorInsets = .zero
 

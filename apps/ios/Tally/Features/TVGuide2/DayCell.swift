@@ -29,6 +29,10 @@ class TVG2DayCell: UICollectionViewCell {
         contentView.layoutMargins = .zero
         contentView.directionalLayoutMargins = .zero
         contentView.insetsLayoutMarginsFromSafeArea = false
+        contentView.preservesSuperviewLayoutMargins = false
+        preservesSuperviewLayoutMargins = false
+        directionalLayoutMargins = .zero
+        layoutMargins = .zero
 
         // Day number label
         dayNumberLabel.font = .systemFont(ofSize: 24, weight: .semibold)
@@ -55,17 +59,17 @@ class TVG2DayCell: UICollectionViewCell {
         NSLayoutConstraint.activate([
             // Day number - positioned at top of cell without offset
             dayNumberLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
-            dayNumberLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 4),
+            dayNumberLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 0),
 
             // Episode dot - below day number
             episodeDot.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
-            episodeDot.topAnchor.constraint(equalTo: dayNumberLabel.bottomAnchor, constant: 4),
+            episodeDot.topAnchor.constraint(equalTo: dayNumberLabel.bottomAnchor, constant: 0),
             episodeDot.widthAnchor.constraint(equalToConstant: 6),
             episodeDot.heightAnchor.constraint(equalToConstant: 6),
 
             // Episode count - below dot
             episodeCountLabel.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
-            episodeCountLabel.topAnchor.constraint(equalTo: episodeDot.bottomAnchor, constant: 2)
+            episodeCountLabel.topAnchor.constraint(equalTo: episodeDot.bottomAnchor, constant: 0)
         ])
     }
 
