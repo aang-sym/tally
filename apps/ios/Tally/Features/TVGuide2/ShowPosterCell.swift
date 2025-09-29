@@ -74,6 +74,12 @@ class ShowPosterCell: UICollectionViewCell {
         setupRowLayout() // Default layout
     }
 
+    private func posterContentSize() -> CGSize {
+        let width = max(TVGV.posterWidth - (2 * TVGV.posterHPadding), 0)
+        let height = max((TVGV.posterWidth * TVGV.posterAspect) - (2 * TVGV.posterVPadding), 0)
+        return CGSize(width: width, height: height)
+    }
+
     private func setupRowLayout() {
         currentSize = .row
 
@@ -122,9 +128,9 @@ class ShowPosterCell: UICollectionViewCell {
 
     private func applyPosterSize() {
         guard currentSize != .row else { return }
-        let width = TVGV.posterWidth
-        posterWidthConstraint?.constant = width
-        posterHeightConstraint?.constant = width * TVGV.posterAspect
+        let size = posterContentSize()
+        posterWidthConstraint?.constant = size.width
+        posterHeightConstraint?.constant = size.height
         setNeedsLayout()
         layoutIfNeeded()
     }
@@ -151,21 +157,24 @@ class ShowPosterCell: UICollectionViewCell {
         contentView.addSubview(titleLabel)
         contentView.addSubview(episodeBadge)
 
-        posterWidthConstraint = posterImageView.widthAnchor.constraint(equalToConstant: TVGV.posterWidth)
-        posterHeightConstraint = posterImageView.heightAnchor.constraint(equalToConstant: TVGV.posterWidth * TVGV.posterAspect)
+        let size = posterContentSize()
+        posterWidthConstraint = posterImageView.widthAnchor.constraint(equalToConstant: size.width)
+        posterHeightConstraint = posterImageView.heightAnchor.constraint(equalToConstant: size.height)
         titleTopConstraint = titleLabel.topAnchor.constraint(equalTo: posterImageView.bottomAnchor, constant: 4)
 
         NSLayoutConstraint.activate([
             // Poster centered at top
-            posterImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 8),
+            posterImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: TVGV.posterVPadding),
             posterImageView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
             posterWidthConstraint!,
             posterHeightConstraint!,
+            posterImageView.leadingAnchor.constraint(greaterThanOrEqualTo: contentView.leadingAnchor, constant: TVGV.posterHPadding),
+            posterImageView.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -TVGV.posterHPadding),
 
             // Title below poster
             titleTopConstraint!,
-            titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 4),
-            titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -4),
+            titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: TVGV.posterHPadding),
+            titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -TVGV.posterHPadding),
 
             // Episode badge on top-right corner of poster
             episodeBadge.topAnchor.constraint(equalTo: posterImageView.topAnchor, constant: 4),
@@ -190,8 +199,9 @@ class ShowPosterCell: UICollectionViewCell {
         // Only add poster image for static posters row
         contentView.addSubview(posterImageView)
 
-        posterWidthConstraint = posterImageView.widthAnchor.constraint(equalToConstant: TVGV.posterWidth)
-        posterHeightConstraint = posterImageView.heightAnchor.constraint(equalToConstant: TVGV.posterWidth * TVGV.posterAspect)
+        let size = posterContentSize()
+        posterWidthConstraint = posterImageView.widthAnchor.constraint(equalToConstant: size.width)
+        posterHeightConstraint = posterImageView.heightAnchor.constraint(equalToConstant: size.height)
 
         NSLayoutConstraint.activate([
             // Poster centered in cell
@@ -285,10 +295,10 @@ class ShowPosterCell: UICollectionViewCell {
             imageSize = CGSize(width: 45, height: 60)
             fontSize = 10
         case .grid:
-            imageSize = CGSize(width: TVGV.posterWidth, height: TVGV.posterWidth * TVGV.posterAspect)
+            imageSize = posterContentSize()
             fontSize = 14
         case .poster:
-            imageSize = CGSize(width: TVGV.posterWidth, height: TVGV.posterWidth * TVGV.posterAspect)
+            imageSize = posterContentSize()
             fontSize = 14
         }
 

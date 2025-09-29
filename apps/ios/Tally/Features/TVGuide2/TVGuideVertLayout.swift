@@ -4,9 +4,11 @@ import UIKit
 enum TVGV {
     static let dateRailWidth: CGFloat = 60
     static let rowHeight: CGFloat = 80
-    static var posterWidth: CGFloat = 80
+    static var posterWidth: CGFloat = 70
     static let posterAspect: CGFloat = 1.5 // 2:3
     static var columnHPad: CGFloat = 1
+    static var posterHPadding: CGFloat = 6
+    static var posterVPadding: CGFloat = 6
     static var columnWidth: CGFloat { posterWidth + (2 * columnHPad) }
     static let providerHeaderHeight: CGFloat = 56
     static let postersVerticalPadding: CGFloat = 0 // No extra padding
