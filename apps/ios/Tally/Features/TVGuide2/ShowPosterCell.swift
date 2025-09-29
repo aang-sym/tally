@@ -78,6 +78,7 @@ class ShowPosterCell: UICollectionViewCell {
         currentSize = .row
 
         // Clear existing constraints
+        deactivateDynamicConstraints()
         posterImageView.removeFromSuperview()
         titleLabel.removeFromSuperview()
         episodeBadge.removeFromSuperview()
@@ -119,10 +120,31 @@ class ShowPosterCell: UICollectionViewCell {
         episodeBadge.isHidden = true
     }
 
+    private func applyPosterSize() {
+        guard currentSize != .row else { return }
+        let width = TVGV.posterWidth
+        posterWidthConstraint?.constant = width
+        posterHeightConstraint?.constant = width * TVGV.posterAspect
+        setNeedsLayout()
+        layoutIfNeeded()
+    }
+
+    private func deactivateDynamicConstraints() {
+        posterWidthConstraint?.isActive = false
+        posterHeightConstraint?.isActive = false
+        titleTopConstraint?.isActive = false
+        titleLeadingConstraint?.isActive = false
+        posterWidthConstraint = nil
+        posterHeightConstraint = nil
+        titleTopConstraint = nil
+        titleLeadingConstraint = nil
+    }
+
     private func setupGridLayout() {
         currentSize = .grid
 
         // Clear existing constraints
+        deactivateDynamicConstraints()
         contentView.subviews.forEach { $0.removeFromSuperview() }
 
         contentView.addSubview(posterImageView)
@@ -154,12 +176,15 @@ class ShowPosterCell: UICollectionViewCell {
 
         separatorView.isHidden = true
         episodeBadge.isHidden = false
+
+        applyPosterSize()
     }
 
     private func setupPosterLayout() {
         currentSize = .poster
 
         // Clear existing constraints
+        deactivateDynamicConstraints()
         contentView.subviews.forEach { $0.removeFromSuperview() }
 
         // Only add poster image for static posters row
@@ -179,6 +204,8 @@ class ShowPosterCell: UICollectionViewCell {
         // Hide all other elements
         separatorView.isHidden = true
         episodeBadge.isHidden = true
+
+        applyPosterSize()
     }
 
     func configure(with show: TVGuide2Show, episode: TVGuide2Episode? = nil, size: DisplaySize = .row) {
@@ -191,6 +218,10 @@ class ShowPosterCell: UICollectionViewCell {
             case .row:
                 setupRowLayout()
             }
+        }
+
+        if size != .row {
+            applyPosterSize()
         }
 
         // Only show title for row and grid layouts (not for static posters)
@@ -232,6 +263,9 @@ class ShowPosterCell: UICollectionViewCell {
                 if let image = UIImage(data: data) {
                     await MainActor.run {
                         posterImageView.image = image
+                        if currentSize != .row {
+                            applyPosterSize()
+                        }
                     }
                 }
             } catch {

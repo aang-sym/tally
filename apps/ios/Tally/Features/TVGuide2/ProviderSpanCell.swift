@@ -29,7 +29,7 @@ class ProviderSpanCell: UICollectionViewCell {
 
         // Provider logo
         logoImageView.contentMode = .scaleAspectFit
-        logoImageView.layer.cornerRadius = 24 // Circular (48pt diameter / 2)
+        logoImageView.layer.cornerRadius = TVGV.providerLogoDiameter / 2
         logoImageView.clipsToBounds = true
         logoImageView.backgroundColor = .clear
         logoImageView.translatesAutoresizingMaskIntoConstraints = false
@@ -37,14 +37,14 @@ class ProviderSpanCell: UICollectionViewCell {
         addSubview(logoImageView)
 
         // Store reference to width constraint for dynamic resizing
-        logoWidthConstraint = logoImageView.widthAnchor.constraint(equalToConstant: 48)
+        logoWidthConstraint = logoImageView.widthAnchor.constraint(equalToConstant: TVGV.providerLogoDiameter)
 
         NSLayoutConstraint.activate([
             // Logo centered
             logoImageView.centerXAnchor.constraint(equalTo: centerXAnchor),
             logoImageView.centerYAnchor.constraint(equalTo: centerYAnchor),
             logoWidthConstraint,
-            logoImageView.heightAnchor.constraint(equalToConstant: 48)
+            logoImageView.heightAnchor.constraint(equalToConstant: TVGV.providerLogoDiameter)
         ])
     }
 
@@ -92,7 +92,8 @@ class ProviderSpanCell: UICollectionViewCell {
     }
 
     private func createPlaceholderImage(for name: String) -> UIImage? {
-        let size = CGSize(width: 48, height: 48)
+        let diameter = TVGV.providerLogoDiameter
+        let size = CGSize(width: diameter, height: diameter)
         let renderer = UIGraphicsImageRenderer(size: size)
 
         return renderer.image { context in

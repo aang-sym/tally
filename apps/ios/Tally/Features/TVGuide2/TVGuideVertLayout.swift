@@ -4,15 +4,16 @@ import UIKit
 enum TVGV {
     static let dateRailWidth: CGFloat = 60
     static let rowHeight: CGFloat = 80
-    static let posterWidth: CGFloat = 78
+    static var posterWidth: CGFloat = 80
     static let posterAspect: CGFloat = 1.5 // 2:3
-    static let columnHPad: CGFloat = 10
-    static let columnWidth: CGFloat = 98 // posterWidth + (2 * columnHPad) = 78 + 20
+    static var columnHPad: CGFloat = 1
+    static var columnWidth: CGFloat { posterWidth + (2 * columnHPad) }
     static let providerHeaderHeight: CGFloat = 56
     static let postersVerticalPadding: CGFloat = 0 // No extra padding
+    static let providerLogoDiameter: CGFloat = 35
 
     // Single source of truth for posters row height - exact hardcoded value
-    static let postersRowHeight: CGFloat = 117.0
+    static var postersRowHeight: CGFloat { posterWidth * posterAspect }
 
     // Month header height (only used for old references, use postersRowHeight directly)
     static var monthHeaderHeight: CGFloat {

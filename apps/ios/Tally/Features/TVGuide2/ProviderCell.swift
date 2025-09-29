@@ -27,7 +27,7 @@ class ProviderCell: UICollectionViewCell {
 
         // Provider logo
         logoImageView.contentMode = .scaleAspectFit
-        logoImageView.layer.cornerRadius = 24 // Circular (48pt diameter / 2)
+        logoImageView.layer.cornerRadius = TVGV.providerLogoDiameter / 2
         logoImageView.clipsToBounds = true
         logoImageView.backgroundColor = .clear
         logoImageView.translatesAutoresizingMaskIntoConstraints = false
@@ -43,8 +43,8 @@ class ProviderCell: UICollectionViewCell {
             // Logo centered - larger for header cell
             logoImageView.centerXAnchor.constraint(equalTo: centerXAnchor),
             logoImageView.centerYAnchor.constraint(equalTo: centerYAnchor),
-            logoImageView.widthAnchor.constraint(equalToConstant: 48),
-            logoImageView.heightAnchor.constraint(equalToConstant: 48),
+            logoImageView.widthAnchor.constraint(equalToConstant: TVGV.providerLogoDiameter),
+            logoImageView.heightAnchor.constraint(equalToConstant: TVGV.providerLogoDiameter),
 
             // Separator on right
             separatorView.topAnchor.constraint(equalTo: topAnchor),
@@ -88,7 +88,8 @@ class ProviderCell: UICollectionViewCell {
     }
 
     private func createPlaceholderImage(for name: String) -> UIImage? {
-        let size = CGSize(width: 40, height: 40)
+        let diameter = TVGV.providerLogoDiameter
+        let size = CGSize(width: diameter, height: diameter)
         let renderer = UIGraphicsImageRenderer(size: size)
 
         return renderer.image { context in

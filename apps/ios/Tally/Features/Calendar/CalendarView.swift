@@ -229,7 +229,7 @@ private struct Calendar2DayCell: View {
 #if DEBUG
 // MARK: - Previews
 enum PreviewSecrets {
-    static let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmN2Y2YmIyYy1lNTM2LTQ2MzUtYWY4NS0xNjI4NjY1NDViNWQiLCJlbWFpbCI6InRlc3QyQGV4YW1wbGUuY29tIiwiZGlzcGxheU5hbWUiOiJ0ZXN0MkBleGFtcGxlLmNvbSIsImlhdCI6MTc1ODUxMDg4NiwiZXhwIjoxNzU5MTE1Njg2fQ.6efppUqAdtO0Hg7AQqRmgFd2-eW_SH-GHMsyBQFjSUA"
+    static let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmN2Y2YmIyYy1lNTM2LTQ2MzUtYWY4NS0xNjI4NjY1NDViNWQiLCJlbWFpbCI6InRlc3QyQGV4YW1wbGUuY29tIiwiZGlzcGxheU5hbWUiOiJ0ZXN0MkBleGFtcGxlLmNvbSIsImlhdCI6MTc1OTExNjIxNywiZXhwIjoxNzU5NzIxMDE3fQ.6wBU-DCYMJHtrRk83uNDAnCF-PIWrd7belql9P2hV2Q"
 }
 
 struct CalendarView_Previews: PreviewProvider {
