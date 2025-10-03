@@ -104,13 +104,12 @@ class TVG2DayCell: UICollectionViewCell {
         if TVGV.debugBordersEnabled {
             layer.borderColor = TVGV.debugHeaderColor
             layer.borderWidth = 0.5
+            contentView.layer.borderColor = UIColor.blue.cgColor
+            contentView.layer.borderWidth = 1
         } else {
             layer.borderWidth = 0.0
+            contentView.layer.borderWidth = 0.0
         }
-
-        // Debug border for day rail cell alignment
-        contentView.layer.borderColor = UIColor.blue.cgColor
-        contentView.layer.borderWidth = 1
 
     }
 

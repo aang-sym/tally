@@ -152,19 +152,18 @@ class ProviderSpanCell: UICollectionViewCell {
             contentView.layer.borderColor = TVGV.debugHeaderColor
             contentView.layer.borderWidth = 0.5
 
-            // Add debug border to icon
             logoImageView.layer.cornerRadius = min(logoImageView.bounds.width, logoImageView.bounds.height) / 2
             logoImageView.clipsToBounds = true
             logoImageView.layer.borderColor = TVGV.debugHeaderColor
             logoImageView.layer.borderWidth = 0.5
+
+            layer.borderColor = UIColor.red.cgColor
+            layer.borderWidth = 1
         } else {
             contentView.layer.borderWidth = 0.0
             logoImageView.layer.borderWidth = 0.0
+            layer.borderWidth = 0.0
         }
-
-        // Debug border for provider header cells alignment
-        layer.borderColor = UIColor.red.cgColor
-        layer.borderWidth = 1
     }
 
     override func prepareForReuse() {

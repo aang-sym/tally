@@ -107,14 +107,22 @@ class ShowRowCell: UICollectionViewCell {
         posterImageView.layer.cornerRadius = 0
         posterImageView.backgroundColor = .clear
         posterImageView.translatesAutoresizingMaskIntoConstraints = false
-        posterImageView.layer.borderWidth = 2
-        posterImageView.layer.borderColor = UIColor.blue.cgColor
+        if TVGV.debugBordersEnabled {
+            posterImageView.layer.borderWidth = 2
+            posterImageView.layer.borderColor = UIColor.blue.cgColor
+        } else {
+            posterImageView.layer.borderWidth = 0
+        }
         mainRowContainer.addSubview(posterImageView)
 
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.layer.borderWidth = 2
-        scrollView.layer.borderColor = UIColor.blue.cgColor
+        if TVGV.debugBordersEnabled {
+            scrollView.layer.borderWidth = 2
+            scrollView.layer.borderColor = UIColor.blue.cgColor
+        } else {
+            scrollView.layer.borderWidth = 0
+        }
         mainRowContainer.addSubview(scrollView)
 
         scrollContentView.translatesAutoresizingMaskIntoConstraints = false

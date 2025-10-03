@@ -23,7 +23,8 @@ class EpisodeBadgeCell: UICollectionViewCell {
     }
 
     private func setupUI() {
-        backgroundColor = .systemBackground // Light theme
+        backgroundColor = .clear
+        contentView.backgroundColor = .clear
 
         // Episode indicator (small blue dot)
         episodeIndicator.backgroundColor = .systemBlue

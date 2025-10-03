@@ -27,7 +27,7 @@ enum TVGV {
     static let gridLineColor = UIColor.separator.withAlphaComponent(0.3)
 
     // DEBUG borders
-    static let debugBordersEnabled: Bool = true // set false to hide
+    static let debugBordersEnabled: Bool = false // set false to hide
     static let debugGridColor = UIColor.systemRed.cgColor
     static let debugHeaderColor = UIColor.systemBlue.cgColor
     static let debugPosterColor = UIColor.systemGreen.cgColor
@@ -104,12 +104,14 @@ struct TVGuideVertLayout {
             // Section - vertical stack of all days
             let section = NSCollectionLayoutSection(group: group)
             section.interGroupSpacing = 0 // No spacing between rows
-section.contentInsets = .zero
-if #available(iOS 16.0, *) {
-    // No-op on iOS 16+: use boundary supplementary configuration instead.
-} else {
-    section.supplementariesFollowContentInsets = false
-}
+            section.contentInsets = .zero
+            section.contentInsetsReference = .none
+            section.orthogonalScrollingBehavior = .none
+            if #available(iOS 16.0, *) {
+                // No-op on iOS 16+: use boundary supplementary configuration instead.
+            } else {
+                section.supplementariesFollowContentInsets = false
+            }
 
             // Optional: Add grid line decoration
             let gridDecoration = NSCollectionLayoutDecorationItem.background(
@@ -386,12 +388,14 @@ if #available(iOS 16.0, *) {
 
             let section = NSCollectionLayoutSection(group: containerGroup)
             section.interGroupSpacing = 0
-section.contentInsets = .zero
-if #available(iOS 16.0, *) {
-    // No-op on iOS 16+: use boundary supplementary configuration instead.
-} else {
-    section.supplementariesFollowContentInsets = false
-}
+            section.contentInsets = .zero
+            section.contentInsetsReference = .none
+            section.orthogonalScrollingBehavior = .none
+            if #available(iOS 16.0, *) {
+                // No-op on iOS 16+: use boundary supplementary configuration instead.
+            } else {
+                section.supplementariesFollowContentInsets = false
+            }
 
             // Optional: Add grid line decoration
             let gridDecoration = NSCollectionLayoutDecorationItem.background(

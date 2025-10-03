@@ -338,19 +338,18 @@ class ShowPosterCell: UICollectionViewCell {
             contentView.layer.borderColor = TVGV.debugPosterColor
             contentView.layer.borderWidth = 0.5
 
-            // Add debug border to poster image
             posterImageView.layer.cornerRadius = 0 // per spec: no rounded corners
             posterImageView.clipsToBounds = true
             posterImageView.layer.borderColor = TVGV.debugPosterColor
             posterImageView.layer.borderWidth = 0.5
+
+            layer.borderColor = UIColor.green.cgColor
+            layer.borderWidth = 1
         } else {
             contentView.layer.borderWidth = 0.0
             posterImageView.layer.borderWidth = 0.0
+            layer.borderWidth = 0.0
         }
-
-        // Debug border for poster cells alignment
-        layer.borderColor = UIColor.green.cgColor
-        layer.borderWidth = 1
     }
 
     override func prepareForReuse() {

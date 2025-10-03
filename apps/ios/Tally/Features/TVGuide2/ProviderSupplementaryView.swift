@@ -73,8 +73,12 @@ final class ProviderSupplementaryView: UICollectionReusableView {
         layer.zPosition = 0
         backgroundColor = .clear
         // Red debug border to outline the provider column
-        layer.borderWidth = 2
-        layer.borderColor = UIColor.red.cgColor
+        if TVGV.debugBordersEnabled {
+            layer.borderWidth = 2
+            layer.borderColor = UIColor.red.cgColor
+        } else {
+            layer.borderWidth = 0
+        }
 
         backgroundView.translatesAutoresizingMaskIntoConstraints = false
         backgroundView.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.3)

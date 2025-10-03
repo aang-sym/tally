@@ -37,13 +37,17 @@ final class MonthHeaderView: UICollectionReusableView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        // Debug borders for month header alignment
-        layer.borderColor = UIColor.magenta.cgColor
-        layer.borderWidth = 1
+        if TVGV.debugBordersEnabled {
+            // Debug borders for month header alignment
+            layer.borderColor = UIColor.magenta.cgColor
+            layer.borderWidth = 1
 
-        // Debug border for the label itself
-        label.layer.borderColor = UIColor.orange.cgColor
-        label.layer.borderWidth = 1
+            label.layer.borderColor = UIColor.orange.cgColor
+            label.layer.borderWidth = 1
+        } else {
+            layer.borderWidth = 0
+            label.layer.borderWidth = 0
+        }
 
     }
 }
