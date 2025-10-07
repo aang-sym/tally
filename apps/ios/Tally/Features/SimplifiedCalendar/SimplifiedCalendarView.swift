@@ -203,7 +203,7 @@ struct WeekView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Week row with 7 days (may include empty cells)
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 ForEach(0..<7, id: \.self) { index in
                     if let day = week.days[index] {
                         SimplifiedDayCell(
@@ -219,7 +219,7 @@ struct WeekView: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 80)
                             .background(Color.clear)
-                            .cornerRadius(12)
+                            .cornerRadius(8)
                     }
                 }
             }
@@ -266,6 +266,7 @@ struct SimplifiedDayCell: View {
                                 size: 28,
                                 fallbackColor: .gray
                             )
+                            .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
                         } else {
                             Circle()
                                 .fill(Color.gray.opacity(0.3))
@@ -275,22 +276,23 @@ struct SimplifiedDayCell: View {
                 }
                 .frame(maxHeight: .infinity)
 
-                // Episode pips (max 3-4 + indicator)
-                EpisodePipsView(pips: Array(day.episodePips.prefix(4)), hasMore: day.episodePips.count > 4)
+                // Episode pips (max 3 + indicator)
+                EpisodePipsView(pips: Array(day.episodePips.prefix(3)), hasMore: day.episodePips.count > 3)
                     .frame(height: 8)
                     .padding(.bottom, 6)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 80)
             .background(Color(.systemBackground))
-            .cornerRadius(12)
+            .cornerRadius(8)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(
                         isSelected ? Color.blue : (day.isPast ? Color.secondary.opacity(0.3) : Color.clear),
                         lineWidth: isSelected ? 2 : 1
                     )
             )
+            .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
         }
         .buttonStyle(PlainButtonStyle())
     }
