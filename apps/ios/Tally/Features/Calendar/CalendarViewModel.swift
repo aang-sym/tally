@@ -28,6 +28,7 @@ struct EpisodeRef: Identifiable, Hashable {
     let episodeNumber: Int
     let title: String
     let airDate: String
+    let overview: String?
 }
 
 struct ProviderPrice {
@@ -200,7 +201,8 @@ final class CalendarViewModel: ObservableObject {
                             seasonNumber: seasonNumber,
                             episodeNumber: episodeNumber,
                             title: episode.title,
-                            airDate: episode.airDate
+                            airDate: episode.airDate,
+                            overview: episode.overview
                         )
 
                         var episodes = episodesByDate[dayKey] ?? []

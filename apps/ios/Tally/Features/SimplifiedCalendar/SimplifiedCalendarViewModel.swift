@@ -10,6 +10,12 @@ import SwiftUI
 
 // MARK: - Models
 
+struct ShowMetadata {
+    let tmdbId: Int
+    let title: String
+    let posterPath: String?
+}
+
 struct WeekData: Identifiable {
     let id: UUID
     let days: [DayData]
@@ -88,6 +94,7 @@ final class SimplifiedCalendarViewModel: ObservableObject {
     // Date-based lookups (from CalendarViewModel)
     private var episodesByDate: [String: [EpisodeRef]] = [:]
     private var dailyProviders: [String: [ProviderBadge]] = [:]
+    private var showsByTmdbId: [Int: ShowMetadata] = [:]
 
     // Provider color mapping (hardcoded for now, could be moved to configuration)
     private let providerColors: [Int: Color] = [
@@ -126,17 +133,19 @@ final class SimplifiedCalendarViewModel: ObservableObject {
 
             print("📅 Simplified Calendar: Loading data from \(startDateString) to \(endDateString)")
 
-            // Fetch TV guide data
-            let tvGuideResponse = try await api.getTVGuide(
+            // Fetch TV guide data using TVGuide2 API (which properly includes episode details)
+            print("📅 Starting getTVGuide2Data call...")
+            let tvGuide2Data = try await api.getTVGuide2Data(
                 startDate: startDateString,
                 endDate: endDateString,
                 country: CountryManager.get()
             )
 
-            print("📺 TV Guide Response: \(tvGuideResponse.services.count) services, \(tvGuideResponse.totalShows) shows, \(tvGuideResponse.totalEpisodes) episodes")
+            print("📺 TV Guide2 Response: \(tvGuide2Data.providers.count) providers")
+            print("📅 Finished getTVGuide2Data call")
 
             // Build episodesByDate and dailyProviders
-            buildDateMaps(from: tvGuideResponse)
+            buildDateMaps(from: tvGuide2Data)
 
             // Generate weeks
             generateWeeks(from: startDate, to: endDate)
@@ -154,39 +163,44 @@ final class SimplifiedCalendarViewModel: ObservableObject {
 
     // MARK: - Data Building
 
-    private func buildDateMaps(from tvGuideData: TVGuideData) {
+    private func buildDateMaps(from tvGuide2Data: TVGuide2Data) {
         episodesByDate = [:]
         dailyProviders = [:]
-
-        let isoDateFormatter = DateFormatter()
-        isoDateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
-        isoDateFormatter.timeZone = TimeZone(abbreviation: "UTC")
+        showsByTmdbId = [:]
 
         let dayFormatter = DateFormatter()
         dayFormatter.dateFormat = "yyyy-MM-dd"
         dayFormatter.timeZone = .current
 
-        for serviceGroup in tvGuideData.services {
-            for show in serviceGroup.shows {
-                for episode in show.upcomingEpisodes {
-                    // Convert ISO date to yyyy-MM-dd
-                    let dayKey: String
-                    if let isoDate = isoDateFormatter.date(from: episode.airDate) {
-                        dayKey = dayFormatter.string(from: isoDate)
-                    } else if episode.airDate.contains("T") {
-                        dayKey = String(episode.airDate.prefix(10))
-                    } else {
-                        dayKey = episode.airDate
-                    }
+        // TVGuide2Data structure: providers -> shows -> episodes
+        for provider in tvGuide2Data.providers {
+            for show in provider.shows {
+                // Store show metadata
+                if showsByTmdbId[show.tmdbId] == nil {
+                    showsByTmdbId[show.tmdbId] = ShowMetadata(
+                        tmdbId: show.tmdbId,
+                        title: show.title,
+                        posterPath: show.posterPath
+                    )
+                }
+
+                for episode in show.episodes {
+                    // Debug logging
+                    print("🔍 Episode for \(show.title): S\(episode.seasonNumber)E\(episode.episodeNumber) - \(episode.title)")
+                    print("   Overview: \(episode.overview ?? "nil")")
+
+                    // airDate in TVGuide2Episode is already yyyy-MM-dd format
+                    let dayKey = episode.airDate
 
                     // Add episode reference
                     let episodeRef = EpisodeRef(
-                        id: "\(show.tmdbId)-s\(episode.seasonNumber ?? 1)e\(episode.episodeNumber ?? 0)",
-                        tmdbId: show.tmdbId,
-                        seasonNumber: episode.seasonNumber ?? 1,
-                        episodeNumber: episode.episodeNumber ?? 0,
+                        id: episode.id,
+                        tmdbId: episode.tmdbId,
+                        seasonNumber: episode.seasonNumber,
+                        episodeNumber: episode.episodeNumber,
                         title: episode.title,
-                        airDate: episode.airDate
+                        airDate: episode.airDate,
+                        overview: episode.overview
                     )
 
                     var episodes = episodesByDate[dayKey] ?? []
@@ -195,20 +209,18 @@ final class SimplifiedCalendarViewModel: ObservableObject {
                     }
                     episodesByDate[dayKey] = episodes
 
-                    // Add provider badges
-                    for service in show.streamingServices {
-                        let providerBadge = ProviderBadge(
-                            id: service.id,
-                            name: service.name,
-                            logo: service.logo
-                        )
+                    // Add provider badge for this show's streaming service
+                    let providerBadge = ProviderBadge(
+                        id: provider.id,
+                        name: provider.name,
+                        logo: provider.logoPath
+                    )
 
-                        var providers = dailyProviders[dayKey] ?? []
-                        if !providers.contains(providerBadge) {
-                            providers.append(providerBadge)
-                        }
-                        dailyProviders[dayKey] = providers
+                    var providers = dailyProviders[dayKey] ?? []
+                    if !providers.contains(providerBadge) {
+                        providers.append(providerBadge)
                     }
+                    dailyProviders[dayKey] = providers
                 }
             }
         }
@@ -316,29 +328,38 @@ final class SimplifiedCalendarViewModel: ObservableObject {
     // MARK: - Episode Cards
 
     func getEpisodeCards(for dateString: String) async -> [EpisodeCardData] {
+        print("📋 getEpisodeCards called for date: \(dateString)")
         let episodes = episodesByDate[dateString] ?? []
+        print("📋 Found \(episodes.count) episode refs for \(dateString)")
 
-        // Group episodes by show (tmdbId)
-        var showEpisodes: [Int: [EpisodeRef]] = [:]
+        // Since we're now using TVGuide2Data, episodes already have all the data we need
+        var episodeCards: [EpisodeCardData] = []
+
         for episode in episodes {
-            var list = showEpisodes[episode.tmdbId] ?? []
-            list.append(episode)
-            showEpisodes[episode.tmdbId] = list
-        }
+            print("  - Episode: tmdbId=\(episode.tmdbId), S\(episode.seasonNumber)E\(episode.episodeNumber), title=\(episode.title), overview=\(episode.overview ?? "nil")")
 
-        // Create cards (need to fetch show details for title and poster)
-        // For now, return placeholder data
-        return episodes.map { episode in
-            EpisodeCardData(
+            guard let showMetadata = showsByTmdbId[episode.tmdbId] else {
+                print("⚠️ No show metadata found for tmdbId: \(episode.tmdbId)")
+                continue
+            }
+
+            let synopsis = episode.overview?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let displaySynopsis = synopsis.isEmpty ? "Synopsis not yet available for this episode." : synopsis
+
+            let episodeCard = EpisodeCardData(
                 id: episode.id,
-                showTitle: episode.title, // Placeholder (this is episode title, not show title)
-                posterPath: nil,
+                showTitle: showMetadata.title,
+                posterPath: showMetadata.posterPath,
                 episodeNumber: "S\(episode.seasonNumber)E\(episode.episodeNumber)",
                 episodeTitle: episode.title,
-                synopsis: "Episode synopsis coming soon...",
+                synopsis: displaySynopsis,
                 tmdbId: episode.tmdbId
             )
+            episodeCards.append(episodeCard)
         }
+
+        print("📋 Returning \(episodeCards.count) episode cards")
+        return episodeCards
     }
 
     // MARK: - Month Header
@@ -356,5 +377,26 @@ final class SimplifiedCalendarViewModel: ObservableObject {
         f.dateFormat = "yyyy-MM-dd"
         f.timeZone = .current
         return f.string(from: date)
+    }
+
+    /// Find the week index containing today's date
+    func findTodayWeekIndex() -> Int? {
+        let todayString = Self.key(for: Date())
+        return weeks.firstIndex { week in
+            week.days.contains { $0.dateString == todayString }
+        }
+    }
+
+    /// Select today's date
+    func selectToday() {
+        let todayString = Self.key(for: Date())
+
+        // Find the day data for today
+        for (weekIndex, week) in weeks.enumerated() {
+            if let todayData = week.days.first(where: { $0.dateString == todayString }) {
+                selectDay(todayData)
+                return
+            }
+        }
     }
 }

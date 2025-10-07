@@ -31,14 +31,12 @@ struct ProviderLogoView: View {
                 AsyncImage(url: url) { image in
                     image
                         .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .padding(size * 0.1) // Add padding around logo
+                        .aspectRatio(contentMode: .fill)
                 } placeholder: {
                     Circle()
                         .fill(fallbackColor)
                 }
                 .frame(width: size, height: size)
-                .background(Color(.systemGray6)) // Add background circle
                 .clipShape(Circle())
             } else {
                 Circle()

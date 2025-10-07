@@ -9,7 +9,7 @@ import SwiftUI
 
 struct SimplifiedCalendarView: View {
     @StateObject private var viewModel = SimplifiedCalendarViewModel()
-    @EnvironmentObject var api: ApiClient
+    @ObservedObject var api: ApiClient
 
     var body: some View {
         ZStack {
@@ -48,6 +48,7 @@ struct SimplifiedCalendarView: View {
                                         weekIndex: index,
                                         viewModel: viewModel
                                     )
+                                    .id(week.id)
                                 } header: {
                                     // Sticky month header
                                     if shouldShowMonthHeader(for: index) {
@@ -57,11 +58,21 @@ struct SimplifiedCalendarView: View {
                             }
                         }
                     }
+                    .onAppear {
+                        // Scroll to today's week on initial load
+                        if let todayWeekIndex = viewModel.findTodayWeekIndex(),
+                           todayWeekIndex < viewModel.weeks.count {
+                            let todayWeek = viewModel.weeks[todayWeekIndex]
+                            scrollProxy.scrollTo(todayWeek.id, anchor: .top)
+                        }
+                    }
                 }
             }
         }
         .task {
             await viewModel.reload(api: api)
+            // Pre-select today after data loads
+            viewModel.selectToday()
         }
     }
 
@@ -132,6 +143,7 @@ struct WeekView: View {
                     dateString: selectedDate,
                     viewModel: viewModel
                 )
+                .id(selectedDate) // Force view to reload when date changes
             }
         }
     }
@@ -289,25 +301,52 @@ struct SimplifiedEpisodeCard: View {
                     .cornerRadius(8)
             }
 
-            // Episode info
-            VStack(alignment: .leading, spacing: 4) {
-                Text(episode.showTitle)
-                    .font(.system(size: 16, weight: .semibold))
-                    .lineLimit(1)
+            // Episode info with Reddit button
+            VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(episode.showTitle)
+                        .font(.system(size: 16, weight: .semibold))
+                        .lineLimit(1)
 
-                Text("\(episode.episodeNumber) - \(episode.episodeTitle)")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
+                    Text("\(episode.episodeNumber) - \(episode.episodeTitle)")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
 
-                Text(episode.synopsis)
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                    Text(episode.synopsis)
+                        .font(.system(size: 13))
+                        .italic(episode.synopsis.starts(with: "Synopsis not yet available"))
+                        .foregroundColor(episode.synopsis.starts(with: "Synopsis not yet available") ? .secondary : .primary)
+                        .multilineTextAlignment(.leading)
+                        .padding(.top, 4)
+                }
+
+                Spacer()
+
+                // Reddit discussion button
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        // TODO: Link to Reddit discussion
+                        print("Reddit discussion tapped for \(episode.showTitle) \(episode.episodeNumber)")
+                        print("Synopsis: \(episode.synopsis)")
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bubble.left.and.bubble.right.fill")
+                                .font(.system(size: 12))
+                            Text("1.1K+")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        .foregroundColor(.orange)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.orange.opacity(0.15))
+                        .cornerRadius(6)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
             }
-
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .padding(12)
         .background(Color(.systemBackground))
@@ -317,11 +356,18 @@ struct SimplifiedEpisodeCard: View {
 
 // MARK: - Preview
 
-#Preview {
-    SimplifiedCalendarView()
-        .environmentObject({
-            let client = ApiClient()
-            client.setPreviewAuth(token: "preview-token")
-            return client
-        }())
+#if DEBUG
+struct SimplifiedCalendarView_Previews: PreviewProvider {
+    final class PreviewApiClient: ApiClient {
+        init(previewToken: String = PreviewSecrets.token) {
+            super.init()
+            self.setTokenForPreview(previewToken)
+        }
+    }
+
+    static var previews: some View {
+        SimplifiedCalendarView(api: PreviewApiClient())
+            .previewDisplayName("SimplifiedCalendarView Preview")
+    }
 }
+#endif
