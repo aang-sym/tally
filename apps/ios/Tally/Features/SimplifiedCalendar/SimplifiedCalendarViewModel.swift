@@ -16,12 +16,26 @@ struct ShowMetadata {
     let posterPath: String?
 }
 
-struct WeekData: Identifiable {
+struct MonthData: Identifiable {
     let id: UUID
-    let days: [DayData]
+    let monthYear: String  // "MMMM yyyy" format
+    let weeks: [WeekData]
     let startDate: Date
 
-    init(days: [DayData], startDate: Date) {
+    init(monthYear: String, weeks: [WeekData], startDate: Date) {
+        self.id = UUID()
+        self.monthYear = monthYear
+        self.weeks = weeks
+        self.startDate = startDate
+    }
+}
+
+struct WeekData: Identifiable {
+    let id: UUID
+    let days: [DayData?]  // Optional to support empty cells
+    let startDate: Date
+
+    init(days: [DayData?], startDate: Date) {
         self.id = UUID()
         self.days = days
         self.startDate = startDate
@@ -87,9 +101,9 @@ struct EpisodeCardData: Identifiable {
 
 @MainActor
 final class SimplifiedCalendarViewModel: ObservableObject {
-    @Published var weeks: [WeekData] = []
+    @Published var months: [MonthData] = []
     @Published var selectedDate: String?
-    @Published var lockedWeekIndex: Int?
+    @Published var lockedWeekIndex: (monthIndex: Int, weekIndex: Int)?
     @Published var currentMonthYear: String = ""
     @Published var isLoading: Bool = false
     @Published var error: String?
@@ -238,63 +252,99 @@ final class SimplifiedCalendarViewModel: ObservableObject {
         print("📊 Simplified Calendar: Built \(episodesByDate.count) days with episodes, \(dailyProviders.count) days with providers")
     }
 
-    // MARK: - Week Generation
+    // MARK: - Month/Week Generation
 
     private func generateWeeks(from startDate: Date, to endDate: Date) {
-        weeks = []
-
-        // Find the Monday of the week containing startDate
-        var currentWeekStart = calendar.dateComponents([.calendar, .yearForWeekOfYear, .weekOfYear], from: startDate)
-        currentWeekStart.weekday = 2 // Monday
-        guard var weekStart = calendar.date(from: currentWeekStart) else { return }
+        months = []
 
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
-
+        let monthFormatter = DateFormatter()
+        monthFormatter.dateFormat = "MMMM yyyy"
         let today = calendar.startOfDay(for: Date())
 
-        while weekStart <= endDate {
-            var weekDays: [DayData] = []
+        // Group weeks by month for proper alignment
+        var currentMonth = calendar.dateComponents([.year, .month], from: startDate)
 
-            for dayOffset in 0..<7 {
-                guard let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: weekStart) else { continue }
-                let dayStart = calendar.startOfDay(for: dayDate)
-                let dateString = formatter.string(from: dayDate)
+        while let monthDate = calendar.date(from: currentMonth),
+              monthDate <= endDate {
 
-                let dayNumber = calendar.component(.day, from: dayDate)
-                let dayMonth = calendar.component(.month, from: dayDate)
-                let currentMonth = calendar.component(.month, from: Date())
-                let inCurrentMonth = dayMonth == currentMonth
-                let isPast = dayStart < today
-
-                // Get providers and create pips
-                let providers = dailyProviders[dateString] ?? []
-                let pips = createEpisodePips(for: dateString, providers: providers)
-
-                // Get resubscription providers for this day
-                let resubProviders = getResubscriptionProviders(for: dateString)
-
-                let dayData = DayData(
-                    date: dayDate,
-                    dateString: dateString,
-                    dayNumber: dayNumber,
-                    inCurrentMonth: inCurrentMonth,
-                    isPast: isPast,
-                    providers: providers,
-                    episodePips: pips,
-                    resubscriptionProviders: resubProviders
-                )
-
-                weekDays.append(dayData)
+            // Get first and last day of this month
+            guard let firstDayOfMonth = calendar.date(from: currentMonth),
+                  let range = calendar.range(of: .day, in: .month, for: firstDayOfMonth),
+                  let lastDayOfMonth = calendar.date(byAdding: .day, value: range.count - 1, to: firstDayOfMonth) else {
+                // Move to next month
+                currentMonth.month! += 1
+                continue
             }
 
-            weeks.append(WeekData(days: weekDays, startDate: weekStart))
+            // Get weekday of first day (1 = Sunday, 2 = Monday, etc.)
+            let firstWeekday = calendar.component(.weekday, from: firstDayOfMonth)
+            // Convert to Monday-based (0 = Monday, 6 = Sunday)
+            let leadingBlanks = (firstWeekday + 5) % 7
 
-            guard let nextWeek = calendar.date(byAdding: .weekOfYear, value: 1, to: weekStart) else { break }
-            weekStart = nextWeek
+            // Create weeks for this month
+            var monthWeeks: [WeekData] = []
+            var currentDay = firstDayOfMonth
+            var dayOfMonth = 1
+
+            while currentDay <= lastDayOfMonth {
+                var weekDays: [DayData?] = []
+
+                // For first week, add leading blanks
+                if dayOfMonth == 1 {
+                    for _ in 0..<leadingBlanks {
+                        weekDays.append(nil)
+                    }
+                }
+
+                // Add days for this week
+                while weekDays.count < 7 && currentDay <= lastDayOfMonth {
+                    let dayStart = calendar.startOfDay(for: currentDay)
+                    let dateString = formatter.string(from: currentDay)
+                    let dayNumber = calendar.component(.day, from: currentDay)
+                    let isPast = dayStart < today
+
+                    // Get providers and create pips
+                    let providers = dailyProviders[dateString] ?? []
+                    let pips = createEpisodePips(for: dateString, providers: providers)
+                    let resubProviders = getResubscriptionProviders(for: dateString)
+
+                    let dayData = DayData(
+                        date: currentDay,
+                        dateString: dateString,
+                        dayNumber: dayNumber,
+                        inCurrentMonth: true,
+                        isPast: isPast,
+                        providers: providers,
+                        episodePips: pips,
+                        resubscriptionProviders: resubProviders
+                    )
+
+                    weekDays.append(dayData)
+
+                    guard let nextDay = calendar.date(byAdding: .day, value: 1, to: currentDay) else { break }
+                    currentDay = nextDay
+                    dayOfMonth += 1
+                }
+
+                // For last week, add trailing blanks
+                while weekDays.count < 7 {
+                    weekDays.append(nil)
+                }
+
+                monthWeeks.append(WeekData(days: weekDays, startDate: firstDayOfMonth))
+            }
+
+            // Create MonthData with all weeks for this month
+            let monthYearString = monthFormatter.string(from: firstDayOfMonth)
+            months.append(MonthData(monthYear: monthYearString, weeks: monthWeeks, startDate: firstDayOfMonth))
+
+            // Move to next month
+            currentMonth.month! += 1
         }
 
-        print("📆 Generated \(weeks.count) weeks")
+        print("📆 Generated \(months.count) months with weeks")
     }
 
     private func createEpisodePips(for dateString: String, providers: [ProviderBadge]) -> [ProviderPip] {
@@ -313,7 +363,7 @@ final class SimplifiedCalendarViewModel: ObservableObject {
 
     // MARK: - Selection & Locking
 
-    func selectDay(_ dayData: DayData) {
+    func selectDay(_ dayData: DayData, monthIndex: Int, weekIndex: Int) {
         if selectedDate == dayData.dateString {
             // Deselect if tapping same day
             selectedDate = nil
@@ -321,13 +371,7 @@ final class SimplifiedCalendarViewModel: ObservableObject {
         } else {
             // Select new day
             selectedDate = dayData.dateString
-
-            // Find which week contains this day
-            if let weekIndex = weeks.firstIndex(where: { week in
-                week.days.contains(where: { $0.dateString == dayData.dateString })
-            }) {
-                lockedWeekIndex = weekIndex
-            }
+            lockedWeekIndex = (monthIndex, weekIndex)
         }
     }
 
@@ -335,8 +379,9 @@ final class SimplifiedCalendarViewModel: ObservableObject {
         selectedDate == dayData.dateString
     }
 
-    func isWeekLocked(_ weekIndex: Int) -> Bool {
-        lockedWeekIndex == weekIndex
+    func isWeekLocked(monthIndex: Int, weekIndex: Int) -> Bool {
+        guard let locked = lockedWeekIndex else { return false }
+        return locked.monthIndex == monthIndex && locked.weekIndex == weekIndex
     }
 
     // MARK: - Episode Cards
@@ -393,12 +438,18 @@ final class SimplifiedCalendarViewModel: ObservableObject {
         return f.string(from: date)
     }
 
-    /// Find the week index containing today's date
-    func findTodayWeekIndex() -> Int? {
+    /// Find the month and week index containing today's date
+    func findTodayWeekIndex() -> (monthIndex: Int, weekIndex: Int)? {
         let todayString = Self.key(for: Date())
-        return weeks.firstIndex { week in
-            week.days.contains { $0.dateString == todayString }
+
+        for (monthIndex, month) in months.enumerated() {
+            if let weekIndex = month.weeks.firstIndex(where: { week in
+                week.days.contains { $0?.dateString == todayString }
+            }) {
+                return (monthIndex, weekIndex)
+            }
         }
+        return nil
     }
 
     /// Select today's date
@@ -406,10 +457,12 @@ final class SimplifiedCalendarViewModel: ObservableObject {
         let todayString = Self.key(for: Date())
 
         // Find the day data for today
-        for (weekIndex, week) in weeks.enumerated() {
-            if let todayData = week.days.first(where: { $0.dateString == todayString }) {
-                selectDay(todayData)
-                return
+        for (monthIndex, month) in months.enumerated() {
+            for (weekIndex, week) in month.weeks.enumerated() {
+                if let todayData = week.days.compactMap({ $0 }).first(where: { $0.dateString == todayString }) {
+                    selectDay(todayData, monthIndex: monthIndex, weekIndex: weekIndex)
+                    return
+                }
             }
         }
     }

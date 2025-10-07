@@ -39,35 +39,56 @@ struct SimplifiedCalendarView: View {
                 .padding()
             } else {
                 VStack(spacing: 0) {
-                    // Provider Legend
+                    // Provider Legend - stays at top
                     ProviderLegendView(viewModel: viewModel)
-                        .padding(.bottom, 8)
+                        .padding(.bottom, 4)
+
+                    Divider()
+                        .padding(.vertical, 4)
+
+                    // Fixed weekday labels
+                    HStack(spacing: 8) {
+                        ForEach(["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"], id: \.self) { day in
+                            Text(day)
+                                .font(.caption2)
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color(.systemGroupedBackground))
 
                     ScrollViewReader { scrollProxy in
                         ScrollView {
                             LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                                ForEach(Array(viewModel.weeks.enumerated()), id: \.element.id) { index, week in
+                                ForEach(Array(viewModel.months.enumerated()), id: \.element.id) { monthIndex, month in
                                     Section {
-                                        WeekView(
-                                            week: week,
-                                            weekIndex: index,
-                                            viewModel: viewModel
-                                        )
-                                        .id(week.id)
-                                    } header: {
-                                        // Sticky month header
-                                        if shouldShowMonthHeader(for: index) {
-                                            SimplifiedMonthHeaderView(monthYear: monthYearFor(week: week))
+                                        ForEach(Array(month.weeks.enumerated()), id: \.element.id) { weekIndex, week in
+                                            WeekView(
+                                                week: week,
+                                                monthIndex: monthIndex,
+                                                weekIndex: weekIndex,
+                                                viewModel: viewModel,
+                                                scrollProxy: scrollProxy
+                                            )
+                                            .id(week.id)
                                         }
+                                    } header: {
+                                        // Sticky month header (one per month)
+                                        SimplifiedMonthHeaderView(monthYear: month.monthYear)
+                                            .id("\(month.id)-header")
                                     }
                                 }
                             }
                         }
                         .onAppear {
                             // Scroll to today's week on initial load
-                            if let todayWeekIndex = viewModel.findTodayWeekIndex(),
-                               todayWeekIndex < viewModel.weeks.count {
-                                let todayWeek = viewModel.weeks[todayWeekIndex]
+                            if let (monthIndex, weekIndex) = viewModel.findTodayWeekIndex(),
+                               monthIndex < viewModel.months.count,
+                               weekIndex < viewModel.months[monthIndex].weeks.count {
+                                let todayWeek = viewModel.months[monthIndex].weeks[weekIndex]
                                 scrollProxy.scrollTo(todayWeek.id, anchor: .top)
                             }
                         }
@@ -82,31 +103,13 @@ struct SimplifiedCalendarView: View {
         }
     }
 
-    private func shouldShowMonthHeader(for weekIndex: Int) -> Bool {
-        // Show header for first week and when month changes
-        guard weekIndex > 0 else { return true }
-
-        let currentWeek = viewModel.weeks[weekIndex]
-        let previousWeek = viewModel.weeks[weekIndex - 1]
-
-        let calendar = Calendar.current
-        let currentMonth = calendar.component(.month, from: currentWeek.startDate)
-        let previousMonth = calendar.component(.month, from: previousWeek.startDate)
-
-        return currentMonth != previousMonth
-    }
-
-    private func monthYearFor(week: WeekData) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM yyyy"
-        return formatter.string(from: week.startDate)
-    }
 }
 
 // MARK: - Provider Legend
 
 struct ProviderLegendView: View {
     @ObservedObject var viewModel: SimplifiedCalendarViewModel
+    @State private var expandedProviderId: Int?
 
     var body: some View {
         let allProviders = viewModel.getAllProviders()
@@ -115,34 +118,54 @@ struct ProviderLegendView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     ForEach(allProviders, id: \.id) { provider in
-                        HStack(spacing: 6) {
-                            // Provider logo
-                            if let logoPath = provider.logo,
-                               let url = URL(string: logoPath) {
-                                ProviderLogoView(
-                                    url: url,
-                                    size: 20,
-                                    fallbackColor: viewModel.colorForProvider(provider.id)
-                                )
-                            } else {
+                        Button(action: {
+                            // Toggle expanded state with animation
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                if expandedProviderId == provider.id {
+                                    expandedProviderId = nil
+                                } else {
+                                    expandedProviderId = provider.id
+                                }
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                // Provider logo
+                                if let logoPath = provider.logo,
+                                   let url = URL(string: logoPath) {
+                                    ProviderLogoView(
+                                        url: url,
+                                        size: 20,
+                                        fallbackColor: viewModel.colorForProvider(provider.id)
+                                    )
+                                } else {
+                                    Circle()
+                                        .fill(viewModel.colorForProvider(provider.id))
+                                        .frame(width: 20, height: 20)
+                                }
+
+                                // Show text only when expanded
+                                if expandedProviderId == provider.id {
+                                    Text(provider.name)
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundColor(.secondary)
+                                        .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .leading)))
+                                }
+
+                                // Colored pip matching calendar
                                 Circle()
                                     .fill(viewModel.colorForProvider(provider.id))
-                                    .frame(width: 20, height: 20)
+                                    .frame(width: 6, height: 6)
                             }
-
-                            Text(provider.name)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.secondary)
-
-                            // Colored pip matching calendar
-                            Circle()
-                                .fill(viewModel.colorForProvider(provider.id))
-                                .frame(width: 6, height: 6)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                expandedProviderId == provider.id
+                                    ? viewModel.colorForProvider(provider.id).opacity(0.15)
+                                    : Color(.systemBackground)
+                            )
+                            .cornerRadius(12)
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color(.systemBackground))
-                        .cornerRadius(12)
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
                 .padding(.horizontal, 16)
@@ -158,13 +181,13 @@ struct SimplifiedMonthHeaderView: View {
     let monthYear: String
 
     var body: some View {
-        Text(monthYear)
-            .font(.system(size: 20, weight: .bold))
+        Text(monthYear.uppercased())
+            .font(.system(size: 18, weight: .bold))
             .foregroundColor(.primary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(Color(.systemGroupedBackground))
+            .background(Color(.systemGray6))
     }
 }
 
@@ -172,28 +195,39 @@ struct SimplifiedMonthHeaderView: View {
 
 struct WeekView: View {
     let week: WeekData
+    let monthIndex: Int
     let weekIndex: Int
     @ObservedObject var viewModel: SimplifiedCalendarViewModel
+    let scrollProxy: ScrollViewProxy
 
     var body: some View {
         VStack(spacing: 0) {
-            // Week row with 7 days
+            // Week row with 7 days (may include empty cells)
             HStack(spacing: 8) {
-                ForEach(week.days) { day in
-                    SimplifiedDayCell(
-                        day: day,
-                        isSelected: viewModel.isSelected(day),
-                        onTap: {
-                            viewModel.selectDay(day)
-                        }
-                    )
+                ForEach(0..<7, id: \.self) { index in
+                    if let day = week.days[index] {
+                        SimplifiedDayCell(
+                            day: day,
+                            isSelected: viewModel.isSelected(day),
+                            onTap: {
+                                viewModel.selectDay(day, monthIndex: monthIndex, weekIndex: weekIndex)
+                            }
+                        )
+                    } else {
+                        // Empty cell placeholder
+                        Color.clear
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 80)
+                            .background(Color.clear)
+                            .cornerRadius(12)
+                    }
                 }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
 
             // Episode cards (shown when this week is locked)
-            if viewModel.isWeekLocked(weekIndex), let selectedDate = viewModel.selectedDate {
+            if viewModel.isWeekLocked(monthIndex: monthIndex, weekIndex: weekIndex), let selectedDate = viewModel.selectedDate {
                 EpisodeListView(
                     dateString: selectedDate,
                     viewModel: viewModel
