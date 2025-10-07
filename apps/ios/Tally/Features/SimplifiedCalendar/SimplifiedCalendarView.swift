@@ -38,32 +38,38 @@ struct SimplifiedCalendarView: View {
                 }
                 .padding()
             } else {
-                ScrollViewReader { scrollProxy in
-                    ScrollView {
-                        LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                            ForEach(Array(viewModel.weeks.enumerated()), id: \.element.id) { index, week in
-                                Section {
-                                    WeekView(
-                                        week: week,
-                                        weekIndex: index,
-                                        viewModel: viewModel
-                                    )
-                                    .id(week.id)
-                                } header: {
-                                    // Sticky month header
-                                    if shouldShowMonthHeader(for: index) {
-                                        SimplifiedMonthHeaderView(monthYear: monthYearFor(week: week))
+                VStack(spacing: 0) {
+                    // Provider Legend
+                    ProviderLegendView(viewModel: viewModel)
+                        .padding(.bottom, 8)
+
+                    ScrollViewReader { scrollProxy in
+                        ScrollView {
+                            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                                ForEach(Array(viewModel.weeks.enumerated()), id: \.element.id) { index, week in
+                                    Section {
+                                        WeekView(
+                                            week: week,
+                                            weekIndex: index,
+                                            viewModel: viewModel
+                                        )
+                                        .id(week.id)
+                                    } header: {
+                                        // Sticky month header
+                                        if shouldShowMonthHeader(for: index) {
+                                            SimplifiedMonthHeaderView(monthYear: monthYearFor(week: week))
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    .onAppear {
-                        // Scroll to today's week on initial load
-                        if let todayWeekIndex = viewModel.findTodayWeekIndex(),
-                           todayWeekIndex < viewModel.weeks.count {
-                            let todayWeek = viewModel.weeks[todayWeekIndex]
-                            scrollProxy.scrollTo(todayWeek.id, anchor: .top)
+                        .onAppear {
+                            // Scroll to today's week on initial load
+                            if let todayWeekIndex = viewModel.findTodayWeekIndex(),
+                               todayWeekIndex < viewModel.weeks.count {
+                                let todayWeek = viewModel.weeks[todayWeekIndex]
+                                scrollProxy.scrollTo(todayWeek.id, anchor: .top)
+                            }
                         }
                     }
                 }
@@ -94,6 +100,55 @@ struct SimplifiedCalendarView: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMMM yyyy"
         return formatter.string(from: week.startDate)
+    }
+}
+
+// MARK: - Provider Legend
+
+struct ProviderLegendView: View {
+    @ObservedObject var viewModel: SimplifiedCalendarViewModel
+
+    var body: some View {
+        let allProviders = viewModel.getAllProviders()
+
+        if !allProviders.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(allProviders, id: \.id) { provider in
+                        HStack(spacing: 6) {
+                            // Provider logo
+                            if let logoPath = provider.logo,
+                               let url = URL(string: logoPath) {
+                                ProviderLogoView(
+                                    url: url,
+                                    size: 20,
+                                    fallbackColor: viewModel.colorForProvider(provider.id)
+                                )
+                            } else {
+                                Circle()
+                                    .fill(viewModel.colorForProvider(provider.id))
+                                    .frame(width: 20, height: 20)
+                            }
+
+                            Text(provider.name)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.secondary)
+
+                            // Colored pip matching calendar
+                            Circle()
+                                .fill(viewModel.colorForProvider(provider.id))
+                                .frame(width: 6, height: 6)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color(.systemBackground))
+                        .cornerRadius(12)
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+            .background(Color(.systemGroupedBackground))
+        }
     }
 }
 
@@ -158,29 +213,48 @@ struct SimplifiedDayCell: View {
 
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 4) {
-                // Date number
+            VStack(spacing: 0) {
+                // Date number - always at top with fixed height
                 Text("\(day.dayNumber)")
                     .font(.system(size: 18, weight: isSelected ? .bold : .medium))
-                    .foregroundColor(isSelected ? .white : (day.isPast ? .secondary : .primary))
-
-                // Provider logos (max 2 visible + indicator)
-                ProviderStackView(providers: Array(day.providers.prefix(2)), hasMore: day.providers.count > 2)
+                    .foregroundColor(day.isPast ? .secondary : .primary)
+                    .frame(maxWidth: .infinity, alignment: .center)
                     .frame(height: 24)
+                    .padding(.top, 4)
 
-                // Episode pips (max 3 + indicator)
-                EpisodePipsView(pips: Array(day.episodePips.prefix(3)), hasMore: day.episodePips.count > 3)
+                // Middle section - centered logo between number and pips
+                ZStack {
+                    if let resubProvider = day.resubscriptionProviders.first {
+                        if let logoPath = resubProvider.logo,
+                           let url = URL(string: logoPath) {
+                            ProviderLogoView(
+                                url: url,
+                                size: 28,
+                                fallbackColor: .gray
+                            )
+                        } else {
+                            Circle()
+                                .fill(Color.gray.opacity(0.3))
+                                .frame(width: 28, height: 28)
+                        }
+                    }
+                }
+                .frame(maxHeight: .infinity)
+
+                // Episode pips (max 3-4 + indicator)
+                EpisodePipsView(pips: Array(day.episodePips.prefix(4)), hasMore: day.episodePips.count > 4)
                     .frame(height: 8)
+                    .padding(.bottom, 6)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 80)
-            .background(isSelected ? Color.blue : Color(.systemBackground))
+            .background(Color(.systemBackground))
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .strokeBorder(
-                        day.isPast ? Color.secondary.opacity(0.3) : Color.clear,
-                        lineWidth: 1
+                        isSelected ? Color.blue : (day.isPast ? Color.secondary.opacity(0.3) : Color.clear),
+                        lineWidth: isSelected ? 2 : 1
                     )
             )
         }
@@ -323,9 +397,24 @@ struct SimplifiedEpisodeCard: View {
 
                 Spacer()
 
-                // Reddit discussion button
-                HStack {
+                // Cost per episode and Reddit discussion
+                HStack(spacing: 8) {
+                    // Cost per episode indicator
+                    HStack(spacing: 4) {
+                        Image(systemName: "dollarsign.circle.fill")
+                            .font(.system(size: 14))
+                        Text("3.12")
+                            .font(.system(size: 12, weight: .medium))
+                    }
+                    .foregroundColor(.green)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.green.opacity(0.15))
+                    .cornerRadius(6)
+
                     Spacer()
+
+                    // Reddit discussion button
                     Button(action: {
                         // TODO: Link to Reddit discussion
                         print("Reddit discussion tapped for \(episode.showTitle) \(episode.episodeNumber)")

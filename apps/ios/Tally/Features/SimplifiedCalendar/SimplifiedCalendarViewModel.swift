@@ -37,6 +37,7 @@ struct DayData: Identifiable {
     let isPast: Bool
     let providers: [ProviderBadge]
     let episodePips: [ProviderPip]
+    let resubscriptionProviders: [ProviderBadge] // Providers to resubscribe on this day
 
     init(
         date: Date,
@@ -45,7 +46,8 @@ struct DayData: Identifiable {
         inCurrentMonth: Bool,
         isPast: Bool,
         providers: [ProviderBadge],
-        episodePips: [ProviderPip]
+        episodePips: [ProviderPip],
+        resubscriptionProviders: [ProviderBadge] = []
     ) {
         self.id = UUID()
         self.date = date
@@ -55,6 +57,7 @@ struct DayData: Identifiable {
         self.isPast = isPast
         self.providers = providers
         self.episodePips = episodePips
+        self.resubscriptionProviders = resubscriptionProviders
     }
 }
 
@@ -96,15 +99,19 @@ final class SimplifiedCalendarViewModel: ObservableObject {
     private var dailyProviders: [String: [ProviderBadge]] = [:]
     private var showsByTmdbId: [Int: ShowMetadata] = [:]
 
+    // Resubscription tracking (will be API-driven later)
+    private var resubscriptionDates: [String: [ProviderBadge]] = [:] // dateString -> providers to resubscribe
+
     // Provider color mapping (hardcoded for now, could be moved to configuration)
     private let providerColors: [Int: Color] = [
         8: Color.red,        // Netflix
         119: Color.blue,     // Amazon Prime
-        337: Color.purple,   // Disney+
+        337: Color(red: 0.0, green: 0.3, blue: 0.6),   // Disney+ - dark blue
         15: Color.green,     // Hulu
         1899: Color.purple,  // HBO Max
         2: Color.gray,       // Apple TV+
         531: Color.blue,     // Paramount+
+        283: Color.orange,   // Crunchyroll - orange
         4888: Color.orange   // Paramount+ with Showtime
     ]
 
@@ -147,7 +154,10 @@ final class SimplifiedCalendarViewModel: ObservableObject {
             // Build episodesByDate and dailyProviders
             buildDateMaps(from: tvGuide2Data)
 
-            // Generate weeks
+            // Calculate mock resubscription dates first
+            calculateMockResubscriptionDates(startDate: startDate, endDate: endDate)
+
+            // Generate weeks (will include resubscription providers)
             generateWeeks(from: startDate, to: endDate)
 
             // Set initial month header
@@ -261,6 +271,9 @@ final class SimplifiedCalendarViewModel: ObservableObject {
                 let providers = dailyProviders[dateString] ?? []
                 let pips = createEpisodePips(for: dateString, providers: providers)
 
+                // Get resubscription providers for this day
+                let resubProviders = getResubscriptionProviders(for: dateString)
+
                 let dayData = DayData(
                     date: dayDate,
                     dateString: dateString,
@@ -268,7 +281,8 @@ final class SimplifiedCalendarViewModel: ObservableObject {
                     inCurrentMonth: inCurrentMonth,
                     isPast: isPast,
                     providers: providers,
-                    episodePips: pips
+                    episodePips: pips,
+                    resubscriptionProviders: resubProviders
                 )
 
                 weekDays.append(dayData)
@@ -398,5 +412,89 @@ final class SimplifiedCalendarViewModel: ObservableObject {
                 return
             }
         }
+    }
+
+    /// Get all unique providers across all dates
+    func getAllProviders() -> [ProviderBadge] {
+        var providerMap: [Int: ProviderBadge] = [:]
+        for providers in dailyProviders.values {
+            for provider in providers {
+                providerMap[provider.id] = provider
+            }
+        }
+        return Array(providerMap.values).sorted { $0.name < $1.name }
+    }
+
+    /// Get color for a provider ID
+    func colorForProvider(_ providerId: Int) -> Color {
+        return providerColors[providerId] ?? .gray
+    }
+
+    /// Get provider badges for resubscription on a specific date
+    func getResubscriptionProviders(for dateString: String) -> [ProviderBadge] {
+        return resubscriptionDates[dateString] ?? []
+    }
+
+    // MARK: - Mock Resubscription Logic
+
+    /// Calculate mock resubscription dates
+    /// Hardcoded billing dates for each provider that repeat monthly
+    /// TODO: Replace with API-driven resubscription dates
+    private func calculateMockResubscriptionDates(startDate: Date, endDate: Date) {
+        resubscriptionDates = [:]
+
+        // Hardcoded billing day of month for each provider
+        let providerBillingDays: [Int: Int] = [
+            8: 15,        // Netflix - 15th of each month
+            119: 3,       // Amazon Prime - 3rd of each month
+            337: 12,      // Disney+ - 12th of each month
+            15: 7,        // Hulu - 7th of each month
+            1899: 21,     // HBO Max - 21st of each month
+            2: 5,         // Apple TV+ - 5th of each month
+            531: 10,      // Paramount+ - 10th of each month
+            283: 19       // Crunchyroll - 19th of each month
+        ]
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        // Get all unique providers from dailyProviders
+        var allProviders: [Int: ProviderBadge] = [:]
+        for providers in dailyProviders.values {
+            for provider in providers {
+                allProviders[provider.id] = provider
+            }
+        }
+
+        print("🔍 Found \(allProviders.count) unique providers: \(allProviders.keys.sorted())")
+
+        // Iterate through each day in the date range
+        var currentDate = startDate
+        while currentDate <= endDate {
+            let thisDayOfMonth = calendar.component(.day, from: currentDate)
+            let dateString = formatter.string(from: currentDate)
+
+            // Check if this day matches any provider's billing day
+            for (providerId, billingDay) in providerBillingDays {
+                guard let provider = allProviders[providerId] else { continue }
+
+                // Match day of month (accounting for months with fewer days)
+                let isLastDayOfMonth = thisDayOfMonth == calendar.range(of: .day, in: .month, for: currentDate)?.count
+                if thisDayOfMonth == billingDay || (billingDay > 28 && isLastDayOfMonth) {
+                    if resubscriptionDates[dateString] == nil {
+                        resubscriptionDates[dateString] = []
+                    }
+                    if !resubscriptionDates[dateString]!.contains(provider) {
+                        resubscriptionDates[dateString]?.append(provider)
+                        print("💳 Added \(provider.name) billing on \(dateString) (day \(thisDayOfMonth))")
+                    }
+                }
+            }
+
+            guard let nextDate = calendar.date(byAdding: .day, value: 1, to: currentDate) else { break }
+            currentDate = nextDate
+        }
+
+        print("📅 Calculated \(resubscriptionDates.count) resubscription dates with monthly recurrence")
     }
 }
