@@ -95,6 +95,11 @@ struct EpisodeCardData: Identifiable {
     let episodeTitle: String
     let synopsis: String
     let tmdbId: Int
+    let providerId: Int?
+    let providerLogo: String?
+    let providerName: String?
+    let providerColor: Color?
+    let recurringDay: Int? // Day of month provider renews (1-31)
 }
 
 // MARK: - ViewModel
@@ -391,6 +396,10 @@ final class SimplifiedCalendarViewModel: ObservableObject {
         let episodes = episodesByDate[dateString] ?? []
         print("📋 Found \(episodes.count) episode refs for \(dateString)")
 
+        // Get providers for this date
+        let providers = dailyProviders[dateString] ?? []
+        let primaryProvider = providers.first
+
         // Since we're now using TVGuide2Data, episodes already have all the data we need
         var episodeCards: [EpisodeCardData] = []
 
@@ -405,6 +414,14 @@ final class SimplifiedCalendarViewModel: ObservableObject {
             let synopsis = episode.overview?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let displaySynopsis = synopsis.isEmpty ? "Synopsis not yet available for this episode." : synopsis
 
+            // Get recurring day and color for the provider
+            var recurringDay: Int? = nil
+            var providerColor: Color? = nil
+            if let provider = primaryProvider {
+                recurringDay = getRecurringDay(for: provider.id)
+                providerColor = colorForProvider(provider.id)
+            }
+
             let episodeCard = EpisodeCardData(
                 id: episode.id,
                 showTitle: showMetadata.title,
@@ -412,13 +429,34 @@ final class SimplifiedCalendarViewModel: ObservableObject {
                 episodeNumber: "S\(episode.seasonNumber)E\(episode.episodeNumber)",
                 episodeTitle: episode.title,
                 synopsis: displaySynopsis,
-                tmdbId: episode.tmdbId
+                tmdbId: episode.tmdbId,
+                providerId: primaryProvider?.id,
+                providerLogo: primaryProvider?.logo,
+                providerName: primaryProvider?.name,
+                providerColor: providerColor,
+                recurringDay: recurringDay
             )
             episodeCards.append(episodeCard)
         }
 
         print("📋 Returning \(episodeCards.count) episode cards")
         return episodeCards
+    }
+
+    // MARK: - Provider Helpers
+
+    private func getRecurringDay(for providerId: Int) -> Int? {
+        // Search through resubscriptionDates to find this provider's recurring day
+        for (dateString, providers) in resubscriptionDates {
+            if providers.contains(where: { $0.id == providerId }) {
+                // Extract day from date string (format: "yyyy-MM-dd")
+                let components = dateString.split(separator: "-")
+                if components.count == 3, let day = Int(components[2]) {
+                    return day
+                }
+            }
+        }
+        return nil
     }
 
     // MARK: - Month Header
@@ -529,7 +567,13 @@ final class SimplifiedCalendarViewModel: ObservableObject {
 
             // Check if this day matches any provider's billing day
             for (providerId, billingDay) in providerBillingDays {
-                guard let provider = allProviders[providerId] else { continue }
+                guard let provider = allProviders[providerId] else {
+                    // Provider not found in allProviders - check if it should have been there
+                    if thisDayOfMonth == billingDay {
+                        print("⚠️ Provider \(providerId) not found for billing day \(billingDay) on \(dateString)")
+                    }
+                    continue
+                }
 
                 // Match day of month (accounting for months with fewer days)
                 let isLastDayOfMonth = thisDayOfMonth == calendar.range(of: .day, in: .month, for: currentDate)?.count
@@ -539,7 +583,7 @@ final class SimplifiedCalendarViewModel: ObservableObject {
                     }
                     if !resubscriptionDates[dateString]!.contains(provider) {
                         resubscriptionDates[dateString]?.append(provider)
-                        print("💳 Added \(provider.name) billing on \(dateString) (day \(thisDayOfMonth))")
+                        print("💳 Added \(provider.name) (id:\(provider.id)) billing on \(dateString) (day \(thisDayOfMonth)), logo: \(provider.logo ?? "nil")")
                     }
                 }
             }

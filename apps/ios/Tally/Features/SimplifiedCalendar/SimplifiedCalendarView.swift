@@ -210,7 +210,9 @@ struct WeekView: View {
                             day: day,
                             isSelected: viewModel.isSelected(day),
                             onTap: {
-                                viewModel.selectDay(day, monthIndex: monthIndex, weekIndex: weekIndex)
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    viewModel.selectDay(day, monthIndex: monthIndex, weekIndex: weekIndex)
+                                }
                             }
                         )
                     } else {
@@ -233,6 +235,10 @@ struct WeekView: View {
                     viewModel: viewModel
                 )
                 .id(selectedDate) // Force view to reload when date changes
+                .transition(.asymmetric(
+                    insertion: .move(edge: .top).combined(with: .opacity),
+                    removal: .move(edge: .top).combined(with: .opacity)
+                ))
             }
         }
     }
@@ -250,7 +256,7 @@ struct SimplifiedDayCell: View {
             VStack(spacing: 0) {
                 // Date number - always at top with fixed height
                 Text("\(day.dayNumber)")
-                    .font(.system(size: 18, weight: isSelected ? .bold : .medium))
+                    .font(.system(size: 18, weight: .medium))
                     .foregroundColor(day.isPast ? .secondary : .primary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .frame(height: 24)
@@ -268,6 +274,7 @@ struct SimplifiedDayCell: View {
                             )
                             .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
                         } else {
+                            let _ = print("⭕️ Grey circle for day \(day.dayNumber): provider=\(resubProvider.name), logo=\(resubProvider.logo ?? "nil")")
                             Circle()
                                 .fill(Color.gray.opacity(0.3))
                                 .frame(width: 28, height: 28)
@@ -388,9 +395,26 @@ struct EpisodeListView: View {
 
 struct SimplifiedEpisodeCard: View {
     let episode: EpisodeCardData
+    @State private var showRenewsLabel = false
+
+    private func ordinalDay(_ day: Int) -> String {
+        let suffix: String
+        switch day {
+        case 1, 21, 31:
+            suffix = "st"
+        case 2, 22:
+            suffix = "nd"
+        case 3, 23:
+            suffix = "rd"
+        default:
+            suffix = "th"
+        }
+        return "\(day)\(suffix)"
+    }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        ZStack(alignment: .topTrailing) {
+            HStack(alignment: .top, spacing: 12) {
             // Poster
             if let posterPath = episode.posterPath,
                let url = URL(string: "https://image.tmdb.org/t/p/w200\(posterPath)") {
@@ -472,10 +496,53 @@ struct SimplifiedEpisodeCard: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+            .padding(12)
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
+
+            // Provider pill badge in top-right corner
+            if let logoPath = episode.providerLogo,
+               let url = URL(string: logoPath),
+               let recurringDay = episode.recurringDay,
+               let providerColor = episode.providerColor {
+                VStack(spacing: 4) {
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            showRenewsLabel.toggle()
+                        }
+                    }) {
+                        HStack(spacing: 6) {
+                            // Recurring day number
+                            Text(ordinalDay(recurringDay))
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(providerColor)
+
+                            // Provider logo
+                            ProviderLogoView(
+                                url: url,
+                                size: 20,
+                                fallbackColor: .gray
+                            )
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(providerColor.opacity(0.15))
+                        .cornerRadius(12)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+
+                    // "Renews" label (shown when tapped)
+                    if showRenewsLabel {
+                        Text("Renews")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.secondary)
+                            .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                    }
+                }
+                .padding(8)
+            }
         }
-        .padding(12)
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
     }
 }
 
