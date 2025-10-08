@@ -153,7 +153,12 @@ export class WatchlistService {
       const { data: serviceInsertResult, error: serviceInsertError } = await serviceSupabase
         .from('user_shows')
         .upsert([userShowData], { onConflict: 'user_id,show_id' })
-        .select()
+        .select(
+          `
+          *,
+          shows (*)
+        `
+        )
         .single();
 
       if (serviceInsertError) {
@@ -194,13 +199,20 @@ export class WatchlistService {
 
         const userShow = serviceInsertResult;
 
+        // Transform the response to match iOS expectations (shows -> show)
+        const { shows, ...userShowWithoutShows } = userShow;
+        const transformedUserShow = {
+          ...userShowWithoutShows,
+          show: shows, // Map 'shows' field to 'show' for iOS compatibility
+        };
+
         // Mark show as popular if it's being actively tracked
         if (status === 'watching' && show) {
           console.log('⭐ [WATCHLIST_SERVICE] Marking show as popular...');
           await showService.markShowAsPopular(show.id);
         }
 
-        return userShow;
+        return transformedUserShow;
       }
     } catch (error) {
       console.error('❌ [WATCHLIST_SERVICE] addToWatchlist failed:', {

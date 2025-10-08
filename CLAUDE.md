@@ -38,7 +38,80 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Stores: users, watchlists, waitlist entries
 - All database operations isolated in `/apps/api/src/storage/`
 
-**Testing**: Vitest for unit tests, supertest for API tests
+**Testing**: Vitest for unit tests, supertest for API tests, Swift Testing for iOS
+
+## iOS Development Principles
+
+When working on the iOS app (`/apps/ios`), follow these core principles:
+
+### Test-Driven Development (TDD)
+
+- **ALWAYS write tests BEFORE implementation** - no exceptions
+- Write a failing test that defines the desired functionality
+- Implement minimal code to make the test pass
+- Refactor while keeping tests green
+- Use Swift Testing framework for all new tests
+- Every feature MUST have test coverage before it's considered complete
+
+### Idiomatic Swift/SwiftUI
+
+- **Prefer idiomatic solutions over workarounds**
+- After any initial implementation that works, ask: "Is this the most idiomatic way?"
+- Use `@Observable` for state management (modern Swift pattern)
+- Avoid state flags when computed properties will work
+- No `DispatchQueue.asyncAfter` hacks - use proper SwiftUI lifecycle
+- Trust SwiftUI's built-in behaviors (e.g., button tap protection)
+- Follow Swift 6 strict concurrency - no detached tasks or polling loops
+- Use structured concurrency with proper async/await patterns
+
+### "Show Don't Tell" UI Design Pattern
+
+When designing new UI features:
+
+1. Create a throwaway demo file with 3-4 different visual approaches
+2. Use fake/mock data - don't worry about DI or architecture yet
+3. Add individual preview blocks for each approach
+4. Review alternatives in Xcode canvas side-by-side
+5. Iterate on the chosen design in the demo file
+6. Only then integrate the final version into production with proper architecture
+
+Example:
+
+```swift
+// CalendarCellDemo.swift (throwaway file)
+import SwiftUI
+
+// Approach 1: Badge variant
+struct BadgeCalendarCell: View { ... }
+
+// Approach 2: Icon indicator
+struct IconCalendarCell: View { ... }
+
+// Approach 3: Corner ribbon
+struct RibbonCalendarCell: View { ... }
+
+// Approach 4: Bottom footer
+struct FooterCalendarCell: View { ... }
+
+#Preview("Badge") { BadgeCalendarCell() }
+#Preview("Icon") { IconCalendarCell() }
+#Preview("Ribbon") { RibbonCalendarCell() }
+#Preview("Footer") { FooterCalendarCell() }
+```
+
+### Protocol-Based Dependency Injection
+
+- Maintain testable architecture with protocol-based DI
+- All external dependencies (API, persistence, etc.) should be protocols
+- Example: `ApiClient` protocol → `LiveApiClient` / `MockApiClient`
+- Makes testing trivial and keeps business logic pure
+
+### Code Quality Standards
+
+- Enum-based view state over boolean flags
+- Computed properties over stored state when possible
+- Pure business logic extracted to separate layers
+- Every file should be independently testable
 
 ## Development Commands
 

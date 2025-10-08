@@ -9,8 +9,10 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var status = "Loading…"
-    @State private var subscriptions: [Subscription] = []
-    let api = ApiClient()
+    @State private var token: String = ""
+    @State private var email: String = "test2@example.com"
+    @State private var password: String = "password123"
+    @StateObject private var api = ApiClient()
 
     var body: some View {
         NavigationStack {
@@ -19,27 +21,36 @@ struct ContentView: View {
                     .font(.largeTitle)
                 Text(status)
                     .monospaced()
+                Group {
+                    TextField("Email", text: $email)
+                        .textFieldStyle(.roundedBorder)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                        .autocorrectionDisabled()
+                    SecureField("Password", text: $password)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Login (fetch token)") {
+                        Task { await loginAndSetToken() }
+                    }
+                }
+                TextField("Auth token (optional)", text: $token)
+                    .textFieldStyle(.roundedBorder)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                .buttonStyle(.bordered)
                 Button("Ping API") {
                     Task {
                         await load()
                     }
                 }
-                Button("Load Subscriptions") {
-                    Task {
-                        await loadSubscriptions()
-                    }
-                }
-                List(subscriptions) { sub in
-                    VStack(alignment: .leading) {
-                        Text(sub.serviceName ?? "Unknown Service")
-                            .font(.headline)
-                        if let price = sub.price, let currency = sub.currency {
-                            Text("\(price, specifier: "%.2f") \(currency)")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
+                NavigationLink("Subscriptions", destination: SubscriptionsView(api: api))
+                    .buttonStyle(.bordered)
+                NavigationLink("My Shows", destination: WatchlistView(api: api))
+                    .buttonStyle(.bordered)
+                NavigationLink("Search", destination: SearchView(api: api))
+                    .buttonStyle(.bordered)
+                NavigationLink("Calendar", destination: SimplifiedCalendarView(api: api))
+                    .buttonStyle(.bordered)
             }
             .padding()
             .task {
@@ -53,16 +64,21 @@ struct ContentView: View {
             let health = try await api.health()
             status = "Last updated: \(health.timestamp)"
         } catch {
-            status = "Error: \(error.localizedDescription)"
+            status = "Error: \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)"
         }
     }
 
+
     @MainActor
-    private func loadSubscriptions() async {
+    private func loginAndSetToken() async {
         do {
-            subscriptions = try await api.subscriptions()
+            let authenticatedUser = try await api.login(email: email, password: password)
+            token = authenticatedUser.token
+            print("Auth token: \(authenticatedUser.token)")
+            api.setAuthentication(user: authenticatedUser)
+            status = "Logged in as \(authenticatedUser.displayName)"
         } catch {
-            status = "Subs error: \(error.localizedDescription)"
+            status = "Login error: \((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)"
         }
     }
 }
