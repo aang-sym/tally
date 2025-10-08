@@ -19,6 +19,7 @@ struct Subscription: Decodable, Identifiable {
     let currency: String?
 }
 
+<<<<<<< HEAD
 enum ApiError: Error, LocalizedError {
     case unauthorized
     case badStatus(Int)
