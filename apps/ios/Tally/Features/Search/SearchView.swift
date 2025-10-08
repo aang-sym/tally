@@ -644,11 +644,9 @@ private struct EpisodeRowButton: View {
 
 // MARK: - Previews
 #Preview {
-    let api = ApiClient()
-    return SearchView(api: api)
+    SearchView(api: PreviewApiClient())
 }
 
 #Preview("With Results") {
-    let api = ApiClient()
-    return SearchView(api: api)
+    SearchView(api: PreviewApiClient())
 }

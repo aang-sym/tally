@@ -120,6 +120,5 @@ private struct Row: View {
 }
 
 #Preview {
-    let api = ApiClient()
-    return WatchlistView(api: api)
+    WatchlistView(api: PreviewApiClient())
 }

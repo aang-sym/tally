@@ -58,5 +58,5 @@ struct SubscriptionsView: View {
 }
 
 #Preview {
-    SubscriptionsView(api: ApiClient())
+    SubscriptionsView(api: PreviewApiClient())
 }

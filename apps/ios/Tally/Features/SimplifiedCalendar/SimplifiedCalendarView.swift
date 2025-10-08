@@ -513,17 +513,17 @@ struct SimplifiedEpisodeCard: View {
                         }
                     }) {
                         HStack(spacing: 6) {
-                            // Recurring day number
-                            Text(ordinalDay(recurringDay))
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(providerColor)
-
                             // Provider logo
                             ProviderLogoView(
                                 url: url,
                                 size: 20,
                                 fallbackColor: .gray
                             )
+
+                            // Recurring day number
+                            Text(ordinalDay(recurringDay))
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(providerColor)
                         }
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -549,17 +549,7 @@ struct SimplifiedEpisodeCard: View {
 // MARK: - Preview
 
 #if DEBUG
-struct SimplifiedCalendarView_Previews: PreviewProvider {
-    final class PreviewApiClient: ApiClient {
-        init(previewToken: String = PreviewSecrets.token) {
-            super.init()
-            self.setTokenForPreview(previewToken)
-        }
-    }
-
-    static var previews: some View {
-        SimplifiedCalendarView(api: PreviewApiClient())
-            .previewDisplayName("SimplifiedCalendarView Preview")
-    }
+#Preview("SimplifiedCalendarView") {
+    SimplifiedCalendarView(api: PreviewApiClient())
 }
 #endif
