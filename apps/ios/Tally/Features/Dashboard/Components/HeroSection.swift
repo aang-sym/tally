@@ -87,15 +87,60 @@ private struct ServiceLogoView: View {
     var body: some View {
         Group {
             if let assetName = logoAssetName(for: service) {
-                Image(assetName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: Spacing.heroLogoSize)
+                ZStack {
+                    // Layer 1: Most blurred layer for outer glow emission
+                    Image(assetName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: Spacing.heroLogoSize)
+                        .blur(radius: 3)
+                        .opacity(0.15)
+                        .brightness(0.15)
+
+                    // Layer 2: Medium blur for mid-range glow
+                    Image(assetName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: Spacing.heroLogoSize)
+                        .blur(radius: 1.5)
+                        .opacity(0.2)
+                        .brightness(0.1)
+
+                    // Layer 3: Slight blur for close glow
+                    Image(assetName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: Spacing.heroLogoSize)
+                        .blur(radius: 0.5)
+                        .opacity(0.3)
+                        .brightness(0.05)
+
+                    // Layer 4: Main logo with subtle brightness boost for self-illumination
+                    Image(assetName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: Spacing.heroLogoSize)
+                        .brightness(0.1)
+                }
+                .background(
+                    // Glowing background using the logo shape itself
+                    Image(assetName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: Spacing.heroLogoSize)
+                        .blur(radius: 15)
+                        .colorMultiply(glowColor(for: service))
+                        .opacity(0.8)
+                        .scaleEffect(1.05)
+                )
+                // Multi-layer glow shadows - tighter radiuses
+                .shadow(color: glowColor(for: service).opacity(0.6), radius: 10, x: 0, y: 0)
+                .shadow(color: glowColor(for: service).opacity(0.4), radius: 18, x: 0, y: 0)
+                .shadow(color: glowColor(for: service).opacity(0.2), radius: 25, x: 0, y: 0)
             } else {
                 placeholderLogo
             }
         }
-        .shadow(color: Color.shadowElevated, radius: 8, x: 0, y: 4)
     }
 
     private var placeholderLogo: some View {
@@ -135,6 +180,35 @@ private struct ServiceLogoView: View {
         }
 
         return nil
+    }
+
+    /// Get brand color glow for each service
+    private func glowColor(for service: StreamingService) -> Color {
+        let serviceName = service.name.lowercased()
+
+        // Map service names to brand colors for glow effect
+        if serviceName.contains("netflix") {
+            return Color(red: 0.9, green: 0.1, blue: 0.15) // Netflix Red
+        } else if serviceName.contains("disney") {
+            return Color(red: 0.1, green: 0.7, blue: 1.0) // Disney+ Cyan
+        } else if serviceName.contains("prime") || serviceName.contains("amazon") {
+            return Color(red: 0.0, green: 0.67, blue: 0.93) // Prime Blue
+        } else if serviceName.contains("hbo") || serviceName.contains("max") {
+            return Color(red: 0.65, green: 0.2, blue: 0.9) // HBO Purple
+        } else if serviceName.contains("crunchyroll") {
+            return Color(red: 1.0, green: 0.55, blue: 0.15) // Crunchyroll Orange
+        } else if serviceName.contains("stan") {
+            return Color(red: 0.2, green: 0.5, blue: 0.95) // Stan Blue
+        } else if serviceName.contains("apple") {
+            return Color(red: 0.9, green: 0.9, blue: 0.95) // Apple White/Gray
+        } else if serviceName.contains("binge") {
+            return Color(red: 0.5, green: 0.25, blue: 0.85) // Binge Purple
+        } else if serviceName.contains("paramount") {
+            return Color(red: 0.15, green: 0.45, blue: 0.95) // Paramount Blue
+        }
+
+        // Default glow color
+        return Color.blue.opacity(0.7)
     }
 }
 
