@@ -43,6 +43,8 @@ struct ContentView: View {
                         await load()
                     }
                 }
+                NavigationLink("Dashboard", destination: DashboardView(api: api))
+                    .buttonStyle(.bordered)
                 NavigationLink("Subscriptions", destination: SubscriptionsView(api: api))
                     .buttonStyle(.bordered)
                 NavigationLink("My Shows", destination: WatchlistView(api: api))

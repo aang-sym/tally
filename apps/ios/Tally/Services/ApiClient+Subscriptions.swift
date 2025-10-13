@@ -7,31 +7,6 @@
 
 import Foundation
 
-// MARK: - Subscriptions Models
-
-/// Subscriptions API response structure
-private struct SubscriptionsResponse: Decodable {
-    let success: Bool
-    let data: SubscriptionsData
-}
-
-private struct SubscriptionsData: Decodable {
-    let subscriptions: [Subscription]
-    let totalActive: Int
-}
-
-/// Legacy response structures (for backward compatibility)
-private struct DataEnvelope: Decodable {
-    let data: [Subscription]
-}
-
-private struct NestedEnvelope: Decodable {
-    struct Inner: Decodable {
-        let subscriptions: [Subscription]
-    }
-    let data: Inner
-}
-
 // MARK: - Subscriptions Extension
 
 extension ApiClient {
@@ -64,15 +39,9 @@ extension ApiClient {
             return response.data.subscriptions
         }
 
-        // Fallback to old formats for backward compatibility
+        // Fallback: try direct array format
         if let direct = try? JSONDecoder().decode([Subscription].self, from: data) {
             return direct
-        }
-        if let env = try? JSONDecoder().decode(DataEnvelope.self, from: data) {
-            return env.data
-        }
-        if let env2 = try? JSONDecoder().decode(NestedEnvelope.self, from: data) {
-            return env2.data.subscriptions
         }
 
         throw ApiError.cannotParse
