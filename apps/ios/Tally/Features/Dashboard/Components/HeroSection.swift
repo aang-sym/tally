@@ -86,24 +86,11 @@ private struct ServiceLogoView: View {
 
     var body: some View {
         Group {
-            if let logoURL = service.logoURL {
-                AsyncImage(url: logoURL) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .frame(width: Spacing.heroLogoSize, height: Spacing.heroLogoSize)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: Spacing.heroLogoSize, height: Spacing.heroLogoSize)
-                            .clipShape(Circle())
-                    case .failure:
-                        placeholderLogo
-                    @unknown default:
-                        placeholderLogo
-                    }
-                }
+            if let assetName = logoAssetName(for: service) {
+                Image(assetName)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: Spacing.heroLogoSize)
             } else {
                 placeholderLogo
             }
@@ -120,6 +107,34 @@ private struct ServiceLogoView: View {
                     .font(.labelLarge)
                     .foregroundColor(.textSecondary)
             )
+    }
+
+    /// Map service name to Assets.xcassets logo name
+    private func logoAssetName(for service: StreamingService) -> String? {
+        let serviceName = service.name.lowercased()
+
+        // Map service names to Asset Catalog names
+        if serviceName.contains("netflix") {
+            return "Netflix"
+        } else if serviceName.contains("disney") {
+            return "DisneyPlus"
+        } else if serviceName.contains("prime") || serviceName.contains("amazon") {
+            return "PrimeVideo"
+        } else if serviceName.contains("hbo") || serviceName.contains("max") {
+            return "HBOMax"
+        } else if serviceName.contains("crunchyroll") {
+            return "Crunchyroll"
+        } else if serviceName.contains("stan") {
+            return "Stan"
+        } else if serviceName.contains("apple") {
+            return "AppleTVPlus"
+        } else if serviceName.contains("binge") {
+            return "Binge"
+        } else if serviceName.contains("paramount") {
+            return "Paramount"
+        }
+
+        return nil
     }
 }
 
