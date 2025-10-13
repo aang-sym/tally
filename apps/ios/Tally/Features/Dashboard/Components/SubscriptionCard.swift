@@ -20,6 +20,7 @@ struct SubscriptionCard: View {
                 // Service name
                 Text(subscription.serviceName)
                     .font(.bodyLarge)
+                    .fontWeight(.medium)
                     .foregroundColor(.textPrimary)
 
                 // Show count and renewal info

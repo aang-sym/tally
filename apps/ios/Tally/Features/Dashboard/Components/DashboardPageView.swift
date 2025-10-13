@@ -13,12 +13,6 @@ struct DashboardPageView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Spacing.md) {
-                // Page title
-                Text("Subscriptions")
-                    .font(.heading2)
-                    .foregroundColor(.textPrimary)
-                    .screenPadding()
-
                 // Subscription cards
                 VStack(spacing: Spacing.cardSpacing) {
                     ForEach(subscriptions) { subscription in
@@ -26,6 +20,7 @@ struct DashboardPageView: View {
                     }
                 }
                 .screenPadding()
+                .padding(.top, Spacing.md)
             }
         }
         .background(

@@ -107,11 +107,10 @@ struct Subscription: Codable, Identifiable, Hashable {
 
     /// Formatted monthly cost
     var formattedCost: String {
-        let currency = service?.defaultPrice?.currency ?? "USD"
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
-        formatter.currencyCode = currency
-        return formatter.string(from: NSNumber(value: monthlyCost)) ?? "\(currency) \(monthlyCost)"
+        formatter.locale = Locale.current
+        return formatter.string(from: NSNumber(value: monthlyCost)) ?? "$\(monthlyCost)"
     }
 
     /// Days until renewal (if started_date exists and subscription is active)

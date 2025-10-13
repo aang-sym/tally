@@ -13,42 +13,32 @@ struct MetricsRow: View {
     let monthlyTotal: String
 
     var body: some View {
-        HStack(spacing: Spacing.lg) {
+        HStack(spacing: Spacing.xl) {
             // Subscriptions
             MetricItem(
                 count: "\(subscriptionsCount)",
                 label: "Subscriptions",
-                showDiamond: true
+                showDiamond: true,
+                alignment: .leading
             )
 
             // Shows
             MetricItem(
                 count: "\(showsCount)",
                 label: "Shows",
-                showDiamond: true
+                showDiamond: true,
+                alignment: .leading
             )
+
+            Spacer()
 
             // Monthly total
             MetricItem(
                 count: monthlyTotal,
                 label: "Monthly",
-                showDiamond: false
+                showDiamond: false,
+                alignment: .trailing
             )
-
-            Spacer()
-
-            // Next button
-            Button(action: {
-                // TODO: Handle next action
-            }) {
-                HStack(spacing: 4) {
-                    Text("Next")
-                        .font(.captionMedium)
-                    Image(systemName: "arrow.down")
-                        .font(.system(size: 10, weight: .medium))
-                }
-                .foregroundColor(.textTertiary)
-            }
         }
         .padding(.horizontal, Spacing.screenPadding)
         .padding(.vertical, Spacing.md)
@@ -61,21 +51,24 @@ private struct MetricItem: View {
     let count: String
     let label: String
     let showDiamond: Bool
+    let alignment: HorizontalAlignment
 
     var body: some View {
-        HStack(spacing: 4) {
+        VStack(alignment: alignment, spacing: 2) {
             Text(count)
-                .font(.bodyMedium)
+                .font(.system(size: 22, weight: .bold))
                 .foregroundColor(.textPrimary)
 
-            Text(label)
-                .font(.captionMedium)
-                .foregroundColor(.textSecondary)
+            HStack(spacing: 4) {
+                Text(label)
+                    .font(.bodyMedium)
+                    .foregroundColor(.textSecondary)
 
-            if showDiamond {
-                Text("◇")
-                    .font(.system(size: 10))
-                    .foregroundColor(.textTertiary)
+                if showDiamond {
+                    Text("◇")
+                        .font(.system(size: 10))
+                        .foregroundColor(.textTertiary)
+                }
             }
         }
     }

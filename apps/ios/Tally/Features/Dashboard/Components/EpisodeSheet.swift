@@ -79,7 +79,6 @@ struct EpisodeSheet: View {
                             EpisodeCard(episode: episode)
                         }
                     }
-                    .padding(.horizontal, Spacing.screenPadding)
                     .padding(.bottom, 32)
                 }
             }

@@ -1,3 +1,4 @@
+
 //
 //  DashboardView.swift
 //  Tally
@@ -81,7 +82,7 @@ struct DashboardView: View {
                 showsCount: viewModel.totalShows,
                 monthlyTotal: viewModel.formattedMonthlyCost
             )
-            .background(Color.heroBackground)
+            .background(Color.background)
 
             // Paginated Content: Subscriptions & Calendar Week View
             TabView {

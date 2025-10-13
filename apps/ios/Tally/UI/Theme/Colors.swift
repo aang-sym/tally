@@ -15,28 +15,28 @@ extension Color {
 
     // MARK: - Background Colors
 
-    /// Main app background (very dark, almost black)
-    static let background = Color(hex: "#0A0A0F") // Near black with slight blue tint
+    /// Main app background (adapts to system appearance)
+    static let background = Color(.systemBackground)
 
-    /// Secondary background / card background
-    static let backgroundSecondary = Color(hex: "#1C1C1E") // Dark gray
+    /// Secondary background / card background (adapts to system appearance)
+    static let backgroundSecondary = Color(.secondarySystemBackground)
 
-    /// Tertiary background / elevated card
-    static let backgroundTertiary = Color(hex: "#2C2C2E") // Lighter gray
+    /// Tertiary background / elevated card (adapts to system appearance)
+    static let backgroundTertiary = Color(.tertiarySystemBackground)
 
-    /// Hero background (dark with texture)
-    static let heroBackground = Color(hex: "#0D0D12") // Slightly lighter than main background
+    /// Hero background (adapts to system appearance)
+    static let heroBackground = Color(.systemGroupedBackground)
 
     // MARK: - Text Colors
 
-    /// Primary text (white/near-white)
-    static let textPrimary = Color(hex: "#F8FAFC") // Slate 50
+    /// Primary text (adapts to system appearance)
+    static let textPrimary = Color(.label)
 
-    /// Secondary text (muted)
-    static let textSecondary = Color(hex: "#94A3B8") // Slate 400
+    /// Secondary text (adapts to system appearance)
+    static let textSecondary = Color(.secondaryLabel)
 
-    /// Tertiary text (very muted)
-    static let textTertiary = Color(hex: "#64748B") // Slate 500
+    /// Tertiary text (adapts to system appearance)
+    static let textTertiary = Color(.tertiaryLabel)
 
     // MARK: - Status Colors
 

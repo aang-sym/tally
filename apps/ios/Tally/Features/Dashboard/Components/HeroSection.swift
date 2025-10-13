@@ -12,8 +12,8 @@ struct HeroSection: View {
 
     var body: some View {
         ZStack {
-            // Dark textured background
-            Color.heroBackground
+            // Background adapts to system appearance
+            Color.background
                 .overlay(
                     // Subtle scan line pattern
                     GeometryReader { geometry in

@@ -39,7 +39,7 @@ final class DashboardViewModel {
     var formattedMonthlyCost: String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
-        formatter.currencyCode = "USD" // TODO: Make this dynamic based on user settings
+        formatter.locale = Locale.current
         return formatter.string(from: NSNumber(value: totalMonthlyCost)) ?? "$\(totalMonthlyCost)"
     }
 
