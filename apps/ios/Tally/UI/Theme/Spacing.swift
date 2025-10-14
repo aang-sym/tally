@@ -48,7 +48,7 @@ enum Spacing {
     static let iconSizeLarge: CGFloat = 32
 
     /// Provider logo size in hero section
-    static let heroLogoSize: CGFloat = 100
+    static let heroLogoSize: CGFloat = 65
 
     /// Provider logo size in subscription card
     static let subscriptionLogoSize: CGFloat = 40
