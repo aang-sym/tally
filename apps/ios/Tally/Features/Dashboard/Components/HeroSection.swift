@@ -53,8 +53,6 @@ struct HeroSection: View {
                 ScatteredLogosView(services: services, collisionManager: collisionManager)
             }
         }
-        .frame(height: 300)
-        .ignoresSafeArea(edges: .horizontal)
     }
 }
 
@@ -62,6 +60,7 @@ struct HeroSection: View {
 
 private class LogoCollisionManager: ObservableObject {
     @Published var logoStates: [Int: LogoState] = [:]
+    private var serviceMap: [Int: StreamingService] = [:]
 
     struct LogoState {
         var position: CGPoint
@@ -70,8 +69,13 @@ private class LogoCollisionManager: ObservableObject {
         var radiusY: CGFloat
     }
 
-    func updateLogo(index: Int, position: CGPoint, velocity: CGPoint, radiusX: CGFloat, radiusY: CGFloat) {
+    func updateLogo(index: Int, service: StreamingService, position: CGPoint, velocity: CGPoint, radiusX: CGFloat, radiusY: CGFloat) {
         logoStates[index] = LogoState(position: position, velocity: velocity, radiusX: radiusX, radiusY: radiusY)
+        serviceMap[index] = service
+    }
+
+    func getService(for index: Int) -> StreamingService? {
+        return serviceMap[index]
     }
 }
 
@@ -139,10 +143,25 @@ private struct BouncingLogoView: View {
             // Debug collision boundary (uses actual physics bounds)
             if Self.showDebugBounds {
                 let bounds = getCollisionBounds()
-                Ellipse()
-                    .stroke(Color.red, lineWidth: 1)
-                    .frame(width: bounds.radiusX * 2, height: bounds.radiusY * 2)
-                    .opacity(0.5)
+                let shape = CollisionBoundsHelper.getCollisionShape(for: service)
+
+                Group {
+                    switch shape {
+                    case .circle:
+                        Circle()
+                            .stroke(Color.red, lineWidth: 1)
+                            .frame(width: bounds.radiusX * 2, height: bounds.radiusY * 2)
+                    case .ellipse:
+                        Ellipse()
+                            .stroke(Color.red, lineWidth: 1)
+                            .frame(width: bounds.radiusX * 2, height: bounds.radiusY * 2)
+                    case .rectangle:
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.red, lineWidth: 1)
+                            .frame(width: bounds.radiusX * 2, height: bounds.radiusY * 2)
+                    }
+                }
+                .opacity(0.5)
 
                 // Index number for identification
                 Text("\(index)")
@@ -168,21 +187,10 @@ private struct BouncingLogoView: View {
         }
     }
 
-    /// Calculate collision bounds - used by both physics and debug visualization
+    /// Calculate collision bounds - delegates to shared helper
     /// This is the single source of truth for collision detection
     private func getCollisionBounds() -> (radiusX: CGFloat, radiusY: CGFloat) {
-        let scale = getLogoScale() * dynamicScale // Apply both service-specific and dynamic scaling
-        let actualLogoSize = Spacing.heroLogoSize * scale
-        let isRectangular = isRectangularLogo()
-
-        if isRectangular {
-            // Rectangular logos - elliptical bounds (wider than tall, tighter fit)
-            return (actualLogoSize * 0.45, actualLogoSize * 0.25)
-        } else {
-            // Square/circular logos - circular bounds
-            let radius = actualLogoSize / 2
-            return (radius, radius)
-        }
+        return CollisionBoundsHelper.getCollisionBounds(for: service, dynamicScale: dynamicScale)
     }
 
     /// Initialize starting position based on index
@@ -233,21 +241,9 @@ private struct BouncingLogoView: View {
         }
     }
 
-    /// Get scale factor for this logo
+    /// Get scale factor for this logo (delegates to shared helper)
     private func getLogoScale() -> CGFloat {
-        let serviceName = service.name.lowercased()
-
-        if serviceName.contains("disney") { return 1.4 }
-        else if serviceName.contains("stan") { return 1.4 }
-        else if serviceName.contains("prime") || serviceName.contains("amazon") { return 1.15 }
-
-        return 1.0
-    }
-
-    /// Check if this logo is rectangular (Disney+, Stan)
-    private func isRectangularLogo() -> Bool {
-        let serviceName = service.name.lowercased()
-        return serviceName.contains("disney") || serviceName.contains("stan")
+        return CollisionBoundsHelper.getLogoScale(for: service)
     }
 
     /// Update position and handle edge collisions with predictive collision detection
@@ -266,77 +262,91 @@ private struct BouncingLogoView: View {
         var actualPosition = proposedPosition
 
         // PREDICTIVE COLLISION DETECTION: Check if proposed position would cause overlap
+        // Get this logo's shape for proper collision detection
+        let myShape = CollisionBoundsHelper.getCollisionShape(for: service)
+        let myBounds = (radiusX: radiusX, radiusY: radiusY)
+
+        // Debug: Log this logo's state periodically
+        let frameCounter = Int(position.x * 100 + position.y * 100) % 300
+        if frameCounter == 0 {
+            print("🔵 [\(index)] pos:(\(Int(position.x)),\(Int(position.y))) vel:(\(String(format: "%.2f", velocity.x)),\(String(format: "%.2f", velocity.y)))")
+        }
+
         for (otherIndex, otherState) in collisionManager.logoStates {
             // Skip self
             guard otherIndex != index else { continue }
 
-            // First check CURRENT distance to see if we're already colliding or close
-            let currentDx = position.x - otherState.position.x
-            let currentDy = position.y - otherState.position.y
+            // Get other logo's shape from the collision manager
+            // We need to find the service for this other logo index
+            guard let otherService = collisionManager.getService(for: otherIndex) else { continue }
+            let otherShape = CollisionBoundsHelper.getCollisionShape(for: otherService)
+            let otherBounds = (radiusX: otherState.radiusX, radiusY: otherState.radiusY)
 
-            // Elliptical collision detection using combined radii from both logos
-            let combinedRadiusX = radiusX + otherState.radiusX
-            let combinedRadiusY = radiusY + otherState.radiusY
+            // Check CURRENT collision state
+            let currentlyColliding = CollisionBoundsHelper.checkCollision(
+                shape1: myShape,
+                bounds1: myBounds,
+                pos1: position,
+                shape2: otherShape,
+                bounds2: otherBounds,
+                pos2: otherState.position
+            )
 
-            // Check current distance
-            let currentNormalizedX = currentDx / combinedRadiusX
-            let currentNormalizedY = currentDy / combinedRadiusY
-            let currentDistance = sqrt(currentNormalizedX * currentNormalizedX + currentNormalizedY * currentNormalizedY)
+            if currentlyColliding && frameCounter == 0 {
+                print("  ⚠️ [\(index)] COLLIDING with [\(otherIndex)]")
+            }
 
-            // Now check PROPOSED distance
-            let proposedDx = proposedPosition.x - otherState.position.x
-            let proposedDy = proposedPosition.y - otherState.position.y
-            let proposedNormalizedX = proposedDx / combinedRadiusX
-            let proposedNormalizedY = proposedDy / combinedRadiusY
-            let proposedDistance = sqrt(proposedNormalizedX * proposedNormalizedX + proposedNormalizedY * proposedNormalizedY)
+            // Check PROPOSED collision state
+            let wouldCollide = CollisionBoundsHelper.checkCollision(
+                shape1: myShape,
+                bounds1: myBounds,
+                pos1: proposedPosition,
+                shape2: otherShape,
+                bounds2: otherBounds,
+                pos2: otherState.position
+            )
 
-            // Check if proposed position would cause overlap OR if we're currently too close
-            if proposedDistance < 1.0 || (currentDistance < 1.05 && proposedDistance <= currentDistance) {
-                // Calculate collision normal using CURRENT positions (normalized vector from other logo to this logo)
-                let actualDistance = sqrt(currentDx * currentDx + currentDy * currentDy)
+            // Handle collision if we would collide OR if we're currently colliding and not moving apart
+            if wouldCollide || currentlyColliding {
+                // Get collision normal (direction to push this logo away from other)
+                let normal = CollisionBoundsHelper.getCollisionNormal(
+                    shape1: myShape,
+                    bounds1: myBounds,
+                    pos1: position,
+                    shape2: otherShape,
+                    bounds2: otherBounds,
+                    pos2: otherState.position
+                )
 
-                // Avoid division by zero
-                guard actualDistance > 0 else { continue }
-
-                let nx = currentDx / actualDistance
-                let ny = currentDy / actualDistance
+                let nx = normal.nx
+                let ny = normal.ny
 
                 // Calculate dot product of velocity with collision normal
                 let dotProduct = velocity.x * nx + velocity.y * ny
 
-                // Only handle collision if moving toward each other
+                // Reflect velocity if moving toward each other
                 if dotProduct < 0 {
-                    // Reflect velocity across collision normal
                     newVelocity.x = velocity.x - 2 * dotProduct * nx
                     newVelocity.y = velocity.y - 2 * dotProduct * ny
+                }
 
-                    // Calculate the exact point where boundaries would touch (not overlap)
-                    // Find fraction of movement that brings us exactly to boundary (distance = 1.0)
-                    var t: CGFloat = 0.0 // Fraction of movement to allow (0.0 = stay, 1.0 = full movement)
-                    if currentDistance >= 1.0 {
-                        // Already outside boundary, limit movement to not penetrate
-                        // Calculate how far we can move before hitting the boundary
-                        if proposedDistance < 1.0 {
-                            // Would penetrate - find exact boundary point
-                            t = max(0.0, (1.0 - currentDistance) / (proposedDistance - currentDistance))
-                        } else {
-                            // Safe to move fully
-                            t = 1.0
-                        }
-                    } else {
-                        // Already too close or overlapping - don't move closer
-                        if proposedDistance >= currentDistance {
-                            // Moving away - allow it
-                            t = 1.0
-                        } else {
-                            // Moving closer - stop at current position
-                            t = 0.0
-                        }
+                // Always apply separation when currently colliding (even if moving apart)
+                if currentlyColliding {
+                    // Push logos apart along collision normal
+                    let separationSpeed: CGFloat = 0.5  // Gentle push apart
+                    actualPosition.x = position.x + nx * separationSpeed
+                    actualPosition.y = position.y + ny * separationSpeed
+
+                    if frameCounter == 0 {
+                        print("    → Separating [\(index)]: push (\(String(format: "%.2f", nx * separationSpeed)),\(String(format: "%.2f", ny * separationSpeed)))")
                     }
+                } else if wouldCollide {
+                    // Don't move - would cause new collision
+                    actualPosition = position
 
-                    // Apply only the safe fraction of movement
-                    actualPosition.x = position.x + velocity.x * t
-                    actualPosition.y = position.y + velocity.y * t
+                    if frameCounter == 0 {
+                        print("    → Blocked [\(index)]: would collide with [\(otherIndex)]")
+                    }
                 }
             }
         }
@@ -355,11 +365,16 @@ private struct BouncingLogoView: View {
             actualPosition.y = max(radiusY, min(containerSize.height - radiusY, actualPosition.y))
         }
 
+        // Debug: Log velocity changes
+        if velocity != newVelocity && frameCounter == 0 {
+            print("  🔄 [\(index)] Velocity: (\(String(format: "%.2f", velocity.x)),\(String(format: "%.2f", velocity.y))) → (\(String(format: "%.2f", newVelocity.x)),\(String(format: "%.2f", newVelocity.y)))")
+        }
+
         position = actualPosition
         velocity = newVelocity
 
-        // Update collision manager with new state including logo bounds
-        collisionManager.updateLogo(index: index, position: actualPosition, velocity: newVelocity, radiusX: radiusX, radiusY: radiusY)
+        // Update collision manager with new state including logo bounds and service reference
+        collisionManager.updateLogo(index: index, service: service, position: actualPosition, velocity: newVelocity, radiusX: radiusX, radiusY: radiusY)
     }
 }
 
@@ -589,11 +604,77 @@ private struct ServiceLogoView: View {
             )
         ]
     )
+    .frame(height: 300)
     .background(Color.background)
 }
 
 #Preview("Hero empty") {
     HeroSection(services: [])
+        .frame(height: 300)
         .background(Color.background)
+}
+
+#Preview("Hero compact - debug") {
+    HeroSection(
+        services: [
+            StreamingService(
+                id: "netflix",
+                tmdbProviderId: 8,
+                name: "Netflix",
+                logoPath: "/9A1JSVmSxsyaBK4SUFsYVqbAYfW.jpg",
+                homepage: "https://www.netflix.com",
+                prices: [],
+                defaultPrice: nil
+            ),
+            StreamingService(
+                id: "disney",
+                tmdbProviderId: 337,
+                name: "Disney Plus",
+                logoPath: "/7rwgEs15tFwyR9NPQ5vpzxTj19Q.jpg",
+                homepage: "https://www.disneyplus.com",
+                prices: [],
+                defaultPrice: nil
+            ),
+            StreamingService(
+                id: "hbo",
+                tmdbProviderId: 384,
+                name: "Max",
+                logoPath: "/zxrVdFjIjLqkfnwyghnfywTn3Lh.jpg",
+                homepage: "https://www.max.com",
+                prices: [],
+                defaultPrice: nil
+            ),
+            StreamingService(
+                id: "crunchyroll",
+                tmdbProviderId: 283,
+                name: "Crunchyroll",
+                logoPath: "/8I1XqWhR6QEJ4ASkK2ri6O0aN3m.jpg",
+                homepage: "https://www.crunchyroll.com",
+                prices: [],
+                defaultPrice: nil
+            ),
+            StreamingService(
+                id: "prime",
+                tmdbProviderId: 9,
+                name: "Prime Video",
+                logoPath: "/emthp39XA2YScoYL1p0sdbAH2WA.jpg",
+                homepage: "https://www.primevideo.com",
+                prices: [],
+                defaultPrice: nil
+            ),
+            StreamingService(
+                id: "stan",
+                tmdbProviderId: 528,
+                name: "Stan",
+                logoPath: "/p3Z12gKq2qvJaUOMeKNU2mzKVI9.jpg",
+                homepage: "https://www.stan.com.au",
+                prices: [],
+                defaultPrice: nil
+            )
+        ]
+    )
+    .frame(width: 280, height: 180)
+    .background(Color.background)
+    .border(Color.gray.opacity(0.3), width: 1)
 }
 #endif

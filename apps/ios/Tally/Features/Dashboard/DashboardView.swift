@@ -75,6 +75,8 @@ struct DashboardView: View {
         VStack(spacing: 0) {
             // Fixed Header: Hero section with scattered logos (will animate later)
             HeroSection(services: viewModel.uniqueServices)
+                .frame(height: 300)
+                .ignoresSafeArea(edges: .horizontal)
 
             // Fixed Header: Metrics row
             MetricsRow(
