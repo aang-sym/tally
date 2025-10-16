@@ -24,6 +24,17 @@ struct DashboardView: View {
             Color.background
                 .ignoresSafeArea()
 
+            // Purple to black gradient background
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(red: 0.15, green: 0.05, blue: 0.25), // Darker deep purple (top)
+                    Color.black                                // Black (bottom)
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
             // Dashboard content (fades when search is active)
             Group {
                 if viewModel.isLoading {
