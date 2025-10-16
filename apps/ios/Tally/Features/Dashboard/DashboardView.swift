@@ -1,4 +1,3 @@
-
 //
 //  DashboardView.swift
 //  Tally
@@ -12,8 +11,6 @@ struct DashboardView: View {
     @ObservedObject var api: ApiClient
     @State private var viewModel = DashboardViewModel()
     @State private var selectedDate: Date?
-    @State private var showEpisodeSheet = false
-    @State private var selectedDetent: PresentationDetent = .medium
     @StateObject private var logoCollisionManager = LogoCollisionManager()
     @State private var stableServices: [StreamingService] = []
 
@@ -21,15 +18,6 @@ struct DashboardView: View {
         ZStack {
             Color.background
                 .ignoresSafeArea()
-
-            // Full-screen bouncing logos (behind all UI)
-            if !stableServices.isEmpty {
-                ScatteredLogosView(
-                    services: stableServices,
-                    collisionManager: logoCollisionManager
-                )
-                .ignoresSafeArea()
-            }
 
             if viewModel.isLoading {
                 loadingView
@@ -58,68 +46,51 @@ struct DashboardView: View {
             // Update stable services after refresh
             stableServices = viewModel.uniqueServices.sorted { $0.id < $1.id }
         }
-        .sheet(isPresented: $showEpisodeSheet) {
-            if let date = selectedDate {
-                EpisodeSheet(
-                    date: date,
-                    episodes: viewModel.episodesForDate(date),
-                    isLoading: viewModel.isLoadingEpisodes,
-                    isPresented: $showEpisodeSheet
-                )
-                .presentationDetents([.medium, .large], selection: $selectedDetent)
-                .presentationDragIndicator(.visible)
-                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
-            }
-        }
-        .onChange(of: showEpisodeSheet) { oldValue, newValue in
-            if newValue {
-                print("📊 [DashboardView] Sheet opened")
-                print("   - isLoadingEpisodes: \(viewModel.isLoadingEpisodes)")
-                print("   - episodes count: \(viewModel.episodesForDate(selectedDate ?? Date()).count)")
-                print("   - selectedDetent: \(selectedDetent)")
-                // Reset to medium detent when opening
-                selectedDetent = .medium
-            } else {
-                print("📊 [DashboardView] Sheet closed")
-            }
-        }
-        .onChange(of: selectedDetent) { oldValue, newValue in
-            print("📊 [DashboardView] Detent changed: \(oldValue) -> \(newValue)")
-        }
     }
 
     // MARK: - Content View
 
     private var contentView: some View {
-        VStack(spacing: 0) {
-            // Fixed Header: Hero section with scattered logos (will animate later)
-            HeroSection(services: viewModel.uniqueServices)
-                .frame(height: 300)
-                .ignoresSafeArea(edges: .horizontal)
-
-            // Fixed Header: Metrics row
-            MetricsRow(
-                subscriptionsCount: viewModel.totalActiveSubscriptions,
-                showsCount: viewModel.totalShows,
-                monthlyTotal: viewModel.formattedMonthlyCost
-            )
-
-            // Paginated Content: Subscriptions & Calendar Week View
-            TabView {
-                // Page 1: Subscriptions List
-                DashboardPageView(subscriptions: viewModel.activeSubscriptions)
-                    .tag(0)
-
-                // Page 2: Calendar Week View
-                WeekCalendarView(
-                    episodes: $viewModel.upcomingEpisodes,
-                    selectedDate: $selectedDate,
-                    showSheet: $showEpisodeSheet
+        ZStack(alignment: .top) {
+            // Bouncing logos constrained to hero section (behind all UI, glow bleeds through)
+            if !stableServices.isEmpty {
+                ScatteredLogosView(
+                    services: stableServices,
+                    collisionManager: logoCollisionManager,
+                    heroHeight: 300
                 )
-                .tag(1)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
-            .tabViewStyle(.page)
-            .indexViewStyle(.page(backgroundDisplayMode: .always))
+
+            VStack(spacing: 0) {
+                // Fixed Header: Hero section (transparent, logos show through)
+                HeroSection(services: viewModel.uniqueServices)
+                    .frame(height: 300)
+                    .ignoresSafeArea(edges: .horizontal)
+
+                // Fixed Header: Metrics row
+                MetricsRow(
+                    subscriptionsCount: viewModel.totalActiveSubscriptions,
+                    showsCount: viewModel.totalShows,
+                    monthlyTotal: viewModel.formattedMonthlyCost
+                )
+
+                // Paginated Content: Subscriptions & Calendar Week View
+                TabView {
+                    // Page 1: Subscriptions List
+                    DashboardPageView(subscriptions: viewModel.activeSubscriptions)
+                        .tag(0)
+
+                    // Page 2: Calendar Week View
+                    WeekCalendarView(
+                        episodes: $viewModel.upcomingEpisodes,
+                        selectedDate: $selectedDate
+                    )
+                    .tag(1)
+                }
+                .tabViewStyle(.page)
+                .indexViewStyle(.page(backgroundDisplayMode: .always))
+            }
         }
     }
 

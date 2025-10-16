@@ -63,21 +63,21 @@ class LogoCollisionManager: ObservableObject {
 struct ScatteredLogosView: View {
     let services: [StreamingService]
     @ObservedObject var collisionManager: LogoCollisionManager
+    let heroHeight: CGFloat
 
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Calculate dynamic scale based on number of DISPLAYED services (capped at 6)
-                let displayedLogoCount = min(services.count, 6)
-                let dynamicScale = calculateDynamicScale(logoCount: displayedLogoCount)
+                // Calculate dynamic scale based on number of displayed services
+                let dynamicScale = calculateDynamicScale(logoCount: services.count)
 
                 // Use service.id as identity to prevent logo cycling
                 // Each service maintains its own position across renders
-                ForEach(Array(services.prefix(6).enumerated()), id: \.element.id) { index, service in
+                ForEach(Array(services.enumerated()), id: \.element.id) { index, service in
                     BouncingLogoView(
                         service: service,
                         index: index,
-                        containerSize: geometry.size,
+                        containerSize: CGSize(width: geometry.size.width, height: heroHeight),
                         collisionManager: collisionManager,
                         dynamicScale: dynamicScale
                     )
@@ -209,7 +209,7 @@ private struct BouncingLogoView: View {
         )
 
         // Initialize velocity with random direction for chaotic movement
-        let baseSpeed: CGFloat = 0.5
+        let baseSpeed: CGFloat = 0.525 // 5% faster than original 0.5
         let angle = Double.random(in: 0..<(2 * .pi)) // Random direction
         velocity = CGPoint(
             x: CGFloat(Darwin.cos(angle)) * baseSpeed,
@@ -363,9 +363,12 @@ struct GlowingServiceLogoView: View {
 
         Group {
             if let assetName = ServiceBranding.assetName(for: service) {
-                let glowColor = ServiceBranding.glowColor(for: service)
+                let baseGlowColor = ServiceBranding.glowColor(for: service)
+                // In light mode, use a much lighter/desaturated version of the glow
+                // Exception: Prime and HBO Max keep their dark mode colors
+                let glowColor = colorScheme == .light ? lightenColor(baseGlowColor, for: service) : baseGlowColor
                 let shouldInvert = ServiceBranding.shouldInvertLogo(for: service, in: colorScheme)
-                let config = GlowConfig.configuration(for: style, size: scaledSize)
+                let config = GlowConfig.configuration(for: style, size: scaledSize, colorScheme: colorScheme)
 
                 ZStack {
                     ForEach(Array(config.layers.enumerated()), id: \.offset) { _, layer in
@@ -394,6 +397,20 @@ struct GlowingServiceLogoView: View {
             }
         }
         .frame(width: scaledSize, height: scaledSize)
+    }
+
+    /// Lighten and desaturate a color for light mode glow
+    private func lightenColor(_ color: Color, for service: StreamingService) -> Color {
+        let serviceName = service.name.lowercased()
+
+        // Prime keeps its vibrant dark mode color in light mode
+        if serviceName.contains("prime") || serviceName.contains("amazon") {
+            return color
+        }
+
+        // Create a pastel version that's more visible on light backgrounds
+        // Use 60% opacity to maintain some color vibrancy while being subtle
+        return color.opacity(0.6)
     }
 
     @ViewBuilder
@@ -451,9 +468,12 @@ struct GlowingServiceLogoView: View {
         let shadowRadii: [CGFloat]
         let shadowOpacities: [Double]
 
-        static func configuration(for style: GlowingServiceLogoView.Style, size: CGFloat) -> GlowConfig {
+        static func configuration(for style: GlowingServiceLogoView.Style, size: CGFloat, colorScheme: ColorScheme) -> GlowConfig {
             let heroReferenceSize = Spacing.heroLogoSize
             let scaleFactor = max(size / heroReferenceSize, 0.4)
+
+            // Light mode uses same glow intensity but with lighter colors
+            let isLightMode = colorScheme == .light
 
             switch style {
             case .hero:
@@ -463,7 +483,7 @@ struct GlowingServiceLogoView: View {
                         GlowLayer(blurRadius: 1.5 * scaleFactor, opacity: 0.2, brightness: 0.1),
                         GlowLayer(blurRadius: 0.5 * scaleFactor, opacity: 0.3, brightness: 0.05)
                     ],
-                    baseBrightness: 0.1,
+                    baseBrightness: isLightMode ? 0 : 0.1,
                     backgroundBlur: 15 * scaleFactor,
                     backgroundOpacity: 0.8,
                     shadowRadii: [10, 18, 25].map { $0 * scaleFactor },
@@ -477,7 +497,7 @@ struct GlowingServiceLogoView: View {
                         GlowLayer(blurRadius: 1.1 * scaleFactor, opacity: 0.18, brightness: 0.08),
                         GlowLayer(blurRadius: 0.35 * scaleFactor, opacity: 0.22, brightness: 0.04)
                     ],
-                    baseBrightness: 0.08,
+                    baseBrightness: isLightMode ? 0 : 0.08,
                     backgroundBlur: 12 * scaleFactor,
                     backgroundOpacity: 0.55,
                     shadowRadii: [7, 12, 16].map { $0 * scaleFactor },
@@ -523,9 +543,9 @@ enum ServiceBranding {
         if serviceName.contains("netflix") {
             return Color(red: 0.9, green: 0.1, blue: 0.15)
         } else if serviceName.contains("disney") {
-            return Color(red: 0.25, green: 0.4, blue: 0.9)
+            return Color(red: 0.1, green: 0.7, blue: 0.85) // Brighter teal/cyan
         } else if serviceName.contains("prime") || serviceName.contains("amazon") {
-            return Color(red: 0.0, green: 0.67, blue: 0.93)
+            return Color(red: 0.016, green: 0.471, blue: 1.0) // #0478FF
         } else if serviceName.contains("hbo") || serviceName.contains("max") {
             return Color(red: 0.65, green: 0.2, blue: 0.9)
         } else if serviceName.contains("crunchyroll") {
@@ -537,7 +557,7 @@ enum ServiceBranding {
         } else if serviceName.contains("binge") {
             return Color(red: 0.5, green: 0.25, blue: 0.85)
         } else if serviceName.contains("paramount") {
-            return Color(red: 0.15, green: 0.45, blue: 0.95)
+            return Color(red: 0.020, green: 0.404, blue: 0.996) // #0567FE
         }
 
         return Color.blue.opacity(0.7)
@@ -546,16 +566,18 @@ enum ServiceBranding {
     static func logoScale(for service: StreamingService) -> CGFloat {
         let serviceName = service.name.lowercased()
 
-        if serviceName.contains("disney") {
+        if serviceName.contains("netflix") {
+            return 0.95 // 1.0 * 0.95 = 5% decrease
+        } else if serviceName.contains("disney") {
             return 1.4
         } else if serviceName.contains("stan") {
             return 1.4
         } else if serviceName.contains("prime") || serviceName.contains("amazon") {
-            return 1.35
+            return 1.2825 // 1.35 * 0.95 = 5% decrease
         } else if serviceName.contains("apple") {
             return 1.25
         } else if serviceName.contains("paramount") {
-            return 1.25
+            return 1.3125 // 1.25 * 1.05 = 5% increase
         } else if serviceName.contains("crunchyroll") {
             return 0.9
         }
@@ -564,13 +586,18 @@ enum ServiceBranding {
     }
 
     static func shouldInvertLogo(for service: StreamingService, in colorScheme: ColorScheme) -> Bool {
-        guard colorScheme == .dark else { return false }
-
         let serviceName = service.name.lowercased()
 
-        return serviceName.contains("hbo") || serviceName.contains("max") ||
-               serviceName.contains("prime") || serviceName.contains("amazon") ||
-               serviceName.contains("disney") ||
+        // Prime and HBO Max should always be inverted (both light and dark mode)
+        if serviceName.contains("prime") || serviceName.contains("amazon") ||
+           serviceName.contains("hbo") || serviceName.contains("max") {
+            return true
+        }
+
+        // Other logos only invert in dark mode
+        guard colorScheme == .dark else { return false }
+
+        return serviceName.contains("disney") ||
                serviceName.contains("apple")
     }
 
