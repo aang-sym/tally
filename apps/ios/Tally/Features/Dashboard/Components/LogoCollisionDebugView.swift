@@ -237,6 +237,74 @@ struct CollisionBoundsHelper {
             return dy > 0 ? (0, 1) : (0, -1)
         }
     }
+
+    /// Calculate normalized distance between two shapes
+    /// - Returns: Normalized distance (< 1.0 = collision, 1.0 = touching, > 1.0 = separated)
+    static func calculateDistance(
+        shape1: CollisionShape,
+        bounds1: (radiusX: CGFloat, radiusY: CGFloat),
+        pos1: CGPoint,
+        shape2: CollisionShape,
+        bounds2: (radiusX: CGFloat, radiusY: CGFloat),
+        pos2: CGPoint
+    ) -> CGFloat {
+        // For ellipse-ellipse or circle-circle, use elliptical distance
+        if shape1 != .rectangle && shape2 != .rectangle {
+            let dx = pos1.x - pos2.x
+            let dy = pos1.y - pos2.y
+
+            let combinedRadiusX = bounds1.radiusX + bounds2.radiusX
+            let combinedRadiusY = bounds1.radiusY + bounds2.radiusY
+
+            let normalizedX = dx / combinedRadiusX
+            let normalizedY = dy / combinedRadiusY
+
+            return sqrt(normalizedX * normalizedX + normalizedY * normalizedY)
+        }
+
+        // For rectangle cases, use center-to-center distance normalized by combined radii
+        let dx = pos1.x - pos2.x
+        let dy = pos1.y - pos2.y
+        let centerDistance = sqrt(dx * dx + dy * dy)
+
+        // Approximate combined radius as average of X and Y radii
+        let avgRadius1 = (bounds1.radiusX + bounds1.radiusY) / 2
+        let avgRadius2 = (bounds2.radiusX + bounds2.radiusY) / 2
+        let combinedRadius = avgRadius1 + avgRadius2
+
+        return centerDistance / combinedRadius
+    }
+
+    /// Calculate overlap depth between two shapes
+    /// - Returns: How much the shapes are overlapping (0 = touching, > 0 = overlapping)
+    static func calculateOverlapDepth(
+        shape1: CollisionShape,
+        bounds1: (radiusX: CGFloat, radiusY: CGFloat),
+        pos1: CGPoint,
+        shape2: CollisionShape,
+        bounds2: (radiusX: CGFloat, radiusY: CGFloat),
+        pos2: CGPoint
+    ) -> CGFloat {
+        let distance = calculateDistance(
+            shape1: shape1,
+            bounds1: bounds1,
+            pos1: pos1,
+            shape2: shape2,
+            bounds2: bounds2,
+            pos2: pos2
+        )
+
+        // If distance >= 1.0, no overlap
+        guard distance < 1.0 else { return 0 }
+
+        // Calculate approximate combined radius for pixel-based depth
+        let avgRadius1 = (bounds1.radiusX + bounds1.radiusY) / 2
+        let avgRadius2 = (bounds2.radiusX + bounds2.radiusY) / 2
+        let combinedRadius = avgRadius1 + avgRadius2
+
+        // Overlap depth in pixels
+        return (1.0 - distance) * combinedRadius
+    }
 }
 
 // MARK: - Debug Grid View

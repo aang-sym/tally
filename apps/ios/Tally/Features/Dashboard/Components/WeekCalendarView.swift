@@ -13,6 +13,9 @@ struct WeekCalendarView: View {
     @Binding var selectedDate: Date?
     @Binding var showSheet: Bool
 
+    // Match the height of subscription cards for consistent pagination feel
+    private let cardHeight: CGFloat = Spacing.subscriptionLogoSize + (Spacing.cardPadding * 2)
+
     // Get current week dates (starting from today)
     private var weekDates: [Date] {
         let calendar = Calendar.current
@@ -24,13 +27,6 @@ struct WeekCalendarView: View {
 
     var body: some View {
         VStack(spacing: Spacing.lg) {
-            // Week title
-            Text("This Week")
-                .font(.heading2)
-                .foregroundColor(.textPrimary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .screenPadding()
-
             // Horizontal week strip
             HStack(spacing: 4) {
                 ForEach(weekDates, id: \.self) { date in
@@ -48,23 +44,15 @@ struct WeekCalendarView: View {
                     }
                 }
             }
+            .frame(height: cardHeight)
             .padding(.horizontal, Spacing.screenPadding)
+            .padding(.top, Spacing.sm)
             .glassEffect(.clear, in: .rect(cornerRadius: Spacing.cardCornerRadius))
 
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .background(
-            // Subtle gradient for liquid glass visibility
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color.heroBackground.opacity(0.3),
-                    Color.background,
-                    Color.backgroundSecondary.opacity(0.5)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
+        .background(Color.clear)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// Get episodes airing on a specific date
@@ -99,7 +87,7 @@ private struct WeekDateCell: View {
             // Weekday abbreviation
             Text(weekdayName)
                 .font(.captionMedium)
-                .foregroundColor(.textTertiary)
+                .foregroundColor(.textSecondary)
 
             // Day number
             Text(dayNumber)
@@ -123,7 +111,7 @@ private struct WeekDateCell: View {
                     .frame(width: 6, height: 6)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 80)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(isSelected ? Color.tallyPrimary.opacity(0.1) : Color.clear)

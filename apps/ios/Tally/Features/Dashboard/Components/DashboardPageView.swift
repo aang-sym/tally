@@ -20,21 +20,10 @@ struct DashboardPageView: View {
                     }
                 }
                 .screenPadding()
-                .padding(.top, Spacing.md)
+                .padding(.top, Spacing.sm)
             }
         }
-        .background(
-            // Subtle gradient for liquid glass visibility
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color.heroBackground.opacity(0.3),
-                    Color.background,
-                    Color.backgroundSecondary.opacity(0.5)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
+        .background(Color.clear)
     }
 }
 

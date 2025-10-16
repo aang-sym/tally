@@ -246,102 +246,77 @@ private struct BouncingLogoView: View {
         var actualPosition = proposedPosition
 
         // PREDICTIVE COLLISION DETECTION: Check if proposed position would cause overlap
-        // Get this logo's shape for proper collision detection
-        let myShape = CollisionBoundsHelper.getCollisionShape(for: service)
-        let myBounds = (radiusX: radiusX, radiusY: radiusY)
-
-        // Debug: Log this logo's state periodically
-        let frameCounter = Int(position.x * 100 + position.y * 100) % 300
-        if frameCounter == 0 {
-            print("🔵 [\(index)] pos:(\(Int(position.x)),\(Int(position.y))) vel:(\(String(format: "%.2f", velocity.x)),\(String(format: "%.2f", velocity.y)))")
-        }
-
         for (otherIndex, otherState) in collisionManager.logoStates {
             // Skip self
             guard otherIndex != index else { continue }
 
-            // Get other logo's shape from the collision manager
-            // We need to find the service for this other logo index
-            guard let otherService = collisionManager.getService(for: otherIndex) else { continue }
-            let otherShape = CollisionBoundsHelper.getCollisionShape(for: otherService)
-            let otherBounds = (radiusX: otherState.radiusX, radiusY: otherState.radiusY)
+            // First check CURRENT distance to see if we're already colliding or close
+            let currentDx = position.x - otherState.position.x
+            let currentDy = position.y - otherState.position.y
 
-            // Check CURRENT collision state
-            let currentlyColliding = CollisionBoundsHelper.checkCollision(
-                shape1: myShape,
-                bounds1: myBounds,
-                pos1: position,
-                shape2: otherShape,
-                bounds2: otherBounds,
-                pos2: otherState.position
-            )
+            // Elliptical collision detection using combined radii from both logos
+            let combinedRadiusX = radiusX + otherState.radiusX
+            let combinedRadiusY = radiusY + otherState.radiusY
 
-            if currentlyColliding && frameCounter == 0 {
-                print("  ⚠️ [\(index)] COLLIDING with [\(otherIndex)]")
-            }
+            // Check current distance
+            let currentNormalizedX = currentDx / combinedRadiusX
+            let currentNormalizedY = currentDy / combinedRadiusY
+            let currentDistance = sqrt(currentNormalizedX * currentNormalizedX + currentNormalizedY * currentNormalizedY)
 
-            // Check PROPOSED collision state
-            let wouldCollide = CollisionBoundsHelper.checkCollision(
-                shape1: myShape,
-                bounds1: myBounds,
-                pos1: proposedPosition,
-                shape2: otherShape,
-                bounds2: otherBounds,
-                pos2: otherState.position
-            )
+            // Now check PROPOSED distance
+            let proposedDx = proposedPosition.x - otherState.position.x
+            let proposedDy = proposedPosition.y - otherState.position.y
+            let proposedNormalizedX = proposedDx / combinedRadiusX
+            let proposedNormalizedY = proposedDy / combinedRadiusY
+            let proposedDistance = sqrt(proposedNormalizedX * proposedNormalizedX + proposedNormalizedY * proposedNormalizedY)
 
-            // Handle collision if we would collide OR if we're currently colliding and not moving apart
-            if wouldCollide || currentlyColliding {
-                // Get collision normal (direction to push this logo away from other)
-                let normal = CollisionBoundsHelper.getCollisionNormal(
-                    shape1: myShape,
-                    bounds1: myBounds,
-                    pos1: position,
-                    shape2: otherShape,
-                    bounds2: otherBounds,
-                    pos2: otherState.position
-                )
+            // Check if proposed position would cause overlap OR if we're currently too close
+            if proposedDistance < 1.0 || (currentDistance < 1.05 && proposedDistance <= currentDistance) {
+                // Calculate collision normal using CURRENT positions (normalized vector from other logo to this logo)
+                let actualDistance = sqrt(currentDx * currentDx + currentDy * currentDy)
 
-                let nx = normal.nx
-                let ny = normal.ny
+                // Avoid division by zero
+                guard actualDistance > 0 else { continue }
+
+                let nx = currentDx / actualDistance
+                let ny = currentDy / actualDistance
 
                 // Calculate dot product of velocity with collision normal
                 let dotProduct = velocity.x * nx + velocity.y * ny
 
-                // Reflect velocity if moving toward each other
+                // Only handle collision if moving toward each other
                 if dotProduct < 0 {
+                    // Reflect velocity across collision normal
                     newVelocity.x = velocity.x - 2 * dotProduct * nx
                     newVelocity.y = velocity.y - 2 * dotProduct * ny
-                }
 
-                // Always apply separation when currently colliding (even if moving apart)
-                if currentlyColliding {
-                    // Push logos apart along collision normal with stronger force
-                    let separationSpeed: CGFloat = 3.5  // Increased from 1.5 to prevent sticking
-                    actualPosition.x = position.x + nx * separationSpeed
-                    actualPosition.y = position.y + ny * separationSpeed
-
-                    // Ensure minimum velocity to prevent freezing
-                    let minVelocity: CGFloat = 0.6  // Increased from 0.3 for stronger bounce-back
-                    let velocityMag = sqrt(newVelocity.x * newVelocity.x + newVelocity.y * newVelocity.y)
-                    if velocityMag < minVelocity {
-                        // Add random jitter to unstick with stronger impulse
-                        let jitterMagnitude: CGFloat = 0.8  // Stronger than minVelocity for better unsticking
-                        let jitterAngle = Double.random(in: 0..<(2 * .pi))
-                        newVelocity.x = CGFloat(Darwin.cos(jitterAngle)) * jitterMagnitude
-                        newVelocity.y = CGFloat(Darwin.sin(jitterAngle)) * jitterMagnitude
+                    // Calculate the exact point where boundaries would touch (not overlap)
+                    // Find fraction of movement that brings us exactly to boundary (distance = 1.0)
+                    var t: CGFloat = 0.0 // Fraction of movement to allow (0.0 = stay, 1.0 = full movement)
+                    if currentDistance >= 1.0 {
+                        // Already outside boundary, limit movement to not penetrate
+                        // Calculate how far we can move before hitting the boundary
+                        if proposedDistance < 1.0 {
+                            // Would penetrate - find exact boundary point
+                            t = max(0.0, (1.0 - currentDistance) / (proposedDistance - currentDistance))
+                        } else {
+                            // Safe to move fully
+                            t = 1.0
+                        }
+                    } else {
+                        // Already too close or overlapping - don't move closer
+                        if proposedDistance >= currentDistance {
+                            // Moving away - allow it
+                            t = 1.0
+                        } else {
+                            // Moving closer - stop at current position
+                            t = 0.0
+                        }
                     }
 
-                    if frameCounter == 0 {
-                        print("    → Separating [\(index)]: push (\(String(format: "%.2f", nx * separationSpeed)),\(String(format: "%.2f", ny * separationSpeed)))")
-                    }
-                } else if wouldCollide {
-                    // Don't move - would cause new collision
-                    actualPosition = position
-
-                    if frameCounter == 0 {
-                        print("    → Blocked [\(index)]: would collide with [\(otherIndex)]")
-                    }
+                    // Apply only the safe fraction of movement
+                    actualPosition.x = position.x + velocity.x * t
+                    actualPosition.y = position.y + velocity.y * t
                 }
             }
         }
@@ -358,11 +333,6 @@ private struct BouncingLogoView: View {
             newVelocity.y *= -1
             // Clamp position to boundary
             actualPosition.y = max(radiusY, min(containerSize.height - radiusY, actualPosition.y))
-        }
-
-        // Debug: Log velocity changes
-        if velocity != newVelocity && frameCounter == 0 {
-            print("  🔄 [\(index)] Velocity: (\(String(format: "%.2f", velocity.x)),\(String(format: "%.2f", velocity.y))) → (\(String(format: "%.2f", newVelocity.x)),\(String(format: "%.2f", newVelocity.y)))")
         }
 
         position = actualPosition
@@ -639,7 +609,7 @@ struct CRTOverlayView: View {
             RadialGradient(
                 gradient: Gradient(colors: [
                     Color.black.opacity(0),
-                    Color.black.opacity(0.15)
+                    Color.black.opacity(0.02)
                 ]),
                 center: .center,
                 startRadius: 100,
