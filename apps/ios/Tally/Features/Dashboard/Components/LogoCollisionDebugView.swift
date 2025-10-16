@@ -322,7 +322,12 @@ private struct LogoWithBoundsView: View {
                 .opacity(0.8)
 
                 // The actual logo - explicitly centered
-                ServiceLogoView(service: service, dynamicScale: 1.0)
+                GlowingServiceLogoView(
+                    service: service,
+                    baseSize: Spacing.heroLogoSize,
+                    dynamicScale: 1.0,
+                    style: .hero
+                )
 
                 // Index label - top-left corner (positioned absolutely)
                 VStack {
@@ -409,91 +414,6 @@ private struct LogoWithBoundsView: View {
         .background(Color.backgroundSecondary)
         .cornerRadius(14)
         .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
-    }
-}
-
-// MARK: - Service Logo View (Copied from HeroSection for reuse)
-
-private struct ServiceLogoView: View {
-    let service: StreamingService
-    let dynamicScale: CGFloat
-    @Environment(\.colorScheme) var colorScheme
-
-    var body: some View {
-        Group {
-            if let assetName = logoAssetName(for: service) {
-                let scale = CollisionBoundsHelper.getLogoScale(for: service) * dynamicScale
-                let size = Spacing.heroLogoSize * scale
-
-                ZStack {
-                    // Simplified logo rendering (just the main image + glow for debug)
-                    Image(assetName)
-                        .resizable()
-                        .if(shouldInvertLogo(for: service)) { view in
-                            view.renderingMode(.template)
-                                .foregroundColor(glowColor(for: service))
-                        }
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: size, height: size)
-                }
-                .shadow(color: glowColor(for: service).opacity(0.5), radius: 8, x: 0, y: 0)
-            } else {
-                placeholderLogo
-            }
-        }
-    }
-
-    private var placeholderLogo: some View {
-        Circle()
-            .fill(Color.backgroundTertiary)
-            .frame(width: Spacing.heroLogoSize, height: Spacing.heroLogoSize)
-            .overlay(
-                Text(String(service.name.prefix(2)))
-                    .font(.labelLarge)
-                    .foregroundColor(.textSecondary)
-            )
-    }
-
-    private func logoAssetName(for service: StreamingService) -> String? {
-        let serviceName = service.name.lowercased()
-
-        if serviceName.contains("netflix") { return "Netflix" }
-        else if serviceName.contains("disney") { return "DisneyPlus" }
-        else if serviceName.contains("prime") || serviceName.contains("amazon") { return "PrimeVideo" }
-        else if serviceName.contains("hbo") || serviceName.contains("max") { return "HBOMax" }
-        else if serviceName.contains("crunchyroll") { return "Crunchyroll" }
-        else if serviceName.contains("stan") { return "Stan" }
-        else if serviceName.contains("apple") { return "AppleTVPlus" }
-        else if serviceName.contains("binge") { return "Binge" }
-        else if serviceName.contains("paramount") { return "Paramount" }
-
-        return nil
-    }
-
-    private func glowColor(for service: StreamingService) -> Color {
-        let serviceName = service.name.lowercased()
-
-        if serviceName.contains("netflix") { return Color(red: 0.9, green: 0.1, blue: 0.15) }
-        else if serviceName.contains("disney") { return Color(red: 0.25, green: 0.4, blue: 0.9) }
-        else if serviceName.contains("prime") || serviceName.contains("amazon") { return Color(red: 0.0, green: 0.67, blue: 0.93) }
-        else if serviceName.contains("hbo") || serviceName.contains("max") { return Color(red: 0.65, green: 0.2, blue: 0.9) }
-        else if serviceName.contains("crunchyroll") { return Color(red: 1.0, green: 0.55, blue: 0.15) }
-        else if serviceName.contains("stan") { return Color(red: 0.2, green: 0.5, blue: 0.95) }
-        else if serviceName.contains("apple") { return Color(red: 0.9, green: 0.9, blue: 0.95) }
-        else if serviceName.contains("binge") { return Color(red: 0.5, green: 0.25, blue: 0.85) }
-        else if serviceName.contains("paramount") { return Color(red: 0.15, green: 0.45, blue: 0.95) }
-
-        return Color.blue.opacity(0.7)
-    }
-
-    private func shouldInvertLogo(for service: StreamingService) -> Bool {
-        guard colorScheme == .dark else { return false }
-
-        let serviceName = service.name.lowercased()
-        return serviceName.contains("hbo") || serviceName.contains("max") ||
-               serviceName.contains("prime") || serviceName.contains("amazon") ||
-               serviceName.contains("disney") ||
-               serviceName.contains("apple")
     }
 }
 

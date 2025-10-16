@@ -33,20 +33,6 @@ struct HeroSection: View {
         ZStack {
             // Background adapts to system appearance
             Color.background
-                .overlay(
-                    // Subtle scan line pattern
-                    GeometryReader { geometry in
-                        VStack(spacing: 2) {
-                            ForEach(0..<Int(geometry.size.height / 4), id: \.self) { _ in
-                                Rectangle()
-                                    .fill(Color.white.opacity(0.02))
-                                    .frame(height: 1)
-                                Spacer()
-                                    .frame(height: 3)
-                            }
-                        }
-                    }
-                )
 
             // Scattered provider logos
             if !services.isEmpty {
@@ -136,7 +122,7 @@ private struct BouncingLogoView: View {
     @State private var timer: Timer?
 
     // Debug flag to toggle collision boundary visualization
-    private static let showDebugBounds = true
+    private static let showDebugBounds = false
 
     var body: some View {
         ZStack {
@@ -173,7 +159,12 @@ private struct BouncingLogoView: View {
                     .offset(x: -bounds.radiusX + 20, y: -bounds.radiusY + 15)
             }
 
-            ServiceLogoView(service: service, dynamicScale: dynamicScale)
+            GlowingServiceLogoView(
+                service: service,
+                baseSize: Spacing.heroLogoSize,
+                dynamicScale: dynamicScale,
+                style: .hero
+            )
         }
         .position(position)
         .onAppear {
@@ -332,10 +323,20 @@ private struct BouncingLogoView: View {
 
                 // Always apply separation when currently colliding (even if moving apart)
                 if currentlyColliding {
-                    // Push logos apart along collision normal
-                    let separationSpeed: CGFloat = 0.5  // Gentle push apart
+                    // Push logos apart along collision normal with stronger force
+                    let separationSpeed: CGFloat = 1.5  // Stronger push to prevent sticking
                     actualPosition.x = position.x + nx * separationSpeed
                     actualPosition.y = position.y + ny * separationSpeed
+
+                    // Ensure minimum velocity to prevent freezing
+                    let minVelocity: CGFloat = 0.3
+                    let velocityMag = sqrt(newVelocity.x * newVelocity.x + newVelocity.y * newVelocity.y)
+                    if velocityMag < minVelocity {
+                        // Add small random jitter to unstick
+                        let jitterAngle = Double.random(in: 0..<(2 * .pi))
+                        newVelocity.x = CGFloat(Darwin.cos(jitterAngle)) * minVelocity
+                        newVelocity.y = CGFloat(Darwin.sin(jitterAngle)) * minVelocity
+                    }
 
                     if frameCounter == 0 {
                         print("    → Separating [\(index)]: push (\(String(format: "%.2f", nx * separationSpeed)),\(String(format: "%.2f", ny * separationSpeed)))")
@@ -378,111 +379,159 @@ private struct BouncingLogoView: View {
     }
 }
 
-// MARK: - Service Logo View
+// MARK: - Glowing Service Logo View
 
-private struct ServiceLogoView: View {
+struct GlowingServiceLogoView: View {
+    enum Style {
+        case hero
+        case card
+    }
+
     let service: StreamingService
-    let dynamicScale: CGFloat
-    @Environment(\.colorScheme) var colorScheme
+    let baseSize: CGFloat
+    var dynamicScale: CGFloat = 1.0
+    var style: Style = .hero
+
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        let scaledSize = baseSize * ServiceBranding.logoScale(for: service) * dynamicScale
+
         Group {
-            if let assetName = logoAssetName(for: service) {
-                let scale = logoScale(for: service) * dynamicScale // Apply both service-specific and dynamic scaling
-                let size = Spacing.heroLogoSize * scale
+            if let assetName = ServiceBranding.assetName(for: service) {
+                let glowColor = ServiceBranding.glowColor(for: service)
+                let shouldInvert = ServiceBranding.shouldInvertLogo(for: service, in: colorScheme)
+                let config = GlowConfig.configuration(for: style, size: scaledSize)
 
                 ZStack {
-                    // Layer 1: Most blurred layer for outer glow emission
-                    Image(assetName)
-                        .resizable()
-                        .if(shouldInvertLogo(for: service)) { view in
-                            view.renderingMode(.template)
-                                .foregroundColor(glowColor(for: service))
-                        }
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: size, height: size)
-                        .blur(radius: 3)
-                        .opacity(0.15)
-                        .brightness(0.15)
+                    ForEach(Array(config.layers.enumerated()), id: \.offset) { _, layer in
+                        logoImage(assetName: assetName, glowColor: glowColor, shouldInvert: shouldInvert)
+                            .blur(radius: layer.blurRadius)
+                            .opacity(layer.opacity)
+                            .brightness(layer.brightness)
+                    }
 
-                    // Layer 2: Medium blur for mid-range glow
-                    Image(assetName)
-                        .resizable()
-                        .if(shouldInvertLogo(for: service)) { view in
-                            view.renderingMode(.template)
-                                .foregroundColor(glowColor(for: service))
-                        }
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: size, height: size)
-                        .blur(radius: 1.5)
-                        .opacity(0.2)
-                        .brightness(0.1)
-
-                    // Layer 3: Slight blur for close glow
-                    Image(assetName)
-                        .resizable()
-                        .if(shouldInvertLogo(for: service)) { view in
-                            view.renderingMode(.template)
-                                .foregroundColor(glowColor(for: service))
-                        }
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: size, height: size)
-                        .blur(radius: 0.5)
-                        .opacity(0.3)
-                        .brightness(0.05)
-
-                    // Layer 4: Main logo with subtle brightness boost for self-illumination
-                    Image(assetName)
-                        .resizable()
-                        .if(shouldInvertLogo(for: service)) { view in
-                            view.renderingMode(.template)
-                                .foregroundColor(glowColor(for: service))
-                        }
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: size, height: size)
-                        .brightness(0.1)
+                    logoImage(assetName: assetName, glowColor: glowColor, shouldInvert: shouldInvert)
+                        .brightness(config.baseBrightness)
                 }
+                .frame(width: scaledSize, height: scaledSize)
                 .background(
-                    // Glowing background using the logo shape itself
-                    Image(assetName)
-                        .resizable()
-                        .if(shouldInvertLogo(for: service)) { view in
-                            view.renderingMode(.template)
-                                .foregroundColor(glowColor(for: service))
-                        }
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: size, height: size)
-                        .blur(radius: 15)
-                        .colorMultiply(glowColor(for: service))
-                        .opacity(0.8)
+                    logoImage(assetName: assetName, glowColor: glowColor, shouldInvert: shouldInvert)
+                        .blur(radius: config.backgroundBlur)
+                        .colorMultiply(glowColor)
+                        .opacity(config.backgroundOpacity)
                         .scaleEffect(1.05)
                 )
-                // Multi-layer glow shadows - tighter radiuses
-                .shadow(color: glowColor(for: service).opacity(0.6), radius: 10, x: 0, y: 0)
-                .shadow(color: glowColor(for: service).opacity(0.4), radius: 18, x: 0, y: 0)
-                .shadow(color: glowColor(for: service).opacity(0.2), radius: 25, x: 0, y: 0)
+                .shadow(color: glowColor.opacity(config.shadowOpacities[0]), radius: config.shadowRadii[0], x: 0, y: 0)
+                .shadow(color: glowColor.opacity(config.shadowOpacities[1]), radius: config.shadowRadii[1], x: 0, y: 0)
+                .shadow(color: glowColor.opacity(config.shadowOpacities[2]), radius: config.shadowRadii[2], x: 0, y: 0)
             } else {
-                placeholderLogo
+                placeholder(size: scaledSize)
             }
+        }
+        .frame(width: scaledSize, height: scaledSize)
+    }
+
+    @ViewBuilder
+    private func placeholder(size: CGFloat) -> some View {
+        switch style {
+        case .hero:
+            Circle()
+                .fill(Color.backgroundTertiary)
+                .frame(width: size, height: size)
+                .overlay(
+                    Text(ServiceBranding.initials(for: service))
+                        .font(.labelLarge)
+                        .foregroundColor(.textSecondary)
+                )
+        case .card:
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.backgroundTertiary)
+                .frame(width: size, height: size)
+                .overlay(
+                    Text(ServiceBranding.initials(for: service))
+                        .font(.labelMedium)
+                        .foregroundColor(.textSecondary)
+                )
         }
     }
 
-    private var placeholderLogo: some View {
-        Circle()
-            .fill(Color.backgroundTertiary)
-            .frame(width: Spacing.heroLogoSize, height: Spacing.heroLogoSize)
-            .overlay(
-                Text(String(service.name.prefix(2)))
-                    .font(.labelLarge)
-                    .foregroundColor(.textSecondary)
-            )
+    @ViewBuilder
+    private func logoImage(assetName: String, glowColor: Color, shouldInvert: Bool) -> some View {
+        let baseImage = Image(assetName)
+
+        if shouldInvert {
+            baseImage
+                .renderingMode(.template)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .foregroundColor(glowColor)
+        } else {
+            baseImage
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+        }
     }
 
-    /// Map service name to Assets.xcassets logo name
-    private func logoAssetName(for service: StreamingService) -> String? {
+    // MARK: - Glow Configuration
+
+    private struct GlowLayer {
+        let blurRadius: CGFloat
+        let opacity: Double
+        let brightness: Double
+    }
+
+    private struct GlowConfig {
+        let layers: [GlowLayer]
+        let baseBrightness: Double
+        let backgroundBlur: CGFloat
+        let backgroundOpacity: Double
+        let shadowRadii: [CGFloat]
+        let shadowOpacities: [Double]
+
+        static func configuration(for style: GlowingServiceLogoView.Style, size: CGFloat) -> GlowConfig {
+            let heroReferenceSize = Spacing.heroLogoSize
+            let scaleFactor = max(size / heroReferenceSize, 0.4)
+
+            switch style {
+            case .hero:
+                return GlowConfig(
+                    layers: [
+                        GlowLayer(blurRadius: 3 * scaleFactor, opacity: 0.15, brightness: 0.15),
+                        GlowLayer(blurRadius: 1.5 * scaleFactor, opacity: 0.2, brightness: 0.1),
+                        GlowLayer(blurRadius: 0.5 * scaleFactor, opacity: 0.3, brightness: 0.05)
+                    ],
+                    baseBrightness: 0.1,
+                    backgroundBlur: 15 * scaleFactor,
+                    backgroundOpacity: 0.8,
+                    shadowRadii: [10, 18, 25].map { $0 * scaleFactor },
+                    shadowOpacities: [0.6, 0.4, 0.2]
+                )
+
+            case .card:
+                return GlowConfig(
+                    layers: [
+                        GlowLayer(blurRadius: 2.2 * scaleFactor, opacity: 0.12, brightness: 0.12),
+                        GlowLayer(blurRadius: 1.1 * scaleFactor, opacity: 0.18, brightness: 0.08),
+                        GlowLayer(blurRadius: 0.35 * scaleFactor, opacity: 0.22, brightness: 0.04)
+                    ],
+                    baseBrightness: 0.08,
+                    backgroundBlur: 12 * scaleFactor,
+                    backgroundOpacity: 0.55,
+                    shadowRadii: [7, 12, 16].map { $0 * scaleFactor },
+                    shadowOpacities: [0.45, 0.25, 0.12]
+                )
+            }
+        }
+    }
+}
+
+// MARK: - Service Branding Helpers
+
+enum ServiceBranding {
+    static func assetName(for service: StreamingService) -> String? {
         let serviceName = service.name.lowercased()
 
-        // Map service names to Asset Catalog names
         if serviceName.contains("netflix") {
             return "Netflix"
         } else if serviceName.contains("disney") {
@@ -506,58 +555,53 @@ private struct ServiceLogoView: View {
         return nil
     }
 
-    /// Get brand color glow for each service
-    private func glowColor(for service: StreamingService) -> Color {
+    static func glowColor(for service: StreamingService) -> Color {
         let serviceName = service.name.lowercased()
 
-        // Map service names to brand colors for glow effect
         if serviceName.contains("netflix") {
-            return Color(red: 0.9, green: 0.1, blue: 0.15) // Netflix Red
+            return Color(red: 0.9, green: 0.1, blue: 0.15)
         } else if serviceName.contains("disney") {
-            return Color(red: 0.25, green: 0.4, blue: 0.9) // Disney+ Royal Blue
+            return Color(red: 0.25, green: 0.4, blue: 0.9)
         } else if serviceName.contains("prime") || serviceName.contains("amazon") {
-            return Color(red: 0.0, green: 0.67, blue: 0.93) // Prime Blue
+            return Color(red: 0.0, green: 0.67, blue: 0.93)
         } else if serviceName.contains("hbo") || serviceName.contains("max") {
-            return Color(red: 0.65, green: 0.2, blue: 0.9) // HBO Purple
+            return Color(red: 0.65, green: 0.2, blue: 0.9)
         } else if serviceName.contains("crunchyroll") {
-            return Color(red: 1.0, green: 0.55, blue: 0.15) // Crunchyroll Orange
+            return Color(red: 1.0, green: 0.55, blue: 0.15)
         } else if serviceName.contains("stan") {
-            return Color(red: 0.2, green: 0.5, blue: 0.95) // Stan Blue
+            return Color(red: 0.2, green: 0.5, blue: 0.95)
         } else if serviceName.contains("apple") {
-            return Color(red: 0.9, green: 0.9, blue: 0.95) // Apple White/Gray
+            return Color(red: 0.9, green: 0.9, blue: 0.95)
         } else if serviceName.contains("binge") {
-            return Color(red: 0.5, green: 0.25, blue: 0.85) // Binge Purple
+            return Color(red: 0.5, green: 0.25, blue: 0.85)
         } else if serviceName.contains("paramount") {
-            return Color(red: 0.15, green: 0.45, blue: 0.95) // Paramount Blue
+            return Color(red: 0.15, green: 0.45, blue: 0.95)
         }
 
-        // Default glow color
         return Color.blue.opacity(0.7)
     }
 
-    /// Get scale factor for logo size
-    /// Rectangular logos (Disney+, Stan) need to be larger to match visual weight of square logos
-    private func logoScale(for service: StreamingService) -> CGFloat {
+    static func logoScale(for service: StreamingService) -> CGFloat {
         let serviceName = service.name.lowercased()
 
-        // Rectangular/wide logos need scaling up
         if serviceName.contains("disney") {
             return 1.4
         } else if serviceName.contains("stan") {
             return 1.4
         } else if serviceName.contains("prime") || serviceName.contains("amazon") {
-            return 1.15
+            return 1.35
+        } else if serviceName.contains("apple") {
+            return 1.25
+        } else if serviceName.contains("paramount") {
+            return 1.25
+        } else if serviceName.contains("crunchyroll") {
+            return 0.9
         }
 
-        // All other logos (square/circular) at default size
         return 1.0
     }
 
-    /// Check if logo should be inverted and colorized
-    /// Dark logos (HBO Max, Prime Video, Disney+, Apple TV+) need inversion for visibility on dark backgrounds
-    /// Only applies in dark mode - light mode keeps original logos for better visibility
-    private func shouldInvertLogo(for service: StreamingService) -> Bool {
-        // Only invert logos in dark mode
+    static func shouldInvertLogo(for service: StreamingService, in colorScheme: ColorScheme) -> Bool {
         guard colorScheme == .dark else { return false }
 
         let serviceName = service.name.lowercased()
@@ -566,6 +610,51 @@ private struct ServiceLogoView: View {
                serviceName.contains("prime") || serviceName.contains("amazon") ||
                serviceName.contains("disney") ||
                serviceName.contains("apple")
+    }
+
+    static func initials(for service: StreamingService) -> String {
+        let words = service.name.split(separator: " ")
+        if words.count >= 2 {
+            let first = words[0].prefix(1)
+            let second = words[1].prefix(1)
+            return String(first + second)
+        }
+
+        return String(service.name.prefix(2)).uppercased()
+    }
+}
+
+// MARK: - CRT Overlay
+
+struct CRTOverlayView: View {
+    var body: some View {
+        ZStack {
+            // Horizontal scanlines
+            GeometryReader { geometry in
+                VStack(spacing: 1) {
+                    ForEach(0..<Int(geometry.size.height / 3), id: \.self) { _ in
+                        Rectangle()
+                            .fill(Color.white.opacity(0.04))
+                            .frame(height: 2)
+                        Spacer()
+                            .frame(height: 1)
+                    }
+                }
+            }
+            .allowsHitTesting(false)
+
+            // Subtle vignette for CRT edge darkening
+            RadialGradient(
+                gradient: Gradient(colors: [
+                    Color.black.opacity(0),
+                    Color.black.opacity(0.15)
+                ]),
+                center: .center,
+                startRadius: 100,
+                endRadius: 400
+            )
+            .allowsHitTesting(false)
+        }
     }
 }
 

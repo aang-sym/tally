@@ -73,23 +73,34 @@ private struct ServiceLogo: View {
 
     var body: some View {
         Group {
-            if let service, let logoURL = service.logoURL {
-                AsyncImage(url: logoURL) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .frame(width: size, height: size)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: size, height: size)
-                            .clipShape(Circle())
-                    case .failure:
-                        placeholderLogo
-                    @unknown default:
-                        placeholderLogo
+            if let service {
+                if ServiceBranding.assetName(for: service) != nil {
+                    GlowingServiceLogoView(
+                        service: service,
+                        baseSize: size,
+                        dynamicScale: 1.0,
+                        style: .card
+                    )
+                } else if let logoURL = service.logoURL {
+                    AsyncImage(url: logoURL) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .frame(width: size, height: size)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: size, height: size)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                        case .failure:
+                            placeholderLogo
+                        @unknown default:
+                            placeholderLogo
+                        }
                     }
+                } else {
+                    placeholderLogo
                 }
             } else {
                 placeholderLogo
@@ -103,10 +114,18 @@ private struct ServiceLogo: View {
             .fill(Color.backgroundTertiary)
             .frame(width: size, height: size)
             .overlay(
-                Text(service?.name.prefix(2) ?? "?")
+                Text(serviceInitials)
                     .font(.labelMedium)
                     .foregroundColor(.textSecondary)
             )
+    }
+
+    private var serviceInitials: String {
+        if let service {
+            return ServiceBranding.initials(for: service)
+        }
+
+        return "?"
     }
 }
 

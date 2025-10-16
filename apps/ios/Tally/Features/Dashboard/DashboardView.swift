@@ -29,6 +29,10 @@ struct DashboardView: View {
             } else {
                 contentView
             }
+
+            // CRT overlay across entire dashboard
+            CRTOverlayView()
+                .ignoresSafeArea()
         }
         .navigationTitle("Dashboard")
         .navigationBarTitleDisplayMode(.inline)
