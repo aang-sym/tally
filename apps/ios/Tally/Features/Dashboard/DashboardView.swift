@@ -14,37 +14,90 @@ struct DashboardView: View {
     @StateObject private var logoCollisionManager = LogoCollisionManager()
     @State private var stableServices: [StreamingService] = []
 
+    // Search state
+    @State private var searchQuery = ""
+    @State private var isSearchActive = false
+    @StateObject private var searchViewModel = SearchViewModel()
+
     var body: some View {
         ZStack {
             Color.background
                 .ignoresSafeArea()
 
-            if viewModel.isLoading {
-                loadingView
-            } else if let error = viewModel.error {
-                errorView(message: error)
-            } else if viewModel.subscriptions.isEmpty {
-                emptyView
-            } else {
-                contentView
+            // Dashboard content (fades when search is active)
+            Group {
+                if viewModel.isLoading {
+                    loadingView
+                } else if let error = viewModel.error {
+                    errorView(message: error)
+                } else if viewModel.subscriptions.isEmpty {
+                    emptyView
+                } else {
+                    contentView
+                }
             }
+            .opacity(isSearchActive ? 0.15 : 1.0)
+            .animation(.easeInOut(duration: 0.3), value: isSearchActive)
 
             // CRT overlay across entire dashboard
             CRTOverlayView()
                 .ignoresSafeArea()
+                .opacity(isSearchActive ? 0.15 : 1.0)
+                .animation(.easeInOut(duration: 0.3), value: isSearchActive)
+
+            // Search results overlay (when active)
+            if isSearchActive {
+                ZStack {
+                    // Tappable background to dismiss search
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            isSearchActive = false
+                            searchQuery = ""
+                        }
+
+                    DashboardSearchResults(
+                        viewModel: searchViewModel,
+                        onDismiss: {
+                            isSearchActive = false
+                            searchQuery = ""
+                        }
+                    )
+                    .padding(.top, 60) // Space for search bar
+                }
+                .transition(.opacity)
+            }
+
+            // Search bar (always visible at top)
+            VStack {
+                DashboardSearchBar(
+                    query: $searchQuery,
+                    isActive: $isSearchActive
+                )
+                .padding(.horizontal, Spacing.screenPadding)
+                .padding(.top, Spacing.sm)
+
+                Spacer()
+            }
         }
-        .navigationTitle("Dashboard")
-        .navigationBarTitleDisplayMode(.inline)
         .task {
             await viewModel.load(api: api)
             await viewModel.loadUpcomingEpisodes(api: api)
             // Stabilize services array with consistent ordering
             stableServices = viewModel.uniqueServices.sorted { $0.id < $1.id }
+            // Set API reference for search
+            searchViewModel.api = api
         }
         .refreshable {
             await viewModel.refresh(api: api)
             // Update stable services after refresh
             stableServices = viewModel.uniqueServices.sorted { $0.id < $1.id }
+        }
+        .onChange(of: searchQuery) { _, newValue in
+            searchViewModel.query = newValue
+            if !newValue.isEmpty {
+                searchViewModel.scheduleSearch(api: api)
+            }
         }
     }
 
