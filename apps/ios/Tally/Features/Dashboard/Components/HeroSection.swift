@@ -30,21 +30,14 @@ struct HeroSection: View {
     @StateObject private var collisionManager = LogoCollisionManager()
 
     var body: some View {
-        ZStack {
-            // Background adapts to system appearance
-            Color.background
-
-            // Scattered provider logos
-            if !services.isEmpty {
-                ScatteredLogosView(services: services, collisionManager: collisionManager)
-            }
-        }
+        // Transparent background so logos behind are visible
+        Color.clear
     }
 }
 
 // MARK: - Logo Collision Manager
 
-private class LogoCollisionManager: ObservableObject {
+class LogoCollisionManager: ObservableObject {
     @Published var logoStates: [Int: LogoState] = [:]
     private var serviceMap: [Int: StreamingService] = [:]
 
@@ -67,7 +60,7 @@ private class LogoCollisionManager: ObservableObject {
 
 // MARK: - Scattered Logos View
 
-private struct ScatteredLogosView: View {
+struct ScatteredLogosView: View {
     let services: [StreamingService]
     @ObservedObject var collisionManager: LogoCollisionManager
 
@@ -78,9 +71,9 @@ private struct ScatteredLogosView: View {
                 let displayedLogoCount = min(services.count, 6)
                 let dynamicScale = calculateDynamicScale(logoCount: displayedLogoCount)
 
-                // Use index-based identity to preserve logo positions when services change
-                // Temporarily capped at 6 to test collision behavior
-                ForEach(Array(services.prefix(6).enumerated()), id: \.offset) { index, service in
+                // Use service.id as identity to prevent logo cycling
+                // Each service maintains its own position across renders
+                ForEach(Array(services.prefix(6).enumerated()), id: \.element.id) { index, service in
                     BouncingLogoView(
                         service: service,
                         index: index,
@@ -187,25 +180,25 @@ private struct BouncingLogoView: View {
     /// Initialize starting position based on index
     private func initializePosition() {
         let positions: [(x: Double, y: Double)] = [
-            // First 6 positions (original)
-            (0.15, 0.25),  // Upper-left
-            (0.7, 0.3),    // Upper-right
-            (0.45, 0.5),   // Center
-            (0.3, 0.7),    // Lower-left
+            // First 6 positions (redistributed for full-screen)
+            (0.15, 0.15),  // Top-left
+            (0.7, 0.2),    // Top-right
+            (0.45, 0.35),  // Upper-middle
+            (0.3, 0.5),    // Middle-left
             (0.75, 0.65),  // Lower-right
-            (0.5, 0.45),   // Mid-center
+            (0.5, 0.8),    // Lower-middle
 
-            // Additional positions for 7+ logos
-            (0.2, 0.45),   // Left-center
-            (0.85, 0.4),   // Far-right
-            (0.6, 0.25),   // Upper-center-right
-            (0.4, 0.8),    // Lower-center
-            (0.8, 0.75),   // Lower-right-edge
-            (0.25, 0.55),  // Mid-left
-            (0.65, 0.7),   // Lower-mid-right
-            (0.35, 0.35),  // Upper-mid-left
-            (0.55, 0.6),   // Center-right
-            (0.15, 0.6),   // Mid-left-lower
+            // Additional positions for 7+ logos (redistributed)
+            (0.2, 0.25),   // Upper-left-center
+            (0.85, 0.4),   // Right-upper-middle
+            (0.6, 0.18),   // Top-center-right
+            (0.4, 0.75),   // Lower-center
+            (0.8, 0.85),   // Bottom-right-edge
+            (0.25, 0.45),  // Middle-left
+            (0.65, 0.6),   // Middle-right
+            (0.35, 0.3),   // Upper-left-middle
+            (0.55, 0.55),  // Center-right
+            (0.15, 0.7),   // Lower-left
         ]
 
         // Use modulo to cycle through positions if there are more logos than positions
@@ -324,18 +317,19 @@ private struct BouncingLogoView: View {
                 // Always apply separation when currently colliding (even if moving apart)
                 if currentlyColliding {
                     // Push logos apart along collision normal with stronger force
-                    let separationSpeed: CGFloat = 1.5  // Stronger push to prevent sticking
+                    let separationSpeed: CGFloat = 3.5  // Increased from 1.5 to prevent sticking
                     actualPosition.x = position.x + nx * separationSpeed
                     actualPosition.y = position.y + ny * separationSpeed
 
                     // Ensure minimum velocity to prevent freezing
-                    let minVelocity: CGFloat = 0.3
+                    let minVelocity: CGFloat = 0.6  // Increased from 0.3 for stronger bounce-back
                     let velocityMag = sqrt(newVelocity.x * newVelocity.x + newVelocity.y * newVelocity.y)
                     if velocityMag < minVelocity {
-                        // Add small random jitter to unstick
+                        // Add random jitter to unstick with stronger impulse
+                        let jitterMagnitude: CGFloat = 0.8  // Stronger than minVelocity for better unsticking
                         let jitterAngle = Double.random(in: 0..<(2 * .pi))
-                        newVelocity.x = CGFloat(Darwin.cos(jitterAngle)) * minVelocity
-                        newVelocity.y = CGFloat(Darwin.sin(jitterAngle)) * minVelocity
+                        newVelocity.x = CGFloat(Darwin.cos(jitterAngle)) * jitterMagnitude
+                        newVelocity.y = CGFloat(Darwin.sin(jitterAngle)) * jitterMagnitude
                     }
 
                     if frameCounter == 0 {
@@ -458,16 +452,14 @@ struct GlowingServiceLogoView: View {
 
     @ViewBuilder
     private func logoImage(assetName: String, glowColor: Color, shouldInvert: Bool) -> some View {
-        let baseImage = Image(assetName)
-
         if shouldInvert {
-            baseImage
+            Image(assetName)
                 .renderingMode(.template)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .foregroundColor(glowColor)
         } else {
-            baseImage
+            Image(assetName)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
         }

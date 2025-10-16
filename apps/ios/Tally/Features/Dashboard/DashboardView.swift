@@ -14,11 +14,22 @@ struct DashboardView: View {
     @State private var selectedDate: Date?
     @State private var showEpisodeSheet = false
     @State private var selectedDetent: PresentationDetent = .medium
+    @StateObject private var logoCollisionManager = LogoCollisionManager()
+    @State private var stableServices: [StreamingService] = []
 
     var body: some View {
         ZStack {
             Color.background
                 .ignoresSafeArea()
+
+            // Full-screen bouncing logos (behind all UI)
+            if !stableServices.isEmpty {
+                ScatteredLogosView(
+                    services: stableServices,
+                    collisionManager: logoCollisionManager
+                )
+                .ignoresSafeArea()
+            }
 
             if viewModel.isLoading {
                 loadingView
@@ -39,9 +50,13 @@ struct DashboardView: View {
         .task {
             await viewModel.load(api: api)
             await viewModel.loadUpcomingEpisodes(api: api)
+            // Stabilize services array with consistent ordering
+            stableServices = viewModel.uniqueServices.sorted { $0.id < $1.id }
         }
         .refreshable {
             await viewModel.refresh(api: api)
+            // Update stable services after refresh
+            stableServices = viewModel.uniqueServices.sorted { $0.id < $1.id }
         }
         .sheet(isPresented: $showEpisodeSheet) {
             if let date = selectedDate {
@@ -88,7 +103,6 @@ struct DashboardView: View {
                 showsCount: viewModel.totalShows,
                 monthlyTotal: viewModel.formattedMonthlyCost
             )
-            .background(Color.background)
 
             // Paginated Content: Subscriptions & Calendar Week View
             TabView {
