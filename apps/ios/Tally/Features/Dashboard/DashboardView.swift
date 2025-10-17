@@ -19,6 +19,9 @@ struct DashboardView: View {
     @State private var isSearchActive = false
     @StateObject private var searchViewModel = SearchViewModel()
 
+    // Page tracking for custom page indicator
+    @State private var currentPage = 0
+
     var body: some View {
         ZStack {
             Color.background
@@ -112,6 +115,13 @@ struct DashboardView: View {
         }
     }
 
+    // MARK: - Computed Properties
+
+    private var currentDayOfMonth: String {
+        let day = Calendar.current.component(.day, from: Date())
+        return String(format: "%02d", day)
+    }
+
     // MARK: - Content View
 
     private var contentView: some View {
@@ -139,8 +149,8 @@ struct DashboardView: View {
                     monthlyTotal: viewModel.formattedMonthlyCost
                 )
 
-                // Paginated Content: Subscriptions & Calendar Week View
-                TabView {
+                // Paginated Content: Subscriptions, Calendar Week View, & Recommendations
+                TabView(selection: $currentPage) {
                     // Page 1: Subscriptions List
                     DashboardPageView(subscriptions: viewModel.activeSubscriptions)
                         .tag(0)
@@ -151,9 +161,45 @@ struct DashboardView: View {
                         selectedDate: $selectedDate
                     )
                     .tag(1)
+
+                    // Page 3: Recommendations
+                    RecommendationsPageView(subscriptions: viewModel.activeSubscriptions)
+                        .tag(2)
                 }
-                .tabViewStyle(.page)
-                .indexViewStyle(.page(backgroundDisplayMode: .always))
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .overlay(alignment: .bottom) {
+                    // Custom page indicator with icons (floating)
+                    HStack(spacing: 12) {
+                        // TV icon for subscriptions page
+                        Image(systemName: "tv")
+                            .font(.system(size: 16, weight: currentPage == 0 ? .semibold : .regular))
+                            .foregroundColor(currentPage == 0 ? .textPrimary : .textSecondary)
+                            .opacity(currentPage == 0 ? 1.0 : 0.5)
+
+                        // Current date number for calendar page
+                        Text(currentDayOfMonth)
+                            .font(.system(size: 16, weight: currentPage == 1 ? .semibold : .regular))
+                            .foregroundColor(currentPage == 1 ? .textPrimary : .textSecondary)
+                            .opacity(currentPage == 1 ? 1.0 : 0.5)
+
+                        // Sparkles icon for recommendations page
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 16, weight: currentPage == 2 ? .semibold : .regular))
+                            .foregroundColor(currentPage == 2 ? .textPrimary : .textSecondary)
+                            .opacity(currentPage == 2 ? 1.0 : 0.5)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(
+                        Capsule()
+                            .fill(Color.black.opacity(0.3))
+                            .background(
+                                Capsule()
+                                    .fill(.ultraThinMaterial)
+                            )
+                    )
+                    .padding(.bottom, 16)
+                }
             }
         }
     }

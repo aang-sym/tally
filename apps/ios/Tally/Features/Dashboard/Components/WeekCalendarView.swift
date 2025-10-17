@@ -162,8 +162,24 @@ private struct DaySection: View {
     let episodes: [CalendarEpisode]
 
     private var formattedDate: String {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let dateToCheck = calendar.startOfDay(for: date)
+
+        // Check if date is today
+        if calendar.isDate(dateToCheck, inSameDayAs: today) {
+            return "Today"
+        }
+
+        // Check if date is tomorrow
+        if let tomorrow = calendar.date(byAdding: .day, value: 1, to: today),
+           calendar.isDate(dateToCheck, inSameDayAs: tomorrow) {
+            return "Tomorrow"
+        }
+
+        // Otherwise use formatted date
         let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE d'\(daySuffix(Calendar.current.component(.day, from: date)))' MMMM"
+        formatter.dateFormat = "EEEE d'\(daySuffix(calendar.component(.day, from: date)))' MMMM"
         return formatter.string(from: date)
     }
 
@@ -339,6 +355,7 @@ private struct CollapsibleEpisodeCard: View {
             )
             .frame(width: 36, height: 36)
             .padding(8)
+            .padding(.trailing, 12)
         }
         .background(Color(.systemBackground))
         .cornerRadius(12)

@@ -14,6 +14,7 @@ struct SubscriptionCard: View {
         HStack(spacing: Spacing.md) {
             // Service logo
             ServiceLogo(service: subscription.service, size: Spacing.subscriptionLogoSize)
+                .padding(.trailing, 4)
 
             // Subscription details
             VStack(alignment: .leading, spacing: 4) {
