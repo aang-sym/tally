@@ -18,6 +18,12 @@ struct SearchView: View {
     // Get last selected tab from DashboardView (passed as parameter)
     var lastSelectedTab: Int = 0
 
+    // Namespace for matchedGeometryEffect
+    var searchAnimation: Namespace.ID
+
+    // Callback to dismiss search view
+    var onDismiss: () -> Void
+
     var body: some View {
         ZStack(alignment: .bottom) {
             // Background
@@ -56,17 +62,20 @@ struct SearchView: View {
                 .padding(.bottom, 80) // Space for bottom toolbar
             }
 
-            // Bottom toolbar (same style as DashboardView)
-            bottomToolbar
+            // Bottom fade and toolbar (fade behind, toolbar in front)
+            ZStack(alignment: .bottom) {
+                // Bottom fade gradient (behind toolbar)
+                LinearGradient(
+                    colors: [.clear, .black],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 100)
+                .allowsHitTesting(false)
 
-            // Bottom fade gradient
-            LinearGradient(
-                colors: [.clear, .black],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 100)
-            .allowsHitTesting(false)
+                // Bottom toolbar (in front of fade)
+                bottomToolbar
+            }
         }
         .navigationBarHidden(true)
         .alert("Added to Watchlist", isPresented: $showingAddedAlert) {
@@ -103,12 +112,16 @@ struct SearchView: View {
     private var bottomToolbar: some View {
         HStack(spacing: 12) {
             // Collapsed tab button (shows last selected tab)
-            Button(action: { dismiss() }) {
+            Button(action: { onDismiss() }) {
                 tabIcon(for: lastSelectedTab)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
                     .frame(width: 44, height: 44)
-                    .background(Circle().fill(Color.gray.opacity(0.3)))
+                    .background(.ultraThinMaterial, in: Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+                    )
             }
 
             // Expanded search bar
@@ -137,10 +150,12 @@ struct SearchView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22))
+            .overlay(
                 RoundedRectangle(cornerRadius: 22)
-                    .fill(Color.gray.opacity(0.3))
+                    .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
             )
+            .matchedGeometryEffect(id: "searchBar", in: searchAnimation)
         }
         .padding(.horizontal, Spacing.screenPadding)
         .padding(.bottom, 16)
@@ -728,9 +743,11 @@ private struct EpisodeRowButton: View {
 
 // MARK: - Previews
 #Preview {
-    SearchView(api: PreviewApiClient())
+    @Previewable @Namespace var animation
+    SearchView(api: PreviewApiClient(), searchAnimation: animation, onDismiss: {})
 }
 
 #Preview("With Results") {
-    SearchView(api: PreviewApiClient())
+    @Previewable @Namespace var animation
+    SearchView(api: PreviewApiClient(), searchAnimation: animation, onDismiss: {})
 }

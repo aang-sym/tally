@@ -24,6 +24,11 @@ struct DashboardView: View {
     @State private var isHeroCollapsed = false
     @State private var dragOffset: CGFloat = 0
 
+    // Search animation state
+    @State private var isSearchExpanded = false
+    @State private var navigateToSearch = false
+    @Namespace private var searchAnimation
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -59,6 +64,25 @@ struct DashboardView: View {
                     .ignoresSafeArea()
             }
             .navigationBarHidden(true)
+            .overlay {
+                ZStack {
+                    if navigateToSearch {
+                        SearchView(
+                            api: api,
+                            lastSelectedTab: currentPage,
+                            searchAnimation: searchAnimation,
+                            onDismiss: {
+                                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                                    isSearchExpanded = false
+                                    navigateToSearch = false
+                                }
+                            }
+                        )
+                        .transition(.opacity)
+                    }
+                }
+                .animation(.spring(response: 0.6, dampingFraction: 0.8), value: navigateToSearch)
+            }
         }
         .sheet(item: $selectedSubscription) { subscription in
             ProviderDetailSheet(subscription: subscription)
@@ -104,20 +128,64 @@ struct DashboardView: View {
 
     private var bottomToolbar: some View {
         HStack(spacing: 12) {
-            // Full segmented picker
+            // Tab selector (morphs from 220pt → 44pt) - left aligned
             tabSelector
+                .frame(width: isSearchExpanded ? 44 : 220, alignment: .leading)
+                .clipped()
+                .opacity(isSearchExpanded ? 0 : 1)
 
-            // Circular search button (NavigationLink)
-            NavigationLink(destination: SearchView(api: api, lastSelectedTab: currentPage)) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(Color.gray.opacity(0.3)))
+            Spacer()
+
+            // Search button/bar (morphs from 44pt → variable width) - right aligned
+            Button(action: {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                    if isSearchExpanded {
+                        isSearchExpanded = false
+                        navigateToSearch = false
+                    } else {
+                        isSearchExpanded = true
+                        navigateToSearch = true
+                    }
+                }
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: isSearchExpanded ? 16 : 18, weight: .semibold))
+                        .foregroundColor(isSearchExpanded ? .white.opacity(0.6) : .white)
+
+                    if isSearchExpanded {
+                        Text("Search for shows...")
+                            .font(.system(size: 15))
+                            .foregroundColor(.white.opacity(0.6))
+
+                        Spacer()
+                    }
+                }
+                .padding(.horizontal, isSearchExpanded ? 12 : 0)
+                .padding(.vertical, isSearchExpanded ? 10 : 0)
+                .frame(width: isSearchExpanded ? 220 : 44, height: 44)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: isSearchExpanded ? 22 : 22))
+                .overlay(
+                    RoundedRectangle(cornerRadius: isSearchExpanded ? 22 : 22)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+                )
             }
         }
         .padding(.horizontal, Spacing.screenPadding)
         .padding(.bottom, 16)
+        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: isSearchExpanded)
+    }
+
+    private func tabIcon(for page: Int) -> some View {
+        Group {
+            if page == 0 {
+                Text(currentDayOfMonth)
+            } else if page == 1 {
+                Image(systemName: "sparkles")
+            } else {
+                Image(systemName: "square.stack.3d.up")
+            }
+        }
     }
 
     private var tabSelector: some View {
@@ -133,16 +201,12 @@ struct DashboardView: View {
                 .tag(2)
         }
         .pickerStyle(.segmented)
-        .background {
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 15))
+        .overlay(
             RoundedRectangle(cornerRadius: 9)
-                .fill(Color.black.opacity(0.6))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 9)
-                        .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
-                )
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 9))
-        .frame(maxWidth: 220, maxHeight: 44)
+                .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+        )
+        .frame(width: 220, height: 44)
     }
 
 
@@ -225,17 +289,19 @@ struct DashboardView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .overlay(alignment: .bottom) {
-                    bottomToolbar
-                }
-                .overlay(alignment: .bottom) {
-                    // Bottom fade to black gradient
-                    LinearGradient(
-                        colors: [.clear, .black],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 100)
-                    .allowsHitTesting(false)
+                    ZStack(alignment: .bottom) {
+                        // Bottom fade to black gradient (behind toolbar)
+                        LinearGradient(
+                            colors: [.clear, .black],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .frame(height: 100)
+                        .allowsHitTesting(false)
+
+                        // Bottom toolbar (in front of fade)
+                        bottomToolbar
+                    }
                 }
             }
         }
