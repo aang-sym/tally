@@ -25,6 +25,10 @@ struct DashboardView: View {
     // Page tracking for custom page indicator
     @State private var currentPage = 0
 
+    // Hero collapse state
+    @State private var isHeroCollapsed = false
+    @State private var dragOffset: CGFloat = 0
+
     var body: some View {
         ZStack {
             Color.background
@@ -128,6 +132,23 @@ struct DashboardView: View {
         return String(format: "%02d", day)
     }
 
+    private var heroHeight: CGFloat {
+        isHeroCollapsed ? 0 : 300
+    }
+
+    private var crtScaleEffect: CGSize {
+        if isHeroCollapsed {
+            // CRT switch-off effect: collapse to horizontal line
+            return CGSize(width: 0.0, height: 0.1)
+        } else {
+            return CGSize(width: 1.0, height: 1.0)
+        }
+    }
+
+    private var heroOpacity: Double {
+        isHeroCollapsed ? 0 : 1
+    }
+
     // MARK: - Content View
 
     private var contentView: some View {
@@ -151,14 +172,33 @@ struct DashboardView: View {
             VStack(spacing: 0) {
                 // Fixed Header: Hero section (transparent, logos show through)
                 HeroSection(services: viewModel.uniqueServices)
-                    .frame(height: 300)
+                    .frame(height: heroHeight)
+                    .scaleEffect(crtScaleEffect, anchor: .center)
+                    .opacity(heroOpacity)
                     .ignoresSafeArea(edges: .horizontal)
+                    .animation(.easeIn(duration: 0.35), value: isHeroCollapsed)
 
                 // Fixed Header: Metrics row
                 MetricsRow(
                     subscriptionsCount: viewModel.totalActiveSubscriptions,
                     showsCount: viewModel.totalShows,
                     monthlyTotal: viewModel.formattedMonthlyCost
+                )
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            dragOffset = value.translation.height
+                        }
+                        .onEnded { value in
+                            let dragThreshold: CGFloat = 100
+                            if abs(value.translation.height) > dragThreshold {
+                                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                    isHeroCollapsed.toggle()
+                                }
+                            }
+                            dragOffset = 0
+                        }
                 )
 
                 // Paginated Content: Calendar Week View, Recommendations & Subscriptions
