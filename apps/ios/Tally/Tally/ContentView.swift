@@ -13,7 +13,6 @@ struct ContentView: View {
     @State private var email: String = "test2@example.com"
     @State private var password: String = "password123"
     @StateObject private var api = ApiClient()
-    @Namespace private var searchAnimation
 
     var body: some View {
         NavigationStack {
@@ -50,7 +49,7 @@ struct ContentView: View {
                     .buttonStyle(.bordered)
                 NavigationLink("My Shows", destination: WatchlistView(api: api))
                     .buttonStyle(.bordered)
-                NavigationLink("Search", destination: SearchView(api: api, searchAnimation: searchAnimation, onDismiss: {}))
+                NavigationLink("Search", destination: SearchView(api: api, onDismiss: {}))
                     .buttonStyle(.bordered)
                 NavigationLink("Calendar", destination: SimplifiedCalendarView(api: api))
                     .buttonStyle(.bordered)

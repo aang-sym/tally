@@ -18,9 +18,6 @@ struct SearchView: View {
     // Get last selected tab from DashboardView (passed as parameter)
     var lastSelectedTab: Int = 0
 
-    // Namespace for matchedGeometryEffect
-    var searchAnimation: Namespace.ID
-
     // Callback to dismiss search view
     var onDismiss: () -> Void
 
@@ -155,7 +152,6 @@ struct SearchView: View {
                 RoundedRectangle(cornerRadius: 22)
                     .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
             )
-            .matchedGeometryEffect(id: "searchBar", in: searchAnimation)
         }
         .padding(.horizontal, Spacing.screenPadding)
         .padding(.bottom, 16)
@@ -743,11 +739,9 @@ private struct EpisodeRowButton: View {
 
 // MARK: - Previews
 #Preview {
-    @Previewable @Namespace var animation
-    SearchView(api: PreviewApiClient(), searchAnimation: animation, onDismiss: {})
+    SearchView(api: PreviewApiClient(), onDismiss: {})
 }
 
 #Preview("With Results") {
-    @Previewable @Namespace var animation
-    SearchView(api: PreviewApiClient(), searchAnimation: animation, onDismiss: {})
+    SearchView(api: PreviewApiClient(), onDismiss: {})
 }
