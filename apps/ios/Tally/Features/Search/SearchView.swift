@@ -12,37 +12,31 @@ struct SearchView: View {
     @StateObject private var viewModel = SearchViewModel()
     @State private var showingAddedAlert = false
     @State private var lastAddedShowTitle = ""
+    @State private var searchQuery = ""
+    @Environment(\.dismiss) private var dismiss
+
+    // Get last selected tab from DashboardView (passed as parameter)
+    var lastSelectedTab: Int = 0
 
     var body: some View {
-        NavigationStack {
+        ZStack(alignment: .bottom) {
+            // Background
+            Color.background
+                .ignoresSafeArea()
+
+            // Purple to black gradient
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(red: 0.15, green: 0.05, blue: 0.25),
+                    Color.black
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            // Content area
             VStack(spacing: 0) {
-                // Search input section
-                VStack(spacing: 16) {
-                    HStack(spacing: 8) {
-                        TextField("Search for TV shows...", text: $viewModel.query)
-                            .textFieldStyle(.roundedBorder)
-                            .textInputAutocapitalization(.words)
-                            .autocorrectionDisabled()
-                            .onSubmit {
-                                viewModel.performSearch(api: api)
-                            }
-
-                        Menu("Country: \(viewModel.country)") {
-                            ForEach(CountryManager.all, id: \.self) { code in
-                                Button(code) {
-                                    viewModel.setCountry(code)
-                                    if !viewModel.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                        viewModel.scheduleSearch(api: api)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding()
-                .background(Color(.systemGroupedBackground))
-
-                // Content area
                 Group {
                     if viewModel.isLoading {
                         LoadingView()
@@ -50,8 +44,8 @@ struct SearchView: View {
                         ErrorView(message: errorMessage) {
                             viewModel.clearError()
                         }
-                    } else if viewModel.results.isEmpty && !viewModel.query.isEmpty {
-                        EmptyResultsView(query: viewModel.query)
+                    } else if viewModel.results.isEmpty && !searchQuery.isEmpty {
+                        EmptyResultsView(query: searchQuery)
                     } else if viewModel.results.isEmpty {
                         EmptyStateView()
                     } else {
@@ -59,85 +53,172 @@ struct SearchView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.bottom, 80) // Space for bottom toolbar
             }
-            .navigationTitle("Search")
-            .alert("Added to Watchlist", isPresented: $showingAddedAlert) {
-                Button("OK") { }
-            } message: {
-                Text("'\(lastAddedShowTitle)' has been added to your watchlist")
-            }
-            .overlay(alignment: .bottom) {
-                if let msg = viewModel.toastMessage {
-                    Text(msg)
-                        .font(.caption)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(.ultraThinMaterial)
-                        .cornerRadius(14)
-                        .padding(.bottom, 24)
-                        .transition(.opacity)
-                }
+
+            // Bottom toolbar (same style as DashboardView)
+            bottomToolbar
+
+            // Bottom fade gradient
+            LinearGradient(
+                colors: [.clear, .black],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 100)
+            .allowsHitTesting(false)
+        }
+        .navigationBarHidden(true)
+        .alert("Added to Watchlist", isPresented: $showingAddedAlert) {
+            Button("OK") { }
+        } message: {
+            Text("'\(lastAddedShowTitle)' has been added to your watchlist")
+        }
+        .overlay(alignment: .bottom) {
+            if let msg = viewModel.toastMessage {
+                Text(msg)
+                    .font(.caption)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(14)
+                    .padding(.bottom, 80)
+                    .transition(.opacity)
             }
         }
         .environmentObject(viewModel)
         .onAppear {
             viewModel.api = api
         }
-        .onChange(of: viewModel.query) { _, newValue in
-            viewModel.scheduleSearch(api: api)
+        .onChange(of: searchQuery) { _, newValue in
+            viewModel.query = newValue
+            if !newValue.isEmpty {
+                viewModel.scheduleSearch(api: api)
+            }
         }
+    }
+
+    // MARK: - Bottom Toolbar
+
+    private var bottomToolbar: some View {
+        HStack(spacing: 12) {
+            // Collapsed tab button (shows last selected tab)
+            Button(action: { dismiss() }) {
+                tabIcon(for: lastSelectedTab)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(Color.gray.opacity(0.3)))
+            }
+
+            // Expanded search bar
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white.opacity(0.6))
+
+                TextField("Search for shows...", text: $searchQuery)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 15))
+                    .foregroundColor(.white)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+
+                if !searchQuery.isEmpty {
+                    Button(action: {
+                        searchQuery = ""
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 22)
+                    .fill(Color.gray.opacity(0.3))
+            )
+        }
+        .padding(.horizontal, Spacing.screenPadding)
+        .padding(.bottom, 16)
+    }
+
+    private func tabIcon(for page: Int) -> some View {
+        Group {
+            if page == 0 {
+                Text(currentDayOfMonth)
+            } else if page == 1 {
+                Image(systemName: "sparkles")
+            } else {
+                Image(systemName: "square.stack.3d.up")
+            }
+        }
+    }
+
+    private var currentDayOfMonth: String {
+        let day = Calendar.current.component(.day, from: Date())
+        return "\(day)"
     }
 
     // MARK: - Loading View
     private func LoadingView() -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             ProgressView()
-                .scaleEffect(1.2)
+                .scaleEffect(1.5)
+
             Text("Searching...")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.bodyMedium)
+                .foregroundColor(.textSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Error View
     private func ErrorView(message: String, onRetry: @escaping () -> Void) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 32))
-                .foregroundStyle(.orange)
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 40))
+                .foregroundColor(.error)
 
             Text(message)
-                .font(.subheadline)
+                .font(.bodyMedium)
+                .foregroundColor(.textSecondary)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .padding(.horizontal, Spacing.xl)
 
             Button("Dismiss") {
                 onRetry()
             }
-            .buttonStyle(.bordered)
+            .font(.labelLarge)
+            .foregroundColor(.white)
+            .padding(.horizontal, Spacing.xl)
+            .padding(.vertical, Spacing.md)
+            .background(Color.tallyPrimary)
+            .cornerRadius(Spacing.buttonCornerRadius)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
     }
 
     // MARK: - Empty Results View
     private func EmptyResultsView(query: String) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 16) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 32))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 40))
+                .foregroundColor(.textSecondary)
 
             Text("No results found")
-                .font(.headline)
+                .font(.heading2)
+                .foregroundColor(.textPrimary)
 
-            Text("Try searching for a different show or check your spelling")
-                .font(.subheadline)
+            Text("Try searching for a different show")
+                .font(.bodyMedium)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .foregroundColor(.textSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
     }
 
     // MARK: - Empty State View
@@ -148,12 +229,13 @@ struct SearchView: View {
                 .foregroundStyle(.secondary)
 
             Text("Search for TV Shows")
-                .font(.headline)
+                .font(.heading2)
+                .foregroundColor(.textPrimary)
 
-            Text("Enter a show name above to find and add shows to your watchlist")
-                .font(.subheadline)
+            Text("Enter a show name to find and add shows to your watchlist")
+                .font(.bodyMedium)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .foregroundColor(.textSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
@@ -161,23 +243,26 @@ struct SearchView: View {
 
     // MARK: - Results List
     private func ResultsList() -> some View {
-        List(viewModel.results) { show in
-            SearchResultRow(
-                show: show,
-                onAdd: {
-                    Task {
-                        await viewModel.addToWatchlist(api: api, show: show)
-                        if viewModel.error == nil {
-                            lastAddedShowTitle = show.title
-                            showingAddedAlert = true
+        ScrollView {
+            VStack(spacing: Spacing.cardSpacing) {
+                ForEach(viewModel.results) { show in
+                    SearchResultRow(
+                        show: show,
+                        onAdd: {
+                            Task {
+                                await viewModel.addToWatchlist(api: api, show: show)
+                                if viewModel.error == nil {
+                                    lastAddedShowTitle = show.title
+                                    showingAddedAlert = true
+                                }
+                            }
                         }
-                    }
+                    )
                 }
-            )
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+            }
+            .screenPadding()
+            .padding(.top, Spacing.md)
         }
-        .listStyle(.plain)
     }
 }
 
@@ -231,20 +316,20 @@ private struct SearchResultRow: View {
                     // Show details
                     VStack(alignment: .leading, spacing: 4) {
                         Text(show.title)
-                            .font(.headline)
+                            .font(.system(size: 16, weight: .semibold))
                             .lineLimit(2)
-                            .foregroundColor(.primary)
+                            .foregroundColor(.textPrimary)
 
                         if let year = releaseYear {
                             Text(year)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .font(.bodyMedium)
+                                .foregroundColor(.textSecondary)
                         }
 
                         if let overview = show.overview, !overview.isEmpty {
                             Text(overview)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundColor(.textSecondary)
                                 .lineLimit(isExpanded ? nil : 3)
                         }
                     }
@@ -295,9 +380,8 @@ private struct SearchResultRow: View {
                 .padding(.bottom, 8)
             }
         }
-        .background(Color(.systemBackground))
-        .cornerRadius(8)
-        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+        .padding(12)
+        .glassEffect(.clear)
     }
 
     private var posterURL: URL? {

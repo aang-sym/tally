@@ -14,11 +14,6 @@ struct DashboardView: View {
     @StateObject private var logoCollisionManager = LogoCollisionManager()
     @State private var stableServices: [StreamingService] = []
 
-    // Search state
-    @State private var searchQuery = ""
-    @State private var isSearchActive = false
-    @StateObject private var searchViewModel = SearchViewModel()
-
     // Subscription state
     @State private var selectedSubscription: Subscription?
 
@@ -30,76 +25,40 @@ struct DashboardView: View {
     @State private var dragOffset: CGFloat = 0
 
     var body: some View {
-        ZStack {
-            Color.background
-                .ignoresSafeArea()
+        NavigationStack {
+            ZStack {
+                Color.background
+                    .ignoresSafeArea()
 
-            // Purple to black gradient background
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.15, green: 0.05, blue: 0.25), // Darker deep purple (top)
-                    Color.black                                // Black (bottom)
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-
-            // Dashboard content (fades when search is active)
-            Group {
-                if viewModel.isLoading {
-                    loadingView
-                } else if let error = viewModel.error {
-                    errorView(message: error)
-                } else if viewModel.subscriptions.isEmpty {
-                    emptyView
-                } else {
-                    contentView
-                }
-            }
-            .opacity(isSearchActive ? 0.15 : 1.0)
-            .animation(.easeInOut(duration: 0.3), value: isSearchActive)
-
-            // CRT overlay across entire dashboard
-            CRTOverlayView()
-                .ignoresSafeArea()
-                .opacity(isSearchActive ? 0.15 : 1.0)
-                .animation(.easeInOut(duration: 0.3), value: isSearchActive)
-
-            // Search results overlay (when active)
-            if isSearchActive {
-                ZStack {
-                    // Tappable background to dismiss search
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            isSearchActive = false
-                            searchQuery = ""
-                        }
-
-                    DashboardSearchResults(
-                        viewModel: searchViewModel,
-                        onDismiss: {
-                            isSearchActive = false
-                            searchQuery = ""
-                        }
-                    )
-                    .padding(.top, 60) // Space for search bar
-                }
-                .transition(.opacity)
-            }
-
-            // Search bar (always visible at top)
-            VStack {
-                DashboardSearchBar(
-                    query: $searchQuery,
-                    isActive: $isSearchActive
+                // Purple to black gradient background
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.15, green: 0.05, blue: 0.25), // Darker deep purple (top)
+                        Color.black                                // Black (bottom)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
-                .padding(.horizontal, Spacing.screenPadding)
-                .padding(.top, Spacing.sm)
+                .ignoresSafeArea()
 
-                Spacer()
+                // Dashboard content
+                Group {
+                    if viewModel.isLoading {
+                        loadingView
+                    } else if let error = viewModel.error {
+                        errorView(message: error)
+                    } else if viewModel.subscriptions.isEmpty {
+                        emptyView
+                    } else {
+                        contentView
+                    }
+                }
+
+                // CRT overlay across entire dashboard
+                CRTOverlayView()
+                    .ignoresSafeArea()
             }
+            .navigationBarHidden(true)
         }
         .sheet(item: $selectedSubscription) { subscription in
             ProviderDetailSheet(subscription: subscription)
@@ -109,19 +68,11 @@ struct DashboardView: View {
             await viewModel.loadUpcomingEpisodes(api: api)
             // Stabilize services array with consistent ordering
             stableServices = viewModel.uniqueServices.sorted { $0.id < $1.id }
-            // Set API reference for search
-            searchViewModel.api = api
         }
         .refreshable {
             await viewModel.refresh(api: api)
             // Update stable services after refresh
             stableServices = viewModel.uniqueServices.sorted { $0.id < $1.id }
-        }
-        .onChange(of: searchQuery) { _, newValue in
-            searchViewModel.query = newValue
-            if !newValue.isEmpty {
-                searchViewModel.scheduleSearch(api: api)
-            }
         }
     }
 
@@ -148,6 +99,52 @@ struct DashboardView: View {
     private var heroOpacity: Double {
         isHeroCollapsed ? 0 : 1
     }
+
+    // MARK: - Bottom Toolbar Components
+
+    private var bottomToolbar: some View {
+        HStack(spacing: 12) {
+            // Full segmented picker
+            tabSelector
+
+            // Circular search button (NavigationLink)
+            NavigationLink(destination: SearchView(api: api, lastSelectedTab: currentPage)) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(Color.gray.opacity(0.3)))
+            }
+        }
+        .padding(.horizontal, Spacing.screenPadding)
+        .padding(.bottom, 16)
+    }
+
+    private var tabSelector: some View {
+        Picker("Navigation", selection: $currentPage) {
+            Text(currentDayOfMonth)
+                .font(.system(size: 14, weight: .semibold))
+                .tag(0)
+            Image(systemName: "sparkles")
+                .font(.system(size: 16, weight: .semibold))
+                .tag(1)
+            Image(systemName: "square.stack.3d.up")
+                .font(.system(size: 16, weight: .semibold))
+                .tag(2)
+        }
+        .pickerStyle(.segmented)
+        .background {
+            RoundedRectangle(cornerRadius: 9)
+                .fill(Color.black.opacity(0.6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 9)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+                )
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 9))
+        .frame(maxWidth: 220, maxHeight: 44)
+    }
+
 
     // MARK: - Content View
 
@@ -228,27 +225,17 @@ struct DashboardView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .overlay(alignment: .bottom) {
-                    // Native segmented picker navigation
-                    Picker("Navigation", selection: $currentPage) {
-                        Text(currentDayOfMonth)
-                            .tag(0)
-                        Image(systemName: "sparkles")
-                            .tag(1)
-                        Image(systemName: "square.stack.3d.up")
-                            .tag(2)
-                    }
-                    .pickerStyle(.segmented)
-                    .background {
-                        RoundedRectangle(cornerRadius: 9)
-                            .fill(Color.black.opacity(0.6))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 9)
-                                    .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
-                            )
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 9))
-                    .frame(maxWidth: 220)
-                    .padding(.bottom, 16)
+                    bottomToolbar
+                }
+                .overlay(alignment: .bottom) {
+                    // Bottom fade to black gradient
+                    LinearGradient(
+                        colors: [.clear, .black],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 100)
+                    .allowsHitTesting(false)
                 }
             }
         }
@@ -343,29 +330,21 @@ struct DashboardView: View {
 
 #if DEBUG
 #Preview("Dashboard with data") {
-    NavigationStack {
-        DashboardView(api: PreviewApiClient())
-            .onAppear {
-                // Simulate loaded state
-            }
-    }
+    DashboardView(api: PreviewApiClient())
+        .onAppear {
+            // Simulate loaded state
+        }
 }
 
 #Preview("Dashboard loading") {
-    NavigationStack {
-        DashboardView(api: PreviewApiClient())
-    }
+    DashboardView(api: PreviewApiClient())
 }
 
 #Preview("Dashboard empty") {
-    NavigationStack {
-        DashboardView(api: PreviewApiClient())
-    }
+    DashboardView(api: PreviewApiClient())
 }
 
 #Preview("Dashboard error") {
-    NavigationStack {
-        DashboardView(api: PreviewApiClient())
-    }
+    DashboardView(api: PreviewApiClient())
 }
 #endif
