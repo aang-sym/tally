@@ -27,6 +27,9 @@ struct DashboardView: View {
     // Tab selection
     @State private var selectedTab: DashboardTab = .calendar
 
+    // Search state
+    @State private var searchText = ""
+
     // Hero collapse state
     @State private var isHeroCollapsed = false
     @State private var dragOffset: CGFloat = 0
@@ -127,19 +130,14 @@ struct DashboardView: View {
                     }
 
                     // Search button (floating in bottom right with .search role)
+                    // Native iOS 26 search - tapping triggers native search overlay with morphing animation
                     Tab("Search", systemImage: "magnifyingglass", value: .search, role: .search) {
-                        SearchView(
-                            api: api,
-                            lastSelectedTab: selectedTab.tabIndex,
-                            onDismiss: {
-                                // Return to previous tab when search is dismissed
-                                if selectedTab == .search {
-                                    selectedTab = .calendar
-                                }
-                            }
-                        )
+                        NavigationStack {
+                            searchResultsContent
+                        }
                     }
                 }
+                .searchable(text: $searchText, prompt: "Search for shows...")
             }
         }
         .refreshable {
@@ -168,6 +166,32 @@ struct DashboardView: View {
                 selectedSubscription = subscription
             }
         )
+    }
+
+    private var searchResultsContent: some View {
+        Group {
+            if searchText.isEmpty {
+                // Empty search state
+                VStack(spacing: 16) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 48))
+                        .foregroundColor(.white.opacity(0.3))
+                    Text("Search for shows")
+                        .font(.title3)
+                        .foregroundColor(.white.opacity(0.6))
+                }
+            } else {
+                // Search results
+                SearchView(
+                    api: api,
+                    lastSelectedTab: selectedTab.tabIndex,
+                    onDismiss: {
+                        searchText = ""
+                        selectedTab = .calendar
+                    }
+                )
+            }
+        }
     }
 
     // MARK: - Computed Properties
