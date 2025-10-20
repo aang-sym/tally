@@ -266,7 +266,7 @@ private struct EpisodeCard: View {
         }
         .background(Color(.systemBackground))
         .cornerRadius(12)
-        .glassEffect(.regular, in: .rect(cornerRadius: 12))
+        .glassEffect(.regular)
     }
 }
 

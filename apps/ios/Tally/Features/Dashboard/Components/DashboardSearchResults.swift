@@ -237,7 +237,7 @@ private struct SearchResultCard: View {
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .padding(12)
-        .glassEffect(.clear, in: .rect(cornerRadius: 12))
+        .glassEffect(.clear)
         .onTapGesture {
             onTap()
         }

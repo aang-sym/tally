@@ -62,7 +62,7 @@ struct SubscriptionCard: View {
             }
         }
         .padding(Spacing.cardPadding)
-        .glassEffect(.clear, in: .rect(cornerRadius: Spacing.cardCornerRadius))
+        .glassEffect(.clear)
     }
 }
 
@@ -75,7 +75,7 @@ private struct ServiceLogo: View {
     var body: some View {
         Group {
             if let service {
-                if ServiceBranding.assetName(for: service) != nil {
+                if ServiceBranding.assetName(for: service, style: .card) != nil {
                     GlowingServiceLogoView(
                         service: service,
                         baseSize: size,

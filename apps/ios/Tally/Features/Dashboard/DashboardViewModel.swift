@@ -20,6 +20,8 @@ final class DashboardViewModel {
     var isLoading = false
     var isLoadingEpisodes = false // Track episode loading separately
     var error: String?
+    private var hasLoadedData = false // Cache flag to prevent redundant loads
+    private var isRefreshing = false // Prevent concurrent refreshes
 
     // MARK: - Computed Properties
 
@@ -76,14 +78,25 @@ final class DashboardViewModel {
     /// Load subscriptions from API (derived from watchlist providers)
     @MainActor
     func load(api: ApiClient) async {
+        // Skip loading if data already cached
+        guard !hasLoadedData else { return }
+
         isLoading = true
         error = nil
 
         do {
             // Fetch watchlist to infer subscriptions from streaming providers
             let fetchedWatchlist = try await api.getWatchlist()
+
+            // Check if task was cancelled before updating state
+            try Task.checkCancellation()
+
             watchlist = fetchedWatchlist
             subscriptions = deriveSubscriptionsFromWatchlist(fetchedWatchlist)
+            isLoading = false
+            hasLoadedData = true
+        } catch is CancellationError {
+            // Task was cancelled - this is normal, don't show error
             isLoading = false
         } catch let apiError as ApiError {
             error = apiError.errorDescription ?? "Failed to load watchlist"
@@ -189,12 +202,18 @@ final class DashboardViewModel {
                 country: CountryManager.get()
             )
 
+            // Check if task was cancelled before updating state
+            try Task.checkCancellation()
+
             print("📺 Dashboard TV Guide Response: \(tvGuide2Data.providers.count) providers")
 
             // Build CalendarEpisode objects from tvGuide2Data
             upcomingEpisodes = buildEpisodesFromTVGuide(tvGuide2Data)
 
             print("📅 Dashboard: Built \(upcomingEpisodes.count) episodes")
+        } catch is CancellationError {
+            // Task was cancelled - this is normal, don't log as error
+            print("ℹ️ Dashboard: Episode loading cancelled")
         } catch {
             print("❌ Dashboard loadUpcomingEpisodes error: \(error)")
         }
@@ -299,8 +318,19 @@ final class DashboardViewModel {
     /// Refresh subscriptions and episodes
     @MainActor
     func refresh(api: ApiClient) async {
-        await load(api: api)
-        await loadUpcomingEpisodes(api: api)
+        // Prevent concurrent refreshes
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
+
+        hasLoadedData = false // Reset cache to force reload
+
+        // Run both API calls concurrently for faster refresh
+        async let loadTask: Void = load(api: api)
+        async let episodesTask: Void = loadUpcomingEpisodes(api: api)
+
+        // Wait for both to complete
+        _ = await (loadTask, episodesTask)
     }
 }
 

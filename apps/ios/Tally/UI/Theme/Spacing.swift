@@ -32,11 +32,14 @@ enum Spacing {
     /// Standard spacing between cards in a list
     static let cardSpacing: CGFloat = 12
 
-    /// Standard corner radius for cards
-    static let cardCornerRadius: CGFloat = 12
+    /// Standard corner radius for cards (iOS native: 16pt for grouped content)
+    static let cardCornerRadius: CGFloat = 16
 
-    /// Standard corner radius for buttons
-    static let buttonCornerRadius: CGFloat = 8
+    /// Standard corner radius for buttons (iOS native: 10pt for buttons)
+    static let buttonCornerRadius: CGFloat = 10
+
+    /// Corner radius for small elements (iOS native: 8pt)
+    static let smallCornerRadius: CGFloat = 8
 
     /// Standard icon size (small)
     static let iconSizeSmall: CGFloat = 16
@@ -110,6 +113,54 @@ extension View {
             .background(Color.backgroundSecondary)
             .cornerRadius(Spacing.cardCornerRadius)
             .shadow(color: Color.shadow, radius: 4, x: 0, y: 2)
+    }
+
+    /// Apply glass morphism effect with native iOS styling
+    func glassEffect(_ style: GlassEffectStyle) -> some View {
+        self
+            .background(
+                RoundedRectangle(cornerRadius: Spacing.cardCornerRadius)
+                    .fill(style.backgroundColor)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Spacing.cardCornerRadius)
+                            .stroke(style.borderColor, lineWidth: style.borderWidth)
+                    )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: Spacing.cardCornerRadius))
+    }
+}
+
+// MARK: - Glass Effect Style
+
+enum GlassEffectStyle {
+    case clear
+    case regular
+
+    var backgroundColor: Color {
+        switch self {
+        case .clear:
+            return Color.black.opacity(0.15)
+        case .regular:
+            return Color.black.opacity(0.25)
+        }
+    }
+
+    var borderColor: Color {
+        switch self {
+        case .clear:
+            return Color.white.opacity(0.1)
+        case .regular:
+            return Color.white.opacity(0.15)
+        }
+    }
+
+    var borderWidth: CGFloat {
+        switch self {
+        case .clear:
+            return 0.5
+        case .regular:
+            return 1.0
+        }
     }
 }
 

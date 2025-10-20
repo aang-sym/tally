@@ -69,7 +69,7 @@ struct DashboardSearchBar: View {
                     .fill(Color.black.opacity(0.6))
             }
         }
-        .glassEffect(.clear, in: .rect(cornerRadius: 20))
+        .glassEffect(.clear)
         .onChange(of: isFocused) { _, newValue in
             // When field gets focus, activate search
             if newValue {

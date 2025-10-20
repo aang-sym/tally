@@ -349,17 +349,17 @@ private struct CollapsibleEpisodeCard: View {
             // TOP-RIGHT: Provider glowing logo
             GlowingServiceLogoView(
                 service: convertProviderToService(),
-                baseSize: 36,
+                baseSize: 32.4,
                 dynamicScale: 1.0,
                 style: .card
             )
-            .frame(width: 36, height: 36)
+            .frame(width: 32.4, height: 32.4)
             .padding(8)
             .padding(.trailing, 12)
         }
         .background(Color(.systemBackground))
         .cornerRadius(12)
-        .glassEffect(.regular, in: .rect(cornerRadius: 12))
+        .glassEffect(.regular)
         .onTapGesture {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 isExpanded.toggle()

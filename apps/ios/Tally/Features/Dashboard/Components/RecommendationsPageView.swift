@@ -130,7 +130,7 @@ private struct RecommendationCard: View {
             }
         }
         .padding(Spacing.md)
-        .glassEffect(.regular, in: .rect(cornerRadius: 12))
+        .glassEffect(.regular)
     }
 }
 

@@ -64,6 +64,7 @@ struct ScatteredLogosView: View {
     let services: [StreamingService]
     @ObservedObject var collisionManager: LogoCollisionManager
     let heroHeight: CGFloat
+    var onLogoTap: ((StreamingService) -> Void)? = nil
 
     var body: some View {
         GeometryReader { geometry in
@@ -79,7 +80,8 @@ struct ScatteredLogosView: View {
                         index: index,
                         containerSize: CGSize(width: geometry.size.width, height: heroHeight),
                         collisionManager: collisionManager,
-                        dynamicScale: dynamicScale
+                        dynamicScale: dynamicScale,
+                        onLogoTap: onLogoTap
                     )
                 }
             }
@@ -109,6 +111,7 @@ private struct BouncingLogoView: View {
     let containerSize: CGSize
     @ObservedObject var collisionManager: LogoCollisionManager
     let dynamicScale: CGFloat
+    var onLogoTap: ((StreamingService) -> Void)?
 
     @State private var position: CGPoint = .zero
     @State private var velocity: CGPoint = .zero
@@ -160,6 +163,9 @@ private struct BouncingLogoView: View {
             )
         }
         .position(position)
+        .onTapGesture {
+            onLogoTap?(service)
+        }
         .onAppear {
             initializePosition()
             startBouncing()
@@ -362,7 +368,7 @@ struct GlowingServiceLogoView: View {
         let scaledSize = baseSize * ServiceBranding.logoScale(for: service) * dynamicScale
 
         Group {
-            if let assetName = ServiceBranding.assetName(for: service) {
+            if let assetName = ServiceBranding.assetName(for: service, style: style) {
                 let baseGlowColor = ServiceBranding.glowColor(for: service)
                 // In light mode, use a much lighter/desaturated version of the glow
                 // Exception: Prime and HBO Max keep their dark mode colors
@@ -511,13 +517,14 @@ struct GlowingServiceLogoView: View {
 // MARK: - Service Branding Helpers
 
 enum ServiceBranding {
-    static func assetName(for service: StreamingService) -> String? {
+    static func assetName(for service: StreamingService, style: GlowingServiceLogoView.Style = .card) -> String? {
         let serviceName = service.name.lowercased()
 
         if serviceName.contains("netflix") {
             return "Netflix"
         } else if serviceName.contains("disney") {
-            return "DisneyPlus"
+            // Use full Disney+ logo for hero, D logo for cards
+            return style == .hero ? "DisneyPlus" : "Disney"
         } else if serviceName.contains("prime") || serviceName.contains("amazon") {
             return "PrimeVideo"
         } else if serviceName.contains("hbo") || serviceName.contains("max") {

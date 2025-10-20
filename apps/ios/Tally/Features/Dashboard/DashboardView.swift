@@ -19,6 +19,9 @@ struct DashboardView: View {
     @State private var isSearchActive = false
     @StateObject private var searchViewModel = SearchViewModel()
 
+    // Subscription state
+    @State private var selectedSubscription: Subscription?
+
     // Page tracking for custom page indicator
     @State private var currentPage = 0
 
@@ -94,6 +97,9 @@ struct DashboardView: View {
                 Spacer()
             }
         }
+        .sheet(item: $selectedSubscription) { subscription in
+            ProviderDetailSheet(subscription: subscription)
+        }
         .task {
             await viewModel.load(api: api)
             await viewModel.loadUpcomingEpisodes(api: api)
@@ -131,7 +137,13 @@ struct DashboardView: View {
                 ScatteredLogosView(
                     services: stableServices,
                     collisionManager: logoCollisionManager,
-                    heroHeight: 300
+                    heroHeight: 300,
+                    onLogoTap: { service in
+                        // Find subscription for this service
+                        if let subscription = viewModel.activeSubscriptions.first(where: { $0.service?.id == service.id }) {
+                            selectedSubscription = subscription
+                        }
+                    }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
@@ -149,55 +161,53 @@ struct DashboardView: View {
                     monthlyTotal: viewModel.formattedMonthlyCost
                 )
 
-                // Paginated Content: Subscriptions, Calendar Week View, & Recommendations
+                // Paginated Content: Calendar Week View, Recommendations & Subscriptions
                 TabView(selection: $currentPage) {
-                    // Page 1: Subscriptions List
-                    DashboardPageView(subscriptions: viewModel.activeSubscriptions)
-                        .tag(0)
-
-                    // Page 2: Calendar Week View
+                    // Page 0: Calendar Week View
                     WeekCalendarView(
                         episodes: $viewModel.upcomingEpisodes,
                         selectedDate: $selectedDate
                     )
-                    .tag(1)
+                    .simultaneousGesture(DragGesture())
+                    .tag(0)
 
-                    // Page 3: Recommendations
+                    // Page 1: Recommendations
                     RecommendationsPageView(subscriptions: viewModel.activeSubscriptions)
-                        .tag(2)
+                        .simultaneousGesture(DragGesture())
+                        .tag(1)
+
+                    // Page 2: Subscriptions
+                    SubscriptionListView(
+                        subscriptions: viewModel.activeSubscriptions,
+                        onSelectSubscription: { subscription in
+                            selectedSubscription = subscription
+                        }
+                    )
+                    .simultaneousGesture(DragGesture())
+                    .tag(2)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .overlay(alignment: .bottom) {
-                    // Custom page indicator with icons (floating)
-                    HStack(spacing: 12) {
-                        // TV icon for subscriptions page
-                        Image(systemName: "tv")
-                            .font(.system(size: 16, weight: currentPage == 0 ? .semibold : .regular))
-                            .foregroundColor(currentPage == 0 ? .textPrimary : .textSecondary)
-                            .opacity(currentPage == 0 ? 1.0 : 0.5)
-
-                        // Current date number for calendar page
+                    // Native segmented picker navigation
+                    Picker("Navigation", selection: $currentPage) {
                         Text(currentDayOfMonth)
-                            .font(.system(size: 16, weight: currentPage == 1 ? .semibold : .regular))
-                            .foregroundColor(currentPage == 1 ? .textPrimary : .textSecondary)
-                            .opacity(currentPage == 1 ? 1.0 : 0.5)
-
-                        // Sparkles icon for recommendations page
+                            .tag(0)
                         Image(systemName: "sparkles")
-                            .font(.system(size: 16, weight: currentPage == 2 ? .semibold : .regular))
-                            .foregroundColor(currentPage == 2 ? .textPrimary : .textSecondary)
-                            .opacity(currentPage == 2 ? 1.0 : 0.5)
+                            .tag(1)
+                        Image(systemName: "square.stack.3d.up")
+                            .tag(2)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(
-                        Capsule()
-                            .fill(Color.black.opacity(0.3))
-                            .background(
-                                Capsule()
-                                    .fill(.ultraThinMaterial)
+                    .pickerStyle(.segmented)
+                    .background {
+                        RoundedRectangle(cornerRadius: 9)
+                            .fill(Color.black.opacity(0.6))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 9)
+                                    .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
                             )
-                    )
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 9))
+                    .frame(maxWidth: 220)
                     .padding(.bottom, 16)
                 }
             }
