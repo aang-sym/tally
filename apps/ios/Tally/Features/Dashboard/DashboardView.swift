@@ -34,6 +34,9 @@ struct DashboardView: View {
     @State private var isHeroCollapsed = false
     @State private var dragOffset: CGFloat = 0
 
+    // Hero visibility (for coordinating with tab bar animation)
+    @State private var showHero = true
+
     var body: some View {
         ZStack {
             backgroundGradient
@@ -65,8 +68,8 @@ struct DashboardView: View {
 
     private var mainContentWithHero: some View {
         VStack(spacing: 0) {
-            // Hero and metrics - only show when NOT on search tab
-            if selectedTab != .search {
+            // Hero and metrics - only show when NOT on search tab AND showHero is true
+            if selectedTab != .search && showHero {
                 VStack(spacing: 0) {
                     // Persistent hero section (stays visible across all tabs)
                     HeroSection(services: viewModel.uniqueServices)
@@ -99,7 +102,6 @@ struct DashboardView: View {
                             }
                     )
                 }
-                .transition(.move(edge: .top).combined(with: .opacity))
             }
 
             // TabView fills remaining space
@@ -129,6 +131,20 @@ struct DashboardView: View {
             }
             .searchable(text: $searchText, prompt: "Search for shows...")
             .frame(maxHeight: .infinity)
+        }
+        .onChange(of: selectedTab) { oldValue, newValue in
+            if newValue == .search {
+                // Hide hero immediately when entering search
+                showHero = false
+            } else if oldValue == .search {
+                // Delay hero appearance when leaving search to let tab bar animate
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    showHero = true  // Instant appearance, no animation
+                }
+            } else {
+                // Show immediately when switching between non-search tabs
+                showHero = true
+            }
         }
     }
 
