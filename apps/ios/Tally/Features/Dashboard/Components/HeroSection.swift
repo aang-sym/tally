@@ -26,12 +26,28 @@ extension View {
 struct HeroSection: View {
     let services: [StreamingService]
 
-    // Collision manager lives at HeroSection level to persist across service changes
-    @StateObject private var collisionManager = LogoCollisionManager()
-
     var body: some View {
-        // Transparent background so logos behind are visible
-        Color.clear
+        ZStack {
+            // Dark gradient background for hero
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(red: 0.15, green: 0.05, blue: 0.25),
+                    Color.black
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            // Bouncing logos in hero area
+            if !services.isEmpty {
+                ScatteredLogosView(
+                    services: services,
+                    collisionManager: LogoCollisionManager(),
+                    heroHeight: 300,
+                    onLogoTap: { _ in }
+                )
+            }
+        }
     }
 }
 

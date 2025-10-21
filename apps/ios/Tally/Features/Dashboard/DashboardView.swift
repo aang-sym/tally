@@ -64,32 +64,70 @@ struct DashboardView: View {
     }
 
     private var mainContentWithHero: some View {
-        // TEMPORARY SIMPLIFIED TEST - Remove hero/metrics to test native morphing
+        // TabView at root level for native morphing animation
         TabView(selection: $selectedTab) {
-                    // Tab 1: Calendar
-                    Tab("Calendar", systemImage: "calendar", value: .calendar) {
-                        calendarTabContent
-                    }
+                // Tab 1: Calendar
+                Tab("Calendar", systemImage: "calendar", value: .calendar) {
+                    calendarTabContent
+                }
 
-                    // Tab 2: Recommendations
-                    Tab("Discover", systemImage: "sparkles", value: .recommendations) {
-                        recommendationsTabContent
-                    }
+                // Tab 2: Recommendations
+                Tab("Discover", systemImage: "sparkles", value: .recommendations) {
+                    recommendationsTabContent
+                }
 
-                    // Tab 3: Subscriptions
-                    Tab("Library", systemImage: "square.stack.3d.up", value: .subscriptions) {
-                        subscriptionsTabContent
-                    }
+                // Tab 3: Subscriptions
+                Tab("Library", systemImage: "square.stack.3d.up", value: .subscriptions) {
+                    subscriptionsTabContent
+                }
 
-                    // Search button (floating in bottom right with .search role)
-                    // Native iOS 26 search - system provides icon automatically
-                    Tab(value: .search, role: .search) {
-                        NavigationStack {
-                            searchResultsContent
-                        }
+                // Search button (floating in bottom right with .search role)
+                // Native iOS 26 search - system provides icon automatically
+                Tab(value: .search, role: .search) {
+                    NavigationStack {
+                        searchResultsContent
                     }
-        }
-        .searchable(text: $searchText, prompt: "Search for shows...")
+                }
+            }
+            .searchable(text: $searchText, prompt: "Search for shows...")
+            .overlay(alignment: .top) {
+                // Hero and metrics overlaid on top of TabView
+                VStack(spacing: 0) {
+                    // Persistent hero section (stays visible across all tabs)
+                    HeroSection(services: viewModel.uniqueServices)
+                        .frame(height: heroHeight)
+                        .scaleEffect(crtScaleEffect, anchor: .center)
+                        .opacity(heroOpacity)
+                        .ignoresSafeArea(edges: .horizontal)
+                        .animation(.easeIn(duration: 0.35), value: isHeroCollapsed)
+
+                    // Persistent metrics row with collapse gesture
+                    MetricsRow(
+                        subscriptionsCount: viewModel.totalActiveSubscriptions,
+                        showsCount: viewModel.totalShows,
+                        monthlyTotal: viewModel.formattedMonthlyCost
+                    )
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                dragOffset = value.translation.height
+                            }
+                            .onEnded { value in
+                                let dragThreshold: CGFloat = 100
+                                if abs(value.translation.height) > dragThreshold {
+                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                        isHeroCollapsed.toggle()
+                                    }
+                                }
+                                dragOffset = 0
+                            }
+                    )
+
+                    Spacer() // Push hero/metrics to top
+                }
+                .allowsHitTesting(true) // Allow interactions with hero/metrics
+            }
     }
 
     // MARK: - Tab Content Views (hero is now shared above)
