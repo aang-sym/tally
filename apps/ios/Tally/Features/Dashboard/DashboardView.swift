@@ -29,6 +29,7 @@ struct DashboardView: View {
 
     // Search state
     @State private var searchText = ""
+    @State private var isSearchPresented = false
 
     // Hero collapse state
     @State private var isHeroCollapsed = false
@@ -131,13 +132,14 @@ struct DashboardView: View {
 
                     // Search button (floating in bottom right with .search role)
                     // Native iOS 26 search - tapping triggers native search overlay with morphing animation
-                    Tab("Search", systemImage: "magnifyingglass", value: .search, role: .search) {
+                    Tab(value: .search, role: .search) {
                         NavigationStack {
                             searchResultsContent
+                                .navigationTitle("Search")
+                                .searchable(text: $searchText, isPresented: $isSearchPresented, prompt: "Search for shows...")
                         }
                     }
                 }
-                .searchable(text: $searchText, prompt: "Search for shows...")
             }
         }
         .refreshable {
