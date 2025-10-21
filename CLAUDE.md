@@ -53,6 +53,15 @@ When working on the iOS app (`/apps/ios`), follow these core principles:
 - Use Swift Testing framework for all new tests
 - Every feature MUST have test coverage before it's considered complete
 
+### iOS Version & Platform Requirements
+
+**IMPORTANT:** This app targets **iOS 26** - the newest version of iOS.
+
+- NEVER reference iOS 18 or earlier versions when researching SwiftUI patterns
+- Use iOS 26-specific APIs and features (e.g., liquid glass TabView, native search morphing)
+- When searching for documentation, always include "iOS 26" in queries
+- Xcode beta with iOS 26 SDK is required for development
+
 ### Idiomatic Swift/SwiftUI
 
 - **Prefer idiomatic solutions over workarounds**

@@ -29,7 +29,6 @@ struct DashboardView: View {
 
     // Search state
     @State private var searchText = ""
-    @State private var isSearchPresented = false
 
     // Hero collapse state
     @State private var isHeroCollapsed = false
@@ -65,56 +64,8 @@ struct DashboardView: View {
     }
 
     private var mainContentWithHero: some View {
-        ZStack(alignment: .top) {
-            // Bouncing logos (behind all UI)
-            if !stableServices.isEmpty {
-                ScatteredLogosView(
-                    services: stableServices,
-                    collisionManager: logoCollisionManager,
-                    heroHeight: 300,
-                    onLogoTap: { service in
-                        if let subscription = viewModel.activeSubscriptions.first(where: { $0.service?.id == service.id }) {
-                            selectedSubscription = subscription
-                        }
-                    }
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            }
-
-            VStack(spacing: 0) {
-                // Persistent hero section (stays visible across all tabs)
-                HeroSection(services: viewModel.uniqueServices)
-                    .frame(height: heroHeight)
-                    .scaleEffect(crtScaleEffect, anchor: .center)
-                    .opacity(heroOpacity)
-                    .ignoresSafeArea(edges: .horizontal)
-                    .animation(.easeIn(duration: 0.35), value: isHeroCollapsed)
-
-                // Persistent metrics row with collapse gesture
-                MetricsRow(
-                    subscriptionsCount: viewModel.totalActiveSubscriptions,
-                    showsCount: viewModel.totalShows,
-                    monthlyTotal: viewModel.formattedMonthlyCost
-                )
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            dragOffset = value.translation.height
-                        }
-                        .onEnded { value in
-                            let dragThreshold: CGFloat = 100
-                            if abs(value.translation.height) > dragThreshold {
-                                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                    isHeroCollapsed.toggle()
-                                }
-                            }
-                            dragOffset = 0
-                        }
-                )
-
-                // Tab content (switches based on selection)
-                TabView(selection: $selectedTab) {
+        // TEMPORARY SIMPLIFIED TEST - Remove hero/metrics to test native morphing
+        TabView(selection: $selectedTab) {
                     // Tab 1: Calendar
                     Tab("Calendar", systemImage: "calendar", value: .calendar) {
                         calendarTabContent
@@ -131,21 +82,14 @@ struct DashboardView: View {
                     }
 
                     // Search button (floating in bottom right with .search role)
-                    // Native iOS 26 search - tapping triggers native search overlay with morphing animation
+                    // Native iOS 26 search - system provides icon automatically
                     Tab(value: .search, role: .search) {
                         NavigationStack {
                             searchResultsContent
-                                .navigationTitle("Search")
-                                .searchable(text: $searchText, isPresented: $isSearchPresented, prompt: "Search for shows...")
                         }
                     }
-                }
-            }
         }
-        .refreshable {
-            await viewModel.refresh(api: api)
-            stableServices = viewModel.uniqueServices.sorted { $0.id < $1.id }
-        }
+        .searchable(text: $searchText, prompt: "Search for shows...")
     }
 
     // MARK: - Tab Content Views (hero is now shared above)
