@@ -65,38 +65,41 @@ struct DashboardView: View {
 
     private var mainContentWithHero: some View {
         VStack(spacing: 0) {
-            // Hero and metrics at top
-            VStack(spacing: 0) {
-                // Persistent hero section (stays visible across all tabs)
-                HeroSection(services: viewModel.uniqueServices)
-                    .frame(height: heroHeight)
-                    .scaleEffect(crtScaleEffect, anchor: .center)
-                    .opacity(heroOpacity)
-                    .ignoresSafeArea(edges: .horizontal)
-                    .animation(.easeIn(duration: 0.35), value: isHeroCollapsed)
+            // Hero and metrics - only show when NOT on search tab
+            if selectedTab != .search {
+                VStack(spacing: 0) {
+                    // Persistent hero section (stays visible across all tabs)
+                    HeroSection(services: viewModel.uniqueServices)
+                        .frame(height: heroHeight)
+                        .scaleEffect(crtScaleEffect, anchor: .center)
+                        .opacity(heroOpacity)
+                        .ignoresSafeArea(edges: .horizontal)
+                        .animation(.easeIn(duration: 0.35), value: isHeroCollapsed)
 
-                // Persistent metrics row with collapse gesture
-                MetricsRow(
-                    subscriptionsCount: viewModel.totalActiveSubscriptions,
-                    showsCount: viewModel.totalShows,
-                    monthlyTotal: viewModel.formattedMonthlyCost
-                )
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            dragOffset = value.translation.height
-                        }
-                        .onEnded { value in
-                            let dragThreshold: CGFloat = 100
-                            if abs(value.translation.height) > dragThreshold {
-                                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                    isHeroCollapsed.toggle()
-                                }
+                    // Persistent metrics row with collapse gesture
+                    MetricsRow(
+                        subscriptionsCount: viewModel.totalActiveSubscriptions,
+                        showsCount: viewModel.totalShows,
+                        monthlyTotal: viewModel.formattedMonthlyCost
+                    )
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                dragOffset = value.translation.height
                             }
-                            dragOffset = 0
-                        }
-                )
+                            .onEnded { value in
+                                let dragThreshold: CGFloat = 100
+                                if abs(value.translation.height) > dragThreshold {
+                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                        isHeroCollapsed.toggle()
+                                    }
+                                }
+                                dragOffset = 0
+                            }
+                    )
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
 
             // TabView fills remaining space
