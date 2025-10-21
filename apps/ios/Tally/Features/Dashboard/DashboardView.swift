@@ -64,8 +64,43 @@ struct DashboardView: View {
     }
 
     private var mainContentWithHero: some View {
-        // TabView at root level for native morphing animation
-        TabView(selection: $selectedTab) {
+        VStack(spacing: 0) {
+            // Hero and metrics at top
+            VStack(spacing: 0) {
+                // Persistent hero section (stays visible across all tabs)
+                HeroSection(services: viewModel.uniqueServices)
+                    .frame(height: heroHeight)
+                    .scaleEffect(crtScaleEffect, anchor: .center)
+                    .opacity(heroOpacity)
+                    .ignoresSafeArea(edges: .horizontal)
+                    .animation(.easeIn(duration: 0.35), value: isHeroCollapsed)
+
+                // Persistent metrics row with collapse gesture
+                MetricsRow(
+                    subscriptionsCount: viewModel.totalActiveSubscriptions,
+                    showsCount: viewModel.totalShows,
+                    monthlyTotal: viewModel.formattedMonthlyCost
+                )
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            dragOffset = value.translation.height
+                        }
+                        .onEnded { value in
+                            let dragThreshold: CGFloat = 100
+                            if abs(value.translation.height) > dragThreshold {
+                                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                    isHeroCollapsed.toggle()
+                                }
+                            }
+                            dragOffset = 0
+                        }
+                )
+            }
+
+            // TabView fills remaining space
+            TabView(selection: $selectedTab) {
                 // Tab 1: Calendar
                 Tab("Calendar", systemImage: "calendar", value: .calendar) {
                     calendarTabContent
@@ -90,44 +125,8 @@ struct DashboardView: View {
                 }
             }
             .searchable(text: $searchText, prompt: "Search for shows...")
-            .overlay(alignment: .top) {
-                // Hero and metrics overlaid on top of TabView
-                VStack(spacing: 0) {
-                    // Persistent hero section (stays visible across all tabs)
-                    HeroSection(services: viewModel.uniqueServices)
-                        .frame(height: heroHeight)
-                        .scaleEffect(crtScaleEffect, anchor: .center)
-                        .opacity(heroOpacity)
-                        .ignoresSafeArea(edges: .horizontal)
-                        .animation(.easeIn(duration: 0.35), value: isHeroCollapsed)
-
-                    // Persistent metrics row with collapse gesture
-                    MetricsRow(
-                        subscriptionsCount: viewModel.totalActiveSubscriptions,
-                        showsCount: viewModel.totalShows,
-                        monthlyTotal: viewModel.formattedMonthlyCost
-                    )
-                    .contentShape(Rectangle())
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                dragOffset = value.translation.height
-                            }
-                            .onEnded { value in
-                                let dragThreshold: CGFloat = 100
-                                if abs(value.translation.height) > dragThreshold {
-                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                        isHeroCollapsed.toggle()
-                                    }
-                                }
-                                dragOffset = 0
-                            }
-                    )
-
-                    Spacer() // Push hero/metrics to top
-                }
-                .allowsHitTesting(true) // Allow interactions with hero/metrics
-            }
+            .frame(maxHeight: .infinity)
+        }
     }
 
     // MARK: - Tab Content Views (hero is now shared above)
