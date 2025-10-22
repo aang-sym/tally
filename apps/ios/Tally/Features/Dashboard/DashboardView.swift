@@ -18,7 +18,6 @@ struct DashboardView: View {
     @ObservedObject var api: ApiClient
     @State private var viewModel = DashboardViewModel()
     @State private var selectedDate: Date?
-    @StateObject private var logoCollisionManager = LogoCollisionManager()
     @State private var stableServices: [StreamingService] = []
 
     // Subscription state
@@ -106,7 +105,7 @@ struct DashboardView: View {
     private var heroContent: some View {
         VStack(spacing: 0) {
             // Hero section
-            HeroSection(services: viewModel.uniqueServices)
+            HeroSection(services: stableServices)
                 .frame(height: heroHeight)
                 .scaleEffect(crtScaleEffect, anchor: .center)
                 .opacity(heroOpacity)

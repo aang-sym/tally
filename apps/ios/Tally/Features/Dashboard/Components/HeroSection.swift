@@ -42,7 +42,7 @@ struct HeroSection: View {
             if !services.isEmpty {
                 ScatteredLogosView(
                     services: services,
-                    collisionManager: LogoCollisionManager(),
+                    collisionManager: LogoCollisionManager.shared,
                     heroHeight: 300,
                     onLogoTap: { _ in }
                 )
@@ -53,8 +53,12 @@ struct HeroSection: View {
 
 // MARK: - Logo Collision Manager
 
-class LogoCollisionManager: ObservableObject {
-    @Published var logoStates: [Int: LogoState] = [:]
+@Observable
+class LogoCollisionManager {
+    // Singleton instance to persist logo positions across tab switches
+    static let shared = LogoCollisionManager()
+
+    var logoStates: [Int: LogoState] = [:]
     private var serviceMap: [Int: StreamingService] = [:]
 
     struct LogoState {
@@ -63,6 +67,9 @@ class LogoCollisionManager: ObservableObject {
         var radiusX: CGFloat
         var radiusY: CGFloat
     }
+
+    // Private initializer to enforce singleton pattern
+    private init() {}
 
     func updateLogo(index: Int, service: StreamingService, position: CGPoint, velocity: CGPoint, radiusX: CGFloat, radiusY: CGFloat) {
         logoStates[index] = LogoState(position: position, velocity: velocity, radiusX: radiusX, radiusY: radiusY)
@@ -78,7 +85,7 @@ class LogoCollisionManager: ObservableObject {
 
 struct ScatteredLogosView: View {
     let services: [StreamingService]
-    @ObservedObject var collisionManager: LogoCollisionManager
+    @Bindable var collisionManager: LogoCollisionManager
     let heroHeight: CGFloat
     var onLogoTap: ((StreamingService) -> Void)? = nil
 
@@ -125,7 +132,7 @@ private struct BouncingLogoView: View {
     let service: StreamingService
     let index: Int
     let containerSize: CGSize
-    @ObservedObject var collisionManager: LogoCollisionManager
+    @Bindable var collisionManager: LogoCollisionManager
     let dynamicScale: CGFloat
     var onLogoTap: ((StreamingService) -> Void)?
 
@@ -200,7 +207,19 @@ private struct BouncingLogoView: View {
     }
 
     /// Initialize starting position based on index
+    /// If a position already exists in the collision manager, restore it
     private func initializePosition() {
+        // Check if we already have a saved state for this logo
+        if let savedState = collisionManager.logoStates[index],
+           let savedService = collisionManager.getService(for: index),
+           savedService.id == service.id {
+            // Restore previous position and velocity
+            position = savedState.position
+            velocity = savedState.velocity
+            return
+        }
+
+        // No saved state - initialize new position
         let positions: [(x: Double, y: Double)] = [
             // First 6 positions (redistributed for full-screen)
             (0.15, 0.15),  // Top-left
