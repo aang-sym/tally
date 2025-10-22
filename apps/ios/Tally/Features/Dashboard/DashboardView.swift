@@ -34,9 +34,6 @@ struct DashboardView: View {
     @State private var isHeroCollapsed = false
     @State private var dragOffset: CGFloat = 0
 
-    // Hero visibility (for coordinating with tab bar animation)
-    @State private var showHero = true
-
     var body: some View {
         ZStack {
             backgroundGradient
@@ -67,88 +64,81 @@ struct DashboardView: View {
     }
 
     private var mainContentWithHero: some View {
-        VStack(spacing: 0) {
-            // Hero and metrics - only show when NOT on search tab AND showHero is true
-            if selectedTab != .search && showHero {
+        TabView(selection: $selectedTab) {
+            // Tab 1: Calendar
+            Tab("Calendar", systemImage: "calendar", value: .calendar) {
                 VStack(spacing: 0) {
-                    // Persistent hero section (stays visible across all tabs)
-                    HeroSection(services: viewModel.uniqueServices)
-                        .frame(height: heroHeight)
-                        .scaleEffect(crtScaleEffect, anchor: .center)
-                        .opacity(heroOpacity)
-                        .ignoresSafeArea(edges: .horizontal)
-                        .animation(.easeIn(duration: 0.35), value: isHeroCollapsed)
-
-                    // Persistent metrics row with collapse gesture
-                    MetricsRow(
-                        subscriptionsCount: viewModel.totalActiveSubscriptions,
-                        showsCount: viewModel.totalShows,
-                        monthlyTotal: viewModel.formattedMonthlyCost
-                    )
-                    .contentShape(Rectangle())
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                dragOffset = value.translation.height
-                            }
-                            .onEnded { value in
-                                let dragThreshold: CGFloat = 100
-                                if abs(value.translation.height) > dragThreshold {
-                                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                        isHeroCollapsed.toggle()
-                                    }
-                                }
-                                dragOffset = 0
-                            }
-                    )
-                }
-            }
-
-            // TabView fills remaining space
-            TabView(selection: $selectedTab) {
-                // Tab 1: Calendar
-                Tab("Calendar", systemImage: "calendar", value: .calendar) {
+                    heroContent
                     calendarTabContent
                 }
+            }
 
-                // Tab 2: Recommendations
-                Tab("Discover", systemImage: "sparkles", value: .recommendations) {
+            // Tab 2: Recommendations
+            Tab("Discover", systemImage: "sparkles", value: .recommendations) {
+                VStack(spacing: 0) {
+                    heroContent
                     recommendationsTabContent
                 }
+            }
 
-                // Tab 3: Subscriptions
-                Tab("Library", systemImage: "square.stack.3d.up", value: .subscriptions) {
+            // Tab 3: Subscriptions
+            Tab("Library", systemImage: "square.stack.3d.up", value: .subscriptions) {
+                VStack(spacing: 0) {
+                    heroContent
                     subscriptionsTabContent
                 }
+            }
 
-                // Search button (floating in bottom right with .search role)
-                // Native iOS 26 search - system provides icon automatically
-                Tab(value: .search, role: .search) {
-                    NavigationStack {
-                        searchResultsContent
-                    }
+            // Search button (floating in bottom right with .search role)
+            // Native iOS 26 search - system provides icon automatically
+            Tab(value: .search, role: .search) {
+                NavigationStack {
+                    searchResultsContent
                 }
             }
-            .searchable(text: $searchText, prompt: "Search for shows...")
-            .frame(maxHeight: .infinity)
         }
-        .onChange(of: selectedTab) { oldValue, newValue in
-            if newValue == .search {
-                // Hide hero immediately when entering search
-                showHero = false
-            } else if oldValue == .search {
-                // Delay hero appearance when leaving search to let tab bar animate
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                    showHero = true  // Instant appearance, no animation
-                }
-            } else {
-                // Show immediately when switching between non-search tabs
-                showHero = true
-            }
+        .searchable(text: $searchText, prompt: "Search for shows...")
+        .frame(maxHeight: .infinity)
+    }
+
+    // MARK: - Hero Content (shared across tabs)
+
+    private var heroContent: some View {
+        VStack(spacing: 0) {
+            // Hero section
+            HeroSection(services: viewModel.uniqueServices)
+                .frame(height: heroHeight)
+                .scaleEffect(crtScaleEffect, anchor: .center)
+                .opacity(heroOpacity)
+                .ignoresSafeArea(edges: .horizontal)
+                .animation(.easeIn(duration: 0.35), value: isHeroCollapsed)
+
+            // Metrics row with collapse gesture
+            MetricsRow(
+                subscriptionsCount: viewModel.totalActiveSubscriptions,
+                showsCount: viewModel.totalShows,
+                monthlyTotal: viewModel.formattedMonthlyCost
+            )
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        dragOffset = value.translation.height
+                    }
+                    .onEnded { value in
+                        let dragThreshold: CGFloat = 100
+                        if abs(value.translation.height) > dragThreshold {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                isHeroCollapsed.toggle()
+                            }
+                        }
+                        dragOffset = 0
+                    }
+            )
         }
     }
 
-    // MARK: - Tab Content Views (hero is now shared above)
+    // MARK: - Tab Content Views
 
     private var calendarTabContent: some View {
         WeekCalendarView(
