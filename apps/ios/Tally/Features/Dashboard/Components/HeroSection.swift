@@ -691,6 +691,7 @@ struct CRTOverlayView: View {
             )
             .allowsHitTesting(false)
         }
+        .ignoresSafeArea(edges: .top) // Extend scan lines behind the notch
     }
 }
 
