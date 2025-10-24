@@ -48,11 +48,19 @@ struct WeekCalendarView: View {
                 RoundedRectangle(cornerRadius: 0)
                     .fill(Color.black.opacity(0.15))
             }
+            .overlay(alignment: .bottom) {
+                LinearGradient(
+                    colors: [Color.black.opacity(0.6), Color.black.opacity(0.0)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 24)
+            }
 
             // Scrollable episode list
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: Spacing.md) {
+                    VStack(alignment: .leading, spacing: 8) {
                         // Group episodes by day
                         ForEach(weekDates, id: \.self) { date in
                             DaySection(
@@ -63,8 +71,19 @@ struct WeekCalendarView: View {
                         }
                     }
                     .screenPadding()
-                    .padding(.top, Spacing.sm)
+                    .padding(.top, 4)
                 }
+                .mask(
+                    VStack(spacing: 0) {
+                        LinearGradient(
+                            colors: [Color.black.opacity(0.0), Color.black],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .frame(height: 24)
+                        Rectangle().fill(Color.black)
+                    }
+                )
                 .onChange(of: selectedDate) { _, newDate in
                     if let newDate = newDate {
                         withAnimation(.smooth(duration: 0.4)) {
@@ -218,13 +237,12 @@ private struct DaySection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 8) {
             // Date header with modern styling
             Text(formattedDate)
                 .font(.system(size: 20, weight: .semibold, design: .rounded))
                 .foregroundStyle(.primary)
-                .padding(.top, Spacing.sm)
-                .padding(.bottom, 4)
+                .padding(.vertical, 4)
 
             // Episodes or "No episodes" message
             if episodes.isEmpty {
@@ -238,8 +256,8 @@ private struct DaySection: View {
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 16)
-                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 14)
                 .background {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(Color.white.opacity(0.03))
