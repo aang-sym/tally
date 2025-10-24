@@ -25,6 +25,7 @@ extension View {
 
 struct HeroSection: View {
     let services: [StreamingService]
+    var onLogoTap: ((StreamingService) -> Void)? = nil
 
     var body: some View {
         ZStack {
@@ -44,7 +45,7 @@ struct HeroSection: View {
                     services: services,
                     collisionManager: LogoCollisionManager.shared,
                     heroHeight: 300,
-                    onLogoTap: { _ in }
+                    onLogoTap: onLogoTap
                 )
             }
         }

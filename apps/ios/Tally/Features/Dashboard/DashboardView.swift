@@ -105,12 +105,17 @@ struct DashboardView: View {
     private var heroContent: some View {
         VStack(spacing: 0) {
             // Hero section
-            HeroSection(services: stableServices)
-                .frame(height: heroHeight)
-                .scaleEffect(crtScaleEffect, anchor: .center)
-                .opacity(heroOpacity)
-                .ignoresSafeArea(edges: .horizontal)
-                .animation(.easeIn(duration: 0.35), value: isHeroCollapsed)
+            HeroSection(services: stableServices) { tappedService in
+                // Find subscription matching the tapped service and show detail sheet
+                if let subscription = viewModel.subscriptions.first(where: { $0.service?.id == tappedService.id }) {
+                    selectedSubscription = subscription
+                }
+            }
+            .frame(height: heroHeight)
+            .scaleEffect(crtScaleEffect, anchor: .center)
+            .opacity(heroOpacity)
+            .ignoresSafeArea(edges: .horizontal)
+            .animation(.easeIn(duration: 0.35), value: isHeroCollapsed)
 
             // Metrics row with collapse gesture
             MetricsRow(
