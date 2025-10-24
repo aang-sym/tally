@@ -100,51 +100,55 @@ struct DashboardView: View {
     // MARK: - Hero Content (shared across tabs)
 
     private var heroContent: some View {
-        VStack(spacing: 0) {
-            // Hero section with CRT overlay extended into safe area
-            ZStack {
+        // Wrap hero + metrics in ZStack with CRT overlay covering both
+        ZStack {
+            VStack(spacing: 0) {
+                // Hero section
                 HeroSection(services: stableServices) { tappedService in
                     // Find subscription matching the tapped service and show detail sheet
                     if let subscription = viewModel.subscriptions.first(where: { $0.service?.id == tappedService.id }) {
                         selectedSubscription = subscription
                     }
                 }
+                .frame(height: heroHeight)
+                // No clipping here - allow logo glows to overflow into metrics area
+                .scaleEffect(crtScaleEffect, anchor: .center)
+                .opacity(heroOpacity)
+                .ignoresSafeArea(edges: .horizontal)
+                .animation(.easeIn(duration: 0.35), value: isHeroCollapsed)
 
-                // CRT overlay extended into top safe area (notch area)
-                CRTOverlayView()
-                    .allowsHitTesting(false)
-                    .ignoresSafeArea(edges: .top) // Extend scanlines into notch area
-            }
-            .frame(height: heroHeight)
-            // No clipping here - allow logo glows to overflow into metrics area
-            .scaleEffect(crtScaleEffect, anchor: .center)
-            .opacity(heroOpacity)
-            .ignoresSafeArea(edges: .horizontal)
-            .animation(.easeIn(duration: 0.35), value: isHeroCollapsed)
-
-            // Metrics row with collapse gesture
-            MetricsRow(
-                subscriptionsCount: viewModel.totalActiveSubscriptions,
-                showsCount: viewModel.totalShows,
-                monthlyTotal: viewModel.formattedMonthlyCost
-            )
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        dragOffset = value.translation.height
-                    }
-                    .onEnded { value in
-                        let dragThreshold: CGFloat = 100
-                        if abs(value.translation.height) > dragThreshold {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                isHeroCollapsed.toggle()
-                            }
+                // Metrics row with collapse gesture
+                MetricsRow(
+                    subscriptionsCount: viewModel.totalActiveSubscriptions,
+                    showsCount: viewModel.totalShows,
+                    monthlyTotal: viewModel.formattedMonthlyCost
+                )
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            dragOffset = value.translation.height
                         }
-                        dragOffset = 0
-                    }
-            )
+                        .onEnded { value in
+                            let dragThreshold: CGFloat = 100
+                            if abs(value.translation.height) > dragThreshold {
+                                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                    isHeroCollapsed.toggle()
+                                }
+                            }
+                            dragOffset = 0
+                        }
+                )
+            }
+            .background(Color.clear) // Ensure VStack sizes to content
+
+            // CRT overlay covering hero + metrics, extended into top safe area (notch area)
+            CRTOverlayView()
+                .allowsHitTesting(false)
+                .ignoresSafeArea(edges: .top) // Extend scanlines into notch area
         }
+        .fixedSize(horizontal: false, vertical: true) // Size to content height
+        .clipped() // Clip CRT overlay to prevent overflow into tab content
     }
 
     // MARK: - Tab Content Views
