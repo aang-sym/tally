@@ -48,9 +48,6 @@ struct DashboardView: View {
                 // Main content with persistent hero
                 mainContentWithHero
             }
-
-            CRTOverlayView()
-                .ignoresSafeArea()
         }
         .sheet(item: $selectedSubscription) { subscription in
             ProviderDetailSheet(subscription: subscription)
@@ -104,14 +101,21 @@ struct DashboardView: View {
 
     private var heroContent: some View {
         VStack(spacing: 0) {
-            // Hero section
-            HeroSection(services: stableServices) { tappedService in
-                // Find subscription matching the tapped service and show detail sheet
-                if let subscription = viewModel.subscriptions.first(where: { $0.service?.id == tappedService.id }) {
-                    selectedSubscription = subscription
+            // Hero section with CRT overlay constrained to hero height
+            ZStack {
+                HeroSection(services: stableServices) { tappedService in
+                    // Find subscription matching the tapped service and show detail sheet
+                    if let subscription = viewModel.subscriptions.first(where: { $0.service?.id == tappedService.id }) {
+                        selectedSubscription = subscription
+                    }
                 }
+                
+                // CRT overlay only on hero section - clipped to bounds
+                CRTOverlayView()
+                    .allowsHitTesting(false)
             }
             .frame(height: heroHeight)
+            .clipped() // Clip the CRT scanlines to the hero bounds
             .scaleEffect(crtScaleEffect, anchor: .center)
             .opacity(heroOpacity)
             .ignoresSafeArea(edges: .horizontal)

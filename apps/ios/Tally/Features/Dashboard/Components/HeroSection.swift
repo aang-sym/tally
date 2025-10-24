@@ -559,8 +559,8 @@ enum ServiceBranding {
         if serviceName.contains("netflix") {
             return "Netflix"
         } else if serviceName.contains("disney") {
-            // Use full Disney+ logo for hero, D logo for cards
-            return style == .hero ? "DisneyPlus" : "Disney"
+            // Use full Disney+ logo for both hero and cards
+            return "DisneyPlus"
         } else if serviceName.contains("prime") || serviceName.contains("amazon") {
             return "PrimeVideo"
         } else if serviceName.contains("hbo") || serviceName.contains("max") {
@@ -616,7 +616,7 @@ enum ServiceBranding {
         } else if serviceName.contains("stan") {
             return 1.4
         } else if serviceName.contains("prime") || serviceName.contains("amazon") {
-            return 1.2825 // 1.35 * 0.95 = 5% decrease
+            return 0.95 // Reduced to match other compact logos
         } else if serviceName.contains("apple") {
             return 1.25
         } else if serviceName.contains("paramount") {
