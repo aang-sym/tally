@@ -26,27 +26,31 @@ extension View {
 struct HeroSection: View {
     let services: [StreamingService]
     var onLogoTap: ((StreamingService) -> Void)? = nil
+    var heroHeight: CGFloat = 400 // Match dashboard hero height
 
     var body: some View {
-        ZStack {
-            // Dark gradient background for hero
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(red: 0.15, green: 0.05, blue: 0.25),
-                    Color.black
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-
-            // Bouncing logos in hero area
-            if !services.isEmpty {
-                ScatteredLogosView(
-                    services: services,
-                    collisionManager: LogoCollisionManager.shared,
-                    heroHeight: 300,
-                    onLogoTap: onLogoTap
+        GeometryReader { geometry in
+            ZStack {
+                // Dark gradient background for hero extending to full bounds
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.15, green: 0.05, blue: 0.25),
+                        Color.black
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
+                .ignoresSafeArea(edges: [.top, .horizontal])
+
+                // Bouncing logos in hero area
+                if !services.isEmpty {
+                    ScatteredLogosView(
+                        services: services,
+                        collisionManager: LogoCollisionManager.shared,
+                        heroHeight: geometry.size.height, // Use actual geometry height
+                        onLogoTap: onLogoTap
+                    )
+                }
             }
         }
     }

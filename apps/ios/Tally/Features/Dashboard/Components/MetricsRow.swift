@@ -11,6 +11,7 @@ struct MetricsRow: View {
     let subscriptionsCount: Int
     let showsCount: Int
     let monthlyTotal: String
+    var showScanlines: Bool = true // Allow disabling scanlines when handled externally
 
     var body: some View {
         HStack(spacing: Spacing.xl) {
@@ -42,6 +43,32 @@ struct MetricsRow: View {
         }
         .padding(.horizontal, Spacing.screenPadding)
         .padding(.vertical, Spacing.md)
+        .background {
+            if showScanlines {
+                // CRT scanlines behind metrics (no glass or rounded rectangle)
+                CRTScanlinesView()
+                    .allowsHitTesting(false)
+                    .opacity(0.8)
+            }
+        }
+    }
+}
+
+// MARK: - CRT Scanlines View
+
+private struct CRTScanlinesView: View {
+    var body: some View {
+        GeometryReader { geometry in
+            VStack(spacing: 1) {
+                ForEach(0..<Int(geometry.size.height / 3), id: \.self) { _ in
+                    Rectangle()
+                        .fill(Color.white.opacity(0.04))
+                        .frame(height: 2)
+                    Spacer()
+                        .frame(height: 1)
+                }
+            }
+        }
     }
 }
 

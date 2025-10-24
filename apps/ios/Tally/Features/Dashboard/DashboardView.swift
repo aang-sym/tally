@@ -110,12 +110,14 @@ struct DashboardView: View {
                     }
                 }
                 
-                // CRT overlay only on hero section - clipped to bounds
+                // CRT overlay only on hero section - clipped to its own bounds
                 CRTOverlayView()
                     .allowsHitTesting(false)
+                    .frame(height: heroHeight)
+                    .clipped() // Clip only the CRT scanlines, not the hero logos
             }
             .frame(height: heroHeight)
-            .clipped() // Clip the CRT scanlines to the hero bounds
+            // No clipping here - allow logo glows to overflow into metrics area
             .scaleEffect(crtScaleEffect, anchor: .center)
             .opacity(heroOpacity)
             .ignoresSafeArea(edges: .horizontal)
