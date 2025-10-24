@@ -110,7 +110,7 @@ private struct WeekDateCell: View {
     }
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 6) {
             // Weekday abbreviation
             Text(weekdayName)
                 .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -122,32 +122,31 @@ private struct WeekDateCell: View {
                 .foregroundStyle(isSelected ? .white : (isToday ? .primary : .secondary))
                 .contentTransition(.numericText())
 
-            // Provider dots with glass effect
-            if !episodes.isEmpty {
-                HStack(spacing: 3) {
-                    ForEach(Array(episodes.prefix(3).enumerated()), id: \.offset) { _, episode in
-                        Circle()
-                            .fill(colorForProvider(episode.provider))
-                            .frame(width: 5, height: 5)
-                            .shadow(color: colorForProvider(episode.provider).opacity(0.5), radius: 2)
-                    }
-                    
-                    if episodes.count > 3 {
-                        Text("+\(episodes.count - 3)")
-                            .font(.system(size: 8, weight: .semibold))
-                            .foregroundStyle(.secondary)
+            // Provider dots with glass effect - wrapping to multiple rows
+            // Fixed height container to ensure consistent cell sizes
+            VStack(spacing: 3) {
+                if !episodes.isEmpty {
+                    // Use a flow layout that wraps after 3 pips per row
+                    ForEach(0..<min((episodes.count + 2) / 3, 2), id: \.self) { row in
+                        HStack(spacing: 3) {
+                            ForEach(0..<min(3, episodes.count - (row * 3)), id: \.self) { col in
+                                let index = (row * 3) + col
+                                if index < episodes.count {
+                                    Circle()
+                                        .fill(colorForProvider(episodes[index].provider))
+                                        .frame(width: 5, height: 5)
+                                        .shadow(color: colorForProvider(episodes[index].provider).opacity(0.5), radius: 2)
+                                }
+                            }
+                        }
                     }
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-            } else {
-                // Empty spacer to maintain alignment
-                Spacer()
-                    .frame(height: 14)
             }
+            .frame(height: 20)
+            .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
         .padding(.horizontal, 4)
         .background {
             if isSelected {
@@ -265,6 +264,7 @@ private struct DaySection: View {
 private struct CollapsibleEpisodeCard: View {
     let episode: CalendarEpisode
     @State private var isExpanded = false
+    @State private var isSynopsisExpanded = false
     @Namespace private var animation
 
     /// Convert StreamingProvider to StreamingService for glowing logo
@@ -295,7 +295,7 @@ private struct CollapsibleEpisodeCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Main card content
+            // Main card content - tapping this collapses the card
             HStack(alignment: .top, spacing: 14) {
                 // LEFT: Show poster with smooth size transition
                 PosterView(
@@ -341,6 +341,16 @@ private struct CollapsibleEpisodeCard: View {
             }
             .animation(.smooth(duration: 0.35), value: isExpanded)
             .padding(14)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(.smooth(duration: 0.35)) {
+                    isExpanded.toggle()
+                    // Reset synopsis expansion when collapsing the card
+                    if !isExpanded {
+                        isSynopsisExpanded = false
+                    }
+                }
+            }
 
             // EXPANDED: Additional details
             if isExpanded {
@@ -348,13 +358,34 @@ private struct CollapsibleEpisodeCard: View {
                     Divider()
                         .padding(.horizontal, 14)
                     
-                    // Synopsis
-                    Text(episode.synopsis)
-                        .font(.system(size: 14))
-                        .foregroundStyle(episode.synopsis.starts(with: "Synopsis not yet available") || episode.synopsis.starts(with: "No description") ? .secondary : .primary)
-                        .italic(episode.synopsis.starts(with: "Synopsis not yet available") || episode.synopsis.starts(with: "No description"))
-                        .multilineTextAlignment(.leading)
-                        .padding(.horizontal, 14)
+                    // Synopsis - tappable to expand/collapse
+                    VStack(spacing: 0) {
+                        if isSynopsisExpanded {
+                            Text(episode.synopsis)
+                                .font(.system(size: 14))
+                                .foregroundStyle(episode.synopsis.starts(with: "Synopsis not yet available") || episode.synopsis.starts(with: "No description") ? .secondary : .primary)
+                                .italic(episode.synopsis.starts(with: "Synopsis not yet available") || episode.synopsis.starts(with: "No description"))
+                                .multilineTextAlignment(.leading)
+                                .transition(.opacity)
+                        } else {
+                            Text(episode.synopsis)
+                                .font(.system(size: 14))
+                                .foregroundStyle(episode.synopsis.starts(with: "Synopsis not yet available") || episode.synopsis.starts(with: "No description") ? .secondary : .primary)
+                                .italic(episode.synopsis.starts(with: "Synopsis not yet available") || episode.synopsis.starts(with: "No description"))
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(2)
+                                .truncationMode(.tail)
+                                .transition(.opacity)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.smooth(duration: 0.3)) {
+                            isSynopsisExpanded.toggle()
+                        }
+                    }
 
                     // Metadata badges
                     HStack(spacing: 10) {
@@ -412,12 +443,6 @@ private struct CollapsibleEpisodeCard: View {
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .strokeBorder(.white.opacity(0.12), lineWidth: 1)
-        }
-        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .onTapGesture {
-            withAnimation(.smooth(duration: 0.35)) {
-                isExpanded.toggle()
-            }
         }
     }
 }
@@ -505,7 +530,7 @@ private struct MetadataBadge: View {
                 episodeNumber: 3,
                 name: "The Aftermath",
                 airDate: "2025-10-24",
-                overview: "Max faces a difficult choice as the Mind Flayer's influence spreads throughout Hawkins...",
+                overview: "Max faces a difficult choice as the Mind Flayer's influence spreads throughout Hawkins, causing chaos and destruction in its wake. As the gang desperately searches for a way to close the gateway to the Upside Down, they discover that Will's connection to the dark dimension may be their only hope. Meanwhile, Eleven struggles to regain her powers while Steve and Dustin make a startling discovery in the abandoned tunnels beneath the town. With time running out and the body count rising, the friends must band together one last time to save their hometown from complete annihilation.",
                 runtime: 52,
                 stillPath: nil
             ),
@@ -538,7 +563,7 @@ private struct MetadataBadge: View {
                 episodeNumber: 1,
                 name: "A New Beginning",
                 airDate: "2025-10-24",
-                overview: "Mando takes on a dangerous mission that leads him to an uncharted sector...",
+                overview: "Din Djarin embarks on a dangerous mission that leads him to an uncharted sector of the galaxy, where rumors of a secret Mandalorian enclave have drawn the attention of both the New Republic and Imperial remnants. Accompanied by Grogu, who continues to develop his Force abilities under his father's watchful eye, Mando must navigate treacherous political alliances and confront ghosts from his past. When Bo-Katan reaches out with urgent intelligence about a threat to Mandalore's restoration, Din finds himself torn between his duty to his people and his responsibility as Grogu's guardian.",
                 runtime: 45,
                 stillPath: nil
             ),
@@ -571,7 +596,7 @@ private struct MetadataBadge: View {
                 episodeNumber: 8,
                 name: "Fire and Blood",
                 airDate: "2025-10-24",
-                overview: "The battle reaches its peak as the dragons clash over King's Landing...",
+                overview: "The Dance of the Dragons reaches its devastating climax as Queen Rhaenyra's forces clash with King Aegon's army in the skies above King's Landing. Dragons fall from the heavens in a spectacular display of fire and fury, while below, the smallfolk rise up in revolt against the Targaryen civil war that has brought destruction to their doorstep. Daemon executes a daring plan to infiltrate the Red Keep, and Aemond makes a fateful decision that will echo through the ages. As brother fights sister and dragon battles dragon, the Iron Throne itself hangs in the balance, and the true cost of ambition becomes horrifyingly clear.",
                 runtime: 68,
                 stillPath: nil
             ),
@@ -604,7 +629,7 @@ private struct MetadataBadge: View {
                 episodeNumber: 5,
                 name: "The Forge",
                 airDate: "2025-10-24",
-                overview: "The forging of the rings begins as dark forces gather...",
+                overview: "In the depths of Mount Doom, Celebrimbor and the elven smiths begin the sacred work of forging the Rings of Power, unaware that Sauron has infiltrated their ranks under the guise of Annatar, the Lord of Gifts. As Galadriel races against time to expose the Dark Lord's deception, the dwarven kingdom of Khazad-dûm faces a catastrophic discovery deep within their mines. Meanwhile, the Stranger and Nori journey to Rhûn in search of answers about his true identity, only to encounter a mysterious cult that worships the rising darkness. The fate of Middle-earth hangs by a thread as ancient powers awaken and the shadow of Mordor grows ever longer.",
                 runtime: 65,
                 stillPath: nil
             ),
@@ -637,7 +662,7 @@ private struct MetadataBadge: View {
                 episodeNumber: 4,
                 name: "The We We Are",
                 airDate: "2025-10-24",
-                overview: "Mark discovers a shocking truth about his severance procedure...",
+                overview: "Mark's innie discovers a hidden corridor in Lumon's labyrinthine basement that shouldn't exist according to the building's official floor plans. As he and his team investigate, they uncover evidence suggesting that their outie lives may not be what they believe them to be. Meanwhile, Helly R.'s rebellion against the severance procedure intensifies when she receives a cryptic message from the outside world. Irving's disturbing paintings begin to reveal suppressed memories that could expose Lumon's darkest secrets, and Dylan makes a desperate choice that puts everyone at risk. The line between severed and whole grows dangerously blurred.",
                 runtime: 48,
                 stillPath: nil
             ),
@@ -670,7 +695,7 @@ private struct MetadataBadge: View {
                 episodeNumber: 12,
                 name: "The Final Blow",
                 airDate: "2025-10-24",
-                overview: "Tanjiro faces his greatest challenge yet in an epic showdown...",
+                overview: "Tanjiro faces his greatest challenge yet in an epic showdown against one of Muzan's most powerful Upper Rank demons. Drawing on everything he has learned from years of training and the memories of his fallen comrades, he unleashes the full power of his Hinokami Kagura technique in a breathtaking display of swordsmanship. Nezuko's demonic abilities evolve in an unexpected way during the battle, while Zenitsu and Inosuke fight desperately to protect civilians from the demon's devastating attacks. As dawn approaches and time runs out, Tanjiro must make an impossible choice between victory and protecting those he loves most.",
                 runtime: 24,
                 stillPath: nil
             ),
