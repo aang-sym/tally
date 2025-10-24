@@ -101,7 +101,7 @@ struct DashboardView: View {
 
     private var heroContent: some View {
         VStack(spacing: 0) {
-            // Hero section with CRT overlay constrained to hero height
+            // Hero section with CRT overlay extended into safe area
             ZStack {
                 HeroSection(services: stableServices) { tappedService in
                     // Find subscription matching the tapped service and show detail sheet
@@ -109,12 +109,11 @@ struct DashboardView: View {
                         selectedSubscription = subscription
                     }
                 }
-                
-                // CRT overlay only on hero section - clipped to its own bounds
+
+                // CRT overlay extended into top safe area (notch area)
                 CRTOverlayView()
                     .allowsHitTesting(false)
-                    .frame(height: heroHeight)
-                    .clipped() // Clip only the CRT scanlines, not the hero logos
+                    .ignoresSafeArea(edges: .top) // Extend scanlines into notch area
             }
             .frame(height: heroHeight)
             // No clipping here - allow logo glows to overflow into metrics area
