@@ -265,6 +265,7 @@ private struct DaySection: View {
 private struct CollapsibleEpisodeCard: View {
     let episode: CalendarEpisode
     @State private var isExpanded = false
+    @Namespace private var animation
 
     /// Convert StreamingProvider to StreamingService for glowing logo
     private func convertProviderToService() -> StreamingService {
@@ -304,21 +305,19 @@ private struct CollapsibleEpisodeCard: View {
 
                 // RIGHT: Episode info
                 VStack(alignment: .leading, spacing: 6) {
-                    // Show title
+                    // Show title - smooth slide animation like episode title
                     Text(episode.show.title)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(.primary)
-                        .lineLimit(2)
+                        .lineLimit(isExpanded ? nil : 1)
 
                     // Episode identifier
                     Text("\(episode.episodeIdentifier) - \(episode.episodeTitle)")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.secondary)
                         .lineLimit(isExpanded ? 3 : 2)
-
-                    Spacer(minLength: 0)
                     
-                    // Provider badge at bottom
+                    // Provider badge at bottom (6pt gap from VStack spacing)
                     HStack(spacing: 8) {
                         GlowingServiceLogoView(
                             service: convertProviderToService(),
@@ -340,6 +339,7 @@ private struct CollapsibleEpisodeCard: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
+            .animation(.smooth(duration: 0.35), value: isExpanded)
             .padding(14)
 
             // EXPANDED: Additional details
