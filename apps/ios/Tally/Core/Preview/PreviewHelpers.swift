@@ -12,7 +12,7 @@ import Foundation
 /// Hardcoded secrets for SwiftUI previews
 enum PreviewSecrets {
     /// Valid test token for preview API calls
-    static let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmN2Y2YmIyYy1lNTM2LTQ2MzUtYWY4NS0xNjI4NjY1NDViNWQiLCJlbWFpbCI6InRlc3QyQGV4YW1wbGUuY29tIiwiZGlzcGxheU5hbWUiOiJ0ZXN0MkBleGFtcGxlLmNvbSIsImlhdCI6MTc2MDkyNzc5OSwiZXhwIjoxNzYxNTMyNTk5fQ.k3v_y2vphn7y6eEx_EvD_t4SjACdWH_nFraDn0Fme1E"
+    static let token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJmN2Y2YmIyYy1lNTM2LTQ2MzUtYWY4NS0xNjI4NjY1NDViNWQiLCJlbWFpbCI6InRlc3QyQGV4YW1wbGUuY29tIiwiZGlzcGxheU5hbWUiOiJ0ZXN0MkBleGFtcGxlLmNvbSIsImlhdCI6MTc2MTU3MDA1NywiZXhwIjoxNzYyMTc0ODU3fQ.6xZwcux9HxfXEM3n96MXCh_sK_lUxhODni7C1cczpRM"
 }
 
 /// Pre-configured ApiClient for SwiftUI previews

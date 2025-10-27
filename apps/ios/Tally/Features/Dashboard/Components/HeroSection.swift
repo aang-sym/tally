@@ -31,17 +31,6 @@ struct HeroSection: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Dark gradient background for hero extending to full bounds
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.15, green: 0.05, blue: 0.25),
-                        Color.black
-                    ]),
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea(edges: [.top, .horizontal])
-
                 // Bouncing logos in hero area
                 if !services.isEmpty {
                     ScatteredLogosView(
@@ -52,6 +41,18 @@ struct HeroSection: View {
                     )
                 }
             }
+            .background(
+                // Dark gradient background for hero extending into safe area (notch)
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(red: 0.15, green: 0.05, blue: 0.25),
+                        Color.black
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea(edges: .top)
+            )
         }
     }
 }
@@ -663,18 +664,18 @@ enum ServiceBranding {
 // MARK: - CRT Overlay
 
 struct CRTOverlayView: View {
+    let height: CGFloat
+    
     var body: some View {
         ZStack {
-            // Horizontal scanlines
-            GeometryReader { geometry in
-                VStack(spacing: 1) {
-                    ForEach(0..<Int(geometry.size.height / 3), id: \.self) { _ in
-                        Rectangle()
-                            .fill(Color.white.opacity(0.04))
-                            .frame(height: 2)
-                        Spacer()
-                            .frame(height: 1)
-                    }
+            // Horizontal scanlines - calculated based on explicit height
+            VStack(spacing: 1) {
+                ForEach(0..<Int(height / 3), id: \.self) { _ in
+                    Rectangle()
+                        .fill(Color.white.opacity(0.04))
+                        .frame(height: 2)
+                    Spacer()
+                        .frame(height: 1)
                 }
             }
             .allowsHitTesting(false)
@@ -691,7 +692,7 @@ struct CRTOverlayView: View {
             )
             .allowsHitTesting(false)
         }
-        .ignoresSafeArea(edges: .top) // Extend scan lines behind the notch
+        .frame(height: height)
     }
 }
 
