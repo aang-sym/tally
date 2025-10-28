@@ -140,16 +140,23 @@ struct DashboardView: View {
             )
         }
         .overlay(alignment: .top) {
+            // Constrain the GeometryReader to prevent it from expanding into tab content
             GeometryReader { geo in
                 let topInset = geo.safeAreaInsets.top
                 let metricsHeight: CGFloat = 80 // if this changes, consider measuring
                 let overlayHeight = topInset + heroHeight + metricsHeight
 
                 CRTOverlayView(height: overlayHeight)
-                    .frame(height: overlayHeight, alignment: .top)
+                    .frame(width: geo.size.width, height: overlayHeight, alignment: .top)
+                    .position(x: geo.size.width / 2, y: overlayHeight / 2)
                     .ignoresSafeArea(edges: .top)   // <- draw into the notch
                     .allowsHitTesting(false)
             }
+            .frame(height: heroHeight + 80) // Limit GeometryReader height to hero + metrics
+            .clipShape(
+                // Custom clip that only clips bottom, allows overflow to top (notch)
+                BottomOnlyClipShape()
+            )
         }
     }
 
@@ -323,6 +330,27 @@ extension DashboardTab {
         case .subscriptions: return 2
         case .search: return 3
         }
+    }
+}
+
+// MARK: - Custom Clip Shape
+
+/// A shape that clips only the bottom edge, allowing content to overflow at the top
+private struct BottomOnlyClipShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        
+        // Create a rectangle that extends far above the top edge
+        // but clips precisely at the bottom edge
+        let extendedRect = CGRect(
+            x: rect.minX,
+            y: rect.minY - 1000, // Extend 1000 points above to allow notch area
+            width: rect.width,
+            height: rect.height + 1000 // Total height includes the extension
+        )
+        
+        path.addRect(extendedRect)
+        return path
     }
 }
 
