@@ -67,6 +67,7 @@ struct DashboardView: View {
                     heroContent
                     calendarTabContent
                 }
+                .transaction { $0.disablesAnimations = false }
             }
 
             // Tab 2: Recommendations
@@ -75,6 +76,7 @@ struct DashboardView: View {
                     heroContent
                     recommendationsTabContent
                 }
+                .transaction { $0.disablesAnimations = false }
             }
 
             // Tab 3: Subscriptions
@@ -83,6 +85,7 @@ struct DashboardView: View {
                     heroContent
                     subscriptionsTabContent
                 }
+                .transaction { $0.disablesAnimations = false }
             }
 
             // Search button (floating in bottom right with .search role)

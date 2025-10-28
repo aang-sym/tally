@@ -132,6 +132,29 @@ struct ScatteredLogosView: View {
     }
 }
 
+// MARK: - Display Link Animator
+
+/// Helper class to act as CADisplayLink target (requires class for @objc)
+private class DisplayLinkAnimator {
+    var onUpdate: (() -> Void)?
+    private var displayLink: CADisplayLink?
+
+    func start() {
+        let link = CADisplayLink(target: self, selector: #selector(update))
+        link.add(to: .current, forMode: .common)
+        displayLink = link
+    }
+
+    func stop() {
+        displayLink?.invalidate()
+        displayLink = nil
+    }
+
+    @objc private func update() {
+        onUpdate?()
+    }
+}
+
 // MARK: - Bouncing Logo View
 
 private struct BouncingLogoView: View {
@@ -144,7 +167,7 @@ private struct BouncingLogoView: View {
 
     @State private var position: CGPoint = .zero
     @State private var velocity: CGPoint = .zero
-    @State private var timer: Timer?
+    @State private var animator: DisplayLinkAnimator?
 
     // Debug flag to toggle collision boundary visualization
     private static let showDebugBounds = false
@@ -200,9 +223,9 @@ private struct BouncingLogoView: View {
             startBouncing()
         }
         .onDisappear {
-            // Clean up timer to prevent memory leak
-            timer?.invalidate()
-            timer = nil
+            // Clean up display link to prevent memory leak
+            animator?.stop()
+            animator = nil
         }
     }
 
@@ -264,12 +287,15 @@ private struct BouncingLogoView: View {
         )
     }
 
-    /// Start the bouncing animation with a timer
+    /// Start the bouncing animation with CADisplayLink
     private func startBouncing() {
-        // Store timer reference for cleanup
-        timer = Timer.scheduledTimer(withTimeInterval: 1/60, repeats: true) { _ in
+        // Use CADisplayLink for display-synced animation that continues during scroll
+        let linkAnimator = DisplayLinkAnimator()
+        linkAnimator.onUpdate = { [self] in
             updatePosition()
         }
+        linkAnimator.start()
+        animator = linkAnimator
     }
 
     /// Get scale factor for this logo (delegates to shared helper)
