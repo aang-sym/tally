@@ -140,20 +140,17 @@ struct DashboardView: View {
             )
         }
         .overlay(alignment: .top) {
-            // Use GeometryReader to calculate safe area and apply CRT overlay on top
-            GeometryReader { geometry in
-                let safeAreaTop = geometry.safeAreaInsets.top
-                let metricsHeight: CGFloat = 80
-                let totalCRTHeight = safeAreaTop + heroHeight + metricsHeight
-                
-                // CRT overlay covering notch + hero + metrics
-                CRTOverlayView(height: totalCRTHeight)
-                    .frame(maxWidth: .infinity, maxHeight: totalCRTHeight, alignment: .top)
-                    .offset(y: -safeAreaTop) // Shift up to cover safe area (notch)
+            GeometryReader { geo in
+                let topInset = geo.safeAreaInsets.top
+                let metricsHeight: CGFloat = 80 // if this changes, consider measuring
+                let overlayHeight = topInset + heroHeight + metricsHeight
+
+                CRTOverlayView(height: overlayHeight)
+                    .frame(height: overlayHeight, alignment: .top)
+                    .ignoresSafeArea(edges: .top)   // <- draw into the notch
                     .allowsHitTesting(false)
             }
         }
-        .clipped() // Prevent CRT overlay from extending into tab content below
     }
 
     // MARK: - Tab Content Views
