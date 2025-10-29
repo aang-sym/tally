@@ -32,10 +32,6 @@ struct DashboardView: View {
     // Subscription list sheet state
     @State private var showSubscriptionsList = false
 
-    // Hero collapse state
-    @State private var isHeroCollapsed = false
-    @State private var dragOffset: CGFloat = 0
-
     // Ticker state
     @State private var showTickerExpanded = false
     @Namespace private var tickerNamespace
@@ -95,69 +91,6 @@ struct DashboardView: View {
         .frame(maxHeight: .infinity)
     }
 
-    // MARK: - Hero Content (shared across tabs)
-
-    private var heroContent: some View {
-        VStack(spacing: 0) {
-            // Hero section
-            HeroSection(services: stableServices) { tappedService in
-                // Find subscription matching the tapped service and show detail sheet
-                if let subscription = viewModel.subscriptions.first(where: { $0.service?.id == tappedService.id }) {
-                    selectedSubscription = subscription
-                }
-            }
-            .frame(height: heroHeight)
-            // No clipping here - allow logo glows to overflow into metrics area
-            .scaleEffect(crtScaleEffect, anchor: .center)
-            .opacity(heroOpacity)
-            .ignoresSafeArea(edges: .horizontal)
-            .animation(.easeIn(duration: 0.35), value: isHeroCollapsed)
-
-            // Metrics row with collapse gesture
-            MetricsRow(
-                subscriptionsCount: viewModel.totalActiveSubscriptions,
-                showsCount: viewModel.totalShows,
-                monthlyTotal: viewModel.formattedMonthlyCost,
-                showScanlines: false // Disable internal scanlines, handled by CRTOverlayView
-            )
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        dragOffset = value.translation.height
-                    }
-                    .onEnded { value in
-                        let dragThreshold: CGFloat = 100
-                        if abs(value.translation.height) > dragThreshold {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                isHeroCollapsed.toggle()
-                            }
-                        }
-                        dragOffset = 0
-                    }
-            )
-        }
-        .overlay(alignment: .top) {
-            // Constrain the GeometryReader to prevent it from expanding into tab content
-            GeometryReader { geo in
-                let topInset = geo.safeAreaInsets.top
-                let metricsHeight: CGFloat = 80 // if this changes, consider measuring
-                let overlayHeight = topInset + heroHeight + metricsHeight
-
-                CRTOverlayView(height: overlayHeight)
-                    .frame(width: geo.size.width, height: overlayHeight, alignment: .top)
-                    .position(x: geo.size.width / 2, y: overlayHeight / 2)
-                    .ignoresSafeArea(edges: .top)   // <- draw into the notch
-                    .allowsHitTesting(false)
-            }
-            .frame(height: heroHeight + 80) // Limit GeometryReader height to hero + metrics
-            .clipShape(
-                // Custom clip that only clips bottom, allows overflow to top (notch)
-                BottomOnlyClipShape()
-            )
-        }
-    }
-
     // MARK: - Tab Content Views
 
     private var homeTabContent: some View {
@@ -192,28 +125,16 @@ struct DashboardView: View {
                     .padding(.top, Spacing.sm)
                 }
 
-                // Metrics row
+                // Metrics row (tappable subscriptions count)
                 MetricsRow(
                     subscriptionsCount: viewModel.totalActiveSubscriptions,
                     showsCount: viewModel.totalShows,
                     monthlyTotal: viewModel.formattedMonthlyCost,
-                    showScanlines: false
+                    showScanlines: false,
+                    onSubscriptionsTap: {
+                        showSubscriptionsList = true
+                    }
                 )
-
-                // View Subscriptions button
-                Button(action: {
-                    showSubscriptionsList = true
-                }) {
-                    Text("View Subscriptions")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue.opacity(0.3))
-                        .cornerRadius(12)
-                }
-                .padding(.horizontal)
-                .padding(.bottom)
             }
             .overlay {
                 // Expanded ticker overlay
@@ -334,15 +255,7 @@ struct DashboardView: View {
     }
 
     private var heroHeight: CGFloat {
-        isHeroCollapsed ? 0 : 300
-    }
-
-    private var crtScaleEffect: CGSize {
-        isHeroCollapsed ? CGSize(width: 0.0, height: 0.1) : CGSize(width: 1.0, height: 1.0)
-    }
-
-    private var heroOpacity: Double {
-        isHeroCollapsed ? 0 : 1
+        300 // Fixed height for hero section
     }
 
     // MARK: - Ticker Item Handler

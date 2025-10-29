@@ -30,13 +30,15 @@ struct LiquidGlassTicker: View {
             impactFeedback.impactOccurred()
         } label: {
             if !items.isEmpty {
-                tickerContent
-                    .padding(.vertical, Spacing.sm)
-                    .glassEffect(
-                        .regular.interactive(),
-                        in: .rect(cornerRadius: 20)
-                    )
-                    .glassEffectID("tickerGlass", in: namespace)
+                HStack(spacing: 0) {
+                    tickerContent
+                }
+                .padding(.vertical, Spacing.sm)
+                .glassEffect(
+                    .regular.interactive(),
+                    in: .rect(cornerRadius: 20)
+                )
+                .glassEffectID("tickerGlass", in: namespace)
             }
         }
         .buttonStyle(.plain)
