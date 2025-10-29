@@ -37,13 +37,11 @@ struct SubscriptionsView: View {
                 } else {
                     List(viewModel.items) { subscription in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(subscription.serviceName ?? "Unknown Service")
+                            Text(subscription.serviceName)
                                 .font(.headline)
-                            if let price = subscription.price, let currency = subscription.currency {
-                                Text("\(price, specifier: "%.2f") \(currency)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
+                            Text(subscription.formattedCost)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
                         }
                         .padding(.vertical, 2)
                     }

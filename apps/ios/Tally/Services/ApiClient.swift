@@ -12,14 +12,6 @@ struct Health: Decodable {
     let timestamp: String
 }
 
-struct Subscription: Decodable, Identifiable {
-    let id: String?
-    let serviceName: String?
-    let price: Double?
-    let currency: String?
-}
-
-<<<<<<< HEAD
 enum ApiError: Error, LocalizedError {
     case unauthorized
     case badStatus(Int)
@@ -132,6 +124,24 @@ struct Episode: Codable, Identifiable {
         stillPath = try container.decodeIfPresent(String.self, forKey: .stillPath)
         // Generate a unique ID since the API might not provide one
         id = "\(episodeNumber)"
+    }
+
+    // Memberwise initializer for creating episodes programmatically
+    init(
+        episodeNumber: Int,
+        name: String?,
+        airDate: String?,
+        overview: String?,
+        runtime: Int?,
+        stillPath: String?
+    ) {
+        self.id = "\(episodeNumber)"
+        self.episodeNumber = episodeNumber
+        self.name = name
+        self.airDate = airDate
+        self.overview = overview
+        self.runtime = runtime
+        self.stillPath = stillPath
     }
 }
 

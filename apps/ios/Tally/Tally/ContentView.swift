@@ -43,11 +43,13 @@ struct ContentView: View {
                         await load()
                     }
                 }
+                NavigationLink("Dashboard", destination: DashboardView(api: api))
+                    .buttonStyle(.bordered)
                 NavigationLink("Subscriptions", destination: SubscriptionsView(api: api))
                     .buttonStyle(.bordered)
                 NavigationLink("My Shows", destination: WatchlistView(api: api))
                     .buttonStyle(.bordered)
-                NavigationLink("Search", destination: SearchView(api: api))
+                NavigationLink("Search", destination: SearchView(api: api, onDismiss: {}))
                     .buttonStyle(.bordered)
                 NavigationLink("Calendar", destination: SimplifiedCalendarView(api: api))
                     .buttonStyle(.bordered)

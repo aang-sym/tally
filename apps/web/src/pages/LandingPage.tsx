@@ -2,6 +2,14 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { WaitlistRequest } from '@tally/types';
 
+// Import logos
+import netflixLogo from '../assets/logos/netflix.png';
+import disneyPlusLogo from '../assets/logos/disney-plus.png';
+import primeVideoLogo from '../assets/logos/prime-video.svg';
+import hboMaxLogo from '../assets/logos/hbo-max.svg';
+import crunchyrollLogo from '../assets/logos/crunchyroll.svg';
+import paramountLogo from '../assets/logos/paramount.svg';
+
 const LandingPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [country, setCountry] = useState('');
@@ -92,10 +100,23 @@ const LandingPage: React.FC = () => {
             <br />
             you're not watching
           </h1>
-          <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             Tally helps you save money by planning when to subscribe and cancel streaming services
             around the shows you actually care about.
           </p>
+
+          {/* Streaming Service Logos */}
+          <div className="mb-12">
+            <p className="text-sm text-gray-500 mb-6">Works with all major streaming services</p>
+            <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all duration-300">
+              <img src={netflixLogo} alt="Netflix" className="h-8 md:h-10 object-contain" />
+              <img src={disneyPlusLogo} alt="Disney+" className="h-8 md:h-10 object-contain" />
+              <img src={primeVideoLogo} alt="Prime Video" className="h-8 md:h-10 object-contain" />
+              <img src={hboMaxLogo} alt="HBO Max" className="h-8 md:h-10 object-contain" />
+              <img src={crunchyrollLogo} alt="Crunchyroll" className="h-7 md:h-9 object-contain" />
+              <img src={paramountLogo} alt="Paramount+" className="h-8 md:h-10 object-contain" />
+            </div>
+          </div>
 
           {/* Feature Cards */}
           <div className="grid md:grid-cols-3 gap-8 mb-12">
