@@ -12,22 +12,38 @@ struct MetricsRow: View {
     let showsCount: Int
     let monthlyTotal: String
     var showScanlines: Bool = true // Allow disabling scanlines when handled externally
+    var onSubscriptionsTap: (() -> Void)? = nil // Optional callback for subscriptions tap
 
     var body: some View {
         HStack(spacing: Spacing.xl) {
-            // Subscriptions
-            MetricItem(
-                count: "\(subscriptionsCount)",
-                label: "Subscriptions",
-                showDiamond: true,
-                alignment: .leading
-            )
+            // Subscriptions - now tappable
+            if let onSubscriptionsTap {
+                Button(action: onSubscriptionsTap) {
+                    MetricItem(
+                        count: "\(subscriptionsCount)",
+                        label: "Subscriptions",
+                        showDiamond: false,
+                        showChevron: true,
+                        alignment: .leading
+                    )
+                }
+                .buttonStyle(.plain)
+            } else {
+                MetricItem(
+                    count: "\(subscriptionsCount)",
+                    label: "Subscriptions",
+                    showDiamond: true,
+                    showChevron: false,
+                    alignment: .leading
+                )
+            }
 
             // Shows
             MetricItem(
                 count: "\(showsCount)",
                 label: "Shows",
                 showDiamond: true,
+                showChevron: false,
                 alignment: .leading
             )
 
@@ -38,6 +54,7 @@ struct MetricsRow: View {
                 count: monthlyTotal,
                 label: "Monthly",
                 showDiamond: false,
+                showChevron: false,
                 alignment: .trailing
             )
         }
@@ -78,6 +95,7 @@ private struct MetricItem: View {
     let count: String
     let label: String
     let showDiamond: Bool
+    let showChevron: Bool
     let alignment: HorizontalAlignment
 
     var body: some View {
@@ -95,6 +113,10 @@ private struct MetricItem: View {
                     Text("◇")
                         .font(.system(size: 10))
                         .foregroundColor(.textTertiary)
+                } else if showChevron {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(.textTertiary.opacity(0.6))
                 }
             }
         }
@@ -104,12 +126,27 @@ private struct MetricItem: View {
 // MARK: - Preview
 
 #if DEBUG
-#Preview {
+#Preview("Static Metrics") {
     VStack {
         MetricsRow(
             subscriptionsCount: 3,
             showsCount: 6,
             monthlyTotal: "$34.97"
+        )
+        .background(Color.heroBackground)
+    }
+    .background(Color.background)
+}
+
+#Preview("Interactive Metrics") {
+    VStack {
+        MetricsRow(
+            subscriptionsCount: 8,
+            showsCount: 17,
+            monthlyTotal: "$80.00",
+            onSubscriptionsTap: {
+                print("Subscriptions tapped!")
+            }
         )
         .background(Color.heroBackground)
     }

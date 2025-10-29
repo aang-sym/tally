@@ -369,8 +369,8 @@ final class DashboardViewModel {
             // Urgent renewal
             TickerItem(
                 kind: .renewalDue,
-                title: "Netflix renewal 3 days",
-                subtitle: "$15.99 monthly",
+                title: "Netflix $15.99",
+                subtitle: "3 days",
                 icon: "creditcard",
                 aggregateCount: nil,
                 entityId: nil,
@@ -395,8 +395,8 @@ final class DashboardViewModel {
             // New release
             TickerItem(
                 kind: .newRelease,
-                title: "New: Stranger Things Season 5",
-                subtitle: nil,
+                title: "Stranger Things Season 5",
+                subtitle: "New",
                 icon: "sparkles",
                 aggregateCount: nil,
                 entityId: "show:stranger-things",
