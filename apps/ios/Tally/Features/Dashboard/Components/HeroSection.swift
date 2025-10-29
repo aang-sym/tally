@@ -25,21 +25,31 @@ extension View {
 
 struct HeroSection: View {
     let services: [StreamingService]
+    var safeAreaTop: CGFloat = 0 // Safe area inset from parent (must be captured before ignoresSafeArea)
     var onLogoTap: ((StreamingService) -> Void)? = nil
     var heroHeight: CGFloat = 400 // Match dashboard hero height
 
     var body: some View {
         GeometryReader { geometry in
+            // Use safe area passed from parent (geometry.safeAreaInsets.top is 0 after ignoresSafeArea)
+            let logoAreaHeight = geometry.size.height - safeAreaTop
+
             ZStack {
-                // Bouncing logos in hero area
+                // Bouncing logos in hero area (constrained below notch)
                 if !services.isEmpty {
                     ScatteredLogosView(
                         services: services,
                         collisionManager: LogoCollisionManager.shared,
-                        heroHeight: geometry.size.height, // Use actual geometry height
+                        heroHeight: logoAreaHeight, // Height excluding safe area
+                        safeAreaOffset: safeAreaTop, // Offset to push logos below notch
                         onLogoTap: onLogoTap
                     )
+                    .offset(y: safeAreaTop) // Offset entire container below notch
                 }
+
+                // CRT scanlines overlay on top of logos (still covers full height including notch)
+                CRTOverlayView(height: geometry.size.height)
+                    .allowsHitTesting(false)
             }
             .background(
                 // Dark gradient background for hero extending into safe area (notch)
@@ -53,6 +63,10 @@ struct HeroSection: View {
                 )
                 .ignoresSafeArea(edges: .top)
             )
+            .onAppear {
+                // Clear saved collision states to force reinitialization with safe area constraint
+                LogoCollisionManager.shared.logoStates.removeAll()
+            }
         }
     }
 }
@@ -93,6 +107,7 @@ struct ScatteredLogosView: View {
     let services: [StreamingService]
     @Bindable var collisionManager: LogoCollisionManager
     let heroHeight: CGFloat
+    let safeAreaOffset: CGFloat
     var onLogoTap: ((StreamingService) -> Void)? = nil
 
     var body: some View {
@@ -108,6 +123,7 @@ struct ScatteredLogosView: View {
                         service: service,
                         index: index,
                         containerSize: CGSize(width: geometry.size.width, height: heroHeight),
+                        safeAreaOffset: safeAreaOffset,
                         collisionManager: collisionManager,
                         dynamicScale: dynamicScale,
                         onLogoTap: onLogoTap
@@ -161,6 +177,7 @@ private struct BouncingLogoView: View {
     let service: StreamingService
     let index: Int
     let containerSize: CGSize
+    let safeAreaOffset: CGFloat
     @Bindable var collisionManager: LogoCollisionManager
     let dynamicScale: CGFloat
     var onLogoTap: ((StreamingService) -> Void)?
@@ -275,7 +292,7 @@ private struct BouncingLogoView: View {
         let pos = positions[index % positions.count]
         position = CGPoint(
             x: containerSize.width * pos.x,
-            y: containerSize.height * pos.y
+            y: containerSize.height * pos.y // No offset needed - container is already offset
         )
 
         // Initialize velocity with random direction for chaotic movement
@@ -402,6 +419,7 @@ private struct BouncingLogoView: View {
         }
 
         // Check vertical boundaries (use radiusY for vertical extent)
+        // Container is already offset, so use simple 0-based coordinates
         if actualPosition.y - radiusY <= 0 || actualPosition.y + radiusY >= containerSize.height {
             newVelocity.y *= -1
             // Clamp position to boundary

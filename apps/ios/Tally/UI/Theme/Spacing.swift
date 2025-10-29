@@ -51,7 +51,7 @@ enum Spacing {
     static let iconSizeLarge: CGFloat = 32
 
     /// Provider logo size in hero section (increased by 10% for full-screen bouncing)
-    static let heroLogoSize: CGFloat = 71.5
+    static let heroLogoSize: CGFloat = 78.65
 
     /// Provider logo size in subscription card
     static let subscriptionLogoSize: CGFloat = 40

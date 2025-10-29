@@ -8,9 +8,9 @@
 import SwiftUI
 
 enum DashboardTab: Hashable {
+    case home
     case calendar
     case recommendations
-    case subscriptions
     case search
 }
 
@@ -24,10 +24,13 @@ struct DashboardView: View {
     @State private var selectedSubscription: Subscription?
 
     // Tab selection
-    @State private var selectedTab: DashboardTab = .calendar
+    @State private var selectedTab: DashboardTab = .home
 
     // Search state
     @State private var searchText = ""
+
+    // Subscription list sheet state
+    @State private var showSubscriptionsList = false
 
     // Hero collapse state
     @State private var isHeroCollapsed = false
@@ -61,31 +64,19 @@ struct DashboardView: View {
 
     private var mainContentWithHero: some View {
         TabView(selection: $selectedTab) {
-            // Tab 1: Calendar
+            // Tab 1: Home (with full-screen hero)
+            Tab("Home", systemImage: "house.fill", value: .home) {
+                homeTabContent
+            }
+
+            // Tab 2: Calendar (no hero)
             Tab("Calendar", systemImage: "calendar", value: .calendar) {
-                VStack(spacing: 0) {
-                    heroContent
-                    calendarTabContent
-                }
-                .transaction { $0.disablesAnimations = false }
+                calendarTabContent
             }
 
-            // Tab 2: Recommendations
+            // Tab 3: Recommendations (no hero)
             Tab("Discover", systemImage: "sparkles", value: .recommendations) {
-                VStack(spacing: 0) {
-                    heroContent
-                    recommendationsTabContent
-                }
-                .transaction { $0.disablesAnimations = false }
-            }
-
-            // Tab 3: Subscriptions
-            Tab("Library", systemImage: "square.stack.3d.up", value: .subscriptions) {
-                VStack(spacing: 0) {
-                    heroContent
-                    subscriptionsTabContent
-                }
-                .transaction { $0.disablesAnimations = false }
+                recommendationsTabContent
             }
 
             // Search button (floating in bottom right with .search role)
@@ -165,6 +156,61 @@ struct DashboardView: View {
 
     // MARK: - Tab Content Views
 
+    private var homeTabContent: some View {
+        GeometryReader { geometry in
+            // Capture safe area BEFORE ignoresSafeArea is applied
+            let safeAreaTop = geometry.safeAreaInsets.top
+
+            VStack(spacing: 0) {
+                // Hero section - fills from notch to metrics
+                HeroSection(
+                    services: stableServices,
+                    safeAreaTop: safeAreaTop // Pass captured safe area
+                ) { tappedService in
+                    // Find subscription matching the tapped service and show detail sheet
+                    if let subscription = viewModel.subscriptions.first(where: { $0.service?.id == tappedService.id }) {
+                        selectedSubscription = subscription
+                    }
+                }
+                .frame(maxHeight: .infinity)
+                .ignoresSafeArea(edges: .top)
+
+                // Metrics row
+                MetricsRow(
+                    subscriptionsCount: viewModel.totalActiveSubscriptions,
+                    showsCount: viewModel.totalShows,
+                    monthlyTotal: viewModel.formattedMonthlyCost,
+                    showScanlines: false
+                )
+
+                // View Subscriptions button
+                Button(action: {
+                    showSubscriptionsList = true
+                }) {
+                    Text("View Subscriptions")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue.opacity(0.3))
+                        .cornerRadius(12)
+                }
+                .padding(.horizontal)
+                .padding(.bottom)
+            }
+            .sheet(isPresented: $showSubscriptionsList) {
+                SubscriptionListView(
+                    subscriptions: viewModel.activeSubscriptions,
+                    onSelectSubscription: { subscription in
+                        selectedSubscription = subscription
+                        showSubscriptionsList = false
+                    }
+                )
+                .presentationBackground(.thinMaterial)
+            }
+        }
+    }
+
     private var calendarTabContent: some View {
         WeekCalendarView(
             episodes: $viewModel.upcomingEpisodes,
@@ -174,15 +220,6 @@ struct DashboardView: View {
 
     private var recommendationsTabContent: some View {
         RecommendationsPageView(subscriptions: viewModel.activeSubscriptions)
-    }
-
-    private var subscriptionsTabContent: some View {
-        SubscriptionListView(
-            subscriptions: viewModel.activeSubscriptions,
-            onSelectSubscription: { subscription in
-                selectedSubscription = subscription
-            }
-        )
     }
 
     private var searchResultsContent: some View {
@@ -304,6 +341,7 @@ struct DashboardView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, Spacing.xxxl)
 
+
             Button {
                 // TODO: Navigate to add subscription flow
             } label: {
@@ -328,9 +366,9 @@ struct DashboardView: View {
 extension DashboardTab {
     var tabIndex: Int {
         switch self {
-        case .calendar: return 0
-        case .recommendations: return 1
-        case .subscriptions: return 2
+        case .home: return 0
+        case .calendar: return 1
+        case .recommendations: return 2
         case .search: return 3
         }
     }
