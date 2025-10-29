@@ -32,34 +32,6 @@ struct LiquidGlassTicker: View {
             if !items.isEmpty {
                 tickerContent
                     .padding(.vertical, Spacing.sm)
-                    // Apply shadows BEFORE glass effect
-                    .background(
-                        HStack(spacing: 0) {
-                            // Left shadow
-                            LinearGradient(
-                                colors: [
-                                    Color.black.opacity(0.6),
-                                    Color.clear
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                            .frame(width: 80)
-                            
-                            Spacer()
-                            
-                            // Right shadow
-                            LinearGradient(
-                                colors: [
-                                    Color.clear,
-                                    Color.black.opacity(0.6)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                            .frame(width: 80)
-                        }
-                    )
                     .glassEffect(
                         .regular.interactive(),
                         in: .rect(cornerRadius: 20)
@@ -77,7 +49,7 @@ struct LiquidGlassTicker: View {
     
     private var tickerContent: some View {
         GeometryReader { geometry in
-            HStack(spacing: 0) {
+            HStack(spacing: 10) {
                 // First set of items
                 tickerItemsRow
                     .background(
@@ -101,41 +73,35 @@ struct LiquidGlassTicker: View {
                 LinearGradient(
                     stops: [
                         .init(color: .clear, location: 0.0),        // Start at edge
-                        .init(color: .black, location: 0.08),       // Fade in over ~30pt
-                        .init(color: .black, location: 0.92),       // Fully visible center
+                        .init(color: .black, location: 0.04),       // Fade in over ~15pt
+                        .init(color: .black, location: 0.96),       // Fully visible center
                         .init(color: .clear, location: 1.0)         // Fade out at edge
                     ],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
             )
+            .frame(maxWidth: .infinity, alignment: .center) // Center the content
         }
         .frame(height: 24) // Height of text line
         .clipped() // Ensure content doesn't escape
     }
     
     private var tickerItemsRow: some View {
-        HStack(spacing: 24) {
+        HStack(spacing: 10) {
             ForEach(items) { item in
-                HStack(spacing: 8) {
-                    // Icon
-                    Image(systemName: item.icon)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(iconColor(for: item.kind))
-                        .frame(width: 16, height: 16)
-                    
-                    // Text
-                    Text(formattedItemText(item))
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                        .fixedSize()
-                    
-                    // Separator
-                    Text("•")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(.white.opacity(0.4))
-                }
+                // Icon
+                Image(systemName: item.icon)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(iconColor(for: item.kind))
+                    .frame(width: 16, height: 16)
+                
+                // Text
+                Text(formattedItemText(item))
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                    .fixedSize()
             }
         }
     }
@@ -156,58 +122,11 @@ struct LiquidGlassTicker: View {
     // MARK: - Helper Methods
     
     private func formattedItemText(_ item: TickerItem) -> String {
-        // Make text more succinct
-        switch item.kind {
-        case .upcomingAirDate:
-            // "Show Name • Airs in 2 days" -> "Show Name in 2d"
-            if let subtitle = item.subtitle {
-                // Extract "X days/hours" and shorten it
-                let shortened = subtitle
-                    .replacingOccurrences(of: " days", with: "d")
-                    .replacingOccurrences(of: " day", with: "d")
-                    .replacingOccurrences(of: " hours", with: "h")
-                    .replacingOccurrences(of: " hour", with: "h")
-                    .replacingOccurrences(of: "Airs in ", with: "in ")
-                    .replacingOccurrences(of: "Today", with: "today")
-                    .replacingOccurrences(of: "Tomorrow", with: "tomorrow")
-                return "\(item.title) \(shortened)"
-            }
-            return item.title
-            
-        case .renewalDue:
-            // "Service Name • Renews in X days" -> "Service Name renews in Xd"
-            if let subtitle = item.subtitle {
-                let shortened = subtitle
-                    .replacingOccurrences(of: " days", with: "d")
-                    .replacingOccurrences(of: " day", with: "d")
-                    .replacingOccurrences(of: "Renews in ", with: "renews in ")
-                return "\(item.title) \(shortened)"
-            }
-            return item.title
-            
-        case .newRelease:
-            // "Show Name • New episode available" -> "Show Name (new)"
-            return "\(item.title) (new)"
-            
-        case .trendingNow:
-            // "X shows trending" -> "X trending"
-            return item.title.replacingOccurrences(of: " shows trending", with: " trending")
-            
-        case .priceChange:
-            // "Service • Price increase" -> "Service price ↑"
-            if item.subtitle?.contains("increase") == true {
-                return "\(item.title) price ↑"
-            } else {
-                return "\(item.title) price ↓"
-            }
-            
-        case .recommendation:
-            // Keep as is, likely already short
-            if let subtitle = item.subtitle {
-                return "\(item.title) • \(subtitle)"
-            }
-            return item.title
+        // Return title, or title + subtitle if available
+        if let subtitle = item.subtitle {
+            return "\(item.title) • \(subtitle)"
         }
+        return item.title
     }
     
     private func iconColor(for kind: TickerItem.Kind) -> Color {

@@ -356,7 +356,7 @@ final class DashboardViewModel {
             // Trending item
             TickerItem(
                 kind: .trendingNow,
-                title: "1,167 people are watching Chad Powers this week",
+                title: "1,167 people watching Chad Powers this week",
                 subtitle: nil,
                 icon: "flame.fill",
                 aggregateCount: 1167,
@@ -369,7 +369,7 @@ final class DashboardViewModel {
             // Urgent renewal
             TickerItem(
                 kind: .renewalDue,
-                title: "Netflix renews in 3 days",
+                title: "Netflix renewal 3 days",
                 subtitle: "$15.99 monthly",
                 icon: "creditcard",
                 aggregateCount: nil,
@@ -395,8 +395,8 @@ final class DashboardViewModel {
             // New release
             TickerItem(
                 kind: .newRelease,
-                title: "New on Netflix: Stranger Things Season 5",
-                subtitle: "Added today",
+                title: "New: Stranger Things Season 5",
+                subtitle: nil,
                 icon: "sparkles",
                 aggregateCount: nil,
                 entityId: "show:stranger-things",
@@ -408,8 +408,8 @@ final class DashboardViewModel {
             // Recommendation
             TickerItem(
                 kind: .recommendation,
-                title: "You might like: House of the Dragon",
-                subtitle: "Based on your watchlist",
+                title: "Recommended: House of the Dragon",
+                subtitle: nil,
                 icon: "star.fill",
                 aggregateCount: nil,
                 entityId: "show:house-of-the-dragon",
