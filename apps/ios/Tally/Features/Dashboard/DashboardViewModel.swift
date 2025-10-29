@@ -10,6 +10,30 @@ import Foundation
 import SwiftUI
 import Observation
 
+// MARK: - TickerItem Model
+
+struct TickerItem: Identifiable {
+    enum Kind {
+        case upcomingAirDate
+        case newRelease
+        case renewalDue
+        case priceChange
+        case recommendation
+        case trendingNow
+    }
+
+    let id: UUID = .init()
+    let kind: Kind
+    let title: String
+    let subtitle: String?
+    let icon: String
+    let aggregateCount: Int?    // anonymous global count e.g., viewers this week
+    let entityId: String?       // e.g., show ID for deep-link
+    let date: Date?
+    let deepLink: URL?
+    let urgency: Int
+}
+
 @Observable
 final class DashboardViewModel {
     // MARK: - State
@@ -17,11 +41,19 @@ final class DashboardViewModel {
     var subscriptions: [Subscription] = []
     var watchlist: [UserShow] = [] // Store watchlist for show counts
     var upcomingEpisodes: [CalendarEpisode] = [] // Episodes airing this week
+    var tickerItems: [TickerItem] = [] // News ticker items
     var isLoading = false
     var isLoadingEpisodes = false // Track episode loading separately
     var error: String?
     private var hasLoadedData = false // Cache flag to prevent redundant loads
     private var isRefreshing = false // Prevent concurrent refreshes
+
+    // MARK: - Initialization
+
+    init() {
+        // Load mock ticker items
+        loadMockTickerItems()
+    }
 
     // MARK: - Computed Properties
 
@@ -313,6 +345,79 @@ final class DashboardViewModel {
         upcomingEpisodes.filter { episode in
             Calendar.current.isDate(episode.airDate, inSameDayAs: date)
         }
+    }
+
+    /// Load mock ticker items (placeholder data for UI development)
+    private func loadMockTickerItems() {
+        let calendar = Calendar.current
+        let today = Date()
+
+        tickerItems = [
+            // Trending item
+            TickerItem(
+                kind: .trendingNow,
+                title: "1,167 people are watching Chad Powers this week",
+                subtitle: nil,
+                icon: "flame.fill",
+                aggregateCount: 1167,
+                entityId: "show:chad-powers",
+                date: nil,
+                deepLink: URL(string: "tally://show/chad-powers"),
+                urgency: 0
+            ),
+
+            // Urgent renewal
+            TickerItem(
+                kind: .renewalDue,
+                title: "Netflix renews in 3 days",
+                subtitle: "$15.99 monthly",
+                icon: "creditcard",
+                aggregateCount: nil,
+                entityId: nil,
+                date: calendar.date(byAdding: .day, value: 3, to: today),
+                deepLink: nil,
+                urgency: 3
+            ),
+
+            // Upcoming air date
+            TickerItem(
+                kind: .upcomingAirDate,
+                title: "Severance S02E05 airs tomorrow",
+                subtitle: "Apple TV+",
+                icon: "calendar.badge.clock",
+                aggregateCount: nil,
+                entityId: "show:severance",
+                date: calendar.date(byAdding: .day, value: 1, to: today),
+                deepLink: URL(string: "tally://show/severance"),
+                urgency: 2
+            ),
+
+            // New release
+            TickerItem(
+                kind: .newRelease,
+                title: "New on Netflix: Stranger Things Season 5",
+                subtitle: "Added today",
+                icon: "sparkles",
+                aggregateCount: nil,
+                entityId: "show:stranger-things",
+                date: today,
+                deepLink: URL(string: "tally://show/stranger-things"),
+                urgency: 1
+            ),
+
+            // Recommendation
+            TickerItem(
+                kind: .recommendation,
+                title: "You might like: House of the Dragon",
+                subtitle: "Based on your watchlist",
+                icon: "star.fill",
+                aggregateCount: nil,
+                entityId: "show:house-of-the-dragon",
+                date: nil,
+                deepLink: URL(string: "tally://show/house-of-the-dragon"),
+                urgency: 0
+            )
+        ]
     }
 
     /// Refresh subscriptions and episodes

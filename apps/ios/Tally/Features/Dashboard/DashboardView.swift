@@ -36,6 +36,10 @@ struct DashboardView: View {
     @State private var isHeroCollapsed = false
     @State private var dragOffset: CGFloat = 0
 
+    // Ticker state
+    @State private var showTickerExpanded = false
+    @Namespace private var tickerNamespace
+
     var body: some View {
         ZStack {
             backgroundGradient
@@ -177,6 +181,17 @@ struct DashboardView: View {
                 .frame(maxHeight: .infinity)
                 .ignoresSafeArea(edges: .top)
 
+                // Liquid Glass Ticker
+                GlassEffectContainer(spacing: 20.0) {
+                    LiquidGlassTicker(
+                        items: viewModel.tickerItems,
+                        isExpanded: $showTickerExpanded,
+                        namespace: tickerNamespace
+                    )
+                    .padding(.horizontal, Spacing.screenPadding)
+                    .padding(.top, Spacing.sm)
+                }
+
                 // Metrics row
                 MetricsRow(
                     subscriptionsCount: viewModel.totalActiveSubscriptions,
@@ -199,6 +214,43 @@ struct DashboardView: View {
                 }
                 .padding(.horizontal)
                 .padding(.bottom)
+            }
+            .overlay {
+                // Expanded ticker overlay
+                if showTickerExpanded {
+                    ZStack {
+                        // Dimmed background
+                        Color.black.opacity(0.4)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                    showTickerExpanded = false
+                                }
+                            }
+
+                        // Expanded ticker overlay
+                        VStack {
+                            Spacer()
+                                .frame(height: heroHeight + 80 + Spacing.sm + 64) // Hero + metrics + padding + approx ticker height
+
+                            GlassEffectContainer(spacing: 20.0) {
+                                LiquidGlassTickerExpanded(
+                                    items: viewModel.tickerItems,
+                                    isExpanded: $showTickerExpanded,
+                                    namespace: tickerNamespace,
+                                    onItemTap: { item in
+                                        handleTickerItemTap(item)
+                                    }
+                                )
+                                .padding(.horizontal, Spacing.screenPadding)
+                                .transition(.scale(scale: 0.95).combined(with: .opacity))
+                            }
+
+                            Spacer()
+                        }
+                    }
+                    .zIndex(100)
+                }
             }
             .overlay(alignment: .top) {
                 // Extend scanlines from the notch down behind the metrics row
@@ -293,6 +345,32 @@ struct DashboardView: View {
         isHeroCollapsed ? 0 : 1
     }
 
+    // MARK: - Ticker Item Handler
+
+    private func handleTickerItemTap(_ item: TickerItem) {
+        // Handle deep-link navigation for ticker items
+        guard let deepLink = item.deepLink else {
+            // No deep link - just close the expanded view
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                showTickerExpanded = false
+            }
+            return
+        }
+
+        // TODO: Implement actual deep-link navigation
+        // For now, just log the action and close the expanded view
+        print("📍 Ticker item tapped: \(item.title)")
+        print("📍 Deep link: \(deepLink.absoluteString)")
+
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            showTickerExpanded = false
+        }
+
+        // Future implementation would navigate to:
+        // - Show detail page for show-related items
+        // - Movie detail page for movie items
+        // - Subscription settings for billing items
+    }
 
     // MARK: - Loading View
 
