@@ -26,6 +26,8 @@ extension View {
 struct HeroSection: View {
     let services: [StreamingService]
     var safeAreaTop: CGFloat = 0 // Safe area inset from parent (must be captured before ignoresSafeArea)
+    var scanlineStyle: String? = nil // Optional scanline image asset name (nil = programmatic)
+    var scanlineFillMode: Bool = false // Use fill mode for scanline (stretches instead of tiles)
     var onLogoTap: ((StreamingService) -> Void)? = nil
     var heroHeight: CGFloat = 400 // Match dashboard hero height
 
@@ -33,6 +35,8 @@ struct HeroSection: View {
         GeometryReader { geometry in
             // Use safe area passed from parent (geometry.safeAreaInsets.top is 0 after ignoresSafeArea)
             let logoAreaHeight = geometry.size.height - safeAreaTop
+            // Get actual screen width excluding horizontal safe area insets
+            let screenWidth = geometry.size.width - geometry.safeAreaInsets.leading - geometry.safeAreaInsets.trailing
 
             ZStack {
                 // Bouncing logos in hero area (constrained below notch)
@@ -40,22 +44,22 @@ struct HeroSection: View {
                     ScatteredLogosView(
                         services: services,
                         collisionManager: LogoCollisionManager.shared,
+                        containerWidth: screenWidth, // Use screen width excluding safe areas
                         heroHeight: logoAreaHeight, // Height excluding safe area
                         safeAreaOffset: safeAreaTop, // Offset to push logos below notch
                         onLogoTap: onLogoTap
                     )
                     .offset(y: safeAreaTop) // Offset entire container below notch
                 }
-
                 // CRT scanlines overlay on top of logos (still covers full height including notch)
-                CRTOverlayView(height: geometry.size.height)
+                CRTOverlayView(height: geometry.size.height, scanlineImage: scanlineStyle, useFillMode: scanlineFillMode)
                     .allowsHitTesting(false)
             }
             .background(
                 // Dark gradient background for hero extending into safe area (notch)
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color(red: 0.15, green: 0.05, blue: 0.25),
+                        Color(red: 0.19, green: 0.06, blue: 0.30),
                         Color.black
                     ]),
                     startPoint: .top,
@@ -106,6 +110,7 @@ class LogoCollisionManager {
 struct ScatteredLogosView: View {
     let services: [StreamingService]
     @Bindable var collisionManager: LogoCollisionManager
+    let containerWidth: CGFloat
     let heroHeight: CGFloat
     let safeAreaOffset: CGFloat
     var onLogoTap: ((StreamingService) -> Void)? = nil
@@ -122,7 +127,7 @@ struct ScatteredLogosView: View {
                     BouncingLogoView(
                         service: service,
                         index: index,
-                        containerSize: CGSize(width: geometry.size.width, height: heroHeight),
+                        containerSize: CGSize(width: containerWidth, height: heroHeight),
                         safeAreaOffset: safeAreaOffset,
                         collisionManager: collisionManager,
                         dynamicScale: dynamicScale,
@@ -446,6 +451,7 @@ struct GlowingServiceLogoView: View {
     let baseSize: CGFloat
     var dynamicScale: CGFloat = 1.0
     var style: Style = .hero
+    var saturationBoost: Double = 1.12
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -472,6 +478,7 @@ struct GlowingServiceLogoView: View {
                     logoImage(assetName: assetName, glowColor: glowColor, shouldInvert: shouldInvert)
                         .brightness(config.baseBrightness)
                 }
+                .saturation(saturationBoost)
                 .frame(width: scaledSize, height: scaledSize)
                 .background(
                     logoImage(assetName: assetName, glowColor: glowColor, shouldInvert: shouldInvert)
@@ -709,20 +716,74 @@ enum ServiceBranding {
 
 struct CRTOverlayView: View {
     let height: CGFloat
-    
+    var scanlineImage: String? = nil // Optional PNG overlay (nil = programmatic)
+    var useFillMode: Bool = false // Use fill mode to stretch image (vignette aligns with screen)
+
+    // Fade scanlines from top (strong) to bottom (subtle)
+    private var verticalFadeMask: LinearGradient {
+        LinearGradient(
+            gradient: Gradient(stops: [
+                .init(color: .white, location: 0.0),                // full at top
+                .init(color: Color.white.opacity(0.85), location: 0.55),
+                .init(color: Color.white.opacity(0.15), location: 1.0) // mostly gone at bottom
+            ]),
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
     var body: some View {
         ZStack {
-            // Horizontal scanlines - calculated based on explicit height
-            VStack(spacing: 1) {
-                ForEach(0..<Int(height / 3), id: \.self) { _ in
-                    Rectangle()
-                        .fill(Color.white.opacity(0.04))
-                        .frame(height: 2)
-                    Spacer()
-                        .frame(height: 1)
+            if let imageName = scanlineImage {
+                // PNG-based scanlines with tiling or fill
+                let opacity: Double = {
+                    switch imageName {
+                    case "horizontal-rgb-fill":
+                        return 0.35
+                    case "crt-sony":
+                        return 0.35
+                    case "base_grid", "horizontal-cool", "horizontal-crt":
+                        return 0.24
+                    default:
+                        return 0.20
+                    }
+                }()
+
+                if useFillMode {
+                    // Fill mode - stretches to fit screen (vignette aligns with edges)
+                    Image(imageName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(height: height)
+                        .clipped()
+                        .opacity(opacity)
+                        .blendMode(.screen)
+                        .mask(verticalFadeMask)
+                        .allowsHitTesting(false)
+                } else {
+                    // Tile mode - repeats pattern
+                    Image(imageName)
+                        .resizable(resizingMode: .tile)
+                        .frame(height: height)
+                        .opacity(opacity)
+                        .blendMode(.screen)
+                        .mask(verticalFadeMask)
+                        .allowsHitTesting(false)
                 }
+            } else {
+                // Original programmatic scanlines
+                VStack(spacing: 1) {
+                    ForEach(0..<Int(height / 3), id: \.self) { _ in
+                        Rectangle()
+                            .fill(Color.white.opacity(0.02))
+                            .frame(height: 2)
+                        Spacer()
+                            .frame(height: 1)
+                    }
+                }
+                .mask(verticalFadeMask)
+                .allowsHitTesting(false)
             }
-            .allowsHitTesting(false)
 
             // Subtle vignette for CRT edge darkening
             RadialGradient(
@@ -847,5 +908,129 @@ struct CRTOverlayView: View {
     .frame(width: 280, height: 180)
     .background(Color.background)
     .border(Color.gray.opacity(0.3), width: 1)
+}
+
+#Preview("Scanline Comparison") {
+    struct ScanlinePreviewWrapper: View {
+        @State private var selectedScanline = "Horizontal RGB (Fill)"
+
+        // Updated to include fill mode: (displayName, assetName, useFillMode)
+        let scanlineOptions: [(String, String?, Bool)] = [
+            ("None (Programmatic)", nil, false),
+            ("CRT Sony", "crt-sony", false),
+            ("Grid 2px 25%", "Grid_2px_25", false),
+            ("Base Grid", "base_grid", false),
+            ("Horizontal Cool", "horizontal-cool", false),
+            ("Horizontal CRT", "horizontal-crt", false),
+            ("Horizontal Phosphors", "horizontal-phosphors", false),
+            ("Horizontal Phosphors (Fill)", "horizontal-phosphors-fill", true),
+            ("Horizontal RGB", "horizontal-rgb", false),
+            ("Horizontal RGB (Fill)", "horizontal-rgb-fill", true),
+            ("Horizontal", "horizontal", false),
+            ("Horizontal 0", "horizontal0", false),
+            ("Nintendo Game Boy Advance", "Nintendo-Game-Boy-Advance", false),
+            ("Scanline 2px 100%", "Scanline_2px_100", false),
+            ("Scanline 2px 100% + Vignette", "Scanline_2px_100_Vignette", false),
+            ("Scanline 2px 50%", "Scanline_2px_50", false),
+            ("Scanline 2px 50% + Vignette", "Scanline_2px_50_Vignette", false),
+            ("Scanline 3px 100%", "Scanline_3px_100", false),
+            ("Scanline 3px 100% + Vignette", "Scanline_3px_100_Vignette", false),
+            ("Scanline 3px 50%", "Scanline_3px_50", false),
+            ("Scanline 3px 50% + Vignette", "Scanline_3px_50_Vignette", false),
+            ("Scanlines", "scanlines", false),
+            ("Scanlines Bold", "scanlinesbold", false),
+            ("Scanlines Grid", "scanlinesgrid", false)
+        ]
+
+        var currentScanline: String? {
+            scanlineOptions.first(where: { $0.0 == selectedScanline })?.1
+        }
+
+        var useFillMode: Bool {
+            scanlineOptions.first(where: { $0.0 == selectedScanline })?.2 ?? false
+        }
+
+        var body: some View {
+            VStack(spacing: 0) {
+                // Dropdown menu at top
+                HStack {
+                    Text("Scanline Style:")
+                        .font(.headline)
+                        .foregroundColor(.white)
+
+                    Spacer()
+
+                    Menu {
+                        ForEach(scanlineOptions, id: \.0) { option in
+                            Button(option.0) {
+                                selectedScanline = option.0
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text(selectedScanline)
+                                .foregroundColor(.white)
+                            Image(systemName: "chevron.down")
+                                .foregroundColor(.white.opacity(0.6))
+                                .font(.caption)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(8)
+                    }
+                }
+                .padding()
+                .background(Color.black.opacity(0.8))
+
+                // Hero with selected scanline
+                HeroSection(
+                    services: [
+                        StreamingService(
+                            id: "netflix",
+                            tmdbProviderId: 8,
+                            name: "Netflix",
+                            logoPath: "/9A1JSVmSxsyaBK4SUFsYVqbAYfW.jpg",
+                            homepage: "https://www.netflix.com",
+                            prices: [],
+                            defaultPrice: nil
+                        ),
+                        StreamingService(
+                            id: "disney",
+                            tmdbProviderId: 337,
+                            name: "Disney Plus",
+                            logoPath: "/7rwgEs15tFwyR9NPQ5vpzxTj19Q.jpg",
+                            homepage: "https://www.disneyplus.com",
+                            prices: [],
+                            defaultPrice: nil
+                        ),
+                        StreamingService(
+                            id: "hbo",
+                            tmdbProviderId: 384,
+                            name: "Max",
+                            logoPath: "/zxrVdFjIjLqkfnwyghnfywTn3Lh.jpg",
+                            homepage: "https://www.max.com",
+                            prices: [],
+                            defaultPrice: nil
+                        ),
+                        StreamingService(
+                            id: "prime",
+                            tmdbProviderId: 9,
+                            name: "Prime Video",
+                            logoPath: "/emthp39XA2YScoYL1p0sdbAH2WA.jpg",
+                            homepage: "https://www.primevideo.com",
+                            prices: [],
+                            defaultPrice: nil
+                        )
+                    ],
+                    scanlineStyle: currentScanline,
+                    scanlineFillMode: useFillMode
+                )
+            }
+            .background(Color.background)
+        }
+    }
+
+    return ScanlinePreviewWrapper()
 }
 #endif

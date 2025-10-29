@@ -165,7 +165,9 @@ struct DashboardView: View {
                 // Hero section - fills from notch to metrics
                 HeroSection(
                     services: stableServices,
-                    safeAreaTop: safeAreaTop // Pass captured safe area
+                    safeAreaTop: safeAreaTop, // Pass captured safe area
+                    scanlineStyle: "horizontal-rgb-fill",
+                    scanlineFillMode: true
                 ) { tappedService in
                     // Find subscription matching the tapped service and show detail sheet
                     if let subscription = viewModel.subscriptions.first(where: { $0.service?.id == tappedService.id }) {
@@ -197,6 +199,23 @@ struct DashboardView: View {
                 }
                 .padding(.horizontal)
                 .padding(.bottom)
+            }
+            .overlay(alignment: .top) {
+                // Extend scanlines from the notch down behind the metrics row
+                GeometryReader { geo in
+                    let topInset = geo.safeAreaInsets.top
+                    let metricsHeight: CGFloat = 80 // keep in sync with MetricsRow height
+                    let overlayHeight = topInset + heroHeight + metricsHeight
+                    
+                    CRTOverlayView(height: overlayHeight)
+                        .frame(width: geo.size.width, height: overlayHeight, alignment: .top)
+                        .position(x: geo.size.width / 2, y: overlayHeight / 2)
+                        .ignoresSafeArea(edges: .top) // draw into notch
+                        .allowsHitTesting(false)
+                }
+                // Limit GeometryReader height to hero + metrics so it doesn't spill into content
+                .frame(height: heroHeight + 80)
+                .clipShape(BottomOnlyClipShape())
             }
             .sheet(isPresented: $showSubscriptionsList) {
                 SubscriptionListView(
