@@ -179,7 +179,7 @@ struct DashboardView: View {
                                 .padding(.horizontal, Spacing.screenPadding)
                                 .transition(.scale(scale: 0.95).combined(with: .opacity))
                             }
-                            .frame(maxHeight: heroHeight, alignment: .bottom)
+                            .frame(maxHeight: heroHeight - 16, alignment: .bottom) // Constrain height with padding from notch
                             .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.bottom] }
                             .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showTickerExpanded)
                             .allowsHitTesting(showTickerExpanded)

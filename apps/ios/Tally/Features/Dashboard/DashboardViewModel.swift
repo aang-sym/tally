@@ -356,7 +356,7 @@ final class DashboardViewModel {
             // Trending item
             TickerItem(
                 kind: .trendingNow,
-                title: "1,167 people watching Chad Powers this week",
+                title: "567 people watching Chad Powers this week",
                 subtitle: nil,
                 icon: "flame.fill",
                 aggregateCount: 1167,
@@ -391,6 +391,19 @@ final class DashboardViewModel {
                 deepLink: URL(string: "tally://show/severance"),
                 urgency: 2
             ),
+            
+            // Trending item
+            TickerItem(
+                kind: .trendingNow,
+                title: "2,130 people watching Stranger Things this week",
+                subtitle: nil,
+                icon: "flame.fill",
+                aggregateCount: 1167,
+                entityId: "show:chad-powers",
+                date: nil,
+                deepLink: URL(string: "tally://show/chad-powers"),
+                urgency: 0
+            ),
 
             // New release
             TickerItem(
@@ -403,46 +416,6 @@ final class DashboardViewModel {
                 date: today,
                 deepLink: URL(string: "tally://show/stranger-things"),
                 urgency: 1
-            ),
-
-            // Recommendation
-            TickerItem(
-                kind: .recommendation,
-                title: "Recommended: House of the Dragon",
-                subtitle: nil,
-                icon: "star.fill",
-                aggregateCount: nil,
-                entityId: "show:house-of-the-dragon",
-                date: nil,
-                deepLink: URL(string: "tally://show/house-of-the-dragon"),
-                urgency: 0
-            ),
-            
-            // Recommendation
-            TickerItem(
-                kind: .recommendation,
-                title: "Recommended: House of the Dragon",
-                subtitle: nil,
-                icon: "star.fill",
-                aggregateCount: nil,
-                entityId: "show:house-of-the-dragon",
-                date: nil,
-                deepLink: URL(string: "tally://show/house-of-the-dragon"),
-                urgency: 0
-            ),
-            
-
-            // Recommendation
-            TickerItem(
-                kind: .recommendation,
-                title: "Recommended: House of the Dragon",
-                subtitle: nil,
-                icon: "star.fill",
-                aggregateCount: nil,
-                entityId: "show:house-of-the-dragon",
-                date: nil,
-                deepLink: URL(string: "tally://show/house-of-the-dragon"),
-                urgency: 0
             ),
             
             // Urgent renewal
@@ -482,46 +455,6 @@ final class DashboardViewModel {
                 date: today,
                 deepLink: URL(string: "tally://show/stranger-things"),
                 urgency: 1
-            ),
-
-            // Recommendation
-            TickerItem(
-                kind: .recommendation,
-                title: "Recommended: House of the Dragon",
-                subtitle: nil,
-                icon: "star.fill",
-                aggregateCount: nil,
-                entityId: "show:house-of-the-dragon",
-                date: nil,
-                deepLink: URL(string: "tally://show/house-of-the-dragon"),
-                urgency: 0
-            ),
-            
-            // Recommendation
-            TickerItem(
-                kind: .recommendation,
-                title: "Recommended: House of the Dragon",
-                subtitle: nil,
-                icon: "star.fill",
-                aggregateCount: nil,
-                entityId: "show:house-of-the-dragon",
-                date: nil,
-                deepLink: URL(string: "tally://show/house-of-the-dragon"),
-                urgency: 0
-            ),
-            
-
-            // Recommendation
-            TickerItem(
-                kind: .recommendation,
-                title: "Recommended: House of the Dragon",
-                subtitle: nil,
-                icon: "star.fill",
-                aggregateCount: nil,
-                entityId: "show:house-of-the-dragon",
-                date: nil,
-                deepLink: URL(string: "tally://show/house-of-the-dragon"),
-                urgency: 0
             )
         ]
     }
