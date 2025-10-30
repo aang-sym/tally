@@ -80,7 +80,6 @@ struct LiquidGlassTickerExpanded: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .fixedSize(horizontal: false, vertical: true) // Auto-size to content
         .glassEffect(
             .regular.interactive(),
             in: .rect(cornerRadius: 24)
