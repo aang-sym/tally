@@ -20,6 +20,7 @@ struct TickerItem: Identifiable {
         case priceChange
         case recommendation
         case trendingNow
+        case pause
     }
 
     let id: UUID = .init()
@@ -357,7 +358,7 @@ final class DashboardViewModel {
             TickerItem(
                 kind: .trendingNow,
                 title: "567 people watching Chad Powers this week",
-                subtitle: nil,
+                subtitle: "Disney Plus",
                 icon: "flame.fill",
                 aggregateCount: 1167,
                 entityId: "show:chad-powers",
@@ -366,11 +367,24 @@ final class DashboardViewModel {
                 urgency: 0
             ),
 
+            // Pause suggestion
+            TickerItem(
+                kind: .pause,
+                title: "Pause HBO Max?",
+                subtitle: "No upcoming episodes this month",
+                icon: "pause.circle.fill",
+                aggregateCount: nil,
+                entityId: "subscription:max",
+                date: nil,
+                deepLink: URL(string: "tally://subscription/max"),
+                urgency: 2
+            ),
+
             // Urgent renewal
             TickerItem(
                 kind: .renewalDue,
-                title: "Netflix $15.99",
-                subtitle: "3 days",
+                title: "Prime Video $15.99",
+                subtitle: "Renews in 3 days",
                 icon: "creditcard",
                 aggregateCount: nil,
                 entityId: nil,
@@ -396,7 +410,7 @@ final class DashboardViewModel {
             TickerItem(
                 kind: .newRelease,
                 title: "Stranger Things Season 5",
-                subtitle: "Out now on Netflix",
+                subtitle: "Netflix",
                 icon: "sparkles",
                 aggregateCount: nil,
                 entityId: "show:stranger-things",
@@ -404,45 +418,6 @@ final class DashboardViewModel {
                 deepLink: URL(string: "tally://show/stranger-things"),
                 urgency: 1
             ),
-            
-            // Urgent renewal
-            TickerItem(
-                kind: .renewalDue,
-                title: "Netflix $15.99",
-                subtitle: "3 days",
-                icon: "creditcard",
-                aggregateCount: nil,
-                entityId: nil,
-                date: calendar.date(byAdding: .day, value: 3, to: today),
-                deepLink: nil,
-                urgency: 3
-            ),
-
-            // Upcoming air date
-            TickerItem(
-                kind: .upcomingAirDate,
-                title: "Severance S02E05 airs tomorrow",
-                subtitle: "Apple TV+",
-                icon: "calendar.badge.clock",
-                aggregateCount: nil,
-                entityId: "show:severance",
-                date: calendar.date(byAdding: .day, value: 1, to: today),
-                deepLink: URL(string: "tally://show/severance"),
-                urgency: 2
-            ),
-
-            // New release
-            TickerItem(
-                kind: .newRelease,
-                title: "Stranger Things Season 5",
-                subtitle: "New",
-                icon: "sparkles",
-                aggregateCount: nil,
-                entityId: "show:stranger-things",
-                date: today,
-                deepLink: URL(string: "tally://show/stranger-things"),
-                urgency: 1
-            )
         ]
     }
 

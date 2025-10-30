@@ -147,7 +147,7 @@ struct LiquidGlassTickerExpanded: View {
         switch kind {
         case .trendingNow:
             return 1  // Highest priority
-        case .renewalDue, .upcomingAirDate:
+        case .renewalDue, .upcomingAirDate, .pause:
             return 2  // Urgent items
         case .newRelease, .priceChange, .recommendation:
             return 3  // Other items
@@ -168,6 +168,8 @@ struct LiquidGlassTickerExpanded: View {
             return .purple
         case .trendingNow:
             return .red
+        case .pause:
+            return .cyan
         }
     }
 }

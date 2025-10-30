@@ -20,9 +20,6 @@ struct DashboardView: View {
     @State private var selectedDate: Date?
     @State private var stableServices: [StreamingService] = []
 
-    // Subscription state
-    @State private var selectedSubscription: Subscription?
-
     // Tab selection
     @State private var selectedTab: DashboardTab = .home
 
@@ -36,6 +33,10 @@ struct DashboardView: View {
     @State private var showTickerExpanded = false
     @Namespace private var tickerNamespace
     @Namespace private var providerNamespace
+
+    // Provider detail state
+    @State private var showProviderDetail = false
+    @State private var selectedProviderSubscription: Subscription?
 
     var body: some View {
         ZStack {
@@ -52,11 +53,6 @@ struct DashboardView: View {
                 // Main content with persistent hero
                 mainContentWithHero
             }
-        }
-        .sheet(item: $selectedSubscription) { subscription in
-            ProviderDetailSheet(subscription: subscription, namespace: providerNamespace)
-                .presentationCornerRadius(32)
-                .presentationBackgroundInteraction(.enabled)
         }
         .task {
             await viewModel.load(api: api)
@@ -110,9 +106,12 @@ struct DashboardView: View {
                         scanlineStyle: "horizontal-rgb-fill",
                         scanlineFillMode: true
                     ) { tappedService in
-                        // Find subscription matching the tapped service and show detail sheet
+                        // Find subscription matching the tapped service and show detail overlay
                         if let subscription = viewModel.subscriptions.first(where: { $0.service?.id == tappedService.id }) {
-                            selectedSubscription = subscription
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                selectedProviderSubscription = subscription
+                                showProviderDetail = true
+                            }
                         }
                     }
                     .frame(maxHeight: .infinity)
@@ -146,7 +145,7 @@ struct DashboardView: View {
                     .zIndex(1) // Ensure metrics is above overlays when closed
                 }
                 .overlay { // Full-screen dimmed background overlay
-                    if showTickerExpanded || showSubscriptionsList {
+                    if showTickerExpanded || showSubscriptionsList || showProviderDetail {
                         Color.black.opacity(0.4)
                             .ignoresSafeArea(edges: .all)
                             .onTapGesture {
@@ -156,6 +155,9 @@ struct DashboardView: View {
                                     }
                                     if showSubscriptionsList {
                                         showSubscriptionsList = false
+                                    }
+                                    if showProviderDetail {
+                                        showProviderDetail = false
                                     }
                                 }
                             }
@@ -192,8 +194,11 @@ struct DashboardView: View {
                                 SubscriptionListView(
                                     subscriptions: viewModel.activeSubscriptions,
                                     onSelectSubscription: { subscription in
-                                        selectedSubscription = subscription
-                                        showSubscriptionsList = false
+                                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                            selectedProviderSubscription = subscription
+                                            showSubscriptionsList = false
+                                            showProviderDetail = true
+                                        }
                                     },
                                     namespace: providerNamespace,
                                     isShown: $showSubscriptionsList
@@ -206,6 +211,24 @@ struct DashboardView: View {
                             .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showSubscriptionsList)
                             .allowsHitTesting(showSubscriptionsList)
                             .zIndex(101)
+                        }
+
+                        // Provider detail - bottom edge anchored to ticker top (same as expanded ticker)
+                        if showProviderDetail, let subscription = selectedProviderSubscription {
+                            GlassEffectContainer(spacing: 20.0) {
+                                ProviderDetailSheet(
+                                    subscription: subscription,
+                                    namespace: providerNamespace,
+                                    isShown: $showProviderDetail
+                                )
+                                .padding(.horizontal, Spacing.screenPadding)
+                                .transition(.scale(scale: 0.95).combined(with: .opacity))
+                            }
+                            .frame(maxHeight: heroHeight - 16, alignment: .bottom) // Same constraint as ticker
+                            .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.bottom] }
+                            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showProviderDetail)
+                            .allowsHitTesting(showProviderDetail)
+                            .zIndex(102)
                         }
                     }
                 }

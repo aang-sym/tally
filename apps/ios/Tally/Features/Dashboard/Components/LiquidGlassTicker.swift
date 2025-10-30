@@ -146,6 +146,8 @@ struct LiquidGlassTicker: View {
             return .purple
         case .trendingNow:
             return .red
+        case .pause:
+            return .cyan
         }
     }
 }

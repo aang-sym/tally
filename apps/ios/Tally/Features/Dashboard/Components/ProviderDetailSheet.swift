@@ -9,114 +9,101 @@ import SwiftUI
 
 struct ProviderDetailSheet: View {
     let subscription: Subscription
-    @Environment(\.dismiss) private var dismiss
-
-    var namespace: Namespace.ID? = nil
-    @Namespace private var localNamespace
+    let namespace: Namespace.ID
+    @Binding var isShown: Bool
 
     var body: some View {
-        NavigationStack {
-            let ns = namespace ?? localNamespace
-            ScrollView(showsIndicators: false) {
-                GlassEffectContainer(spacing: 20.0) {
-                    // Main floating glass capsule matching expanded ticker style
-                    VStack(alignment: .leading, spacing: 0) {
-                        // Header
-                        HStack(alignment: .center, spacing: Spacing.md) {
-                            if let service = subscription.service,
-                               ServiceBranding.assetName(for: service, style: .card) != nil {
-                                GlowingServiceLogoView(
-                                    service: service,
-                                    baseSize: 64,
-                                    dynamicScale: 1.0,
-                                    style: .card
-                                )
-                                .frame(width: 64, height: 64)
-                            }
-
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(subscription.serviceName)
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(.white)
-                                    .lineLimit(2)
-
-                                StatusBadge(isActive: subscription.isActive)
-                            }
-
-                            Spacer()
-
-                            // Glassy close button
-                            Button {
-                                dismiss()
-                                let impactFeedback = UIImpactFeedbackGenerator(style: .soft)
-                                impactFeedback.impactOccurred()
-                            } label: {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(.white.opacity(0.8))
-                                    .frame(width: 32, height: 32)
-                                    .background(
-                                        Capsule().fill(Color.white.opacity(0.1))
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                            .glassEffect(.regular, in: .capsule)
-                        }
-                        .padding(.horizontal, Spacing.lg)
-                        .padding(.top, Spacing.lg)
-                        .padding(.bottom, Spacing.md)
-
-                        // Details block
-                        VStack(alignment: .leading, spacing: Spacing.xs) {
-                            glassRow {
-                                DetailRow(label: "Monthly Cost", value: subscription.formattedCost)
-                            }
-
-                            if subscription.isActive {
-                                glassRow {
-                                    DetailRow(label: "Renewal", value: subscription.renewalText)
-                                }
-                            }
-
-                            if let tier = subscription.tier {
-                                glassRow {
-                                    DetailRow(label: "Plan", value: tier)
-                                }
-                            }
-                        }
-                        .padding(.horizontal, Spacing.lg)
-                        .padding(.vertical, Spacing.md)
-
-                        // Actions block
-                        VStack(spacing: Spacing.xs) {
-                            GlassActionRow(icon: "pause.circle.fill", title: "Pause Subscription", tint: .orange) {
-                                // TODO: Implement pause
-                            }
-                            GlassActionRow(icon: "bell.fill", title: "Remind Me", tint: .blue) {
-                                // TODO: Implement reminder
-                            }
-                            GlassActionRow(icon: "arrow.up.right.square.fill", title: "Open App", tint: .tallyPrimary) {
-                                // TODO: Implement deep link
-                            }
-                        }
-                        .padding(.horizontal, Spacing.lg)
-                        .padding(.bottom, Spacing.lg)
-                    }
-                    .glassEffect(
-                        .regular.interactive(),
-                        in: .rect(cornerRadius: 24)
+        // Main floating glass capsule matching expanded ticker style
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack(alignment: .center, spacing: Spacing.md) {
+                if let service = subscription.service,
+                   ServiceBranding.assetName(for: service, style: .card) != nil {
+                    GlowingServiceLogoView(
+                        service: service,
+                        baseSize: 64,
+                        dynamicScale: 1.0,
+                        style: .card
                     )
-                    .glassEffectID("providerGlass-\(subscription.id)", in: ns)
+                    .frame(width: 64, height: 64)
                 }
-                .screenPadding()
-                .padding(.top, Spacing.sm)
-                .padding(.bottom, Spacing.xxxl)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(subscription.serviceName)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+                        .lineLimit(2)
+
+                    StatusBadge(isActive: subscription.isActive)
+                }
+
+                Spacer()
+
+                // Glassy close button
+                Button {
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        isShown = false
+                    }
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .soft)
+                    impactFeedback.impactOccurred()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.8))
+                        .frame(width: 32, height: 32)
+                        .background(
+                            Capsule().fill(Color.white.opacity(0.1))
+                        )
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular, in: .capsule)
             }
-            .background(Color.clear)
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.lg)
+            .padding(.bottom, Spacing.md)
+
+            // Details block
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                glassRow {
+                    DetailRow(label: "Monthly Cost", value: subscription.formattedCost)
+                }
+
+                if subscription.isActive {
+                    glassRow {
+                        DetailRow(label: "Renewal", value: subscription.renewalText)
+                    }
+                }
+
+                if let tier = subscription.tier {
+                    glassRow {
+                        DetailRow(label: "Plan", value: tier)
+                    }
+                }
+            }
+            .padding(.horizontal, Spacing.lg)
+            .padding(.vertical, Spacing.md)
+
+            // Actions block
+            VStack(spacing: Spacing.xs) {
+                GlassActionRow(icon: "pause.circle.fill", title: "Pause Subscription", tint: .orange) {
+                    // TODO: Implement pause
+                }
+                GlassActionRow(icon: "bell.fill", title: "Remind Me", tint: .blue) {
+                    // TODO: Implement reminder
+                }
+                GlassActionRow(icon: "arrow.up.right.square.fill", title: "Open App", tint: .tallyPrimary) {
+                    // TODO: Implement deep link
+                }
+            }
+            .padding(.horizontal, Spacing.lg)
+            .padding(.bottom, Spacing.lg)
         }
-        .presentationBackground(.clear)
+        .frame(maxWidth: .infinity)
+        .glassEffect(
+            .regular.interactive(),
+            in: .rect(cornerRadius: 24)
+        )
+        .glassEffectID("providerGlass", in: namespace)
     }
 }
 
@@ -220,7 +207,19 @@ private struct GlassActionRow: View {
 
 #if DEBUG
 #Preview("Provider Detail") {
-    ProviderDetailSheet(subscription: .preview)
+    @Previewable @State var isShown = true
+    @Previewable @Namespace var ns
+
+    ZStack {
+        Color.black.ignoresSafeArea()
+
+        ProviderDetailSheet(
+            subscription: .preview,
+            namespace: ns,
+            isShown: $isShown
+        )
+        .padding(.horizontal, Spacing.screenPadding)
+    }
 }
 #endif
 
