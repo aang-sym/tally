@@ -23,7 +23,7 @@ struct LiquidGlassTicker: View {
     var body: some View {
         Button {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                isExpanded.toggle()
+                isExpanded = true
             }
             // Haptic feedback
             let impactFeedback = UIImpactFeedbackGenerator(style: .soft)
@@ -42,6 +42,7 @@ struct LiquidGlassTicker: View {
             }
         }
         .buttonStyle(.plain)
+        .allowsHitTesting(!isExpanded) // Prevent taps when expanded
         .accessibilityLabel("News ticker")
         .accessibilityHint("Double tap to expand and view all items")
         .accessibilityValue("\(items.count) items")
