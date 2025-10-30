@@ -109,19 +109,19 @@ private struct CompactSubscriptionRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     // Line 1: Provider name
                     Text(subscription.serviceName)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.white)
                         .lineLimit(1)
 
                     // Line 2: Show count
                     Text("Watching 0 shows")
-                        .font(.system(size: 14, weight: .regular))
+                        .font(.system(size: 12, weight: .regular))
                         .foregroundColor(.white.opacity(0.7))
                         .lineLimit(1)
 
                     // Line 3: Status
                     Text(statusText)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(statusColor)
                         .lineLimit(1)
                 }

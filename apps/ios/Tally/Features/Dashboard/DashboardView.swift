@@ -200,8 +200,7 @@ struct DashboardView: View {
                                             showProviderDetail = true
                                         }
                                     },
-                                    namespace: providerNamespace,
-                                    isShown: $showSubscriptionsList
+                                    namespace: providerNamespace, isShown: $showSubscriptionsList
                                 )
                                 .padding(.horizontal, Spacing.screenPadding)
                                 .transition(.scale(scale: 0.95).combined(with: .opacity))
