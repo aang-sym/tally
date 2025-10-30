@@ -391,25 +391,12 @@ final class DashboardViewModel {
                 deepLink: URL(string: "tally://show/severance"),
                 urgency: 2
             ),
-            
-            // Trending item
-            TickerItem(
-                kind: .trendingNow,
-                title: "2,130 people watching Stranger Things this week",
-                subtitle: nil,
-                icon: "flame.fill",
-                aggregateCount: 1167,
-                entityId: "show:chad-powers",
-                date: nil,
-                deepLink: URL(string: "tally://show/chad-powers"),
-                urgency: 0
-            ),
 
             // New release
             TickerItem(
                 kind: .newRelease,
                 title: "Stranger Things Season 5",
-                subtitle: "New",
+                subtitle: "Out now on Netflix",
                 icon: "sparkles",
                 aggregateCount: nil,
                 entityId: "show:stranger-things",

@@ -15,64 +15,61 @@ struct SubscriptionListView: View {
     @Binding var isShown: Bool
 
     var body: some View {
-        GlassEffectContainer(spacing: 20.0) {
-            VStack(alignment: .leading, spacing: 0) {
-                // Header with close button (matching ticker style)
-                HStack {
-                    Text("Subscriptions")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.white)
+        VStack(alignment: .leading, spacing: 0) {
+            // Header with close button (matching ticker style)
+            HStack {
+                Text("Subscriptions")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.white)
 
-                    Spacer()
+                Spacer()
 
-                    // Close button
-                    Button {
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                            isShown = false
-                        }
-                        // Haptic feedback
-                        let impactFeedback = UIImpactFeedbackGenerator(style: .soft)
-                        impactFeedback.impactOccurred()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.7))
-                            .frame(width: 32, height: 32)
-                            .background(
-                                Circle()
-                                    .fill(Color.white.opacity(0.1))
-                            )
+                // Close button
+                Button {
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        isShown = false
+                    }
+                    // Haptic feedback
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .soft)
+                    impactFeedback.impactOccurred()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.7))
+                        .frame(width: 32, height: 32)
+                        .background(
+                            Circle()
+                                .fill(Color.white.opacity(0.1))
+                        )
+                }
+            }
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.lg)
+            .padding(.bottom, Spacing.md)
+
+            // List content
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: Spacing.xs) {
+                    ForEach(subscriptions) { subscription in
+                        CompactSubscriptionRow(subscription: subscription, namespace: namespace)
+                            .onTapGesture {
+                                onSelectSubscription(subscription)
+                                // Haptic feedback
+                                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                                impactFeedback.impactOccurred()
+                            }
                     }
                 }
                 .padding(.horizontal, Spacing.lg)
-                .padding(.top, Spacing.lg)
-                .padding(.bottom, Spacing.md)
-
-                // List content
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: Spacing.xs) {
-                        ForEach(subscriptions) { subscription in
-                            CompactSubscriptionRow(subscription: subscription, namespace: namespace)
-                                .onTapGesture {
-                                    onSelectSubscription(subscription)
-                                    // Haptic feedback
-                                    let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                                    impactFeedback.impactOccurred()
-                                }
-                        }
-                    }
-                    .padding(.horizontal, Spacing.lg)
-                    .padding(.bottom, Spacing.lg)
-                }
+                .padding(.bottom, Spacing.lg)
             }
-            .frame(maxWidth: .infinity)
-            .fixedSize(horizontal: false, vertical: true) // Auto-size to content
-            .glassEffect(
-                .regular.interactive(),
-                in: .rect(cornerRadius: 24)
-            )
-            .glassEffectID("subscriptionsGlass", in: namespace)
         }
+        .frame(maxWidth: .infinity)
+        .glassEffect(
+            .regular.interactive(),
+            in: .rect(cornerRadius: 24)
+        )
+        .glassEffectID("subscriptionsGlass", in: namespace)
     }
 }
 
@@ -108,27 +105,25 @@ private struct CompactSubscriptionRow: View {
                         )
                 }
 
-                // Provider details
-                VStack(alignment: .leading, spacing: 4) {
+                // Provider details - 3 separate lines
+                VStack(alignment: .leading, spacing: 3) {
+                    // Line 1: Provider name
                     Text(subscription.serviceName)
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)
                         .lineLimit(1)
 
-                    HStack(spacing: 6) {
-                        // Show count placeholder
-                        Text("Watching 0 shows")
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundColor(.white.opacity(0.7))
+                    // Line 2: Show count
+                    Text("Watching 0 shows")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundColor(.white.opacity(0.7))
+                        .lineLimit(1)
 
-                        Text("•")
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundColor(.white.opacity(0.4))
-
-                        Text(subscription.isActive ? "Active" : "Inactive")
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundColor(subscription.isActive ? .green : .red)
-                    }
+                    // Line 3: Status
+                    Text(statusText)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(statusColor)
+                        .lineLimit(1)
                 }
 
                 Spacer()
@@ -159,6 +154,23 @@ private struct CompactSubscriptionRow: View {
             return ServiceBranding.initials(for: service)
         }
         return "?"
+    }
+
+    private var statusText: String {
+        if subscription.isActive {
+            return "Active"
+        } else {
+            // Could add "Paused" or "Cancelled" logic based on subscription state
+            return "Inactive"
+        }
+    }
+
+    private var statusColor: Color {
+        if subscription.isActive {
+            return .green
+        } else {
+            return .red
+        }
     }
 }
 
