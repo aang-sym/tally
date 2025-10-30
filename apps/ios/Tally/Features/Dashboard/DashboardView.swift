@@ -35,6 +35,7 @@ struct DashboardView: View {
     // Ticker state
     @State private var showTickerExpanded = false
     @Namespace private var tickerNamespace
+    @Namespace private var providerNamespace
 
     var body: some View {
         ZStack {
@@ -53,7 +54,9 @@ struct DashboardView: View {
             }
         }
         .sheet(item: $selectedSubscription) { subscription in
-            ProviderDetailSheet(subscription: subscription)
+            ProviderDetailSheet(subscription: subscription, namespace: providerNamespace)
+                .presentationCornerRadius(32)
+                .presentationBackgroundInteraction(.enabled)
         }
         .task {
             await viewModel.load(api: api)
@@ -114,7 +117,7 @@ struct DashboardView: View {
                 .frame(maxHeight: .infinity)
                 .ignoresSafeArea(edges: .top)
 
-                // Liquid Glass Ticker
+                // Liquid Glass Ticker with alignment guide for anchoring
                 GlassEffectContainer(spacing: 20.0) {
                     LiquidGlassTicker(
                         items: viewModel.tickerItems,
@@ -124,6 +127,8 @@ struct DashboardView: View {
                     .padding(.horizontal, Spacing.screenPadding)
                     .padding(.top, Spacing.sm)
                 }
+                .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.top] }
+                .zIndex(1) // Ensure ticker is above overlays when closed
 
                 // Metrics row (tappable subscriptions count)
                 MetricsRow(
@@ -132,45 +137,76 @@ struct DashboardView: View {
                     monthlyTotal: viewModel.formattedMonthlyCost,
                     showScanlines: false,
                     onSubscriptionsTap: {
-                        showSubscriptionsList = true
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                            showSubscriptionsList = true
+                        }
                     }
                 )
+                .zIndex(1) // Ensure metrics is above overlays when closed
             }
-            .overlay {
-                // Expanded ticker overlay
-                if showTickerExpanded {
-                    ZStack {
-                        // Dimmed background
+            .overlay(alignment: Alignment(horizontal: .center, vertical: .tickerAnchor)) {
+                // Expanded ticker overlay - anchored using custom alignment
+                ZStack {
+                    // Dimmed background
+                    if showTickerExpanded || showSubscriptionsList {
                         Color.black.opacity(0.4)
                             .ignoresSafeArea()
                             .onTapGesture {
                                 withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                    showTickerExpanded = false
+                                    if showTickerExpanded {
+                                        showTickerExpanded = false
+                                    }
+                                    if showSubscriptionsList {
+                                        showSubscriptionsList = false
+                                    }
                                 }
                             }
-
-                        // Expanded ticker overlay
-                        VStack {
-                            Spacer()
-                                .frame(height: heroHeight + 80 + Spacing.sm + 64) // Hero + metrics + padding + approx ticker height
-
-                            GlassEffectContainer(spacing: 20.0) {
-                                LiquidGlassTickerExpanded(
-                                    items: viewModel.tickerItems,
-                                    isExpanded: $showTickerExpanded,
-                                    namespace: tickerNamespace,
-                                    onItemTap: { item in
-                                        handleTickerItemTap(item)
-                                    }
-                                )
-                                .padding(.horizontal, Spacing.screenPadding)
-                                .transition(.scale(scale: 0.95).combined(with: .opacity))
-                            }
-
-                            Spacer()
-                        }
+                            .zIndex(99)
                     }
-                    .zIndex(100)
+                    
+                    // Expanded ticker - bottom edge anchored to ticker top
+                    if showTickerExpanded {
+                        GlassEffectContainer(spacing: 20.0) {
+                            LiquidGlassTickerExpanded(
+                                items: viewModel.tickerItems,
+                                isExpanded: $showTickerExpanded,
+                                namespace: tickerNamespace,
+                                onItemTap: { item in
+                                    handleTickerItemTap(item)
+                                }
+                            )
+                            .padding(.horizontal, Spacing.screenPadding)
+                            .transition(.scale(scale: 0.95).combined(with: .opacity))
+                        }
+                        .frame(maxHeight: heroHeight, alignment: .bottom)
+                        .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.bottom] }
+                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showTickerExpanded)
+                        .allowsHitTesting(showTickerExpanded)
+                        .zIndex(100)
+                    }
+                    
+                    // Subscriptions list - bottom edge anchored to metrics top  
+                    if showSubscriptionsList {
+                        GlassEffectContainer(spacing: 20.0) {
+                            SubscriptionListView(
+                                subscriptions: viewModel.activeSubscriptions,
+                                onSelectSubscription: { subscription in
+                                    selectedSubscription = subscription
+                                    showSubscriptionsList = false
+                                },
+                                namespace: providerNamespace,
+                                isShown: $showSubscriptionsList
+                            )
+                            .padding(.horizontal, Spacing.screenPadding)
+                            .transition(.scale(scale: 0.95).combined(with: .opacity))
+                        }
+                        .frame(maxHeight: heroHeight + 64, alignment: .bottom)
+                        .offset(y: 64) // Offset down by ticker height to align with metrics
+                        .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.bottom] }
+                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showSubscriptionsList)
+                        .allowsHitTesting(showSubscriptionsList)
+                        .zIndex(101)
+                    }
                 }
             }
             .overlay(alignment: .top) {
@@ -189,16 +225,6 @@ struct DashboardView: View {
                 // Limit GeometryReader height to hero + metrics so it doesn't spill into content
                 .frame(height: heroHeight + 80)
                 .clipShape(BottomOnlyClipShape())
-            }
-            .sheet(isPresented: $showSubscriptionsList) {
-                SubscriptionListView(
-                    subscriptions: viewModel.activeSubscriptions,
-                    onSelectSubscription: { subscription in
-                        selectedSubscription = subscription
-                        showSubscriptionsList = false
-                    }
-                )
-                .presentationBackground(.thinMaterial)
             }
         }
     }
@@ -371,6 +397,19 @@ struct DashboardView: View {
     }
 }
 
+// MARK: - Custom Alignment for Ticker Anchoring
+
+extension VerticalAlignment {
+    /// Custom alignment for anchoring expanded ticker to collapsed ticker's top edge
+    private struct TickerAnchorAlignment: AlignmentID {
+        static func defaultValue(in context: ViewDimensions) -> CGFloat {
+            context[VerticalAlignment.center]
+        }
+    }
+    
+    static let tickerAnchor = VerticalAlignment(TickerAnchorAlignment.self)
+}
+
 // MARK: - Helper Extension
 
 extension DashboardTab {
@@ -427,3 +466,4 @@ private struct BottomOnlyClipShape: Shape {
     DashboardView(api: PreviewApiClient())
 }
 #endif
+

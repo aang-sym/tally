@@ -391,32 +391,58 @@ final class DashboardViewModel {
                 deepLink: URL(string: "tally://show/severance"),
                 urgency: 2
             ),
+//
+//            // New release
+//            TickerItem(
+//                kind: .newRelease,
+//                title: "Stranger Things Season 5",
+//                subtitle: "New",
+//                icon: "sparkles",
+//                aggregateCount: nil,
+//                entityId: "show:stranger-things",
+//                date: today,
+//                deepLink: URL(string: "tally://show/stranger-things"),
+//                urgency: 1
+//            ),
 
-            // New release
-            TickerItem(
-                kind: .newRelease,
-                title: "Stranger Things Season 5",
-                subtitle: "New",
-                icon: "sparkles",
-                aggregateCount: nil,
-                entityId: "show:stranger-things",
-                date: today,
-                deepLink: URL(string: "tally://show/stranger-things"),
-                urgency: 1
-            ),
-
-            // Recommendation
-            TickerItem(
-                kind: .recommendation,
-                title: "Recommended: House of the Dragon",
-                subtitle: nil,
-                icon: "star.fill",
-                aggregateCount: nil,
-                entityId: "show:house-of-the-dragon",
-                date: nil,
-                deepLink: URL(string: "tally://show/house-of-the-dragon"),
-                urgency: 0
-            )
+//            // Recommendation
+//            TickerItem(
+//                kind: .recommendation,
+//                title: "Recommended: House of the Dragon",
+//                subtitle: nil,
+//                icon: "star.fill",
+//                aggregateCount: nil,
+//                entityId: "show:house-of-the-dragon",
+//                date: nil,
+//                deepLink: URL(string: "tally://show/house-of-the-dragon"),
+//                urgency: 0
+//            ),
+//            
+//            // Recommendation
+//            TickerItem(
+//                kind: .recommendation,
+//                title: "Recommended: House of the Dragon",
+//                subtitle: nil,
+//                icon: "star.fill",
+//                aggregateCount: nil,
+//                entityId: "show:house-of-the-dragon",
+//                date: nil,
+//                deepLink: URL(string: "tally://show/house-of-the-dragon"),
+//                urgency: 0
+//            ),
+//
+//            // Recommendation
+//            TickerItem(
+//                kind: .recommendation,
+//                title: "Recommended: House of the Dragon",
+//                subtitle: nil,
+//                icon: "star.fill",
+//                aggregateCount: nil,
+//                entityId: "show:house-of-the-dragon",
+//                date: nil,
+//                deepLink: URL(string: "tally://show/house-of-the-dragon"),
+//                urgency: 0
+//            )
         ]
     }
 
