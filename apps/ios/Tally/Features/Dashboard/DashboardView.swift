@@ -101,56 +101,54 @@ struct DashboardView: View {
             // Capture safe area BEFORE ignoresSafeArea is applied
             let safeAreaTop = geometry.safeAreaInsets.top
 
-            VStack(spacing: 0) {
-                // Hero section - fills from notch to metrics
-                HeroSection(
-                    services: stableServices,
-                    safeAreaTop: safeAreaTop, // Pass captured safe area
-                    scanlineStyle: "horizontal-rgb-fill",
-                    scanlineFillMode: true
-                ) { tappedService in
-                    // Find subscription matching the tapped service and show detail sheet
-                    if let subscription = viewModel.subscriptions.first(where: { $0.service?.id == tappedService.id }) {
-                        selectedSubscription = subscription
-                    }
-                }
-                .frame(maxHeight: .infinity)
-                .ignoresSafeArea(edges: .top)
-
-                // Liquid Glass Ticker with alignment guide for anchoring
-                GlassEffectContainer(spacing: 20.0) {
-                    LiquidGlassTicker(
-                        items: viewModel.tickerItems,
-                        isExpanded: $showTickerExpanded,
-                        namespace: tickerNamespace
-                    )
-                    .padding(.horizontal, Spacing.screenPadding)
-                    .padding(.top, Spacing.sm)
-                }
-                .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.top] }
-                .zIndex(1) // Ensure ticker is above overlays when closed
-
-                // Metrics row (tappable subscriptions count)
-                MetricsRow(
-                    subscriptionsCount: viewModel.totalActiveSubscriptions,
-                    showsCount: viewModel.totalShows,
-                    monthlyTotal: viewModel.formattedMonthlyCost,
-                    showScanlines: false,
-                    onSubscriptionsTap: {
-                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                            showSubscriptionsList = true
+            ZStack {
+                VStack(spacing: 0) {
+                    // Hero section - fills from notch to metrics
+                    HeroSection(
+                        services: stableServices,
+                        safeAreaTop: safeAreaTop, // Pass captured safe area
+                        scanlineStyle: "horizontal-rgb-fill",
+                        scanlineFillMode: true
+                    ) { tappedService in
+                        // Find subscription matching the tapped service and show detail sheet
+                        if let subscription = viewModel.subscriptions.first(where: { $0.service?.id == tappedService.id }) {
+                            selectedSubscription = subscription
                         }
                     }
-                )
-                .zIndex(1) // Ensure metrics is above overlays when closed
-            }
-            .overlay(alignment: Alignment(horizontal: .center, vertical: .tickerAnchor)) {
-                // Expanded ticker overlay - anchored using custom alignment
-                ZStack {
-                    // Dimmed background
+                    .frame(maxHeight: .infinity)
+                    .ignoresSafeArea(edges: .top)
+
+                    // Liquid Glass Ticker with alignment guide for anchoring
+                    GlassEffectContainer(spacing: 20.0) {
+                        LiquidGlassTicker(
+                            items: viewModel.tickerItems,
+                            isExpanded: $showTickerExpanded,
+                            namespace: tickerNamespace
+                        )
+                        .padding(.horizontal, Spacing.screenPadding)
+                        .padding(.top, Spacing.sm)
+                    }
+                    .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.top] }
+                    .zIndex(1) // Ensure ticker is above overlays when closed
+
+                    // Metrics row (tappable subscriptions count)
+                    MetricsRow(
+                        subscriptionsCount: viewModel.totalActiveSubscriptions,
+                        showsCount: viewModel.totalShows,
+                        monthlyTotal: viewModel.formattedMonthlyCost,
+                        showScanlines: false,
+                        onSubscriptionsTap: {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                showSubscriptionsList = true
+                            }
+                        }
+                    )
+                    .zIndex(1) // Ensure metrics is above overlays when closed
+                }
+                .overlay { // Full-screen dimmed background overlay
                     if showTickerExpanded || showSubscriptionsList {
                         Color.black.opacity(0.4)
-                            .ignoresSafeArea()
+                            .ignoresSafeArea(edges: .all)
                             .onTapGesture {
                                 withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                                     if showTickerExpanded {
@@ -161,70 +159,74 @@ struct DashboardView: View {
                                     }
                                 }
                             }
-                            .zIndex(99)
-                    }
-                    
-                    // Expanded ticker - bottom edge anchored to ticker top
-                    if showTickerExpanded {
-                        GlassEffectContainer(spacing: 20.0) {
-                            LiquidGlassTickerExpanded(
-                                items: viewModel.tickerItems,
-                                isExpanded: $showTickerExpanded,
-                                namespace: tickerNamespace,
-                                onItemTap: { item in
-                                    handleTickerItemTap(item)
-                                }
-                            )
-                            .padding(.horizontal, Spacing.screenPadding)
-                            .transition(.scale(scale: 0.95).combined(with: .opacity))
-                        }
-                        .frame(maxHeight: heroHeight, alignment: .bottom)
-                        .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.bottom] }
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showTickerExpanded)
-                        .allowsHitTesting(showTickerExpanded)
-                        .zIndex(100)
-                    }
-                    
-                    // Subscriptions list - bottom edge anchored to metrics top  
-                    if showSubscriptionsList {
-                        GlassEffectContainer(spacing: 20.0) {
-                            SubscriptionListView(
-                                subscriptions: viewModel.activeSubscriptions,
-                                onSelectSubscription: { subscription in
-                                    selectedSubscription = subscription
-                                    showSubscriptionsList = false
-                                },
-                                namespace: providerNamespace,
-                                isShown: $showSubscriptionsList
-                            )
-                            .padding(.horizontal, Spacing.screenPadding)
-                            .transition(.scale(scale: 0.95).combined(with: .opacity))
-                        }
-                        .frame(maxHeight: heroHeight + 64, alignment: .bottom)
-                        .offset(y: 64) // Offset down by ticker height to align with metrics
-                        .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.bottom] }
-                        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showSubscriptionsList)
-                        .allowsHitTesting(showSubscriptionsList)
-                        .zIndex(101)
+                            .zIndex(50) // Lower than content but still visible
                     }
                 }
-            }
-            .overlay(alignment: .top) {
-                // Extend scanlines from the notch down behind the metrics row
-                GeometryReader { geo in
-                    let topInset = geo.safeAreaInsets.top
-                    let metricsHeight: CGFloat = 80 // keep in sync with MetricsRow height
-                    let overlayHeight = topInset + heroHeight + metricsHeight
-                    
-                    CRTOverlayView(height: overlayHeight)
-                        .frame(width: geo.size.width, height: overlayHeight, alignment: .top)
-                        .position(x: geo.size.width / 2, y: overlayHeight / 2)
-                        .ignoresSafeArea(edges: .top) // draw into notch
-                        .allowsHitTesting(false)
+                .overlay(alignment: Alignment(horizontal: .center, vertical: .tickerAnchor)) {
+                    // Expanded ticker overlay - anchored using custom alignment
+                    ZStack {
+                        // Expanded ticker - bottom edge anchored to ticker top
+                        if showTickerExpanded {
+                            GlassEffectContainer(spacing: 20.0) {
+                                LiquidGlassTickerExpanded(
+                                    items: viewModel.tickerItems,
+                                    isExpanded: $showTickerExpanded,
+                                    namespace: tickerNamespace,
+                                    onItemTap: { item in
+                                        handleTickerItemTap(item)
+                                    }
+                                )
+                                .padding(.horizontal, Spacing.screenPadding)
+                                .transition(.scale(scale: 0.95).combined(with: .opacity))
+                            }
+                            .frame(maxHeight: heroHeight, alignment: .bottom)
+                            .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.bottom] }
+                            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showTickerExpanded)
+                            .allowsHitTesting(showTickerExpanded)
+                            .zIndex(100)
+                        }
+
+                        // Subscriptions list - bottom edge anchored to metrics top
+                        if showSubscriptionsList {
+                            GlassEffectContainer(spacing: 20.0) {
+                                SubscriptionListView(
+                                    subscriptions: viewModel.activeSubscriptions,
+                                    onSelectSubscription: { subscription in
+                                        selectedSubscription = subscription
+                                        showSubscriptionsList = false
+                                    },
+                                    namespace: providerNamespace,
+                                    isShown: $showSubscriptionsList
+                                )
+                                .padding(.horizontal, Spacing.screenPadding)
+                                .transition(.scale(scale: 0.95).combined(with: .opacity))
+                            }
+                            .frame(maxHeight: heroHeight + 64, alignment: .bottom)
+                            .offset(y: 64) // Offset down by ticker height to align with metrics
+                            .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.bottom] }
+                            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showSubscriptionsList)
+                            .allowsHitTesting(showSubscriptionsList)
+                            .zIndex(101)
+                        }
+                    }
                 }
-                // Limit GeometryReader height to hero + metrics so it doesn't spill into content
-                .frame(height: heroHeight + 80)
-                .clipShape(BottomOnlyClipShape())
+                .overlay(alignment: .top) {
+                    // Extend scanlines from the notch down behind the metrics row
+                    GeometryReader { geo in
+                        let topInset = geo.safeAreaInsets.top
+                        let metricsHeight: CGFloat = 80 // keep in sync with MetricsRow height
+                        let overlayHeight = topInset + heroHeight + metricsHeight
+                        
+                        CRTOverlayView(height: overlayHeight)
+                            .frame(width: geo.size.width, height: overlayHeight, alignment: .top)
+                            .position(x: geo.size.width / 2, y: overlayHeight / 2)
+                            .ignoresSafeArea(edges: .top) // draw into notch
+                            .allowsHitTesting(false)
+                    }
+                    // Limit GeometryReader height to hero + metrics so it doesn't spill into content
+                    .frame(height: heroHeight + 80)
+                    .clipShape(BottomOnlyClipShape())
+                }
             }
         }
     }
