@@ -110,12 +110,12 @@ struct LiquidGlassTickerExpanded: View {
 
                 // Text content
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(highlightedText(item.title, for: item, baseFontSize: 14, baseFontWeight: .medium))
+                    textWithPills(item.title, for: item, fontSize: 14, fontWeight: .medium)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
 
                     if let subtitle = item.subtitle {
-                        Text(highlightedText(subtitle, for: item, baseFontSize: 14, baseFontWeight: .regular))
+                        textWithPills(subtitle, for: item, fontSize: 14, fontWeight: .regular)
                             .lineLimit(1)
                     }
                 }
@@ -187,32 +187,40 @@ struct LiquidGlassTickerExpanded: View {
 
     // MARK: - Helper Methods
 
-    /// Create attributed string with entity names highlighted in color (no bold)
-    private func highlightedText(_ text: String, for item: TickerItem, baseFontSize: CGFloat, baseFontWeight: Font.Weight) -> AttributedString {
+    /// Create text with inline colored pills for entity names
+    @ViewBuilder
+    private func textWithPills(_ text: String, for item: TickerItem, fontSize: CGFloat, fontWeight: Font.Weight) -> some View {
+        // For now, use simple attributed string approach
+        // TODO: Implement proper inline pill rendering if needed
+        Text(highlightedText(text, for: item, fontSize: fontSize, fontWeight: fontWeight))
+    }
+
+    /// Create attributed string with entity names in subtle shimmer colors
+    private func highlightedText(_ text: String, for item: TickerItem, fontSize: CGFloat, fontWeight: Font.Weight) -> AttributedString {
         var attributedString = AttributedString(text)
 
         // Apply base font to entire string
-        attributedString.font = .system(size: baseFontSize, weight: baseFontWeight)
+        attributedString.font = .system(size: fontSize, weight: fontWeight)
 
-        // Only color entity names (don't override font weight)
+        // Add subtle shimmer color to entity names
         for link in item.links {
             if let range = attributedString.range(of: link.title) {
-                attributedString[range].foregroundColor = colorForLinkKind(link.kind)
+                attributedString[range].foregroundColor = shimmerColorForLinkKind(link.kind)
             }
         }
 
         return attributedString
     }
 
-    /// Color for different link kinds (shows vs services) - subtle but visible
-    private func colorForLinkKind(_ kind: TickerLinkKind) -> Color {
+    /// Shimmer color for different link kinds - very subtle pastel tones
+    private func shimmerColorForLinkKind(_ kind: TickerLinkKind) -> Color {
         switch kind {
         case .show, .episode, .season:
-            return Color(red: 0.95, green: 0.70, blue: 0.50)  // Pastel orange for shows
+            return Color(red: 1.0, green: 0.85, blue: 0.70)  // Very subtle peachy shimmer for shows
         case .service:
-            return Color(red: 0.75, green: 0.65, blue: 0.90)  // Pastel purple for services
+            return Color(red: 0.85, green: 0.80, blue: 0.95)  // Very subtle lavender shimmer for services
         case .billing, .settings, .date:
-            return .white.opacity(0.7)  // Keep others unchanged
+            return .white.opacity(0.9)  // Near-white for others
         }
     }
 

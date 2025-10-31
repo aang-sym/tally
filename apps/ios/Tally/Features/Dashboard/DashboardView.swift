@@ -438,11 +438,12 @@ struct DashboardView: View {
     }
 
     private func colorForLinkKind(_ kind: TickerLinkKind) -> Color {
+        // Icons remain colored for visual distinction
         switch kind {
         case .show, .episode, .season:
-            return Color(red: 0.95, green: 0.70, blue: 0.50)  // Pastel orange for shows
+            return Color(red: 0.95, green: 0.70, blue: 0.50)  // Pastel orange for show icons
         case .service:
-            return Color(red: 0.75, green: 0.65, blue: 0.90)  // Pastel purple for services
+            return Color(red: 0.75, green: 0.65, blue: 0.90)  // Pastel purple for service icons
         case .billing, .settings, .date:
             return .white.opacity(0.7)
         }
