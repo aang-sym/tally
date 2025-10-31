@@ -14,23 +14,27 @@ struct LiquidGlassTickerExpanded: View {
     @Binding var isExpanded: Bool
     let namespace: Namespace.ID
     let onItemTap: (TickerItem) -> Void
+    let onShowQuickActions: (TickerItem) -> Void
 
-    // Sort items by importance: trending → urgent → others
+    // Sort items by new spec: urgency desc → date asc → kind priority
     private var sortedItems: [TickerItem] {
         items.sorted { item1, item2 in
-            let priority1 = sortPriority(for: item1.kind)
-            let priority2 = sortPriority(for: item2.kind)
-
-            if priority1 != priority2 {
-                return priority1 < priority2
+            // First sort by urgency (descending)
+            if item1.urgency != item2.urgency {
+                return item1.urgency > item2.urgency
             }
 
-            // Within same priority, sort by urgency/count
-            if item1.kind == .trendingNow, item2.kind == .trendingNow {
-                return (item1.aggregateCount ?? 0) > (item2.aggregateCount ?? 0)
+            // Then by date (ascending - sooner dates first)
+            if let date1 = item1.date, let date2 = item2.date {
+                return date1 < date2
+            } else if item1.date != nil {
+                return true  // Items with dates come before items without
+            } else if item2.date != nil {
+                return false
             }
 
-            return item1.urgency > item2.urgency
+            // Finally by kind priority (renewal > upcomingAirDate > newRelease > pause > trendingNow)
+            return item1.kind.priority > item2.kind.priority
         }
     }
 
@@ -91,7 +95,8 @@ struct LiquidGlassTickerExpanded: View {
 
     private func tickerItemRow(_ item: TickerItem) -> some View {
         Button {
-            onItemTap(item)
+            // Show quick actions menu via callback to parent
+            onShowQuickActions(item)
             // Haptic feedback
             let impactFeedback = UIImpactFeedbackGenerator(style: .light)
             impactFeedback.impactOccurred()
@@ -105,28 +110,17 @@ struct LiquidGlassTickerExpanded: View {
 
                 // Text content
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(item.title)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.white)
+                    Text(highlightedText(item.title, for: item, baseFontSize: 14, baseFontWeight: .medium))
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
 
                     if let subtitle = item.subtitle {
-                        Text(subtitle)
-                            .font(.system(size: 14, weight: .regular))
-                            .foregroundColor(.white.opacity(0.7))
+                        Text(highlightedText(subtitle, for: item, baseFontSize: 14, baseFontWeight: .regular))
                             .lineLimit(1)
                     }
                 }
 
                 Spacer()
-
-                // Chevron (only for items with deep links)
-                if item.deepLink != nil {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.4))
-                }
             }
             .padding(.horizontal, Spacing.lg)
             .padding(.vertical, Spacing.md)
@@ -136,40 +130,127 @@ struct LiquidGlassTickerExpanded: View {
             )
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            // Show all links in context menu
+            ForEach(Array(item.links.enumerated()), id: \.element.url) { _, link in
+                Button {
+                    print("📍 Link selected: \(link.title) → \(link.url)")
+                    // TODO: Implement deep-link navigation
+                    onItemTap(item)
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                    impactFeedback.impactOccurred()
+                } label: {
+                    Label(link.title, systemImage: iconForLinkKind(link.kind))
+                }
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(item.title + (item.subtitle != nil ? ", \(item.subtitle!)" : ""))
-        .accessibilityHint(item.deepLink != nil ? "Double tap to view details" : "")
+        .accessibilityHint("Tap to open, or long press for more options")
+    }
+
+    // MARK: - Link Chip
+
+    /// Small tinted pill showing a deep link (e.g., "Show", "Service", "Billing")
+    private struct LinkChip: View {
+        let link: TickerLink
+        let onTap: () -> Void
+
+        var body: some View {
+            Button(action: onTap) {
+                HStack(spacing: 4) {
+                    if let icon = link.icon {
+                        Image(systemName: icon)
+                            .font(.system(size: 10, weight: .semibold))
+                    }
+                    Text(link.title)
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .foregroundColor(link.tint)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(link.tint.opacity(0.15))
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder(link.tint.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .frame(minWidth: 44, minHeight: 44) // Accessibility: minimum tap area
+            .accessibilityLabel(link.title)
+            .accessibilityHint("Double tap to open \(link.title)")
+        }
     }
 
     // MARK: - Helper Methods
 
-    private func sortPriority(for kind: TickerItem.Kind) -> Int {
+    /// Create attributed string with entity names highlighted in color (no bold)
+    private func highlightedText(_ text: String, for item: TickerItem, baseFontSize: CGFloat, baseFontWeight: Font.Weight) -> AttributedString {
+        var attributedString = AttributedString(text)
+
+        // Apply base font to entire string
+        attributedString.font = .system(size: baseFontSize, weight: baseFontWeight)
+
+        // Only color entity names (don't override font weight)
+        for link in item.links {
+            if let range = attributedString.range(of: link.title) {
+                attributedString[range].foregroundColor = colorForLinkKind(link.kind)
+            }
+        }
+
+        return attributedString
+    }
+
+    /// Color for different link kinds (shows vs services) - subtle but visible
+    private func colorForLinkKind(_ kind: TickerLinkKind) -> Color {
         switch kind {
-        case .trendingNow:
-            return 1  // Highest priority
-        case .renewalDue, .upcomingAirDate, .pause:
-            return 2  // Urgent items
-        case .newRelease, .priceChange, .recommendation:
-            return 3  // Other items
+        case .show, .episode, .season:
+            return Color(red: 0.95, green: 0.70, blue: 0.50)  // Pastel orange for shows
+        case .service:
+            return Color(red: 0.75, green: 0.65, blue: 0.90)  // Pastel purple for services
+        case .billing, .settings, .date:
+            return .white.opacity(0.7)  // Keep others unchanged
         }
     }
 
-    private func iconColor(for kind: TickerItem.Kind) -> Color {
+    private func iconForLinkKind(_ kind: TickerLinkKind) -> String {
         switch kind {
-        case .upcomingAirDate:
+        case .show:
+            return "tv.fill"
+        case .service:
+            return "app.fill"
+        case .episode:
+            return "play.circle.fill"
+        case .season:
+            return "play.rectangle.fill"
+        case .date:
+            return "calendar"
+        case .billing:
+            return "creditcard.fill"
+        case .settings:
+            return "gearshape.fill"
+        }
+    }
+
+    private func iconColor(for kind: TickerItemKind) -> Color {
+        switch kind {
+        case .trendingNow:
+            return .orange
+        case .pause:
             return .blue
-        case .newRelease:
-            return .yellow
         case .renewalDue:
-            return .red
+            return .red  // TODO: Make dynamic based on days (≤3d red, ≤7d orange, else gray)
+        case .upcomingAirDate:
+            return .indigo
+        case .newRelease:
+            return .green
         case .priceChange:
             return .orange
         case .recommendation:
             return .purple
-        case .trendingNow:
-            return .red
-        case .pause:
-            return .cyan
         }
     }
 }
@@ -190,6 +271,9 @@ struct LiquidGlassTickerExpanded: View {
             namespace: namespace,
             onItemTap: { item in
                 print("Tapped: \(item.title)")
+            },
+            onShowQuickActions: { item in
+                print("Show quick actions for: \(item.title)")
             }
         )
         .padding(.horizontal, Spacing.screenPadding)

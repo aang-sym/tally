@@ -12,27 +12,67 @@ import Observation
 
 // MARK: - TickerItem Model
 
-struct TickerItem: Identifiable {
-    enum Kind {
-        case upcomingAirDate
-        case newRelease
-        case renewalDue
-        case priceChange
-        case recommendation
-        case trendingNow
-        case pause
-    }
+/// Represents a type of deep link in a ticker item
+enum TickerLinkKind {
+    case show
+    case service
+    case episode
+    case season
+    case date
+    case billing
+    case settings
+}
 
+/// Represents a tappable deep link with tinted styling
+struct TickerLink {
+    let kind: TickerLinkKind
+    let title: String            // Chip title, e.g. "Show", "Service", "Billing"
+    let url: URL
+    let icon: String?            // Optional small symbol on chip
+    let tint: Color              // Computed from kind and context
+    let isPrimary: Bool          // True = row's primary tap target
+}
+
+/// Ticker item kind with associated priority for sorting
+enum TickerItemKind {
+    case upcomingAirDate
+    case newRelease
+    case renewalDue
+    case priceChange
+    case recommendation
+    case trendingNow
+    case pause
+
+    /// Priority for sorting (higher = more urgent)
+    var priority: Int {
+        switch self {
+        case .renewalDue: return 4
+        case .upcomingAirDate: return 3
+        case .newRelease: return 2
+        case .pause: return 1
+        case .trendingNow: return 0
+        case .priceChange: return 0
+        case .recommendation: return 0
+        }
+    }
+}
+
+struct TickerItem: Identifiable {
     let id: UUID = .init()
-    let kind: Kind
+    let kind: TickerItemKind
     let title: String
     let subtitle: String?
     let icon: String
     let aggregateCount: Int?    // anonymous global count e.g., viewers this week
     let entityId: String?       // e.g., show ID for deep-link
     let date: Date?
-    let deepLink: URL?
+    let links: [TickerLink]     // ≥ 1, max 2 in UI (extras via context menu)
     let urgency: Int
+
+    // Legacy support - returns primary link URL
+    var deepLink: URL? {
+        links.first(where: { $0.isPrimary })?.url ?? links.first?.url
+    }
 }
 
 @Observable
@@ -354,20 +394,37 @@ final class DashboardViewModel {
         let today = Date()
 
         tickerItems = [
-            // Trending item
+            // Trending item - spec: "{countCompact} watching {Show} this week"
             TickerItem(
                 kind: .trendingNow,
-                title: "567 people watching Chad Powers this week",
+                title: "1.2K watching Chad Powers this week",
                 subtitle: "Disney Plus",
                 icon: "flame.fill",
                 aggregateCount: 1167,
                 entityId: "show:chad-powers",
                 date: nil,
-                deepLink: URL(string: "tally://show/chad-powers"),
+                links: [
+                    TickerLink(
+                        kind: .show,
+                        title: "Chad Powers",
+                        url: URL(string: "tally://show/chad-powers")!,
+                        icon: nil,
+                        tint: .purple, // Fallback purple (poster-dominant would be computed)
+                        isPrimary: true
+                    ),
+                    TickerLink(
+                        kind: .service,
+                        title: "Disney Plus",
+                        url: URL(string: "tally://service/disney-plus")!,
+                        icon: nil,
+                        tint: Color(red: 0.0, green: 0.3, blue: 0.6), // Disney+ brand color
+                        isPrimary: false
+                    )
+                ],
                 urgency: 0
             ),
 
-            // Pause suggestion
+            // Pause suggestion - spec: "Pause {Service}?"
             TickerItem(
                 kind: .pause,
                 title: "Pause HBO Max?",
@@ -376,24 +433,58 @@ final class DashboardViewModel {
                 aggregateCount: nil,
                 entityId: "subscription:max",
                 date: nil,
-                deepLink: URL(string: "tally://subscription/max"),
+                links: [
+                    TickerLink(
+                        kind: .service,
+                        title: "HBO Max",
+                        url: URL(string: "tally://service/hbo-max")!,
+                        icon: nil,
+                        tint: .purple, // HBO Max brand color
+                        isPrimary: true
+                    ),
+                    TickerLink(
+                        kind: .settings,
+                        title: "Manage Subscription",
+                        url: URL(string: "tally://settings/subscriptions")!,
+                        icon: nil,
+                        tint: .gray,
+                        isPrimary: false
+                    )
+                ],
                 urgency: 2
             ),
 
-            // Urgent renewal
+            // Urgent renewal - spec: "{Service} {price}"
             TickerItem(
                 kind: .renewalDue,
                 title: "Prime Video $15.99",
                 subtitle: "Renews in 3 days",
-                icon: "creditcard",
+                icon: "creditcard.fill",
                 aggregateCount: nil,
                 entityId: nil,
                 date: calendar.date(byAdding: .day, value: 3, to: today),
-                deepLink: nil,
+                links: [
+                    TickerLink(
+                        kind: .billing,
+                        title: "View Billing",
+                        url: URL(string: "tally://billing")!,
+                        icon: nil,
+                        tint: .red,
+                        isPrimary: true
+                    ),
+                    TickerLink(
+                        kind: .service,
+                        title: "Prime Video",
+                        url: URL(string: "tally://service/prime-video")!,
+                        icon: nil,
+                        tint: Color(red: 0.0, green: 0.7, blue: 0.9), // Prime brand color
+                        isPrimary: false
+                    )
+                ],
                 urgency: 3
             ),
 
-            // Upcoming air date
+            // Upcoming air date - spec: "{Show} S{SS}E{EE} airs {relativeDate}"
             TickerItem(
                 kind: .upcomingAirDate,
                 title: "Severance S02E05 airs tomorrow",
@@ -402,20 +493,54 @@ final class DashboardViewModel {
                 aggregateCount: nil,
                 entityId: "show:severance",
                 date: calendar.date(byAdding: .day, value: 1, to: today),
-                deepLink: URL(string: "tally://show/severance"),
+                links: [
+                    TickerLink(
+                        kind: .show,
+                        title: "Severance",
+                        url: URL(string: "tally://show/severance")!,
+                        icon: nil,
+                        tint: .purple, // Fallback purple
+                        isPrimary: true
+                    ),
+                    TickerLink(
+                        kind: .service,
+                        title: "Apple TV+",
+                        url: URL(string: "tally://service/apple-tv-plus")!,
+                        icon: nil,
+                        tint: .white, // Apple TV+ brand color
+                        isPrimary: false
+                    )
+                ],
                 urgency: 2
             ),
 
-            // New release
+            // New release - spec: "{Show} Season {N} now streaming"
             TickerItem(
                 kind: .newRelease,
-                title: "Stranger Things Season 5",
+                title: "Stranger Things Season 5 now streaming",
                 subtitle: "Netflix",
                 icon: "sparkles",
                 aggregateCount: nil,
                 entityId: "show:stranger-things",
                 date: today,
-                deepLink: URL(string: "tally://show/stranger-things"),
+                links: [
+                    TickerLink(
+                        kind: .show,
+                        title: "Stranger Things",
+                        url: URL(string: "tally://show/stranger-things")!,
+                        icon: nil,
+                        tint: .purple, // Fallback purple
+                        isPrimary: true
+                    ),
+                    TickerLink(
+                        kind: .service,
+                        title: "Netflix",
+                        url: URL(string: "tally://service/netflix")!,
+                        icon: nil,
+                        tint: .red, // Netflix brand color
+                        isPrimary: false
+                    )
+                ],
                 urgency: 1
             ),
         ]

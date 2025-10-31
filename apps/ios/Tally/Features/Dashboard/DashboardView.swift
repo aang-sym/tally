@@ -34,6 +34,10 @@ struct DashboardView: View {
     @Namespace private var tickerNamespace
     @Namespace private var providerNamespace
 
+    // Quick actions menu state
+    @State private var showQuickActionsMenu = false
+    @State private var selectedTickerItem: TickerItem?
+
     // Provider detail state
     @State private var showProviderDetail = false
     @State private var selectedProviderSubscription: Subscription?
@@ -145,11 +149,15 @@ struct DashboardView: View {
                     .zIndex(1) // Ensure metrics is above overlays when closed
                 }
                 .overlay { // Full-screen dimmed background overlay
-                    if showTickerExpanded || showSubscriptionsList || showProviderDetail {
+                    if showTickerExpanded || showSubscriptionsList || showProviderDetail || showQuickActionsMenu {
                         Color.black.opacity(0.4)
                             .ignoresSafeArea(edges: .all)
                             .onTapGesture {
                                 withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                    if showQuickActionsMenu {
+                                        showQuickActionsMenu = false
+                                        selectedTickerItem = nil
+                                    }
                                     if showTickerExpanded {
                                         showTickerExpanded = false
                                     }
@@ -176,6 +184,12 @@ struct DashboardView: View {
                                     namespace: tickerNamespace,
                                     onItemTap: { item in
                                         handleTickerItemTap(item)
+                                    },
+                                    onShowQuickActions: { item in
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                            selectedTickerItem = item
+                                            showQuickActionsMenu = true
+                                        }
                                     }
                                 )
                                 .padding(.horizontal, Spacing.screenPadding)
@@ -183,6 +197,7 @@ struct DashboardView: View {
                             }
                             .frame(maxHeight: heroHeight - 16, alignment: .bottom) // Constrain height with padding from notch
                             .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.bottom] }
+                            .alignmentGuide(.expandedTickerTop) { d in d[VerticalAlignment.top] } // Mark top edge for menu anchoring
                             .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showTickerExpanded)
                             .allowsHitTesting(showTickerExpanded)
                             .zIndex(100)
@@ -229,6 +244,19 @@ struct DashboardView: View {
                             .allowsHitTesting(showProviderDetail)
                             .zIndex(102)
                         }
+                    }
+                }
+                .overlay(alignment: Alignment(horizontal: .center, vertical: .expandedTickerTop)) {
+                    // Quick actions menu overlay - anchored to expanded ticker's top edge
+                    if showQuickActionsMenu, let item = selectedTickerItem, showTickerExpanded {
+                        quickActionsMenuView(for: item)
+                            .padding(.horizontal, Spacing.screenPadding)
+                            .padding(.bottom, 40) // Gap from expanded ticker - increased for better visual separation
+                            .transition(.scale(scale: 0.9).combined(with: .opacity))
+                            .alignmentGuide(.expandedTickerTop) { d in d[VerticalAlignment.bottom] }
+                            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showQuickActionsMenu)
+                            .allowsHitTesting(showQuickActionsMenu)
+                            .zIndex(103)
                     }
                 }
                 .overlay(alignment: .top) {
@@ -334,6 +362,92 @@ struct DashboardView: View {
         // - Subscription settings for billing items
     }
 
+    // MARK: - Quick Actions Menu
+
+    @ViewBuilder
+    private func quickActionsMenuView(for item: TickerItem) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(item.links.enumerated()), id: \.element.url) { index, link in
+                Button {
+                    print("📍 Link selected: \(link.title) → \(link.url)")
+                    // TODO: Implement deep-link navigation
+                    handleTickerItemTap(item)
+
+                    // Close menu
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        showQuickActionsMenu = false
+                        selectedTickerItem = nil
+                    }
+
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                    impactFeedback.impactOccurred()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: iconForLinkKind(link.kind))
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(colorForLinkKind(link.kind))
+                            .frame(width: 24, height: 24)
+
+                        Text(link.title)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.vertical, Spacing.md)
+                }
+                .buttonStyle(.plain)
+
+                if index < item.links.count - 1 {
+                    Divider()
+                        .background(Color.white.opacity(0.1))
+                }
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.black.opacity(0.8))
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.3), radius: 20, y: 10)
+        .frame(maxWidth: 320)
+    }
+
+    private func iconForLinkKind(_ kind: TickerLinkKind) -> String {
+        switch kind {
+        case .show:
+            return "tv.fill"
+        case .service:
+            return "app.fill"
+        case .episode:
+            return "play.circle.fill"
+        case .season:
+            return "play.rectangle.fill"
+        case .date:
+            return "calendar"
+        case .billing:
+            return "creditcard.fill"
+        case .settings:
+            return "gearshape.fill"
+        }
+    }
+
+    private func colorForLinkKind(_ kind: TickerLinkKind) -> Color {
+        switch kind {
+        case .show, .episode, .season:
+            return Color(red: 0.95, green: 0.70, blue: 0.50)  // Pastel orange for shows
+        case .service:
+            return Color(red: 0.75, green: 0.65, blue: 0.90)  // Pastel purple for services
+        case .billing, .settings, .date:
+            return .white.opacity(0.7)
+        }
+    }
+
     // MARK: - Loading View
 
     private var loadingView: some View {
@@ -429,8 +543,17 @@ extension VerticalAlignment {
             context[VerticalAlignment.center]
         }
     }
-    
+
     static let tickerAnchor = VerticalAlignment(TickerAnchorAlignment.self)
+
+    /// Custom alignment for anchoring quick actions menu to expanded ticker's top edge
+    private struct ExpandedTickerTopAlignment: AlignmentID {
+        static func defaultValue(in context: ViewDimensions) -> CGFloat {
+            context[VerticalAlignment.center]
+        }
+    }
+
+    static let expandedTickerTop = VerticalAlignment(ExpandedTickerTopAlignment.self)
 }
 
 // MARK: - Helper Extension
