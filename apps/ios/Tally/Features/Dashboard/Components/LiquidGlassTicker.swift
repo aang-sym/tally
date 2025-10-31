@@ -134,22 +134,22 @@ struct LiquidGlassTicker: View {
         return item.title
     }
     
-    private func iconColor(for kind: TickerItem.Kind) -> Color {
+    private func iconColor(for kind: TickerItemKind) -> Color {
         switch kind {
-        case .upcomingAirDate:
+        case .trendingNow:
+            return .orange
+        case .pause:
             return .blue
-        case .newRelease:
-            return .yellow
         case .renewalDue:
-            return .red
+            return .red  // TODO: Make dynamic based on days (≤3d red, ≤7d orange, else gray)
+        case .upcomingAirDate:
+            return .indigo
+        case .newRelease:
+            return .green
         case .priceChange:
             return .orange
         case .recommendation:
             return .purple
-        case .trendingNow:
-            return .red
-        case .pause:
-            return .cyan
         }
     }
 }
@@ -564,22 +564,22 @@ private struct CustomFontTicker: View {
         return item.title
     }
 
-    private func iconColor(for kind: TickerItem.Kind) -> Color {
+    private func iconColor(for kind: TickerItemKind) -> Color {
         switch kind {
-        case .upcomingAirDate:
+        case .trendingNow:
+            return .orange
+        case .pause:
             return .blue
-        case .newRelease:
-            return .yellow
         case .renewalDue:
-            return .red
+            return .red  // TODO: Make dynamic based on days (≤3d red, ≤7d orange, else gray)
+        case .upcomingAirDate:
+            return .indigo
+        case .newRelease:
+            return .green
         case .priceChange:
             return .orange
         case .recommendation:
             return .purple
-        case .trendingNow:
-            return .red
-        case .pause:
-            return .cyan
         }
     }
 }
