@@ -63,6 +63,7 @@ struct TickerItem: Identifiable {
     let title: String
     let subtitle: String?
     let icon: String
+    let posterPath: String?     // TMDB poster path (e.g., "/x2LSRK2Cm7MZhjluni1msVJ3wDF.jpg")
     let aggregateCount: Int?    // anonymous global count e.g., viewers this week
     let entityId: String?       // e.g., show ID for deep-link
     let date: Date?
@@ -88,6 +89,11 @@ final class DashboardViewModel {
     var error: String?
     private var hasLoadedData = false // Cache flag to prevent redundant loads
     private var isRefreshing = false // Prevent concurrent refreshes
+
+    // MARK: - Show Repository
+
+    /// Central show repository - maps show IDs to Show objects for dynamic lookups
+    private var showsById: [String: Show] = [:]
 
     // MARK: - Initialization
 
@@ -146,6 +152,102 @@ final class DashboardViewModel {
         }
     }
 
+    // MARK: - Show Repository Methods
+
+    /// Get show by entity ID (e.g., "show:66732" or "show:severance" → Show object)
+    /// Synchronous cache-only lookup
+    func getShow(byEntityId entityId: String) -> Show? {
+        // Parse entity ID format: "show:66732" or "show:severance"
+        guard entityId.hasPrefix("show:") else {
+            print("🔍 [LOOKUP] Invalid entity ID format: \(entityId)")
+            return nil
+        }
+        let showId = String(entityId.dropFirst(5)) // Remove "show:" prefix
+        print("🔍 [LOOKUP] Looking up show with entity ID: \(entityId) → showId: \(showId)")
+
+        // Try direct lookup first (handles both numeric TMDB IDs and slugs)
+        if let show = showsById[showId] {
+            print("  ✅ Found via direct lookup: \(show.title)")
+            return show
+        }
+
+        // Try with "tmdb:" prefix for numeric IDs
+        let tmdbKey = "tmdb:\(showId)"
+        print("  ⏭️ Direct lookup failed, trying with tmdb: prefix → \(tmdbKey)")
+        if let show = showsById[tmdbKey] {
+            print("  ✅ Found via TMDB lookup: \(show.title)")
+            return show
+        }
+
+        print("  ❌ Show not found in cache. Cache keys: \(Array(showsById.keys).sorted())")
+        return nil
+    }
+
+    /// Get show by entity ID with API fallback
+    /// If not in cache, searches for the show using the provided title hint
+    @MainActor
+    func getShowAsync(byEntityId entityId: String, titleHint: String, api: ApiClient) async -> Show? {
+        // First try cache
+        if let cached = getShow(byEntityId: entityId) {
+            return cached
+        }
+
+        // Extract TMDB ID from entity ID
+        guard entityId.hasPrefix("show:") else { return nil }
+        let showId = String(entityId.dropFirst(5))
+
+        // If not in cache, try to fetch from search API using title hint
+        print("  🌐 [LOOKUP] Show not in cache, searching API for: \(titleHint)")
+        do {
+            let searchResults = try await api.searchShows(query: titleHint)
+
+            // Try to find exact TMDB ID match in search results
+            if let tmdbId = Int(showId),
+               let match = searchResults.first(where: { $0.tmdbId == tmdbId }) {
+                print("  ✅ Found via API search: \(match.title)")
+                // Cache it for future lookups
+                showsById[showId] = match
+                showsById["tmdb:\(tmdbId)"] = match
+                return match
+            }
+
+            // Fallback: use first result if it's a close match
+            if let first = searchResults.first {
+                print("  ⚠️ Using first search result: \(first.title)")
+                // Cache it
+                if let tmdbId = first.tmdbId {
+                    showsById[String(tmdbId)] = first
+                    showsById["tmdb:\(tmdbId)"] = first
+                }
+                return first
+            }
+        } catch {
+            print("  ❌ API search failed: \(error.localizedDescription)")
+        }
+
+        return nil
+    }
+
+    /// Cache shows from watchlist for quick lookups
+    private func cacheShows(from watchlist: [UserShow]) {
+        print("🎬 [CACHE] Caching \(watchlist.count) shows from watchlist")
+        for userShow in watchlist {
+            let show = userShow.show
+            // Use show ID as primary key
+            showsById[show.id] = show
+            print("  ├─ Cached '\(show.title)' with UUID: \(show.id)")
+
+            // Also cache by TMDB ID if available for flexible lookups
+            if let tmdbId = show.tmdbId {
+                showsById["tmdb:\(tmdbId)"] = show
+                print("  └─ Also cached '\(show.title)' with TMDB key: tmdb:\(tmdbId)")
+            } else {
+                print("  └─ ⚠️ No TMDB ID for '\(show.title)'")
+            }
+        }
+        print("🎬 [CACHE] Total cached entries: \(showsById.count)")
+    }
+
     // MARK: - Actions
 
     /// Load subscriptions from API (derived from watchlist providers)
@@ -166,6 +268,10 @@ final class DashboardViewModel {
 
             watchlist = fetchedWatchlist
             subscriptions = deriveSubscriptionsFromWatchlist(fetchedWatchlist)
+
+            // Cache shows for dynamic lookups (e.g., ticker item posters)
+            cacheShows(from: fetchedWatchlist)
+
             isLoading = false
             hasLoadedData = true
         } catch is CancellationError {
@@ -304,6 +410,23 @@ final class DashboardViewModel {
             let recurringDay = getRecurringDay(for: provider.id)
 
             for show in provider.shows {
+                // Cache the show for dynamic lookups
+                let showObject = Show(
+                    id: "\(show.tmdbId)",
+                    tmdbId: show.tmdbId,
+                    title: show.title,
+                    overview: nil,
+                    posterPath: show.posterPath,
+                    firstAirDate: nil,
+                    status: nil,
+                    totalSeasons: nil,
+                    totalEpisodes: nil
+                )
+                showsById[showObject.id] = showObject
+                if let tmdbId = showObject.tmdbId {
+                    showsById["tmdb:\(tmdbId)"] = showObject
+                }
+
                 for tvEpisode in show.episodes {
                     guard let airDate = dateFormatter.date(from: tvEpisode.airDate) else { continue }
 
@@ -318,17 +441,7 @@ final class DashboardViewModel {
 
                     let calendarEpisode = CalendarEpisode(
                         id: tvEpisode.id,
-                        show: Show(
-                            id: "\(show.tmdbId)",
-                            tmdbId: show.tmdbId,
-                            title: show.title,
-                            overview: nil,
-                            posterPath: show.posterPath,
-                            firstAirDate: nil,
-                            status: nil,
-                            totalSeasons: nil,
-                            totalEpisodes: nil
-                        ),
+                        show: showObject,
                         seasonNumber: tvEpisode.seasonNumber,
                         episode: episode,
                         provider: StreamingProvider(
@@ -400,8 +513,9 @@ final class DashboardViewModel {
                 title: "1.2K watching Chad Powers this week",
                 subtitle: "Disney Plus",
                 icon: "flame.fill",
+                posterPath: nil, // Will be retrieved dynamically from show repository
                 aggregateCount: 1167,
-                entityId: "show:chad-powers",
+                entityId: "show:247168", // Chad Powers TMDB ID
                 date: nil,
                 links: [
                     TickerLink(
@@ -430,6 +544,7 @@ final class DashboardViewModel {
                 title: "Pause HBO Max?",
                 subtitle: "No upcoming episodes this month",
                 icon: "pause.circle.fill",
+                posterPath: nil, // Service-related, no poster
                 aggregateCount: nil,
                 entityId: "subscription:max",
                 date: nil,
@@ -460,6 +575,7 @@ final class DashboardViewModel {
                 title: "Prime Video $15.99",
                 subtitle: "Renews in 3 days",
                 icon: "creditcard.fill",
+                posterPath: nil, // Billing-related, no poster
                 aggregateCount: nil,
                 entityId: nil,
                 date: calendar.date(byAdding: .day, value: 3, to: today),
@@ -490,8 +606,9 @@ final class DashboardViewModel {
                 title: "Severance S02E05 airs tomorrow",
                 subtitle: "Apple TV+",
                 icon: "calendar.badge.clock",
+                posterPath: nil, // Will be retrieved dynamically from show repository
                 aggregateCount: nil,
-                entityId: "show:severance",
+                entityId: "show:95396", // Severance TMDB ID
                 date: calendar.date(byAdding: .day, value: 1, to: today),
                 links: [
                     TickerLink(
@@ -514,14 +631,15 @@ final class DashboardViewModel {
                 urgency: 2
             ),
 
-            // New release - spec: "{Show} Season {N} now streaming"
+            // New release - spec: "{Show} Season 5 now streaming"
             TickerItem(
                 kind: .newRelease,
                 title: "Stranger Things Season 5 now streaming",
                 subtitle: "Netflix",
                 icon: "sparkles",
+                posterPath: nil, // Will be retrieved dynamically from show repository
                 aggregateCount: nil,
-                entityId: "show:stranger-things",
+                entityId: "show:66732", // Stranger Things TMDB ID
                 date: today,
                 links: [
                     TickerLink(

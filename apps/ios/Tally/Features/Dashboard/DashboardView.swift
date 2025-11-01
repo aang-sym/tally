@@ -182,6 +182,8 @@ struct DashboardView: View {
                                     items: viewModel.tickerItems,
                                     isExpanded: $showTickerExpanded,
                                     namespace: tickerNamespace,
+                                    viewModel: viewModel,
+                                    api: api,
                                     onItemTap: { item in
                                         handleTickerItemTap(item)
                                     },
