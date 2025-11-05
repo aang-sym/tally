@@ -16,6 +16,7 @@ DashboardView has been audited against SwiftUI iOS 26 documentation using Contex
 ##  Current iOS 26 Patterns (Well Implemented)
 
 ### 1. **Modern TabView with Tab Role** (Lines 69-92)
+
 -  Uses new `Tab` view structure with `.search` role
 -  Implements native iOS 26 search button behavior
 -  Proper tab selection binding with `@State`
@@ -29,10 +30,12 @@ Tab(value: .search, role: .search) {
 ```
 
 ### 2. **Native Searchable Modifier** (Line 93)
+
 -  Uses `.searchable(text:prompt:)` correctly
 -  Proper `@State` binding for search text
 
 ### 3. **Custom Alignment Guides** (Lines 591-609)
+
 -  Correctly implements `AlignmentID` protocol
 -  Custom `tickerAnchor` and `expandedTickerTop` alignments
 -  Proper default value implementation
@@ -49,10 +52,12 @@ extension VerticalAlignment {
 ```
 
 ### 4. **Namespace for Matched Geometry** (Lines 34-35)
+
 -  Uses `@Namespace` for provider and ticker transitions
 -  Passes namespace to child views correctly
 
 ### 5. **Structured Animations** (Throughout)
+
 -  Consistent use of `.spring(response:dampingFraction:)`
 -  Proper `withAnimation` blocks for state changes
 
@@ -67,6 +72,7 @@ extension VerticalAlignment {
 **File Location**: Lines 113-119, 233-247
 
 **Recommended Change**:
+
 ```swift
 // In HeroSection tap handler (Line 113-119)
 HeroSection(
@@ -98,6 +104,7 @@ GlassEffectContainer(spacing: 20.0) {
 ```
 
 **Benefits**:
+
 - Smoother hero-to-detail transitions
 - System-optimized zoom animations
 - Better integration with navigation stack
@@ -113,6 +120,7 @@ GlassEffectContainer(spacing: 20.0) {
 **File Location**: Line 92 (after TabView closing brace)
 
 **Recommended Change**:
+
 ```swift
 TabView(selection: $selectedTab) {
     // ... tabs
@@ -126,6 +134,7 @@ TabView(selection: $selectedTab) {
 ```
 
 **Benefits**:
+
 - Explicit intent for code reviewers
 - Easier to adapt for iPad with sidebar
 - Self-documenting code
@@ -141,6 +150,7 @@ TabView(selection: $selectedTab) {
 **File Location**: Line 93
 
 **Recommended Enhancement** (if filtering by service/genre is needed):
+
 ```swift
 @State private var searchText = ""
 @State private var searchTokens: [SearchToken] = []
@@ -184,6 +194,7 @@ enum SearchToken: Identifiable, Hashable {
 ```
 
 **Benefits**:
+
 - Richer search filtering (by service, genre, etc.)
 - Native iOS 26 token chips UI
 - Better UX for power users
@@ -199,6 +210,7 @@ enum SearchToken: Identifiable, Hashable {
 **File Location**: Lines 115-118, 156-170, 191-195
 
 **Potential Enhancement** (for advanced cases):
+
 ```swift
 // Define custom animation with AnimationContext
 struct TickerExpandAnimation: CustomAnimation {
@@ -221,6 +233,7 @@ withAnimation(TickerExpandAnimation()) {
 ```
 
 **Benefits**:
+
 - Fine-grained control over animation state
 - Better performance for complex multi-stage animations
 - Can store custom state in AnimationContext
@@ -229,7 +242,7 @@ withAnimation(TickerExpandAnimation()) {
 
 ---
 
-## =Ë Action Items for Claude Code
+## =ï¿½ Action Items for Claude Code
 
 ### Immediate Tasks (Can be done now)
 
@@ -260,12 +273,12 @@ withAnimation(TickerExpandAnimation()) {
 
 ---
 
-## >ê Testing Checklist
+## >ï¿½ Testing Checklist
 
 After implementing recommended changes:
 
-- [ ] Provider tap from hero ’ smooth zoom transition to detail sheet
-- [ ] Detail sheet dismiss ’ smooth reverse zoom back to hero
+- [ ] Provider tap from hero ï¿½ smooth zoom transition to detail sheet
+- [ ] Detail sheet dismiss ï¿½ smooth reverse zoom back to hero
 - [ ] Tab switching maintains state correctly
 - [ ] Search field appears/dismisses smoothly
 - [ ] Ticker expand/collapse animations remain smooth
@@ -275,18 +288,18 @@ After implementing recommended changes:
 
 ---
 
-## =Ú Reference Documentation
+## =ï¿½ Reference Documentation
 
 - [SwiftUI Navigation Transitions](https://developer.apple.com/documentation/swiftui/navigationtransition)
-- [Matched Transition Source](https://developer.apple.com/documentation/swiftui/view/matchedtransitionsource(id:in:))
+- [Matched Transition Source](<https://developer.apple.com/documentation/swiftui/view/matchedtransitionsource(id:in:)>)
 - [TabView Styles](https://developer.apple.com/documentation/swiftui/tabviewstyle)
-- [Searchable with Tokens](https://developer.apple.com/documentation/swiftui/view/searchable(text:tokens:suggestedtokens:ispresented:placement:prompt:token:))
+- [Searchable with Tokens](<https://developer.apple.com/documentation/swiftui/view/searchable(text:tokens:suggestedtokens:ispresented:placement:prompt:token:)>)
 - [Custom Animations](https://developer.apple.com/documentation/swiftui/customanimation)
 - [Alignment Guides](https://developer.apple.com/documentation/swiftui/aligning-views-across-stacks)
 
 ---
 
-## =Ý Notes
+## =ï¿½ Notes
 
 - **Breaking Changes**: None of the recommended changes break existing functionality
 - **Backward Compatibility**: All iOS 26 APIs used have iOS 26+ availability

@@ -347,7 +347,7 @@ final class DashboardViewModel {
         337: Color(red: 0.0, green: 0.3, blue: 0.6),   // Disney+ - dark blue
         15: Color.green,     // Hulu
         1899: Color.purple,  // HBO Max
-        2: Color.gray,       // Apple TV+
+        350: Color.gray,     // Apple TV
         531: Color.blue,     // Paramount+
         283: Color.orange,   // Crunchyroll - orange
         4888: Color.orange   // Paramount+ with Showtime
@@ -604,7 +604,7 @@ final class DashboardViewModel {
             TickerItem(
                 kind: .upcomingAirDate,
                 title: "Severance S02E05 airs tomorrow",
-                subtitle: "Apple TV+",
+                subtitle: "Apple TV",
                 icon: "calendar.badge.clock",
                 posterPath: nil, // Will be retrieved dynamically from show repository
                 aggregateCount: nil,
@@ -621,10 +621,10 @@ final class DashboardViewModel {
                     ),
                     TickerLink(
                         kind: .service,
-                        title: "Apple TV+",
-                        url: URL(string: "tally://service/apple-tv-plus")!,
+                        title: "Apple TV",
+                        url: URL(string: "tally://service/apple-tv")!,
                         icon: nil,
-                        tint: .white, // Apple TV+ brand color
+                        tint: .white, // Apple TV brand color
                         isPrimary: false
                     )
                 ],

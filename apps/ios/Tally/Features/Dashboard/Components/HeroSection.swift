@@ -626,7 +626,7 @@ enum ServiceBranding {
         } else if serviceName.contains("stan") {
             return "Stan"
         } else if serviceName.contains("apple") {
-            return "AppleTVPlus"
+            return "AppleTV"
         } else if serviceName.contains("binge") {
             return "Binge"
         } else if serviceName.contains("paramount") {
