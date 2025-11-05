@@ -15,7 +15,9 @@ struct LiquidGlassTickerExpanded: View {
     let namespace: Namespace.ID
     let viewModel: DashboardViewModel
     let api: ApiClient
+    let isServiceOnlyItem: (TickerItem) -> Bool
     let onItemTap: (TickerItem) -> Void
+    let onDirectServiceTap: (TickerItem) -> Void
     let onShowQuickActions: (TickerItem) -> Void
 
     // Sort items by new spec: urgency desc → date asc → kind priority
@@ -97,8 +99,14 @@ struct LiquidGlassTickerExpanded: View {
 
     private func tickerItemRow(_ item: TickerItem) -> some View {
         Button {
-            // Show quick actions menu via callback to parent
-            onShowQuickActions(item)
+            // Check if this is a service-only item
+            if isServiceOnlyItem(item) {
+                // Direct tap: open provider detail sheet
+                onDirectServiceTap(item)
+            } else {
+                // Show quick actions menu for show/episode items
+                onShowQuickActions(item)
+            }
             // Haptic feedback
             let impactFeedback = UIImpactFeedbackGenerator(style: .light)
             impactFeedback.impactOccurred()
@@ -489,8 +497,15 @@ private struct TickerItemPoster: View {
             namespace: namespace,
             viewModel: viewModel,
             api: ApiClient(),
+            isServiceOnlyItem: { item in
+                // Simple preview check: no show/episode links
+                !item.links.contains { $0.kind == .show || $0.kind == .episode }
+            },
             onItemTap: { item in
                 print("Tapped: \(item.title)")
+            },
+            onDirectServiceTap: { item in
+                print("Direct service tap: \(item.title)")
             },
             onShowQuickActions: { item in
                 print("Show quick actions for: \(item.title)")
