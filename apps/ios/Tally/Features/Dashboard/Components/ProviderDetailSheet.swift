@@ -9,166 +9,105 @@ import SwiftUI
 
 struct ProviderDetailSheet: View {
     let subscription: Subscription
-    @Environment(\.dismiss) private var dismiss
+    let namespace: Namespace.ID
+    @Binding var isShown: Bool
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Spacing.lg) {
-                    // Provider header with logo
-                    HStack(spacing: Spacing.md) {
-                        if let service = subscription.service,
-                           ServiceBranding.assetName(for: service, style: .card) != nil {
-                            GlowingServiceLogoView(
-                                service: service,
-                                baseSize: 57.6,
-                                dynamicScale: 1.0,
-                                style: .card
-                            )
-                        }
+        // Main floating glass capsule matching expanded ticker style
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack(alignment: .center, spacing: Spacing.md) {
+                if let service = subscription.service,
+                   ServiceBranding.assetName(for: service, style: .card) != nil {
+                    GlowingServiceLogoView(
+                        service: service,
+                        baseSize: 64,
+                        dynamicScale: 1.0,
+                        style: .card
+                    )
+                    .frame(width: 64, height: 64)
+                }
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(subscription.serviceName)
-                                .font(.heading2)
-                                .foregroundColor(.textPrimary)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(subscription.serviceName)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+                        .lineLimit(2)
 
-                            HStack(spacing: 6) {
-                                Circle()
-                                    .fill(subscription.isActive ? Color.green : Color.red)
-                                    .frame(width: 8, height: 8)
+                    StatusBadge(isActive: subscription.isActive)
+                }
 
-                                Text(subscription.isActive ? "Active" : "Inactive")
-                                    .font(.bodyMedium)
-                                    .foregroundColor(.textSecondary)
-                            }
-                        }
+                Spacer()
 
-                        Spacer()
+                // Glassy close button
+                Button {
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        isShown = false
                     }
-                    .padding(.bottom, Spacing.sm)
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .soft)
+                    impactFeedback.impactOccurred()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.8))
+                        .frame(width: 32, height: 32)
+                        .background(
+                            Capsule().fill(Color.white.opacity(0.1))
+                        )
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular, in: .capsule)
+            }
+            .padding(.horizontal, Spacing.lg)
+            .padding(.top, Spacing.lg)
+            .padding(.bottom, Spacing.md)
 
-                    // Cost and Renewal Section
-                    VStack(alignment: .leading, spacing: Spacing.md) {
-                        SectionHeader(title: "Subscription Details")
+            // Details block
+            VStack(alignment: .leading, spacing: Spacing.xs) {
+                glassRow {
+                    DetailRow(label: "Monthly Cost", value: subscription.formattedCost)
+                }
 
-                        VStack(spacing: Spacing.sm) {
-                            DetailRow(
-                                label: "Monthly Cost",
-                                value: subscription.formattedCost
-                            )
-
-                            if subscription.isActive {
-                                DetailRow(
-                                    label: "Renewal",
-                                    value: subscription.renewalText
-                                )
-                            }
-
-                            if let tier = subscription.tier {
-                                DetailRow(
-                                    label: "Plan",
-                                    value: tier
-                                )
-                            }
-                        }
-                    }
-                    .padding(Spacing.md)
-                    .glassEffect(.regular)
-
-                    // Activity Section (Placeholder)
-                    VStack(alignment: .leading, spacing: Spacing.md) {
-                        SectionHeader(title: "Activity")
-
-                        VStack(alignment: .leading, spacing: Spacing.sm) {
-                            Text("Last watched: Unknown")
-                                .font(.bodyMedium)
-                                .foregroundColor(.textSecondary)
-                                .italic()
-
-                            Text("No activity data available")
-                                .font(.captionMedium)
-                                .foregroundColor(.textTertiary)
-                                .italic()
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(Spacing.md)
-                    }
-                    .glassEffect(.regular)
-
-                    // Shows Section (Placeholder)
-                    VStack(alignment: .leading, spacing: Spacing.md) {
-                        SectionHeader(title: "Shows")
-
-                        VStack(alignment: .leading, spacing: Spacing.sm) {
-                            Text("Watching: 0 shows")
-                                .font(.bodyMedium)
-                                .foregroundColor(.textSecondary)
-
-                            Text("Upcoming: 0 shows")
-                                .font(.bodyMedium)
-                                .foregroundColor(.textSecondary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(Spacing.md)
-                    }
-                    .glassEffect(.regular)
-
-                    // Action Buttons
-                    VStack(spacing: Spacing.sm) {
-                        ActionButton(
-                            icon: "pause.circle.fill",
-                            title: "Pause Subscription",
-                            color: .orange
-                        ) {
-                            // TODO: Implement pause
-                        }
-
-                        ActionButton(
-                            icon: "bell.fill",
-                            title: "Remind Me",
-                            color: .blue
-                        ) {
-                            // TODO: Implement reminder
-                        }
-
-                        ActionButton(
-                            icon: "arrow.up.right.square.fill",
-                            title: "Open App",
-                            color: .tallyPrimary
-                        ) {
-                            // TODO: Implement deep link
-                        }
+                if subscription.isActive {
+                    glassRow {
+                        DetailRow(label: "Renewal", value: subscription.renewalText)
                     }
                 }
-                .screenPadding()
-                .padding(.top, Spacing.sm)
-            }
-            .background(Color.background)
-            .navigationTitle("Provider Details")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
+
+                if let tier = subscription.tier {
+                    glassRow {
+                        DetailRow(label: "Plan", value: tier)
                     }
                 }
             }
+            .padding(.horizontal, Spacing.lg)
+            .padding(.vertical, Spacing.md)
+
+            // Actions block
+            VStack(spacing: Spacing.xs) {
+                GlassActionRow(icon: "pause.circle.fill", title: "Pause Subscription", tint: .orange) {
+                    // TODO: Implement pause
+                }
+                GlassActionRow(icon: "bell.fill", title: "Remind Me", tint: .blue) {
+                    // TODO: Implement reminder
+                }
+                GlassActionRow(icon: "arrow.up.right.square.fill", title: "Open App", tint: .tallyPrimary) {
+                    // TODO: Implement deep link
+                }
+            }
+            .padding(.horizontal, Spacing.lg)
+            .padding(.bottom, Spacing.lg)
         }
+        .frame(maxWidth: .infinity)
+        .glassEffect(
+            .regular.interactive(),
+            in: .rect(cornerRadius: 24)
+        )
+        .glassEffectID("providerGlass", in: namespace)
     }
 }
 
 // MARK: - Supporting Views
-
-private struct SectionHeader: View {
-    let title: String
-
-    var body: some View {
-        Text(title)
-            .font(.bodyLarge)
-            .fontWeight(.semibold)
-            .foregroundColor(.textPrimary)
-    }
-}
 
 private struct DetailRow: View {
     let label: String
@@ -177,42 +116,90 @@ private struct DetailRow: View {
     var body: some View {
         HStack {
             Text(label)
-                .font(.bodyMedium)
-                .foregroundColor(.textSecondary)
+                .font(.system(size: 14, weight: .regular))
+                .foregroundColor(.white.opacity(0.7))
 
             Spacer()
 
             Text(value)
-                .font(.bodyMedium)
-                .fontWeight(.medium)
-                .foregroundColor(.textPrimary)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.white)
         }
     }
 }
 
-private struct ActionButton: View {
+// MARK: - Local Helpers
+
+private func glassRow<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+    HStack { content() }
+        .padding(.horizontal, Spacing.md)
+        .padding(.vertical, Spacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color.white.opacity(0.06))
+        )
+}
+
+private struct StatusBadge: View {
+    let isActive: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: isActive ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .font(.system(size: 12, weight: .semibold))
+            Text(isActive ? "Active" : "Inactive")
+                .font(.caption)
+                .fontWeight(.semibold)
+        }
+        .foregroundColor(isActive ? .green : .red)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            Capsule()
+                .fill(Color.white.opacity(0.08))
+        )
+        .glassEffect(.regular, in: .capsule)
+    }
+}
+
+private struct GlassActionRow: View {
     let icon: String
     let title: String
-    let color: Color
+    let tint: Color
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            action()
+            let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+            impactFeedback.impactOccurred()
+        } label: {
             HStack(spacing: Spacing.sm) {
                 Image(systemName: icon)
-                    .font(.system(size: 16))
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(tint)
+                    .frame(width: 24, alignment: .center)
 
                 Text(title)
                     .font(.labelLarge)
+                    .foregroundColor(.white)
 
                 Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.4))
             }
-            .foregroundColor(.white)
-            .padding(Spacing.md)
-            .background(color)
-            .cornerRadius(12)
+            .padding(.horizontal, Spacing.md)
+            .padding(.vertical, Spacing.md)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(Color.white.opacity(0.06))
+            )
         }
         .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
     }
 }
 
@@ -220,6 +207,19 @@ private struct ActionButton: View {
 
 #if DEBUG
 #Preview("Provider Detail") {
-    ProviderDetailSheet(subscription: .preview)
+    @Previewable @State var isShown = true
+    @Previewable @Namespace var ns
+
+    ZStack {
+        Color.black.ignoresSafeArea()
+
+        ProviderDetailSheet(
+            subscription: .preview,
+            namespace: ns,
+            isShown: $isShown
+        )
+        .padding(.horizontal, Spacing.screenPadding)
+    }
 }
 #endif
+

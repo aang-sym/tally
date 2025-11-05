@@ -192,7 +192,7 @@ private struct WeekDateCell: View {
         case "Max", "HBO Max": return .purple
         case "Crunchyroll": return .orange
         case "Prime Video", "Amazon Prime Video": return .blue
-        case "Apple TV+", "Apple TV Plus": return .gray
+        case "Apple TV", "Apple TV Plus": return .gray
         case "Hulu": return .green
         default: return .gray
         }
@@ -686,7 +686,7 @@ private struct MetadataBadge: View {
             ),
             provider: StreamingProvider(
                 id: 350,
-                name: "Apple TV Plus",
+                name: "Apple TV",
                 logoPath: "/2E03IAZsX4ZaUqM7tXlctEPMGWS.jpg"
             ),
             airDate: Date(),

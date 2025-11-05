@@ -128,7 +128,7 @@ final class SimplifiedCalendarViewModel: ObservableObject {
         337: Color(red: 0.0, green: 0.3, blue: 0.6),   // Disney+ - dark blue
         15: Color.green,     // Hulu
         1899: Color.purple,  // HBO Max
-        2: Color.gray,       // Apple TV+
+        350: Color.gray,     // Apple TV
         531: Color.blue,     // Paramount+
         283: Color.orange,   // Crunchyroll - orange
         4888: Color.orange   // Paramount+ with Showtime
@@ -541,7 +541,7 @@ final class SimplifiedCalendarViewModel: ObservableObject {
             337: 12,      // Disney+ - 12th of each month
             15: 7,        // Hulu - 7th of each month
             1899: 21,     // HBO Max - 21st of each month
-            2: 5,         // Apple TV+ - 5th of each month
+            350: 5,       // Apple TV - 5th of each month
             531: 10,      // Paramount+ - 10th of each month
             283: 19       // Crunchyroll - 19th of each month
         ]

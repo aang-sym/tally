@@ -20,9 +20,6 @@ struct DashboardView: View {
     @State private var selectedDate: Date?
     @State private var stableServices: [StreamingService] = []
 
-    // Subscription state
-    @State private var selectedSubscription: Subscription?
-
     // Tab selection
     @State private var selectedTab: DashboardTab = .home
 
@@ -32,9 +29,18 @@ struct DashboardView: View {
     // Subscription list sheet state
     @State private var showSubscriptionsList = false
 
-    // Hero collapse state
-    @State private var isHeroCollapsed = false
-    @State private var dragOffset: CGFloat = 0
+    // Ticker state
+    @State private var showTickerExpanded = false
+    @Namespace private var tickerNamespace
+    @Namespace private var providerNamespace
+
+    // Quick actions menu state
+    @State private var showQuickActionsMenu = false
+    @State private var selectedTickerItem: TickerItem?
+
+    // Provider detail state
+    @State private var showProviderDetail = false
+    @State private var selectedProviderSubscription: Subscription?
 
     var body: some View {
         ZStack {
@@ -51,9 +57,6 @@ struct DashboardView: View {
                 // Main content with persistent hero
                 mainContentWithHero
             }
-        }
-        .sheet(item: $selectedSubscription) { subscription in
-            ProviderDetailSheet(subscription: subscription)
         }
         .task {
             await viewModel.load(api: api)
@@ -91,69 +94,6 @@ struct DashboardView: View {
         .frame(maxHeight: .infinity)
     }
 
-    // MARK: - Hero Content (shared across tabs)
-
-    private var heroContent: some View {
-        VStack(spacing: 0) {
-            // Hero section
-            HeroSection(services: stableServices) { tappedService in
-                // Find subscription matching the tapped service and show detail sheet
-                if let subscription = viewModel.subscriptions.first(where: { $0.service?.id == tappedService.id }) {
-                    selectedSubscription = subscription
-                }
-            }
-            .frame(height: heroHeight)
-            // No clipping here - allow logo glows to overflow into metrics area
-            .scaleEffect(crtScaleEffect, anchor: .center)
-            .opacity(heroOpacity)
-            .ignoresSafeArea(edges: .horizontal)
-            .animation(.easeIn(duration: 0.35), value: isHeroCollapsed)
-
-            // Metrics row with collapse gesture
-            MetricsRow(
-                subscriptionsCount: viewModel.totalActiveSubscriptions,
-                showsCount: viewModel.totalShows,
-                monthlyTotal: viewModel.formattedMonthlyCost,
-                showScanlines: false // Disable internal scanlines, handled by CRTOverlayView
-            )
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        dragOffset = value.translation.height
-                    }
-                    .onEnded { value in
-                        let dragThreshold: CGFloat = 100
-                        if abs(value.translation.height) > dragThreshold {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                                isHeroCollapsed.toggle()
-                            }
-                        }
-                        dragOffset = 0
-                    }
-            )
-        }
-        .overlay(alignment: .top) {
-            // Constrain the GeometryReader to prevent it from expanding into tab content
-            GeometryReader { geo in
-                let topInset = geo.safeAreaInsets.top
-                let metricsHeight: CGFloat = 80 // if this changes, consider measuring
-                let overlayHeight = topInset + heroHeight + metricsHeight
-
-                CRTOverlayView(height: overlayHeight)
-                    .frame(width: geo.size.width, height: overlayHeight, alignment: .top)
-                    .position(x: geo.size.width / 2, y: overlayHeight / 2)
-                    .ignoresSafeArea(edges: .top)   // <- draw into the notch
-                    .allowsHitTesting(false)
-            }
-            .frame(height: heroHeight + 80) // Limit GeometryReader height to hero + metrics
-            .clipShape(
-                // Custom clip that only clips bottom, allows overflow to top (notch)
-                BottomOnlyClipShape()
-            )
-        }
-    }
-
     // MARK: - Tab Content Views
 
     private var homeTabContent: some View {
@@ -161,71 +101,187 @@ struct DashboardView: View {
             // Capture safe area BEFORE ignoresSafeArea is applied
             let safeAreaTop = geometry.safeAreaInsets.top
 
-            VStack(spacing: 0) {
-                // Hero section - fills from notch to metrics
-                HeroSection(
-                    services: stableServices,
-                    safeAreaTop: safeAreaTop, // Pass captured safe area
-                    scanlineStyle: "horizontal-rgb-fill",
-                    scanlineFillMode: true
-                ) { tappedService in
-                    // Find subscription matching the tapped service and show detail sheet
-                    if let subscription = viewModel.subscriptions.first(where: { $0.service?.id == tappedService.id }) {
-                        selectedSubscription = subscription
+            ZStack {
+                VStack(spacing: 0) {
+                    // Hero section - fills from notch to metrics
+                    HeroSection(
+                        services: stableServices,
+                        safeAreaTop: safeAreaTop, // Pass captured safe area
+                        scanlineStyle: "horizontal-rgb-fill",
+                        scanlineFillMode: true
+                    ) { tappedService in
+                        // Find subscription matching the tapped service and show detail overlay
+                        if let subscription = viewModel.subscriptions.first(where: { $0.service?.id == tappedService.id }) {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                selectedProviderSubscription = subscription
+                                showProviderDetail = true
+                            }
+                        }
+                    }
+                    .frame(maxHeight: .infinity)
+                    .ignoresSafeArea(edges: .top)
+
+                    // Liquid Glass Ticker with alignment guide for anchoring
+                    GlassEffectContainer(spacing: 20.0) {
+                        LiquidGlassTicker(
+                            items: viewModel.tickerItems,
+                            isExpanded: $showTickerExpanded,
+                            namespace: tickerNamespace
+                        )
+                        .padding(.horizontal, Spacing.screenPadding)
+                        .padding(.top, Spacing.sm)
+                    }
+                    .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.top] }
+                    .zIndex(1) // Ensure ticker is above overlays when closed
+
+                    // Metrics row (tappable subscriptions count)
+                    MetricsRow(
+                        subscriptionsCount: viewModel.totalActiveSubscriptions,
+                        showsCount: viewModel.totalShows,
+                        monthlyTotal: viewModel.formattedMonthlyCost,
+                        showScanlines: false,
+                        onSubscriptionsTap: {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                showSubscriptionsList = true
+                            }
+                        }
+                    )
+                    .zIndex(1) // Ensure metrics is above overlays when closed
+                }
+                .overlay { // Full-screen dimmed background overlay
+                    if showTickerExpanded || showSubscriptionsList || showProviderDetail || showQuickActionsMenu {
+                        Color.black.opacity(0.4)
+                            .ignoresSafeArea(edges: .all)
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                    if showQuickActionsMenu {
+                                        showQuickActionsMenu = false
+                                        selectedTickerItem = nil
+                                    }
+                                    if showTickerExpanded {
+                                        showTickerExpanded = false
+                                    }
+                                    if showSubscriptionsList {
+                                        showSubscriptionsList = false
+                                    }
+                                    if showProviderDetail {
+                                        showProviderDetail = false
+                                    }
+                                }
+                            }
+                            .zIndex(50) // Lower than content but still visible
                     }
                 }
-                .frame(maxHeight: .infinity)
-                .ignoresSafeArea(edges: .top)
+                .overlay(alignment: Alignment(horizontal: .center, vertical: .tickerAnchor)) {
+                    // Expanded ticker overlay - anchored using custom alignment
+                    ZStack {
+                        // Expanded ticker - bottom edge anchored to ticker top
+                        if showTickerExpanded {
+                            GlassEffectContainer(spacing: 20.0) {
+                                LiquidGlassTickerExpanded(
+                                    items: viewModel.tickerItems,
+                                    isExpanded: $showTickerExpanded,
+                                    namespace: tickerNamespace,
+                                    viewModel: viewModel,
+                                    api: api,
+                                    isServiceOnlyItem: isServiceOnlyItem,
+                                    onItemTap: { item in
+                                        handleTickerItemTap(item)
+                                    },
+                                    onDirectServiceTap: { item in
+                                        handleDirectServiceTap(item)
+                                    },
+                                    onShowQuickActions: { item in
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                            selectedTickerItem = item
+                                            showQuickActionsMenu = true
+                                        }
+                                    }
+                                )
+                                .padding(.horizontal, Spacing.screenPadding)
+                                .transition(.scale(scale: 0.95).combined(with: .opacity))
+                            }
+                            .frame(maxHeight: heroHeight - 16, alignment: .bottom) // Constrain height with padding from notch
+                            .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.bottom] }
+                            .alignmentGuide(.expandedTickerTop) { d in d[VerticalAlignment.top] } // Mark top edge for menu anchoring
+                            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showTickerExpanded)
+                            .allowsHitTesting(showTickerExpanded)
+                            .zIndex(100)
+                        }
 
-                // Metrics row
-                MetricsRow(
-                    subscriptionsCount: viewModel.totalActiveSubscriptions,
-                    showsCount: viewModel.totalShows,
-                    monthlyTotal: viewModel.formattedMonthlyCost,
-                    showScanlines: false
-                )
+                        // Subscriptions list - bottom edge anchored to ticker top (same as expanded ticker)
+                        if showSubscriptionsList {
+                            GlassEffectContainer(spacing: 20.0) {
+                                SubscriptionListView(
+                                    subscriptions: viewModel.activeSubscriptions,
+                                    onSelectSubscription: { subscription in
+                                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                            selectedProviderSubscription = subscription
+                                            showSubscriptionsList = false
+                                            showProviderDetail = true
+                                        }
+                                    },
+                                    namespace: providerNamespace, isShown: $showSubscriptionsList
+                                )
+                                .padding(.horizontal, Spacing.screenPadding)
+                                .transition(.scale(scale: 0.95).combined(with: .opacity))
+                            }
+                            .frame(maxHeight: heroHeight - 16, alignment: .bottom) // Same constraint as ticker
+                            .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.bottom] }
+                            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showSubscriptionsList)
+                            .allowsHitTesting(showSubscriptionsList)
+                            .zIndex(101)
+                        }
 
-                // View Subscriptions button
-                Button(action: {
-                    showSubscriptionsList = true
-                }) {
-                    Text("View Subscriptions")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue.opacity(0.3))
-                        .cornerRadius(12)
-                }
-                .padding(.horizontal)
-                .padding(.bottom)
-            }
-            .overlay(alignment: .top) {
-                // Extend scanlines from the notch down behind the metrics row
-                GeometryReader { geo in
-                    let topInset = geo.safeAreaInsets.top
-                    let metricsHeight: CGFloat = 80 // keep in sync with MetricsRow height
-                    let overlayHeight = topInset + heroHeight + metricsHeight
-                    
-                    CRTOverlayView(height: overlayHeight)
-                        .frame(width: geo.size.width, height: overlayHeight, alignment: .top)
-                        .position(x: geo.size.width / 2, y: overlayHeight / 2)
-                        .ignoresSafeArea(edges: .top) // draw into notch
-                        .allowsHitTesting(false)
-                }
-                // Limit GeometryReader height to hero + metrics so it doesn't spill into content
-                .frame(height: heroHeight + 80)
-                .clipShape(BottomOnlyClipShape())
-            }
-            .sheet(isPresented: $showSubscriptionsList) {
-                SubscriptionListView(
-                    subscriptions: viewModel.activeSubscriptions,
-                    onSelectSubscription: { subscription in
-                        selectedSubscription = subscription
-                        showSubscriptionsList = false
+                        // Provider detail - bottom edge anchored to ticker top (same as expanded ticker)
+                        if showProviderDetail, let subscription = selectedProviderSubscription {
+                            GlassEffectContainer(spacing: 20.0) {
+                                ProviderDetailSheet(
+                                    subscription: subscription,
+                                    namespace: providerNamespace,
+                                    isShown: $showProviderDetail
+                                )
+                                .padding(.horizontal, Spacing.screenPadding)
+                                .transition(.scale(scale: 0.95).combined(with: .opacity))
+                            }
+                            .frame(maxHeight: heroHeight - 16, alignment: .bottom) // Same constraint as ticker
+                            .alignmentGuide(.tickerAnchor) { d in d[VerticalAlignment.bottom] }
+                            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showProviderDetail)
+                            .allowsHitTesting(showProviderDetail)
+                            .zIndex(102)
+                        }
                     }
-                )
-                .presentationBackground(.thinMaterial)
+                }
+                .overlay(alignment: Alignment(horizontal: .center, vertical: .expandedTickerTop)) {
+                    // Quick actions menu overlay - anchored to expanded ticker's top edge
+                    if showQuickActionsMenu, let item = selectedTickerItem, showTickerExpanded {
+                        quickActionsMenuView(for: item)
+                            .padding(.horizontal, Spacing.screenPadding)
+                            .padding(.bottom, 40) // Gap from expanded ticker - increased for better visual separation
+                            .transition(.scale(scale: 0.9).combined(with: .opacity))
+                            .alignmentGuide(.expandedTickerTop) { d in d[VerticalAlignment.bottom] }
+                            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showQuickActionsMenu)
+                            .allowsHitTesting(showQuickActionsMenu)
+                            .zIndex(103)
+                    }
+                }
+                .overlay(alignment: .top) {
+                    // Extend scanlines from the notch down behind the metrics row
+                    GeometryReader { geo in
+                        let topInset = geo.safeAreaInsets.top
+                        let metricsHeight: CGFloat = 80 // keep in sync with MetricsRow height
+                        let overlayHeight = topInset + heroHeight + metricsHeight
+                        
+                        CRTOverlayView(height: overlayHeight)
+                            .frame(width: geo.size.width, height: overlayHeight, alignment: .top)
+                            .position(x: geo.size.width / 2, y: overlayHeight / 2)
+                            .ignoresSafeArea(edges: .top) // draw into notch
+                            .allowsHitTesting(false)
+                    }
+                    // Limit GeometryReader height to hero + metrics so it doesn't spill into content
+                    .frame(height: heroHeight + 80)
+                    .clipShape(BottomOnlyClipShape())
+                }
             }
         }
     }
@@ -282,17 +338,238 @@ struct DashboardView: View {
     }
 
     private var heroHeight: CGFloat {
-        isHeroCollapsed ? 0 : 300
+        300 // Fixed height for hero section
     }
 
-    private var crtScaleEffect: CGSize {
-        isHeroCollapsed ? CGSize(width: 0.0, height: 0.1) : CGSize(width: 1.0, height: 1.0)
+    // MARK: - Ticker Item Handler
+
+    private func handleTickerItemTap(_ item: TickerItem) {
+        // Handle deep-link navigation for ticker items
+        guard let deepLink = item.deepLink else {
+            // No deep link - just close the expanded view
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                showTickerExpanded = false
+            }
+            return
+        }
+
+        // TODO: Implement actual deep-link navigation
+        // For now, just log the action and close the expanded view
+        print("📍 Ticker item tapped: \(item.title)")
+        print("📍 Deep link: \(deepLink.absoluteString)")
+
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            showTickerExpanded = false
+        }
+
+        // Future implementation would navigate to:
+        // - Show detail page for show-related items
+        // - Movie detail page for movie items
+        // - Subscription settings for billing items
     }
 
-    private var heroOpacity: Double {
-        isHeroCollapsed ? 0 : 1
+    private func handleTickerLinkTap(_ link: TickerLink) {
+        print("📍 Link selected: \(link.title) → \(link.url)")
+
+        // Handle service links - open provider detail sheet
+        if link.kind == .service {
+            // Try to find matching subscription for the service
+            if let subscription = findSubscriptionForService(link.title) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                    // Close ticker and menu
+                    showTickerExpanded = false
+                    showQuickActionsMenu = false
+                    selectedTickerItem = nil
+
+                    // Open provider detail sheet
+                    selectedProviderSubscription = subscription
+                    showProviderDetail = true
+                }
+                return
+            }
+        }
+
+        // Handle show links
+        if link.kind == .show {
+            // TODO: Navigate to show detail page
+            print("📍 Navigate to show: \(link.title)")
+        }
+
+        // Handle episode links
+        if link.kind == .episode {
+            // TODO: Navigate to episode detail
+            print("📍 Navigate to episode: \(link.title)")
+        }
+
+        // Close menus for all other link types
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            showTickerExpanded = false
+            showQuickActionsMenu = false
+            selectedTickerItem = nil
+        }
     }
 
+    private func findSubscriptionForService(_ serviceName: String) -> Subscription? {
+        // Normalize service name for matching
+        let normalized = serviceName.lowercased()
+            .replacingOccurrences(of: "+", with: " plus")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return viewModel.subscriptions.first { subscription in
+            guard let service = subscription.service else { return false }
+            let serviceNameNormalized = service.name.lowercased()
+                .replacingOccurrences(of: "+", with: " plus")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            return serviceNameNormalized.contains(normalized) || normalized.contains(serviceNameNormalized)
+        }
+    }
+
+    private func isServiceOnlyItem(_ item: TickerItem) -> Bool {
+        // Check if item is primarily about a service (not a show/episode)
+        let hasShowOrEpisodeLinks = item.links.contains { link in
+            link.kind == .show || link.kind == .episode || link.kind == .season
+        }
+
+        // If it has show/episode links, it's not service-only
+        if hasShowOrEpisodeLinks {
+            return false
+        }
+
+        // Check if entity ID indicates a subscription
+        if let entityId = item.entityId, entityId.hasPrefix("subscription:") {
+            return true
+        }
+
+        // Check if primary link is a service
+        if let primaryLink = item.links.first(where: { $0.isPrimary }), primaryLink.kind == .service {
+            return true
+        }
+
+        // Check if any link is a service (fallback)
+        return item.links.contains { $0.kind == .service }
+    }
+
+    private func handleDirectServiceTap(_ item: TickerItem) {
+        print("📍 Direct service tap: \(item.title)")
+
+        // Try to find service name from various sources
+        var serviceName: String?
+
+        // 1. Check entity ID
+        if let entityId = item.entityId, entityId.hasPrefix("subscription:") {
+            serviceName = String(entityId.dropFirst(13)) // Remove "subscription:"
+        }
+
+        // 2. Check service link
+        if serviceName == nil, let serviceLink = item.links.first(where: { $0.kind == .service }) {
+            serviceName = serviceLink.title
+        }
+
+        // 3. Check title for service name
+        if serviceName == nil {
+            serviceName = item.title
+        }
+
+        // Find matching subscription and open provider detail sheet
+        if let name = serviceName, let subscription = findSubscriptionForService(name) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                // Close ticker
+                showTickerExpanded = false
+                showQuickActionsMenu = false
+                selectedTickerItem = nil
+
+                // Open provider detail sheet
+                selectedProviderSubscription = subscription
+                showProviderDetail = true
+            }
+        } else {
+            print("⚠️ No subscription found for service: \(serviceName ?? "unknown")")
+            // Fallback: close ticker
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                showTickerExpanded = false
+            }
+        }
+    }
+
+    // MARK: - Quick Actions Menu
+
+    @ViewBuilder
+    private func quickActionsMenuView(for item: TickerItem) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(item.links.enumerated()), id: \.element.url) { index, link in
+                Button {
+                    handleTickerLinkTap(link)
+
+                    let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                    impactFeedback.impactOccurred()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: iconForLinkKind(link.kind))
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(colorForLinkKind(link.kind))
+                            .frame(width: 24, height: 24)
+
+                        Text(link.title)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white)
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.vertical, Spacing.md)
+                }
+                .buttonStyle(.plain)
+
+                if index < item.links.count - 1 {
+                    Divider()
+                        .background(Color.white.opacity(0.1))
+                }
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.black.opacity(0.8))
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.3), radius: 20, y: 10)
+        .frame(maxWidth: 320)
+    }
+
+    private func iconForLinkKind(_ kind: TickerLinkKind) -> String {
+        switch kind {
+        case .show:
+            return "tv.fill"
+        case .service:
+            return "app.fill"
+        case .episode:
+            return "play.circle.fill"
+        case .season:
+            return "play.rectangle.fill"
+        case .date:
+            return "calendar"
+        case .billing:
+            return "creditcard.fill"
+        case .settings:
+            return "gearshape.fill"
+        }
+    }
+
+    private func colorForLinkKind(_ kind: TickerLinkKind) -> Color {
+        // Icons remain colored for visual distinction
+        switch kind {
+        case .show, .episode, .season:
+            return Color(red: 0.95, green: 0.70, blue: 0.50)  // Pastel orange for show icons
+        case .service:
+            return Color(red: 0.75, green: 0.65, blue: 0.90)  // Pastel purple for service icons
+        case .billing, .settings, .date:
+            return .white.opacity(0.7)
+        }
+    }
 
     // MARK: - Loading View
 
@@ -380,6 +657,28 @@ struct DashboardView: View {
     }
 }
 
+// MARK: - Custom Alignment for Ticker Anchoring
+
+extension VerticalAlignment {
+    /// Custom alignment for anchoring expanded ticker to collapsed ticker's top edge
+    private struct TickerAnchorAlignment: AlignmentID {
+        static func defaultValue(in context: ViewDimensions) -> CGFloat {
+            context[VerticalAlignment.center]
+        }
+    }
+
+    static let tickerAnchor = VerticalAlignment(TickerAnchorAlignment.self)
+
+    /// Custom alignment for anchoring quick actions menu to expanded ticker's top edge
+    private struct ExpandedTickerTopAlignment: AlignmentID {
+        static func defaultValue(in context: ViewDimensions) -> CGFloat {
+            context[VerticalAlignment.center]
+        }
+    }
+
+    static let expandedTickerTop = VerticalAlignment(ExpandedTickerTopAlignment.self)
+}
+
 // MARK: - Helper Extension
 
 extension DashboardTab {
@@ -436,3 +735,4 @@ private struct BottomOnlyClipShape: Shape {
     DashboardView(api: PreviewApiClient())
 }
 #endif
+
