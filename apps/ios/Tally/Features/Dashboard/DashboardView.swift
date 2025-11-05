@@ -184,8 +184,12 @@ struct DashboardView: View {
                                     namespace: tickerNamespace,
                                     viewModel: viewModel,
                                     api: api,
+                                    isServiceOnlyItem: isServiceOnlyItem,
                                     onItemTap: { item in
                                         handleTickerItemTap(item)
+                                    },
+                                    onDirectServiceTap: { item in
+                                        handleDirectServiceTap(item)
                                     },
                                     onShowQuickActions: { item in
                                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -364,6 +368,130 @@ struct DashboardView: View {
         // - Subscription settings for billing items
     }
 
+    private func handleTickerLinkTap(_ link: TickerLink) {
+        print("📍 Link selected: \(link.title) → \(link.url)")
+
+        // Handle service links - open provider detail sheet
+        if link.kind == .service {
+            // Try to find matching subscription for the service
+            if let subscription = findSubscriptionForService(link.title) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                    // Close ticker and menu
+                    showTickerExpanded = false
+                    showQuickActionsMenu = false
+                    selectedTickerItem = nil
+
+                    // Open provider detail sheet
+                    selectedProviderSubscription = subscription
+                    showProviderDetail = true
+                }
+                return
+            }
+        }
+
+        // Handle show links
+        if link.kind == .show {
+            // TODO: Navigate to show detail page
+            print("📍 Navigate to show: \(link.title)")
+        }
+
+        // Handle episode links
+        if link.kind == .episode {
+            // TODO: Navigate to episode detail
+            print("📍 Navigate to episode: \(link.title)")
+        }
+
+        // Close menus for all other link types
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            showTickerExpanded = false
+            showQuickActionsMenu = false
+            selectedTickerItem = nil
+        }
+    }
+
+    private func findSubscriptionForService(_ serviceName: String) -> Subscription? {
+        // Normalize service name for matching
+        let normalized = serviceName.lowercased()
+            .replacingOccurrences(of: "+", with: " plus")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return viewModel.subscriptions.first { subscription in
+            guard let service = subscription.service else { return false }
+            let serviceNameNormalized = service.name.lowercased()
+                .replacingOccurrences(of: "+", with: " plus")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            return serviceNameNormalized.contains(normalized) || normalized.contains(serviceNameNormalized)
+        }
+    }
+
+    private func isServiceOnlyItem(_ item: TickerItem) -> Bool {
+        // Check if item is primarily about a service (not a show/episode)
+        let hasShowOrEpisodeLinks = item.links.contains { link in
+            link.kind == .show || link.kind == .episode || link.kind == .season
+        }
+
+        // If it has show/episode links, it's not service-only
+        if hasShowOrEpisodeLinks {
+            return false
+        }
+
+        // Check if entity ID indicates a subscription
+        if let entityId = item.entityId, entityId.hasPrefix("subscription:") {
+            return true
+        }
+
+        // Check if primary link is a service
+        if let primaryLink = item.links.first(where: { $0.isPrimary }), primaryLink.kind == .service {
+            return true
+        }
+
+        // Check if any link is a service (fallback)
+        return item.links.contains { $0.kind == .service }
+    }
+
+    private func handleDirectServiceTap(_ item: TickerItem) {
+        print("📍 Direct service tap: \(item.title)")
+
+        // Try to find service name from various sources
+        var serviceName: String?
+
+        // 1. Check entity ID
+        if let entityId = item.entityId, entityId.hasPrefix("subscription:") {
+            serviceName = String(entityId.dropFirst(13)) // Remove "subscription:"
+        }
+
+        // 2. Check service link
+        if serviceName == nil, let serviceLink = item.links.first(where: { $0.kind == .service }) {
+            serviceName = serviceLink.title
+        }
+
+        // 3. Check title for service name
+        if serviceName == nil {
+            serviceName = item.title
+        }
+
+        // Find matching subscription and open provider detail sheet
+        if let name = serviceName, let subscription = findSubscriptionForService(name) {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                // Close ticker
+                showTickerExpanded = false
+                showQuickActionsMenu = false
+                selectedTickerItem = nil
+
+                // Open provider detail sheet
+                selectedProviderSubscription = subscription
+                showProviderDetail = true
+            }
+        } else {
+            print("⚠️ No subscription found for service: \(serviceName ?? "unknown")")
+            // Fallback: close ticker
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                showTickerExpanded = false
+            }
+        }
+    }
+
     // MARK: - Quick Actions Menu
 
     @ViewBuilder
@@ -371,15 +499,7 @@ struct DashboardView: View {
         VStack(spacing: 0) {
             ForEach(Array(item.links.enumerated()), id: \.element.url) { index, link in
                 Button {
-                    print("📍 Link selected: \(link.title) → \(link.url)")
-                    // TODO: Implement deep-link navigation
-                    handleTickerItemTap(item)
-
-                    // Close menu
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        showQuickActionsMenu = false
-                        selectedTickerItem = nil
-                    }
+                    handleTickerLinkTap(link)
 
                     let impactFeedback = UIImpactFeedbackGenerator(style: .light)
                     impactFeedback.impactOccurred()
