@@ -548,7 +548,7 @@ private struct LogoWithBoundsView: View {
             StreamingService(
                 id: "apple",
                 tmdbProviderId: 350,
-                name: "Apple TV Plus",
+                name: "Apple TV",
                 logoPath: "/2E03IAZsX4ZaUqM7tXlctEPMGWS.jpg",
                 homepage: "https://tv.apple.com",
                 prices: [],
