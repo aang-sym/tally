@@ -9,9 +9,9 @@
 ## Quick Stats
 
 ### Current Progress
-- ✅ **Completed:** 0/7 branches
-- 🔄 **In Progress:** 1/7 branches (Branch 1: Housekeeping)
-- ⏳ **Pending:** 6/7 branches
+- ✅ **Completed:** 1/7 branches
+- 🔄 **In Progress:** 1/7 branches (Branch 2: Debug Script Relocation)
+- ⏳ **Pending:** 5/7 branches
 
 ### Cleanup Impact
 - **Dead Code Found:** ~100KB across 13 utility scripts, 9 SQL files, 24 archived docs
@@ -52,20 +52,20 @@
 ### P0 - High Impact, Low/Medium Effort
 
 #### ✅ Branch 1: Housekeeping
-**Branch:** `claude/audit-1-housekeeping`
-**Status:** 🔄 In Progress
-**PR:** -
-**Merged:** -
+**Branch:** `claude/audit-1-housekeeping-01XmhX57JCwG6TsTgv2SJZWY`
+**Status:** ✅ Completed
+**PR:** Merged to main
+**Merged:** 2025-11-19
 **Risk:** None | **Effort:** 5 min
 
 **Changes:**
 - [x] Create comprehensive CLEANUP_PROGRESS.md
 - [x] Create future work issue templates
-- [ ] Delete tmp_test.txt
-- [ ] Update .gitignore (add dev.log, *.log)
-- [ ] Fix package.json engines (npm → pnpm)
-- [ ] Archive docs/archive/ into organized folders
-- [ ] Delete empty scripts/test-streaming-api.sh
+- [x] Delete tmp_test.txt
+- [x] Update .gitignore (add tmp_*, *.tmp)
+- [x] Fix package.json engines (npm → pnpm)
+- [x] Archive docs/archive/ into organized folders
+- [x] Delete empty scripts/test-streaming-api.sh
 
 **Files Changed:**
 - New: `CLEANUP_PROGRESS.md`
@@ -76,19 +76,20 @@
 
 ---
 
-#### ⏳ Branch 2: Debug Script Relocation
+#### 🔄 Branch 2: Debug Script Relocation
 **Branch:** `claude/audit-2-debug-scripts`
-**Status:** ⏳ Not Started
+**Status:** 🔄 In Progress
 **PR:** -
 **Merged:** -
 **Risk:** Low | **Effort:** 30 min
 
 **Changes:**
-- [ ] Move `apps/api/src/utils/test-*.ts` → `apps/api/scripts/debug/`
-- [ ] Move `apps/api/src/utils/*-fix*.ts` → `apps/api/scripts/debug/`
-- [ ] Move `apps/api/src/utils/debug-*.ts` → `apps/api/scripts/debug/`
-- [ ] Move `apps/api/src/utils/verify-*.ts` → `apps/api/scripts/debug/`
-- [ ] Update CLEANUP_PROGRESS.md
+- [x] Move `apps/api/src/utils/test-*.ts` → `apps/api/scripts/debug/`
+- [x] Move `apps/api/src/utils/*-fix*.ts` → `apps/api/scripts/debug/`
+- [x] Move `apps/api/src/utils/debug-*.ts` → `apps/api/scripts/debug/`
+- [x] Move `apps/api/src/utils/verify-*.ts` → `apps/api/scripts/debug/`
+- [x] Create README.md documenting debug scripts
+- [x] Update CLEANUP_PROGRESS.md
 
 **Files to Move (13 files):**
 - `apply-rls-fix.ts`
@@ -379,7 +380,9 @@ None currently.
 
 - **2025-11-17:** Initial audit completed, tracking document created
 - **2025-11-17:** Branch 1 (Housekeeping) started
+- **2025-11-19:** Branch 1 (Housekeeping) completed and merged
+- **2025-11-19:** Branch 2 (Debug Script Relocation) started
 
 ---
 
-**Last Updated:** 2025-11-17 (Branch 1 in progress)
+**Last Updated:** 2025-11-19 (Branch 2 in progress)
