@@ -6,9 +6,9 @@ During the codebase cleanup on 2025-11-19, duplicate migration numbers were disc
 
 ### Changes Made
 
-| Old Filename                                  | New Filename                                  | Status      |
-| --------------------------------------------- | --------------------------------------------- | ----------- |
-| `013_enable_user_streaming_subscriptions_rls` | `013_enable_user_streaming_subscriptions_rls` | ✅ Unchanged |
+| Old Filename                                  | New Filename                                  | Status        |
+| --------------------------------------------- | --------------------------------------------- | ------------- |
+| `013_enable_user_streaming_subscriptions_rls` | `013_enable_user_streaming_subscriptions_rls` | ✅ Unchanged  |
 | `013_standardize_user_episode_progress_rls`   | `014_standardize_user_episode_progress_rls`   | ✅ Renumbered |
 | `013_standardize_user_season_ratings_rls`     | `015_standardize_user_season_ratings_rls`     | ✅ Renumbered |
 
