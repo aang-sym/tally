@@ -14,7 +14,7 @@ Each markdown file can be copied directly into a new GitHub issue:
 
 ## Available Templates
 
-1. **add-structured-logging.md** - Replace console.* calls with proper logging (P1, 4 hours)
+1. **add-structured-logging.md** - Replace console.\* calls with proper logging (P1, 4 hours)
 2. **increase-test-coverage.md** - Add comprehensive test suite (P1, 1-2 weeks)
 3. **refactor-service-files.md** - Break down large service files (P2, 2-3 days)
 4. **remove-legacy-storage.md** - Remove in-memory storage fallback (P2, 1 day)

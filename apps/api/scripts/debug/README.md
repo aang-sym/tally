@@ -5,6 +5,7 @@ This directory contains debugging and testing utilities used during development.
 ## Purpose
 
 These scripts were created to:
+
 - Debug specific issues (RLS policies, authentication, watchlist bugs)
 - Test database operations manually
 - Validate fixes and migrations
@@ -13,27 +14,32 @@ These scripts were created to:
 ## Scripts
 
 ### RLS (Row Level Security) Debugging
+
 - `apply-rls-fix.ts` - Apply RLS policy fixes
 - `comprehensive-auth-fix.ts` - Comprehensive authentication debugging
 - `execute-rls-fix-direct.ts` - Direct RLS fix execution
 - `test-rls-fix.ts` - Test RLS policy fixes
 
 ### Database Validation
+
 - `verify-database-state.ts` - Verify database state and integrity
 - `debug-watchlist-failure.ts` - Debug watchlist operation failures
 - `step2-validation.ts` - Validation step 2 checks
 - `test-public-shows-access.ts` - Test public shows access patterns
 
 ### API Testing
+
 - `test-real-api-flow.ts` - Test real API request/response flows
 - `test-ui-flow.ts` - Test UI interaction flows
 - `test-ui-flow.sh` - Shell script for UI flow testing
 - `test-watchlist-flow.ts` - Test watchlist operations end-to-end
 
 ### Contract & Coverage
+
 - `contract-coverage-check.ts` - Check API contract coverage
 
 ### Token Generation
+
 - `generate-test-token.js` - Generate JWT tokens for testing
 
 ## Usage
@@ -57,6 +63,7 @@ tsx scripts/debug/generate-test-token.js
 ## Maintenance
 
 Consider deleting scripts that:
+
 - Reference bugs that have been fixed
 - Are duplicated by proper test coverage
 - Use deprecated APIs or schemas

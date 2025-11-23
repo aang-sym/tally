@@ -12,6 +12,7 @@
 Current test coverage is **minimal** with only **14 test files** across the entire monorepo:
 
 ### Current State
+
 - ✅ **iOS app:** Some tests (ApiClientTests.swift, SubscriptionsViewModelTests.swift)
 - ⚠️ **API:** Only 3-4 route files have tests
 - ❌ **Services:** No tests for EpisodeProgressService, RatingService, ShowService, etc.
@@ -19,6 +20,7 @@ Current test coverage is **minimal** with only **14 test files** across the enti
 - ❌ **Web app:** Has `--passWithNoTests` flag (actively skips tests!)
 
 ### Critical Paths Missing Tests
+
 - Authentication flow (login, signup, token validation)
 - Watchlist operations (add, update, delete, status changes)
 - Episode progress tracking
@@ -35,6 +37,7 @@ Add comprehensive test coverage in phases:
 Test all API endpoints with Supertest:
 
 **Priority routes:**
+
 - `routes/auth.ts` - Login, signup, token refresh
 - `routes/watchlist.ts` - CRUD operations
 - `routes/progress.ts` - Episode tracking
@@ -42,6 +45,7 @@ Test all API endpoints with Supertest:
 - `routes/shows.ts` - Show search, details
 
 **Example test structure:**
+
 ```typescript
 // apps/api/src/routes/watchlist.test.ts
 import request from 'supertest';
@@ -59,9 +63,7 @@ describe('POST /api/watchlist', () => {
   });
 
   it('should return 401 without auth token', async () => {
-    const response = await request(app)
-      .post('/api/watchlist')
-      .send({ tmdbId: 12345 });
+    const response = await request(app).post('/api/watchlist').send({ tmdbId: 12345 });
 
     expect(response.status).toBe(401);
   });
@@ -73,6 +75,7 @@ describe('POST /api/watchlist', () => {
 Test business logic in isolation:
 
 **Services to test:**
+
 - `ShowService` - Show lookup, availability checks
 - `WatchlistService` - Watchlist operations
 - `EpisodeProgressService` - Progress tracking
@@ -80,6 +83,7 @@ Test business logic in isolation:
 - `UserService` - User management
 
 **Example:**
+
 ```typescript
 // apps/api/src/services/ShowService.test.ts
 import { ShowService } from './ShowService';
@@ -141,6 +145,7 @@ export default {
 ## Tasks
 
 ### API Testing
+
 - [ ] Remove `--passWithNoTests` from web package.json
 - [ ] Add tests for all routes in `apps/api/src/routes/`
 - [ ] Add tests for all services in `apps/api/src/services/`
@@ -149,18 +154,21 @@ export default {
 - [ ] Set up test database or mocks for Supabase
 
 ### Web Testing
+
 - [ ] Set up React Testing Library
 - [ ] Add component tests for key UI components
 - [ ] Add integration tests for user flows
 - [ ] Test API client error handling
 
 ### Infrastructure
+
 - [ ] Set up coverage reporting with Vitest
 - [ ] Set coverage thresholds (start at 50%, increase gradually)
 - [ ] Add coverage reports to CI/CD
 - [ ] Block PRs that decrease coverage
 
 ### Documentation
+
 - [ ] Document testing standards in CONTRIBUTING.md
 - [ ] Add examples of good tests
 - [ ] Document how to run tests locally
@@ -177,6 +185,7 @@ export default {
 ## Testing Strategy
 
 ### Test Pyramid
+
 ```
      /\
     /UI\      ← Few end-to-end tests
@@ -188,12 +197,14 @@ export default {
 ```
 
 ### What to Test
+
 - **Happy paths:** Valid inputs, successful operations
 - **Error paths:** Invalid inputs, auth failures, DB errors
 - **Edge cases:** Empty results, boundary conditions
 - **Security:** RLS enforcement, token validation
 
 ### What NOT to Test
+
 - External APIs (TMDB, streaming services) - use mocks
 - Supabase internals - trust their tests
 - Third-party library behavior

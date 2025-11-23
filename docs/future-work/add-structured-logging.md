@@ -1,4 +1,4 @@
-# Add Structured Logging to Replace console.* Calls
+# Add Structured Logging to Replace console.\* Calls
 
 **Priority:** P1
 **Effort:** 4 hours
@@ -18,6 +18,7 @@ Currently the API has **322 console.log/error/warn calls** across 20 files. This
 - No centralized log management possible
 
 **Files with most logging:**
+
 - `apps/api/src/utils/verify-database-state.ts` (47 calls)
 - `apps/api/src/utils/debug-watchlist-failure.ts` (31 calls)
 - `apps/api/src/utils/test-real-api-flow.ts` (32 calls)
@@ -25,17 +26,19 @@ Currently the API has **322 console.log/error/warn calls** across 20 files. This
 
 ## Proposed Solution
 
-Introduce a proper logging library and replace console.* calls:
+Introduce a proper logging library and replace console.\* calls:
 
 ### 1. Choose a Logging Library
 
 **Option A: Winston** (most popular)
+
 ```bash
 pnpm add winston
 pnpm add -D @types/winston
 ```
 
 **Option B: Pino** (faster, structured by default)
+
 ```bash
 pnpm add pino
 pnpm add -D pino-pretty
@@ -51,24 +54,29 @@ import pino from 'pino';
 
 export const logger = pino({
   level: process.env.LOG_LEVEL || 'info',
-  transport: process.env.NODE_ENV === 'development' ? {
-    target: 'pino-pretty',
-    options: { colorize: true }
-  } : undefined
+  transport:
+    process.env.NODE_ENV === 'development'
+      ? {
+          target: 'pino-pretty',
+          options: { colorize: true },
+        }
+      : undefined,
 });
 
 export default logger;
 ```
 
-### 3. Replace console.* Calls
+### 3. Replace console.\* Calls
 
 **Before:**
+
 ```typescript
 console.log('[DatabaseError] Operation failed:', error);
 console.error('Failed to fetch user:', userId, error);
 ```
 
 **After:**
+
 ```typescript
 logger.error({ err: error, operation: 'fetchUser' }, 'Database operation failed');
 logger.error({ userId, err: error }, 'Failed to fetch user');
@@ -86,9 +94,9 @@ logger.error({ userId, err: error }, 'Failed to fetch user');
 
 - [ ] Install logging library (pino recommended)
 - [ ] Create centralized logger utility
-- [ ] Replace console.* in production routes
-- [ ] Replace console.* in services
-- [ ] Replace console.* in middleware
+- [ ] Replace console.\* in production routes
+- [ ] Replace console.\* in services
+- [ ] Replace console.\* in middleware
 - [ ] Update error handlers to use logger
 - [ ] Add LOG_LEVEL to .env.example
 - [ ] Document logging standards in CONTRIBUTING.md
@@ -96,9 +104,9 @@ logger.error({ userId, err: error }, 'Failed to fetch user');
 
 ## Success Criteria
 
-- Zero console.* calls in `apps/api/src/routes/`
-- Zero console.* calls in `apps/api/src/services/`
-- Zero console.* calls in `apps/api/src/middleware/`
+- Zero console.\* calls in `apps/api/src/routes/`
+- Zero console.\* calls in `apps/api/src/services/`
+- Zero console.\* calls in `apps/api/src/middleware/`
 - Structured logging with consistent format
 - Configurable log levels via environment variable
 - Pretty output in development, JSON in production
@@ -111,4 +119,4 @@ logger.error({ userId, err: error }, 'Failed to fetch user');
 
 ---
 
-**Note:** Many of the files with high console.* counts are in `utils/` and are debugging scripts that should be moved/removed in Branch 2 (Debug Script Relocation). This issue focuses on replacing console calls in production code.
+**Note:** Many of the files with high console.\* counts are in `utils/` and are debugging scripts that should be moved/removed in Branch 2 (Debug Script Relocation). This issue focuses on replacing console calls in production code.

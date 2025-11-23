@@ -9,11 +9,13 @@
 ## Quick Stats
 
 ### Current Progress
+
 - ✅ **Completed:** 1/7 branches
 - 🔄 **In Progress:** 1/7 branches (Branch 2: Debug Script Relocation)
 - ⏳ **Pending:** 5/7 branches
 
 ### Cleanup Impact
+
 - **Dead Code Found:** ~100KB across 13 utility scripts, 9 SQL files, 24 archived docs
 - **Duplicate Code:** 2 error handler implementations, 3 config locations
 - **Maintenance Items:** 17+ outdated packages, 322 console.log calls
@@ -24,6 +26,7 @@
 ## Audit Summary
 
 ### Dead/Unused Code Identified
+
 1. **Temporary files** - `tmp_test.txt`, `dev.log`
 2. **13 debugging utilities** in `apps/api/src/utils/` (~50KB)
 3. **9 ad-hoc SQL files** in `apps/api/src/db/` (~30KB)
@@ -32,6 +35,7 @@
 6. **Duplicate error handler** - `apps/api/src/utils/errorHandler.ts` (184 lines)
 
 ### Refactoring Opportunities
+
 1. **Duplicate error handlers** (middleware vs utils)
 2. **322 console.log calls** across API (20 files)
 3. **15+ debug logs** in production web API client
@@ -39,9 +43,10 @@
 5. **Large service files** needing decomposition
 
 ### Maintenance Issues
+
 1. **17+ outdated packages** (some 2+ major versions behind)
 2. **Minimal test coverage** (<15 test files)
-3. **Duplicate migration numbering** (three files numbered 013_)
+3. **Duplicate migration numbering** (three files numbered 013\_)
 4. **Package manager mismatch** (using pnpm, engines specifies npm)
 5. **No .env.example files** for developer onboarding
 
@@ -52,6 +57,7 @@
 ### P0 - High Impact, Low/Medium Effort
 
 #### ✅ Branch 1: Housekeeping
+
 **Branch:** `claude/audit-1-housekeeping-01XmhX57JCwG6TsTgv2SJZWY`
 **Status:** ✅ Completed
 **PR:** Merged to main
@@ -59,15 +65,17 @@
 **Risk:** None | **Effort:** 5 min
 
 **Changes:**
+
 - [x] Create comprehensive CLEANUP_PROGRESS.md
 - [x] Create future work issue templates
 - [x] Delete tmp_test.txt
-- [x] Update .gitignore (add tmp_*, *.tmp)
+- [x] Update .gitignore (add tmp\__, _.tmp)
 - [x] Fix package.json engines (npm → pnpm)
 - [x] Archive docs/archive/ into organized folders
 - [x] Delete empty scripts/test-streaming-api.sh
 
 **Files Changed:**
+
 - New: `CLEANUP_PROGRESS.md`
 - New: `docs/future-work/*.md` (6 issue templates)
 - Deleted: `tmp_test.txt`, `scripts/test-streaming-api.sh`
@@ -77,6 +85,7 @@
 ---
 
 #### 🔄 Branch 2: Debug Script Relocation
+
 **Branch:** `claude/audit-2-debug-scripts`
 **Status:** 🔄 In Progress
 **PR:** -
@@ -84,6 +93,7 @@
 **Risk:** Low | **Effort:** 30 min
 
 **Changes:**
+
 - [x] Move `apps/api/src/utils/test-*.ts` → `apps/api/scripts/debug/`
 - [x] Move `apps/api/src/utils/*-fix*.ts` → `apps/api/scripts/debug/`
 - [x] Move `apps/api/src/utils/debug-*.ts` → `apps/api/scripts/debug/`
@@ -92,6 +102,7 @@
 - [x] Update CLEANUP_PROGRESS.md
 
 **Files to Move (13 files):**
+
 - `apply-rls-fix.ts`
 - `comprehensive-auth-fix.ts`
 - `contract-coverage-check.ts`
@@ -108,11 +119,13 @@
 - `generate-test-token.js`
 
 **Files Remaining in utils/:**
+
 - `errorHandler.ts` (production code)
 
 ---
 
 #### ⏳ Branch 3: SQL Cleanup
+
 **Branch:** `claude/audit-3-sql-cleanup`
 **Status:** ⏳ Not Started
 **PR:** -
@@ -120,6 +133,7 @@
 **Risk:** Medium (requires DB verification) | **Effort:** 2 hours
 
 **Changes:**
+
 - [ ] Renumber duplicate migration files (013 → 013, 014, 015)
 - [ ] Move non-migration SQL files to `apps/api/docs/sql-queries/`
 - [ ] Document which queries are still needed
@@ -127,6 +141,7 @@
 - [ ] Update CLEANUP_PROGRESS.md
 
 **SQL Files to Relocate:**
+
 - `check-show-data.sql` → `docs/sql-queries/diagnostics/`
 - `complete-rls-fix.sql` → `docs/sql-queries/rls-fixes/`
 - `fix-rls-shows.sql` → `docs/sql-queries/rls-fixes/`
@@ -139,6 +154,7 @@
 - `check-all-rls-policies.sql` (root) → `docs/sql-queries/diagnostics/`
 
 **Migration Files to Renumber:**
+
 - Keep: `013_enable_user_streaming_subscriptions_rls.sql`
 - Rename: `013_standardize_user_episode_progress_rls.sql` → `014_`
 - Rename: `013_standardize_user_season_ratings_rls.sql` → `015_`
@@ -148,6 +164,7 @@
 ---
 
 #### ⏳ Branch 4: Logging & Config Cleanup
+
 **Branch:** `claude/audit-4-logging-config`
 **Status:** ⏳ Not Started
 **PR:** -
@@ -155,6 +172,7 @@
 **Risk:** Low | **Effort:** 2 hours
 
 **Changes:**
+
 - [ ] Remove debug console.logs from `apps/web/src/config/api.ts` (15+ logs)
 - [ ] Create `.env.example` in `apps/api/`
 - [ ] Create `.env.example` in `apps/web/`
@@ -164,22 +182,26 @@
 - [ ] Update CLEANUP_PROGRESS.md
 
 **Web API Debug Logs to Remove:**
+
 - Lines 128-194 in `apps/web/src/config/api.ts`
 - Replace with conditional logging: `if (import.meta.env.DEV)`
 
 **Config Consolidation:**
+
 - Delete: `/.eslintrc.js` (duplicate)
 - Delete: `/.prettierrc` (duplicate)
 - Move inline config from `package.json:56-121` to `packages/config/`
 - Update all workspace packages to extend shared config
 
 **Environment Variables to Document:**
+
 - API: `SUPABASE_URL`, `SUPABASE_API_KEY`, `SUPABASE_SERVICE_KEY`, `PORT`, etc.
 - Web: `VITE_API_BASE_URL`, etc.
 
 ---
 
 #### ⏳ Branch 5: Error Handler Consolidation
+
 **Branch:** `claude/audit-5-error-consolidation`
 **Status:** ⏳ Not Started
 **PR:** -
@@ -187,6 +209,7 @@
 **Risk:** Medium (touches error handling) | **Effort:** 3 hours
 
 **Changes:**
+
 - [ ] Analyze both error handler implementations
 - [ ] Consolidate into `apps/api/src/middleware/errorHandler.ts`
 - [ ] Update `routes/users.ts` to use middleware error classes
@@ -195,11 +218,13 @@
 - [ ] Update CLEANUP_PROGRESS.md
 
 **Current State:**
+
 - `middleware/errorHandler.ts` (68 lines) - Class-based (AppError, ValidationError, NotFoundError)
 - `utils/errorHandler.ts` (184 lines) - Functional (createErrorResponse, handleDatabaseError)
 - Only `routes/users.ts` imports the utils version
 
 **Migration Strategy:**
+
 1. Add missing error types to middleware version
 2. Update users.ts to use middleware classes
 3. Run tests to verify no regressions
@@ -210,6 +235,7 @@
 ### P1 - Medium Impact, Medium Effort
 
 #### ⏳ Branch 6a: Safe Dependency Updates
+
 **Branch:** `claude/audit-6a-safe-deps`
 **Status:** ⏳ Not Started
 **PR:** -
@@ -217,9 +243,10 @@
 **Risk:** Low-Medium | **Effort:** 3 hours
 
 **Changes:**
+
 - [ ] Update @redocly/cli: 2.0.8 → 2.11.1
 - [ ] Update @openapitools/openapi-generator-cli: 2.23.1 → 2.25.0
-- [ ] Update @typescript-eslint/*: 6.21.0 → 8.46.4
+- [ ] Update @typescript-eslint/\*: 6.21.0 → 8.46.4
 - [ ] Update lint-staged: 15.5.2 → 16.2.6
 - [ ] Update concurrently: 8.2.2 → 9.2.1
 - [ ] Update typescript: 5.9.2 → 5.9.3
@@ -227,6 +254,7 @@
 - [ ] Update CLEANUP_PROGRESS.md
 
 **Testing Strategy:**
+
 1. Update one package at a time
 2. Run `pnpm install`
 3. Run `pnpm build` and `pnpm typecheck`
@@ -237,6 +265,7 @@
 ---
 
 #### ⏳ Branch 6b: Vite Major Upgrade (Risky)
+
 **Branch:** `claude/audit-6b-vite-upgrade`
 **Status:** ⏳ Not Started
 **PR:** -
@@ -244,6 +273,7 @@
 **Risk:** High (2 major versions) | **Effort:** 1-2 days
 
 **Changes:**
+
 - [ ] Review Vite 6.x and 7.x migration guides
 - [ ] Update vite: 5.4.20 → 7.2.2
 - [ ] Update @vitejs/plugin-react-swc to compatible version
@@ -253,6 +283,7 @@
 - [ ] Update CLEANUP_PROGRESS.md
 
 **Known Breaking Changes to Check:**
+
 - Config file format changes
 - Plugin API changes
 - Build output structure
@@ -267,6 +298,7 @@
 The following items are tracked as GitHub issues for future work:
 
 #### 📋 Issue: Remove Legacy Storage Implementation
+
 **Priority:** P2
 **Effort:** 1 day
 **Risk:** Medium
@@ -278,11 +310,13 @@ Verify all routes use Supabase services, then remove `apps/api/src/storage/index
 ---
 
 #### 📋 Issue: Refactor Large Service Files
+
 **Priority:** P2
 **Effort:** 2-3 days
 **Risk:** Medium
 
 Extract specialized services:
+
 - `AvailabilityService` from `ShowService`
 - Consolidate episode progress logic
 - Single responsibility per service
@@ -292,22 +326,25 @@ Extract specialized services:
 ---
 
 #### 📋 Issue: Add Structured Logging
+
 **Priority:** P1
 **Effort:** 4 hours
 **Risk:** Low
 
-Replace 322 console.* calls with proper logging library (winston/pino).
+Replace 322 console.\* calls with proper logging library (winston/pino).
 
 **See:** `docs/future-work/add-structured-logging.md`
 
 ---
 
 #### 📋 Issue: Increase Test Coverage
+
 **Priority:** P1
 **Effort:** 1-2 weeks
 **Risk:** None
 
 Add comprehensive tests for:
+
 - All API routes
 - Service layer
 - Middleware
@@ -318,6 +355,7 @@ Add comprehensive tests for:
 ---
 
 #### 📋 Issue: Reduce Lint Warnings to Zero
+
 **Priority:** P2
 **Effort:** 1 week
 **Risk:** Low
@@ -329,6 +367,7 @@ Fix or suppress all ESLint warnings, set `--max-warnings=0`.
 ---
 
 #### 📋 Issue: Extract TODOs to GitHub Issues
+
 **Priority:** P2
 **Effort:** 4 hours
 **Risk:** None
@@ -342,17 +381,20 @@ Parse all TODO/FIXME/HACK comments, create issues with proper context.
 ## Timeline
 
 ### Week 1 (Current)
+
 - ✅ Complete audit
 - 🔄 Branch 1: Housekeeping
 - ⏳ Branch 2: Debug Scripts
 - ⏳ Branch 4: Logging & Config
 
 ### Week 2
+
 - ⏳ Branch 3: SQL Cleanup (after DB verification)
 - ⏳ Branch 5: Error Consolidation
 - ⏳ Branch 6a: Safe Dependency Updates
 
 ### Week 3+
+
 - ⏳ Branch 6b: Vite Upgrade (dedicated effort)
 - 📋 Future work items (tracked as issues)
 
