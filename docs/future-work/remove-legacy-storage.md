@@ -14,11 +14,13 @@ The codebase contains **legacy in-memory storage** implementations that appear t
 ### Legacy Storage Files
 
 **`apps/api/src/storage/index.ts`** (115 lines)
+
 - In-memory Maps for users, watchlists, waitlist
 - Only imported in 3 files: `waitlist.ts`, `watchlist.test.ts`, `plan.ts`
 - Comments say "replace with real database later" - now using Supabase
 
 **`apps/api/src/storage/simple-watchlist.ts`** (345 lines)
+
 - In-memory watchlist and episode progress storage
 - Imported in 6 route files
 - Includes hardcoded test data (user-1 with Peacemaker/Dexter)
@@ -26,6 +28,7 @@ The codebase contains **legacy in-memory storage** implementations that appear t
 ### Current Database: Supabase
 
 The app now uses Supabase (PostgreSQL) as the primary database:
+
 - `apps/api/src/db/supabase.ts` - Supabase client
 - Services use Supabase: `ShowService`, `UserService`, `EpisodeProgressService`, etc.
 - RLS policies enforce data access
@@ -34,12 +37,14 @@ The app now uses Supabase (PostgreSQL) as the primary database:
 ## Why This Matters
 
 **Cons of keeping legacy storage:**
+
 - ❌ Confusing - two storage systems
 - ❌ Bugs - easy to accidentally use wrong storage
 - ❌ Maintenance burden - extra code to maintain
 - ❌ Test data pollution - hardcoded user-1 data
 
 **Pros of keeping (if any):**
+
 - ✅ Fallback for local development without Supabase?
 - ✅ Used in tests?
 
@@ -56,6 +61,7 @@ grep -r "from.*storage/simple-watchlist" apps/api/src/
 ```
 
 **Current known imports:**
+
 - `routes/waitlist.ts` → `storage/index.ts`
 - `routes/watchlist.test.ts` → `storage/index.ts`
 - `routes/plan.ts` → `storage/index.ts`
@@ -66,6 +72,7 @@ grep -r "from.*storage/simple-watchlist" apps/api/src/
 For each file importing legacy storage, confirm it's actually using Supabase instead:
 
 **Check for:**
+
 - `supabase.from('table_name')` calls
 - Service usage (ShowService, UserService, etc.)
 - No calls to `userStore.*` or `watchlistStore.*`
@@ -89,6 +96,7 @@ For each file importing legacy storage, confirm it's actually using Supabase ins
 If Supabase is now required:
 
 1. **Remove storage files**
+
    ```bash
    rm apps/api/src/storage/index.ts
    rm apps/api/src/storage/simple-watchlist.ts
@@ -108,6 +116,7 @@ If Supabase is now required:
 If tests need it:
 
 1. **Move to test directory**
+
    ```bash
    mv apps/api/src/storage/ apps/api/test/fixtures/
    ```
@@ -124,11 +133,13 @@ If tests need it:
 If it's intentionally a fallback:
 
 1. **Rename clearly**
+
    ```bash
    mv storage/ storage-mock/
    ```
 
 2. **Add runtime check**
+
    ```typescript
    if (!process.env.SUPABASE_URL) {
      console.warn('Using mock in-memory storage - NOT FOR PRODUCTION');
@@ -159,6 +170,7 @@ If it's intentionally a fallback:
 ## Migration Examples
 
 **Before (using legacy storage):**
+
 ```typescript
 // routes/waitlist.ts
 import { waitlistStore } from '../storage';
@@ -167,6 +179,7 @@ const entry = await waitlistStore.add(email, country);
 ```
 
 **After (using Supabase service):**
+
 ```typescript
 // routes/waitlist.ts
 import { supabase } from '../db/supabase';

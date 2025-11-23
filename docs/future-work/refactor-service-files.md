@@ -14,6 +14,7 @@ Several service files in `apps/api/src/services/` are **growing too large** and 
 ### Current Service Files
 
 **ShowService.ts** - Doing too much:
+
 - ✅ Show CRUD operations
 - ✅ Show metadata lookup
 - ❌ Availability checking (should be separate)
@@ -21,6 +22,7 @@ Several service files in `apps/api/src/services/` are **growing too large** and 
 - ❌ Provider normalization
 
 **WatchlistService.ts** - Mixed concerns:
+
 - ✅ Watchlist CRUD
 - ❌ Episode progress tracking (separate service exists!)
 - ❌ Status management
@@ -28,6 +30,7 @@ Several service files in `apps/api/src/services/` are **growing too large** and 
 - ❌ Statistics calculation
 
 **StreamingService.ts** - Multiple domains:
+
 - ✅ Streaming service metadata
 - ❌ Availability lookups
 - ❌ Provider normalization
@@ -78,6 +81,7 @@ apps/api/src/services/
 ### Extraction Example: AvailabilityService
 
 **Before (in ShowService.ts):**
+
 ```typescript
 class ShowService {
   async getShowAvailability(tmdbId: number, region: string) {
@@ -88,6 +92,7 @@ class ShowService {
 ```
 
 **After (new AvailabilityService.ts):**
+
 ```typescript
 class AvailabilityService {
   async getShowAvailability(tmdbId: number, region: string) {
@@ -98,9 +103,7 @@ class AvailabilityService {
 }
 
 class ShowService {
-  constructor(
-    private availabilityService: AvailabilityService
-  ) {}
+  constructor(private availabilityService: AvailabilityService) {}
 
   async getShowWithAvailability(tmdbId: number, region: string) {
     const show = await this.getShow(tmdbId);
@@ -143,12 +146,14 @@ class ShowService {
 ## Tasks
 
 ### Analysis
+
 - [ ] Map all methods in large service files
 - [ ] Identify logical groupings by responsibility
 - [ ] Document current dependencies between services
 - [ ] Identify shared logic to extract to utils
 
 ### Extraction
+
 - [ ] Create `AvailabilityService`
 - [ ] Create `ShowSearchService`
 - [ ] Create `ProviderNormalizer`
@@ -156,18 +161,21 @@ class ShowService {
 - [ ] Create `SeasonProgressService`
 
 ### Migration
+
 - [ ] Update routes to use new services
 - [ ] Update old services to delegate to new ones
 - [ ] Ensure backward compatibility during transition
 - [ ] Update dependency injection
 
 ### Testing
+
 - [ ] Add unit tests for each new service
 - [ ] Integration tests for service composition
 - [ ] Verify no regressions in API behavior
 - [ ] Load test critical paths
 
 ### Documentation
+
 - [ ] Document service architecture in docs/
 - [ ] Update CLAUDE.md with new structure
 - [ ] Add JSDoc comments to service classes
@@ -185,6 +193,7 @@ class ShowService {
 ## Benefits
 
 After refactoring:
+
 - ✅ **Easier to test** - Services have fewer dependencies
 - ✅ **Easier to understand** - Clear separation of concerns
 - ✅ **Easier to extend** - Add features without touching unrelated code

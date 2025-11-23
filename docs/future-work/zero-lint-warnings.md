@@ -22,6 +22,7 @@ Currently the project allows **up to 1000 ESLint warnings**:
 ```
 
 **Issues with this approach:**
+
 - ❌ **Warnings accumulate** over time (broken window theory)
 - ❌ **Real issues hidden** among noise
 - ❌ **Code quality degrades** as warnings are ignored
@@ -33,6 +34,7 @@ Currently the project allows **up to 1000 ESLint warnings**:
 Unknown - need to run `pnpm lint` to get actual count.
 
 Likely warnings:
+
 - Unused variables/imports
 - Missing type annotations
 - `any` types
@@ -52,6 +54,7 @@ grep "warning" lint-output.txt | wc -l
 ```
 
 Document current state:
+
 - Total warnings: X
 - By rule type
 - By file/directory
@@ -61,16 +64,19 @@ Document current state:
 Group by severity:
 
 **Critical (Fix First):**
+
 - Security issues (eval, innerHTML)
 - Type safety issues (any, unsafe casts)
 - Probable bugs (unused vars, unreachable code)
 
 **Important (Fix Soon):**
+
 - React best practices (hooks, keys)
 - Performance issues (unnecessary re-renders)
 - Accessibility (a11y rules)
 
 **Nice to have (Fix Last):**
+
 - Style preferences (arrow functions vs function)
 - Naming conventions
 - Comment formatting
@@ -80,6 +86,7 @@ Group by severity:
 For each warning, choose:
 
 **Option A: Fix the code** (preferred)
+
 ```typescript
 // Before
 const data = await fetch(...); // Warning: unused variable
@@ -91,12 +98,14 @@ logger.debug("debug"); // Use proper logger
 ```
 
 **Option B: Disable rule for line** (if intentional)
+
 ```typescript
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const data: any = legacyAPI(); // Justified use of any
 ```
 
 **Option C: Disable rule globally** (if not applicable)
+
 ```json
 // .eslintrc.js
 "rules": {
@@ -105,6 +114,7 @@ const data: any = legacyAPI(); // Justified use of any
 ```
 
 **Option D: Configure rule properly** (if too strict)
+
 ```json
 "rules": {
   "@typescript-eslint/no-unused-vars": ["warn", {
@@ -157,6 +167,7 @@ Once at zero:
 ## Tasks
 
 ### Analysis
+
 - [ ] Run `pnpm lint` and capture full output
 - [ ] Count total warnings
 - [ ] Group warnings by rule type
@@ -164,11 +175,13 @@ Once at zero:
 - [ ] Identify files with most warnings
 
 ### Prioritization
+
 - [ ] Categorize warnings (critical, important, nice-to-have)
 - [ ] Create plan for incremental reduction
 - [ ] Set weekly targets
 
 ### Fixing
+
 - [ ] Fix critical warnings (security, type safety)
 - [ ] Fix important warnings (bugs, best practices)
 - [ ] Fix nice-to-have warnings (style)
@@ -176,6 +189,7 @@ Once at zero:
 - [ ] Update ESLint config if rules are too strict
 
 ### Prevention
+
 - [ ] Set `--max-warnings=0` in lint-staged
 - [ ] Set `--max-warnings=0` in CI pipeline
 - [ ] Add lint check to PR requirements
@@ -183,6 +197,7 @@ Once at zero:
 - [ ] Document linting standards in CONTRIBUTING.md
 
 ### Cleanup
+
 - [ ] Remove unnecessary `eslint-disable` comments
 - [ ] Consolidate ESLint config (see Branch 4)
 - [ ] Update dependencies (see Branch 6a)
@@ -198,6 +213,7 @@ Once at zero:
 ## Common Warnings & Fixes
 
 ### @typescript-eslint/no-unused-vars
+
 ```typescript
 // Before
 import { unused } from './lib';
@@ -209,6 +225,7 @@ const _data = fetch(...); // Prefix with _ if intentionally unused
 ```
 
 ### @typescript-eslint/no-explicit-any
+
 ```typescript
 // Before
 const data: any = ...;
@@ -220,6 +237,7 @@ const data: unknown = ...;
 ```
 
 ### react/jsx-key
+
 ```typescript
 // Before
 {items.map(item => <div>{item}</div>)}
@@ -229,6 +247,7 @@ const data: unknown = ...;
 ```
 
 ### no-console
+
 ```typescript
 // Before
 console.log('Debug info');
@@ -241,18 +260,22 @@ logger.debug('Debug info'); // Use proper logger
 ## Incremental Approach Example
 
 **Week 1: Focus on API**
+
 - Fix all warnings in `apps/api/src/`
 - Target: 500 warnings → 200 warnings
 
 **Week 2: Focus on Web**
+
 - Fix all warnings in `apps/web/src/`
 - Target: 200 warnings → 50 warnings
 
 **Week 3: Focus on Packages**
+
 - Fix all warnings in `packages/`
 - Target: 50 warnings → 0 warnings
 
 **Week 4: Enforcement**
+
 - Set `--max-warnings=0` everywhere
 - Update CI/CD
 - Document standards
@@ -260,6 +283,7 @@ logger.debug('Debug info'); // Use proper logger
 ## Benefits
 
 After achieving zero warnings:
+
 - ✅ **Higher code quality** - Consistent standards enforced
 - ✅ **Catch bugs early** - Warnings indicate potential issues
 - ✅ **Better type safety** - TypeScript used properly
