@@ -10,9 +10,9 @@
 
 ### Current Progress
 
-- ✅ **Completed:** 1/7 branches
-- 🔄 **In Progress:** 1/7 branches (Branch 2: Debug Script Relocation)
-- ⏳ **Pending:** 5/7 branches
+- ✅ **Completed:** 2/7 branches
+- 🔄 **In Progress:** 1/7 branches (Branch 3: SQL Cleanup)
+- ⏳ **Pending:** 4/7 branches
 
 ### Cleanup Impact
 
@@ -84,12 +84,12 @@
 
 ---
 
-#### 🔄 Branch 2: Debug Script Relocation
+#### ✅ Branch 2: Debug Script Relocation
 
-**Branch:** `claude/audit-2-debug-scripts`
-**Status:** 🔄 In Progress
-**PR:** -
-**Merged:** -
+**Branch:** `claude/audit-2-debug-scripts-01XmhX57JCwG6TsTgv2SJZWY`
+**Status:** ✅ Completed
+**PR:** Merged to main
+**Merged:** 2025-11-19
 **Risk:** Low | **Effort:** 30 min
 
 **Changes:**
@@ -124,21 +124,21 @@
 
 ---
 
-#### ⏳ Branch 3: SQL Cleanup
+#### 🔄 Branch 3: SQL Cleanup
 
 **Branch:** `claude/audit-3-sql-cleanup`
-**Status:** ⏳ Not Started
+**Status:** 🔄 In Progress
 **PR:** -
 **Merged:** -
 **Risk:** Medium (requires DB verification) | **Effort:** 2 hours
 
 **Changes:**
 
-- [ ] Renumber duplicate migration files (013 → 013, 014, 015)
-- [ ] Move non-migration SQL files to `apps/api/docs/sql-queries/`
-- [ ] Document which queries are still needed
-- [ ] Verify migration state in production DB
-- [ ] Update CLEANUP_PROGRESS.md
+- [x] Renumber duplicate migration files (013 → 013, 014, 015)
+- [x] Move non-migration SQL files to `apps/api/docs/sql-queries/`
+- [x] Document which queries are still needed
+- [x] Create migration renumbering verification guide
+- [x] Update CLEANUP_PROGRESS.md
 
 **SQL Files to Relocate:**
 
@@ -424,7 +424,9 @@ None currently.
 - **2025-11-17:** Branch 1 (Housekeeping) started
 - **2025-11-19:** Branch 1 (Housekeeping) completed and merged
 - **2025-11-19:** Branch 2 (Debug Script Relocation) started
+- **2025-11-19:** Branch 2 (Debug Script Relocation) completed and merged
+- **2025-11-19:** Branch 3 (SQL Cleanup) started
 
 ---
 
-**Last Updated:** 2025-11-19 (Branch 2 in progress)
+**Last Updated:** 2025-11-19 (Branch 3 in progress)
