@@ -10,17 +10,49 @@ from datetime import datetime
 
 import boto3
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 logger = logging.getLogger()
 logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
 
 s3 = boto3.client('s3')
 cloudwatch = boto3.client('cloudwatch')
+ssm = boto3.client('ssm')
 
-TMDB_API_KEY = os.environ['TMDB_API_KEY']
 S3_BUCKET = os.environ['S3_BUCKET']
 ENVIRONMENT = os.environ.get('ENVIRONMENT', 'dev')
+SSM_PREFIX = os.environ.get('SSM_PREFIX', f'/tally/{ENVIRONMENT}')
 TMDB_BASE_URL = 'https://api.themoviedb.org/3'
+
+# Fetched once per cold start
+_TMDB_API_KEY = None
+
+
+def get_tmdb_api_key():
+    global _TMDB_API_KEY
+    if _TMDB_API_KEY is None:
+        response = ssm.get_parameter(
+            Name=f'{SSM_PREFIX}/tmdb_api_key',
+            WithDecryption=True
+        )
+        _TMDB_API_KEY = response['Parameter']['Value']
+    return _TMDB_API_KEY
+
+
+def get_session():
+    session = requests.Session()
+    retry = Retry(
+        total=3,
+        backoff_factor=2,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET"]
+    )
+    session.mount("https://", HTTPAdapter(max_retries=retry))
+    return session
+
+
+SESSION = get_session()
 
 
 def lambda_handler(event, context):
@@ -74,7 +106,7 @@ def lambda_handler(event, context):
 def fetch_popular_shows():
     """Fetch popular TV shows from TMDB"""
     url = f"{TMDB_BASE_URL}/tv/popular"
-    response = requests.get(url, params={'api_key': TMDB_API_KEY}, timeout=30)
+    response = SESSION.get(url, params={'api_key': get_tmdb_api_key()}, timeout=30)
     response.raise_for_status()
     return response.json()
 
@@ -82,7 +114,7 @@ def fetch_popular_shows():
 def fetch_trending_shows():
     """Fetch trending TV shows (weekly) from TMDB"""
     url = f"{TMDB_BASE_URL}/trending/tv/week"
-    response = requests.get(url, params={'api_key': TMDB_API_KEY}, timeout=30)
+    response = SESSION.get(url, params={'api_key': get_tmdb_api_key()}, timeout=30)
     response.raise_for_status()
     return response.json()
 
@@ -90,7 +122,7 @@ def fetch_trending_shows():
 def fetch_airing_today():
     """Fetch TV shows airing today from TMDB"""
     url = f"{TMDB_BASE_URL}/tv/airing_today"
-    response = requests.get(url, params={'api_key': TMDB_API_KEY}, timeout=30)
+    response = SESSION.get(url, params={'api_key': get_tmdb_api_key()}, timeout=30)
     response.raise_for_status()
     return response.json()
 

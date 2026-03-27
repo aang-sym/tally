@@ -93,12 +93,19 @@ def process_bronze_file(bucket, key):
 
     # Normalize each show to Silver schema
     normalized_shows = []
+    normalize_failures = 0
     for show in shows:
         try:
             normalized = normalize_show(show)
             normalized_shows.append(normalized)
         except Exception as e:
-            logger.warning(f"Failed to normalize show {show.get('id')}: {str(e)}")
+            normalize_failures += 1
+            logger.warning(f"Failed to normalize show {show.get('id')}: {str(e)}", exc_info=True)
+
+    if normalize_failures > 0 and normalize_failures / initial_count > 0.1:
+        raise RuntimeError(
+            f"Normalization failure rate too high: {normalize_failures}/{initial_count} shows failed"
+        )
 
     # Convert to DataFrame
     df = pd.DataFrame(normalized_shows)
@@ -227,8 +234,8 @@ def write_to_silver(df, bucket, key):
     # Clean up temp file
     try:
         os.remove(temp_file)
-    except:
-        pass
+    except Exception as e:
+        logger.error(f"Failed to remove temp file {temp_file}: {str(e)}", exc_info=True)
 
 
 def extract_partition_date(key):

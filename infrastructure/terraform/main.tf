@@ -6,13 +6,23 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.0"
+      version = "~> 4.67"  # Compatible with Terraform 1.5.7
     }
+  }
+
+  backend "s3" {
+    bucket         = "tally-terraform-state"
+    key            = "tally/dev/terraform.tfstate"
+    region         = "ap-southeast-2"
+    dynamodb_table = "tally-terraform-locks"
+    encrypt        = true
+    profile        = "tally-dev"
   }
 }
 
 provider "aws" {
-  region = var.aws_region
+  region  = var.aws_region
+  profile = "tally-dev"  # Use your AWS SSO profile
 
   default_tags {
     tags = {
@@ -26,7 +36,7 @@ provider "aws" {
 variable "aws_region" {
   description = "AWS region for all resources"
   type        = string
-  default     = "us-east-1"
+  default     = "ap-southeast-2"
 }
 
 variable "environment" {
@@ -41,10 +51,10 @@ variable "project_name" {
   default     = "tally"
 }
 
-variable "tmdb_api_key" {
-  description = "TMDB API key for fetching show data"
+variable "alert_email" {
+  description = "Email address for pipeline error alerts (leave empty to skip)"
   type        = string
-  sensitive   = true
+  default     = ""
 }
 
 output "datalake_bucket_name" {

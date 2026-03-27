@@ -53,6 +53,22 @@ resource "aws_iam_role_policy" "lambda_s3_access" {
   })
 }
 
+resource "aws_iam_role_policy" "lambda_ssm_access" {
+  name = "${var.project_name}-lambda-ssm-access"
+  role = aws_iam_role.lambda_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = ["ssm:GetParameter", "ssm:GetParametersByPath"]
+        Resource = "arn:aws:ssm:*:*:parameter/tally/${var.environment}/*"
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role_policy" "lambda_cloudwatch_metrics" {
   name = "${var.project_name}-lambda-cloudwatch-metrics"
   role = aws_iam_role.lambda_execution.id

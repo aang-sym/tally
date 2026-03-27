@@ -55,8 +55,8 @@ resource "aws_athena_named_query" "popular_shows" {
       vote_average,
       vote_count,
       first_air_date
-    FROM silver_shows
-    WHERE dt = (SELECT MAX(dt) FROM silver_shows)
+    FROM shows
+    WHERE dt = (SELECT MAX(dt) FROM shows)
     ORDER BY popularity DESC
     LIMIT 20;
   EOT
@@ -73,7 +73,7 @@ resource "aws_athena_named_query" "data_quality_check" {
       SUM(CASE WHEN show_id IS NULL THEN 1 ELSE 0 END) as missing_show_id,
       SUM(CASE WHEN title IS NULL OR title = '' THEN 1 ELSE 0 END) as missing_title,
       SUM(CASE WHEN popularity < 0 THEN 1 ELSE 0 END) as invalid_popularity
-    FROM silver_shows
+    FROM shows
     GROUP BY dt
     ORDER BY dt DESC;
   EOT

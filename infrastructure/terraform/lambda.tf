@@ -1,13 +1,15 @@
 # Lambda Functions Configuration
 
-resource "aws_lambda_layer_version" "data_processing" {
-  filename            = "lambda_layers/data_processing.zip"
-  layer_name          = "${var.project_name}-data-processing"
-  compatible_runtimes = ["python3.11"]
+# SNS topic for pipeline alerts
+resource "aws_sns_topic" "pipeline_alerts" {
+  name = "${var.project_name}-pipeline-alerts-${var.environment}"
+}
 
-  description = "Shared libraries: pandas, pyarrow, requests"
-
-  source_code_hash = filebase64sha256("lambda_layers/data_processing.zip")
+resource "aws_sns_topic_subscription" "alert_email" {
+  count     = var.alert_email != "" ? 1 : 0
+  topic_arn = aws_sns_topic.pipeline_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
 }
 
 resource "aws_lambda_function" "tmdb_daily_sync" {
@@ -21,21 +23,19 @@ resource "aws_lambda_function" "tmdb_daily_sync" {
 
   source_code_hash = filebase64sha256("lambda_packages/tmdb_daily_sync.zip")
 
-  layers = [aws_lambda_layer_version.data_processing.arn]
-
   environment {
     variables = {
-      TMDB_API_KEY = var.tmdb_api_key
-      S3_BUCKET    = aws_s3_bucket.datalake.id
-      ENVIRONMENT  = var.environment
-      LOG_LEVEL    = "INFO"
+      SSM_PREFIX  = "/tally/${var.environment}"
+      S3_BUCKET   = aws_s3_bucket.datalake.id
+      ENVIRONMENT = var.environment
+      LOG_LEVEL   = "INFO"
     }
   }
 }
 
 resource "aws_cloudwatch_log_group" "tmdb_daily_sync" {
   name              = "/aws/lambda/${aws_lambda_function.tmdb_daily_sync.function_name}"
-  retention_in_days = 7
+  retention_in_days = 30
 }
 
 resource "aws_cloudwatch_event_rule" "tmdb_daily_sync" {
@@ -69,8 +69,6 @@ resource "aws_lambda_function" "bronze_to_silver" {
 
   source_code_hash = filebase64sha256("lambda_packages/bronze_to_silver.zip")
 
-  layers = [aws_lambda_layer_version.data_processing.arn]
-
   environment {
     variables = {
       S3_BUCKET   = aws_s3_bucket.datalake.id
@@ -82,7 +80,7 @@ resource "aws_lambda_function" "bronze_to_silver" {
 
 resource "aws_cloudwatch_log_group" "bronze_to_silver" {
   name              = "/aws/lambda/${aws_lambda_function.bronze_to_silver.function_name}"
-  retention_in_days = 7
+  retention_in_days = 30
 }
 
 resource "aws_cloudwatch_metric_alarm" "tmdb_sync_errors" {
@@ -101,6 +99,7 @@ resource "aws_cloudwatch_metric_alarm" "tmdb_sync_errors" {
   }
 
   alarm_description = "Alert when TMDB sync Lambda has errors"
+  alarm_actions     = [aws_sns_topic.pipeline_alerts.arn]
 }
 
 resource "aws_cloudwatch_metric_alarm" "etl_errors" {
@@ -119,4 +118,5 @@ resource "aws_cloudwatch_metric_alarm" "etl_errors" {
   }
 
   alarm_description = "Alert when ETL Lambda has multiple errors"
+  alarm_actions     = [aws_sns_topic.pipeline_alerts.arn]
 }
