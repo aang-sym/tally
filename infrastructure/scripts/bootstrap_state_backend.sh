@@ -5,7 +5,7 @@
 set -e
 PROFILE="tally-dev"
 REGION="ap-southeast-2"
-BUCKET="tally-terraform-state"
+BUCKET="tally-terraform-state-961868453843"  # Account ID suffix ensures global uniqueness
 TABLE="tally-terraform-locks"
 
 echo "Creating Terraform state S3 bucket..."

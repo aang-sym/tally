@@ -59,7 +59,7 @@ def lambda_handler(event, context):
     """Main Lambda handler"""
     logger.info(f"Starting TMDB daily sync for environment: {ENVIRONMENT}")
 
-    execution_id = context.request_id
+    execution_id = context.aws_request_id
     date_partition = datetime.now().strftime('%Y-%m-%d')
 
     try:

@@ -1,5 +1,12 @@
 # Lambda Functions Configuration
 
+# AWS-managed pandas + pyarrow layer for bronze_to_silver ETL
+# AWSSDKPandas is maintained by AWS — no build step required
+# https://aws-sdk-pandas.readthedocs.io/en/stable/install.html#lambda-layer
+locals {
+  aws_sdk_pandas_layer_arn = "arn:aws:lambda:${var.aws_region}:336392948345:layer:AWSSDKPandas-Python310:20"
+}
+
 # SNS topic for pipeline alerts
 resource "aws_sns_topic" "pipeline_alerts" {
   name = "${var.project_name}-pipeline-alerts-${var.environment}"
@@ -17,7 +24,7 @@ resource "aws_lambda_function" "tmdb_daily_sync" {
   function_name    = "${var.project_name}-tmdb-daily-sync-${var.environment}"
   role            = aws_iam_role.lambda_execution.arn
   handler         = "handler.lambda_handler"
-  runtime         = "python3.11"
+  runtime         = "python3.10"
   timeout         = 300
   memory_size     = 512
 
@@ -63,11 +70,12 @@ resource "aws_lambda_function" "bronze_to_silver" {
   function_name    = "${var.project_name}-bronze-to-silver-${var.environment}"
   role            = aws_iam_role.lambda_execution.arn
   handler         = "handler.lambda_handler"
-  runtime         = "python3.11"
+  runtime         = "python3.10"
   timeout         = 300
   memory_size     = 1024
 
   source_code_hash = filebase64sha256("lambda_packages/bronze_to_silver.zip")
+  layers           = [local.aws_sdk_pandas_layer_arn]
 
   environment {
     variables = {

@@ -11,7 +11,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "tally-terraform-state"
+    bucket         = "tally-terraform-state-961868453843"
     key            = "tally/dev/terraform.tfstate"
     region         = "ap-southeast-2"
     dynamodb_table = "tally-terraform-locks"
