@@ -102,6 +102,10 @@ export const WatchlistItemSchema = z.object({
   tmdbShowId: z.number().optional(),
   detectedReleasePattern: ReleasePatternSchema.optional(),
   watchProviders: z.array(TMDBWatchProviderSchema).optional(),
+  // Progress pointer — where the user is up to
+  currentSeason: z.number().int().nullable().optional(),
+  currentEpisode: z.number().int().nullable().optional(),
+  lastProgressAt: z.string().datetime().nullable().optional(),
 });
 
 export const CreateWatchlistItemSchema = z.object({
