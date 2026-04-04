@@ -6,19 +6,12 @@ import { ValidationError } from '../middleware/errorHandler.js';
 
 const router: Router = Router();
 
-// Mock auth middleware - extracts user from stubbed token
 function extractUserId(req: any): string {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
+  const userId = req.userId as string | undefined;
+  if (!userId) {
     throw new ValidationError('Authorization token required');
   }
-
-  const token = authHeader.substring(7);
-  if (!token.startsWith('stub_token_')) {
-    throw new ValidationError('Invalid token format');
-  }
-
-  return token.substring(11); // Extract user ID from stub_token_{userId}
+  return userId;
 }
 
 async function generateRealActivationWindows(userId: string): Promise<ServiceWindow[]> {
