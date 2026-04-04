@@ -42,6 +42,9 @@ struct DashboardView: View {
     @State private var showProviderDetail = false
     @State private var selectedProviderSubscription: Subscription?
 
+    // Add subscription sheet state
+    @State private var showAddSubscription = false
+
     var body: some View {
         ZStack {
             backgroundGradient
@@ -62,6 +65,11 @@ struct DashboardView: View {
             await viewModel.load(api: api)
             await viewModel.loadUpcomingEpisodes(api: api)
             stableServices = viewModel.uniqueServices.sorted { $0.id < $1.id }
+        }
+        .sheet(isPresented: $showAddSubscription) {
+            AddSubscriptionView(api: api) {
+                Task { await viewModel.load(api: api) }
+            }
         }
     }
 
@@ -639,7 +647,7 @@ struct DashboardView: View {
 
 
             Button {
-                // TODO: Navigate to add subscription flow
+                showAddSubscription = true
             } label: {
                 HStack(spacing: Spacing.sm) {
                     Image(systemName: "plus.circle.fill")
