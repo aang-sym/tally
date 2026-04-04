@@ -305,7 +305,8 @@ struct DashboardView: View {
     private var calendarTabContent: some View {
         WeekCalendarView(
             episodes: $viewModel.upcomingEpisodes,
-            selectedDate: $selectedDate
+            selectedDate: $selectedDate,
+            api: api
         )
     }
 

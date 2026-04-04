@@ -12,6 +12,7 @@ import SwiftUI
 struct WeekCalendarView: View {
     @Binding var episodes: [CalendarEpisode]
     @Binding var selectedDate: Date?
+    var api: ApiClient? = nil
     @Namespace private var dateNamespace
 
     // Get current week dates (7 days starting from today)
@@ -65,7 +66,8 @@ struct WeekCalendarView: View {
                         ForEach(weekDates, id: \.self) { date in
                             DaySection(
                                 date: date,
-                                episodes: episodesForDate(date)
+                                episodes: episodesForDate(date),
+                                api: api
                             )
                             .id(date)
                         }
@@ -204,6 +206,7 @@ private struct WeekDateCell: View {
 private struct DaySection: View {
     let date: Date
     let episodes: [CalendarEpisode]
+    var api: ApiClient? = nil
 
     private var formattedDate: String {
         let calendar = Calendar.current
@@ -269,7 +272,7 @@ private struct DaySection: View {
             } else {
                 VStack(spacing: 12) {
                     ForEach(episodes) { episode in
-                        CollapsibleEpisodeCard(episode: episode)
+                        CollapsibleEpisodeCard(episode: episode, api: api)
                     }
                 }
             }
@@ -281,9 +284,30 @@ private struct DaySection: View {
 
 private struct CollapsibleEpisodeCard: View {
     let episode: CalendarEpisode
+    var api: ApiClient? = nil
     @State private var isExpanded = false
     @State private var isSynopsisExpanded = false
+    @State private var isWatched = false
+    @State private var isUpdating = false
     @Namespace private var animation
+
+    @MainActor
+    private func toggleWatched(api: ApiClient) async {
+        isUpdating = true
+        let newStatus = isWatched ? "unwatched" : "watched"
+        isWatched.toggle() // optimistic
+        do {
+            _ = try await api.setEpisodeProgress(
+                tmdbId: episode.show.tmdbId ?? 0,
+                seasonNumber: episode.seasonNumber,
+                episodeNumber: episode.episode.episodeNumber,
+                status: newStatus
+            )
+        } catch {
+            isWatched.toggle() // revert
+        }
+        isUpdating = false
+    }
 
     /// Convert StreamingProvider to StreamingService for glowing logo
     private func convertProviderToService() -> StreamingService {
@@ -448,7 +472,34 @@ private struct CollapsibleEpisodeCard: View {
                         .buttonStyle(.plain)
                     }
                     .padding(.horizontal, 14)
-                    .padding(.bottom, 10)
+
+                    // Mark Watched button
+                    if let api {
+                        Button {
+                            guard !isUpdating else { return }
+                            Task { await toggleWatched(api: api) }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: isWatched ? "checkmark.circle.fill" : "circle")
+                                Text(isWatched ? "Watched" : "Mark as Watched")
+                                    .fontWeight(.medium)
+                                if isUpdating {
+                                    Spacer()
+                                    ProgressView()
+                                }
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(isWatched ? Color.white.opacity(0.08) : Color.blue.opacity(0.85))
+                            .foregroundStyle(isWatched ? .secondary : .white)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isUpdating)
+                        .padding(.horizontal, 14)
+                    }
+
+                    Spacer().frame(height: 2)
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
