@@ -1,0 +1,88 @@
+# Tally Data Pipeline - Main Terraform Configuration
+
+terraform {
+  required_version = ">= 1.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 4.67"  # Compatible with Terraform 1.5.7
+    }
+  }
+
+  backend "s3" {
+    bucket         = "tally-terraform-state-961868453843"
+    key            = "tally/dev/terraform.tfstate"
+    region         = "ap-southeast-2"
+    dynamodb_table = "tally-terraform-locks"
+    encrypt        = true
+    profile        = "tally-dev"
+  }
+}
+
+provider "aws" {
+  region  = var.aws_region
+  profile = "tally-dev"  # Use your AWS SSO profile
+
+  default_tags {
+    tags = {
+      Project     = "Tally"
+      Environment = var.environment
+      ManagedBy   = "Terraform"
+    }
+  }
+}
+
+variable "aws_region" {
+  description = "AWS region for all resources"
+  type        = string
+  default     = "ap-southeast-2"
+}
+
+variable "environment" {
+  description = "Environment name (dev, staging, prod)"
+  type        = string
+  default     = "dev"
+}
+
+variable "project_name" {
+  description = "Project name for resource naming"
+  type        = string
+  default     = "tally"
+}
+
+variable "alert_email" {
+  description = "Email address for pipeline error alerts (leave empty to skip)"
+  type        = string
+  default     = ""
+}
+
+output "datalake_bucket_name" {
+  description = "Name of the S3 data lake bucket"
+  value       = aws_s3_bucket.datalake.id
+}
+
+output "lambda_ingestion_function_name" {
+  description = "Name of the TMDB ingestion Lambda function"
+  value       = aws_lambda_function.tmdb_daily_sync.function_name
+}
+
+output "lambda_etl_function_name" {
+  description = "Name of the Bronze->Silver ETL Lambda function"
+  value       = aws_lambda_function.bronze_to_silver.function_name
+}
+
+output "glue_database_name" {
+  description = "Name of the Glue catalog database"
+  value       = aws_glue_catalog_database.tally.name
+}
+
+output "athena_workgroup" {
+  description = "Athena workgroup for queries"
+  value       = aws_athena_workgroup.tally.name
+}
+
+output "manual_test_command" {
+  description = "Command to manually trigger TMDB sync"
+  value       = "aws lambda invoke --function-name ${aws_lambda_function.tmdb_daily_sync.function_name} --payload '{}' response.json"
+}

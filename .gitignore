@@ -77,3 +77,12 @@ temp/
 
 # OS generated files
 Thumbs.db
+
+# Sensitive credentials — never commit these
+apps/api/.env
+apps/api/.env.local
+apps/web/.env
+apps/web/.env.local
+infrastructure/terraform/terraform.tfvars
+infrastructure/scripts/setup_ssm_secrets.sh
+*.csv
