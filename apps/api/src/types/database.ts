@@ -99,6 +99,9 @@ export interface UserShows {
   buffer_days: number;
   selected_service_id?: string | null;
   country_code?: string | null;
+  current_season?: number | null;
+  current_episode?: number | null;
+  last_progress_at?: string | null;
 }
 
 export interface UserStreamingSubscriptions {
