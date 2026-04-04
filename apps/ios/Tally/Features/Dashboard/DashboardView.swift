@@ -45,6 +45,9 @@ struct DashboardView: View {
     // Add subscription sheet state
     @State private var showAddSubscription = false
 
+    // Show detail sheet state
+    @State private var selectedUserShow: UserShow?
+
     var body: some View {
         ZStack {
             backgroundGradient
@@ -69,6 +72,11 @@ struct DashboardView: View {
         .sheet(isPresented: $showAddSubscription) {
             AddSubscriptionView(api: api) {
                 Task { await viewModel.load(api: api) }
+            }
+        }
+        .sheet(item: $selectedUserShow) { userShow in
+            NavigationStack {
+                ShowDetailView(userShow: userShow, api: api)
             }
         }
     }
@@ -399,8 +407,9 @@ struct DashboardView: View {
 
         // Handle show links
         if link.kind == .show {
-            // TODO: Navigate to show detail page
-            print("📍 Navigate to show: \(link.title)")
+            if let userShow = viewModel.watchlist.first(where: { $0.show.title == link.title }) {
+                selectedUserShow = userShow
+            }
         }
 
         // Handle episode links
