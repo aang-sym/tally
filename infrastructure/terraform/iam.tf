@@ -62,7 +62,7 @@ resource "aws_iam_role_policy" "lambda_ssm_access" {
     Statement = [
       {
         Effect = "Allow"
-        Action = ["ssm:GetParameter", "ssm:GetParametersByPath"]
+        Action = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"]
         Resource = "arn:aws:ssm:*:*:parameter/tally/${var.environment}/*"
       }
     ]

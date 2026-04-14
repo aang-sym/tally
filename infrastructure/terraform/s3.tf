@@ -65,14 +65,25 @@ resource "aws_s3_bucket_lifecycle_configuration" "datalake" {
 resource "aws_s3_bucket_notification" "datalake" {
   bucket = aws_s3_bucket.datalake.id
 
-  # Important: Must depend on Lambda permission
-  depends_on = [aws_lambda_permission.allow_s3_bronze_to_silver]
+  depends_on = [
+    aws_lambda_permission.allow_s3_bronze_to_silver,
+    aws_lambda_permission.allow_s3_silver_to_supabase,
+  ]
 
+  # bronze/ → bronze_to_silver ETL
   lambda_function {
     lambda_function_arn = aws_lambda_function.bronze_to_silver.arn
     events              = ["s3:ObjectCreated:*"]
     filter_prefix       = "bronze/tmdb/shows/"
     filter_suffix       = ".json"
+  }
+
+  # silver/ → silver_to_supabase upsert
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.silver_to_supabase.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "silver/shows/"
+    filter_suffix       = ".parquet"
   }
 }
 
