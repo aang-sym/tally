@@ -3,6 +3,7 @@ import { ValidationError } from '../middleware/errorHandler.js';
 import { tmdbService } from '../services/tmdb.js';
 import { TMDBClient, releasePatternService } from '@tally/core';
 import { config } from '../config/index.js';
+import { serviceSupabase } from '../db/supabase.js';
 
 const router: Router = Router();
 
@@ -772,6 +773,72 @@ router.get('/diagnostics/:tmdbId', async (req, res, next) => {
         details: { tmdbId, seasonNumber },
       });
     }
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/episodes/resolve
+ * Resolve a (showId, seasonNumber, episodeNumber) tuple to an internal episode UUID.
+ * Used by iOS clients that know TMDB IDs and S/E numbers but need the DB UUID for progress writes.
+ *
+ * Query params: showId (UUID), seasonNumber (int), episodeNumber (int)
+ * Returns: { success: true, data: { episode: { id, episodeNumber, tmdbEpisodeId, name } } }
+ */
+router.get('/episodes/resolve', async (req, res, next) => {
+  try {
+    const { showId, seasonNumber, episodeNumber } = req.query as Record<string, string | undefined>;
+
+    if (!showId || !seasonNumber || !episodeNumber) {
+      throw new ValidationError('showId, seasonNumber, and episodeNumber are required');
+    }
+
+    const seasonNum = parseInt(seasonNumber, 10);
+    const episodeNum = parseInt(episodeNumber, 10);
+
+    if (isNaN(seasonNum) || isNaN(episodeNum)) {
+      throw new ValidationError('seasonNumber and episodeNumber must be integers');
+    }
+
+    const { data, error } = await serviceSupabase
+      .from('episodes')
+      .select(
+        `
+        id,
+        episode_number,
+        tmdb_episode_id,
+        name,
+        seasons!inner (
+          show_id,
+          season_number
+        )
+      `
+      )
+      .eq('seasons.show_id', showId)
+      .eq('seasons.season_number', seasonNum)
+      .eq('episode_number', episodeNum)
+      .limit(1)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({
+        success: false,
+        error: 'Episode not found',
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        episode: {
+          id: data.id,
+          episodeNumber: data.episode_number,
+          tmdbEpisodeId: data.tmdb_episode_id,
+          name: data.name,
+        },
+      },
+    });
   } catch (error) {
     next(error);
   }

@@ -26,41 +26,7 @@ import { trackAPIUsage } from './middleware/usage-tracker.js';
 import { config } from './config/index.js';
 import { quotaTracker } from './services/quota-tracker.js';
 
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-
-function getSupabaseForRequest(req: any) {
-  const url = process.env.SUPABASE_URL as string | undefined;
-  const serviceKey = process.env.SUPABASE_SERVICE_KEY as string | undefined;
-  if (!url || !serviceKey) {
-    const parts = [!url ? 'SUPABASE_URL' : null, !serviceKey ? 'SUPABASE_SERVICE_KEY' : null]
-      .filter(Boolean)
-      .join(', ');
-    throw new Error(`Supabase env missing: ${parts}. Ensure these are set in apps/api/.env`);
-  }
-
-  // Check if we have a validated user from the authenticateUser middleware
-  const userId = req.userId || req.user?.id;
-  const hasAuth = Boolean(userId);
-
-  console.log('[SUPA][client] building per-request client', {
-    hasAuth,
-    userId: userId ? `${userId.substring(0, 8)}...` : null,
-  });
-
-  // For authenticated users, we'll use the service key to bypass RLS and manually filter by user_id
-  // This is necessary because we use custom JWTs, not Supabase-issued tokens
-  return createSupabaseClient(url, serviceKey, {
-    auth: { persistSession: false },
-    db: { schema: 'public' },
-    global: {
-      headers: {
-        // Preserve debugging info
-        ...(req.headers?.authorization ? { 'x-original-auth': req.headers.authorization } : {}),
-        ...(userId ? { 'x-user-id': userId } : {}),
-      },
-    },
-  });
-}
+import { createUserClient, getUserJwtFromHeaders } from './db/supabase.js';
 
 const app = express();
 // Prevent 304s on dynamic endpoints (Express enables ETag by default)
@@ -132,8 +98,11 @@ app.use('/api/tv-guide', optionalAuth, tvGuideRouter);
 // Explicit rating endpoint to avoid PGRST301 issues
 app.put('/api/watchlist/:userShowId/rating', authenticateUser, async (req, res) => {
   try {
-    const supaRead = getSupabaseForRequest(req);
-    const supaWrite = getSupabaseForRequest(req); // Use regular client for writes to get data back
+    const userToken = getUserJwtFromHeaders(
+      req.headers as Record<string, string | string[] | undefined>
+    );
+    const supaRead = createUserClient(userToken ?? '');
+    const supaWrite = createUserClient(userToken ?? '');
     const userId = (req as any).user?.id as string | undefined;
     const { userShowId } = req.params as { userShowId: string };
     const { rating } = req.body as { rating?: number };
@@ -246,7 +215,9 @@ app.get('/api/debug/user-shows/:id', authenticateUser, async (req, res) => {
   try {
     const userId = (req as any).user?.id as string;
     const { id } = req.params as { id: string };
-    const supaRead = getSupabaseForRequest(req);
+    const supaRead = createUserClient(
+      getUserJwtFromHeaders(req.headers as Record<string, string | string[] | undefined>) ?? ''
+    );
 
     const probePk = await supaRead
       .from('user_shows')

@@ -498,13 +498,15 @@ export class EpisodeProgressService {
    */
   private async updateLastWatchedEpisode(userId: string, episodeId: string): Promise<void> {
     try {
-      // Get the show ID for this episode
+      // Get the show ID, season number, and episode number for this episode
       const { data: episode, error: episodeError } = await supabase
         .from('episodes')
         .select(
           `
+          episode_number,
           seasons!inner (
-            show_id
+            show_id,
+            season_number
           )
         `
         )
@@ -515,20 +517,26 @@ export class EpisodeProgressService {
         return;
       }
 
-      const showId =
-        Array.isArray((episode as any).seasons) && (episode as any).seasons.length > 0
-          ? (episode as any).seasons[0]?.show_id
-          : (episode as any).seasons?.show_id;
+      const seasonsData = Array.isArray((episode as any).seasons)
+        ? (episode as any).seasons[0]
+        : (episode as any).seasons;
+
+      const showId = seasonsData?.show_id;
+      const seasonNumber = seasonsData?.season_number;
+      const episodeNumber = (episode as any).episode_number;
 
       if (!showId) {
         return;
       }
 
-      // Update user_shows with last watched episode
+      // Update user_shows with last watched episode and progress pointer
       await supabase
         .from('user_shows')
         .update({
           last_episode_watched_id: episodeId,
+          current_season: seasonNumber ?? null,
+          current_episode: episodeNumber ?? null,
+          last_progress_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', userId)

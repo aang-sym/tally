@@ -25,7 +25,9 @@ struct WatchlistView: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List(vm.shows) { us in
-                        Row(userShow: us)
+                        NavigationLink(destination: ShowDetailView(userShow: us, api: api)) {
+                            Row(userShow: us)
+                        }
                     }
                     .listStyle(.plain)
                 }

@@ -9,33 +9,21 @@ import Foundation
 
 // MARK: - Auth Models
 
-/// User information returned from login
-private struct UserInfo: Decodable {
+/// User object in Supabase Auth response
+private struct AuthUser: Decodable {
     let id: String
-    let email: String
-    let displayName: String
-    let avatarUrl: String?
+    let email: String?
 }
 
-/// Login response structure
-private struct LoginResponse: Decodable {
-    let user: UserInfo
-    let token: String
-    let message: String
-}
-
-/// API wrapper for login response
-private struct LoginApiResponse: Decodable {
+/// Response from /api/auth/login and /api/auth/register
+private struct AuthResponse: Decodable {
     let success: Bool
-    let data: LoginResponse
+    let token: String
+    let user: AuthUser
 }
 
-/// Legacy login response formats (for backward compatibility)
-private struct LoginResponseA: Decodable { let token: String }
-private struct LoginResponseB: Decodable { let accessToken: String }
-
-/// Login request body
-private struct LoginRequest: Encodable {
+/// Login/register request body
+private struct AuthRequest: Encodable {
     let email: String
     let password: String
 }
@@ -45,7 +33,7 @@ private struct LoginRequest: Encodable {
 extension ApiClient {
     /// Login and return authenticated user info
     func login(email: String, password: String) async throws -> AuthenticatedUser {
-        let (data, http) = try await postJSON("/api/users/login", body: LoginRequest(email: email, password: password))
+        let (data, http) = try await postJSON("/api/auth/login", body: AuthRequest(email: email, password: password))
         guard http.statusCode == 200 else {
             #if DEBUG
             if let body = String(data: data, encoding: .utf8) { print("Login error body:", body) }
@@ -54,33 +42,40 @@ extension ApiClient {
             throw ApiError.badStatus(http.statusCode)
         }
 
-        // Try to decode the actual API response format first (with wrapper)
-        if let apiResponse = try? JSONDecoder().decode(LoginApiResponse.self, from: data) {
-            let response = apiResponse.data
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        if let response = try? decoder.decode(AuthResponse.self, from: data) {
             return AuthenticatedUser(
                 id: response.user.id,
-                email: response.user.email,
-                displayName: response.user.displayName,
+                email: response.user.email ?? email,
+                displayName: response.user.email ?? email,
                 token: response.token
             )
         }
 
-        // Fallback to direct decode for backward compatibility
-        if let response = try? JSONDecoder().decode(LoginResponse.self, from: data) {
-            return AuthenticatedUser(
-                id: response.user.id,
-                email: response.user.email,
-                displayName: response.user.displayName,
-                token: response.token
-            )
+        throw ApiError.cannotParse
+    }
+
+    /// Register a new account and return authenticated user info
+    func register(email: String, password: String) async throws -> AuthenticatedUser {
+        let (data, http) = try await postJSON("/api/auth/register", body: AuthRequest(email: email, password: password))
+        guard http.statusCode == 201 else {
+            #if DEBUG
+            if let body = String(data: data, encoding: .utf8) { print("Register error body:", body) }
+            #endif
+            if http.statusCode == 400 { throw ApiError.badStatus(400) }
+            throw ApiError.badStatus(http.statusCode)
         }
 
-        // Fallback to old formats for backward compatibility
-        if let r = try? JSONDecoder().decode(LoginResponseA.self, from: data) {
-            return AuthenticatedUser(id: "", email: email, displayName: "", token: r.token)
-        }
-        if let r2 = try? JSONDecoder().decode(LoginResponseB.self, from: data) {
-            return AuthenticatedUser(id: "", email: email, displayName: "", token: r2.accessToken)
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        if let response = try? decoder.decode(AuthResponse.self, from: data) {
+            return AuthenticatedUser(
+                id: response.user.id,
+                email: response.user.email ?? email,
+                displayName: response.user.email ?? email,
+                token: response.token
+            )
         }
 
         throw ApiError.cannotParse
