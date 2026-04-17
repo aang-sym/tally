@@ -185,6 +185,13 @@ const MyShows: React.FC = () => {
     {}
   );
 
+  // Onboarding search state (shown when watchlist is empty)
+  const [onboardingQuery, setOnboardingQuery] = useState('');
+  const [onboardingResults, setOnboardingResults] = useState<{ id: number; title: string; year?: number; poster?: string; overview: string }[]>([]);
+  const [onboardingSearching, setOnboardingSearching] = useState(false);
+  const [onboardingAdding, setOnboardingAdding] = useState<number | null>(null);
+  const [onboardingAdded, setOnboardingAdded] = useState<Set<number>>(new Set());
+
   // Persist user's country to profile so API routes can fall back to users.country_code
   const persistUserCountry = async (code: string) => {
     try {
@@ -201,6 +208,48 @@ const MyShows: React.FC = () => {
       );
     } catch (e) {
       console.warn('Failed to persist user country; keeping local override only', e);
+    }
+  };
+
+  // Onboarding: search TMDB inline (debounced via useEffect)
+  useEffect(() => {
+    if (!onboardingQuery.trim()) { setOnboardingResults([]); return; }
+    const timer = setTimeout(async () => {
+      setOnboardingSearching(true);
+      try {
+        const res = await fetch(`/api/tmdb/search?query=${encodeURIComponent(onboardingQuery)}`);
+        const data = await res.json();
+        setOnboardingResults(data.results?.slice(0, 8) || []);
+      } catch {
+        setOnboardingResults([]);
+      } finally {
+        setOnboardingSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [onboardingQuery]);
+
+  // Onboarding: add a show then refresh the grid
+  const addShowFromOnboarding = async (show: { id: number; title: string }) => {
+    setOnboardingAdding(show.id);
+    try {
+      const token = localStorage.getItem('authToken') || undefined;
+      await apiRequest(
+        API_ENDPOINTS.watchlist.v2,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tmdbId: show.id, title: show.title, status: 'watchlist' }),
+        },
+        token
+      );
+      setOnboardingAdded((prev) => new Set(prev).add(show.id));
+      // Refresh watchlist so grid appears
+      await fetchWatchlist('all', false);
+    } catch (e) {
+      console.error('Failed to add show from onboarding:', e);
+    } finally {
+      setOnboardingAdding(null);
     }
   };
 
@@ -987,655 +1036,352 @@ const MyShows: React.FC = () => {
     );
   };
 
+  const [selectedShow, setSelectedShow] = useState<UserShow | null>(null);
+
+  const openDetail = (userShow: UserShow) => {
+    setSelectedShow(userShow);
+    if (!showAnalysis[userShow.show.tmdb_id]) {
+      fetchShowAnalysis(userShow.show.tmdb_id);
+    }
+  };
+
+  const closeDetail = () => setSelectedShow(null);
+
+  const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w342';
+
+  const getPosterUrl = (userShow: UserShow): string | null => {
+    const path = userShow.show.poster_path || posterOverrides[userShow.show.tmdb_id];
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    return `${TMDB_IMAGE_BASE}${path}`;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Shows</h1>
-            <p className="text-gray-600 mt-2">
-              Track your favorite shows and manage your watching progress
-            </p>
-          </div>
-          <div className="shrink-0">
-            <label className="block text-xs font-medium text-gray-600 mb-1">Country/Region</label>
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <h1 className="text-2xl font-bold text-gray-900">My Shows</h1>
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-medium text-gray-500">Region</label>
             <select
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+              className="px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               {['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'JP', 'KR', 'IN', 'BR'].map((code) => (
-                <option key={code} value={code}>
-                  {code}
-                </option>
+                <option key={code} value={code}>{code}</option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        {loadingStats ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow p-6 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-              <span className="ml-3 text-gray-600">Loading stats...</span>
-            </div>
-          </div>
-        ) : statsError ? (
-          <div
-            className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-8"
-            role="alert"
-          >
-            <strong className="font-bold">Error!</strong>
-            <span className="block sm:inline"> {statsError}</span>
-          </div>
-        ) : (
-          stats && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-sm font-medium text-gray-500">Total Shows</h3>
-                <p className="text-3xl font-bold text-gray-900">{stats.totalShows}</p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-sm font-medium text-gray-500">Currently Watching</h3>
-                <p className="text-3xl font-bold text-green-600">{stats.byStatus.watching}</p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-sm font-medium text-gray-500">Completed</h3>
-                <p className="text-3xl font-bold text-purple-600">{stats.byStatus.completed}</p>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-sm font-medium text-gray-500">Average Rating</h3>
-                <p className="text-3xl font-bold text-yellow-600">
-                  {stats.averageRating > 0 ? stats.averageRating.toFixed(1) : '-'}
-                </p>
-              </div>
-            </div>
-          )
-        )}
+        {/* Filter pills */}
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                activeTab === tab.key
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              {tab.label}
+              <span className={`text-xs ${activeTab === tab.key ? 'text-primary-200' : 'text-gray-400'}`}>
+                {tab.count}
+              </span>
+              {activeTab === tab.key && isBackgroundLoading && (
+                <span className="inline-block h-2 w-2 rounded-full bg-primary-300 animate-pulse" />
+              )}
+            </button>
+          ))}
+        </div>
 
-        {/* Tabs */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8 px-6">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-                    activeTab === tab.key
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  {tab.label}
-                  <span
-                    className={`ml-2 py-1 px-2 rounded-full text-xs ${
-                      activeTab === tab.key
-                        ? 'bg-blue-100 text-blue-600'
-                        : 'bg-gray-100 text-gray-600'
-                    }`}
+        {/* Poster Grid */}
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            <span className="ml-3 text-gray-500">Loading your shows...</span>
+          </div>
+        ) : error ? (
+          <div className="text-center py-24">
+            <p className="text-red-600 mb-4">{error}</p>
+            <button
+              onClick={() => fetchWatchlist()}
+              className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+            >
+              Retry
+            </button>
+          </div>
+        ) : shows.length === 0 ? (
+          /* Onboarding — shown when watchlist is empty */
+          <div className="max-w-lg mx-auto py-16 text-center">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">What are you watching?</h2>
+            <p className="text-gray-500 text-sm mb-6">Add your first show to get started</p>
+
+            {/* Inline search */}
+            <div className="relative mb-4">
+              <input
+                type="text"
+                value={onboardingQuery}
+                onChange={(e) => setOnboardingQuery(e.target.value)}
+                placeholder="Search for a show..."
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent shadow-sm"
+                autoFocus
+              />
+              {onboardingSearching && (
+                <div className="absolute right-3 top-3.5">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600" />
+                </div>
+              )}
+            </div>
+
+            {/* Search results */}
+            {onboardingResults.length > 0 && (
+              <div className="text-left space-y-2 mb-6">
+                {onboardingResults.map((show) => (
+                  <div
+                    key={show.id}
+                    className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 bg-white hover:border-gray-200 transition-colors"
                   >
-                    {tab.count}
-                  </span>
-                  {activeTab === tab.key && isBackgroundLoading && (
-                    <span
-                      className="ml-2 inline-block h-3 w-3 rounded-full bg-blue-200 animate-pulse"
-                      aria-hidden="true"
-                    />
-                  )}
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          {/* Show List */}
-          <div className="p-6">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                <span className="ml-3 text-gray-600">Loading your shows...</span>
-              </div>
-            ) : error ? (
-              <div className="text-center py-12">
-                <p className="text-red-600">{error}</p>
-                <button
-                  onClick={() => fetchWatchlist()}
-                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Retry
-                </button>
-              </div>
-            ) : shows.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500 text-lg">No shows found</p>
-                <p className="text-gray-400 mt-2">
-                  Start adding shows to your {activeTab === 'all' ? 'watchlist' : activeTab}
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                {shows.map((userShow) => {
-                  const isExpanded = expandedShow === userShow.id;
-                  const analysis = showAnalysis[userShow.show.tmdb_id];
-                  const selectedSeason = selectedSeasons[userShow.show.tmdb_id];
-                  const episodes =
-                    selectedSeason !== undefined
-                      ? episodeData[userShow.show.tmdb_id]?.[selectedSeason]
-                      : undefined;
-
-                  return (
-                    <div
-                      key={userShow.id}
-                      className={`bg-gray-50 rounded-lg p-4 hover:shadow-md transition-all relative ${isExpanded ? 'lg:col-span-2 xl:col-span-3' : ''}`}
-                    >
-                      {/* Main show info - clickable */}
-                      <div className="cursor-pointer" onClick={() => toggleShowExpansion(userShow)}>
-                        <div className="flex space-x-4">
-                          {/* Poster */}
-                          <div className="flex-shrink-0">
-                            {userShow.show.poster_path || posterOverrides[userShow.show.tmdb_id] ? (
-                              <img
-                                src={
-                                  userShow.show.poster_path ||
-                                  posterOverrides[userShow.show.tmdb_id]!
-                                }
-                                alt={`${userShow.show.title} poster`}
-                                className="w-16 h-24 object-cover rounded"
-                              />
-                            ) : (
-                              <div className="w-16 h-24 bg-gray-300 rounded flex items-center justify-center">
-                                <span className="text-gray-500 text-xs">No Image</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex items-center space-x-2">
-                                <h3 className="font-semibold text-gray-900 truncate">
-                                  {userShow.show.title}
-                                </h3>
-                                <button className="text-gray-400 hover:text-gray-600">
-                                  {isExpanded ? '−' : '+'}
-                                </button>
-                              </div>
-                              <span
-                                className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(userShow.status)}`}
-                              >
-                                {userShow.status}
-                              </span>
-                            </div>
-
-                            {/* Progress */}
-                            <div className="mb-3">
-                              {(() => {
-                                const tmdbId = userShow.show.tmdb_id;
-                                const seasonNumber = selectedSeasons[tmdbId];
-                                const seasonEpisodes =
-                                  seasonNumber !== undefined
-                                    ? episodeData[tmdbId]?.[seasonNumber]
-                                    : undefined;
-
-                                const overall = seriesProgress[tmdbId]; // { total, watched } from prefetch
-                                const denom = seasonEpisodes
-                                  ? seasonEpisodes.length
-                                  : overall?.total || 0;
-                                const numer = seasonEpisodes
-                                  ? seasonEpisodes.filter((ep) => ep.watched).length
-                                  : overall?.watched || 0;
-
-                                return (
-                                  <>
-                                    <ProgressBar
-                                      value={numer}
-                                      total={denom}
-                                      label="Progress"
-                                      size="md"
-                                    />
-                                    {userShow.progress?.currentEpisode && (
-                                      <EpisodeProgressDisplay
-                                        seasonNumber={
-                                          userShow.progress.currentEpisode.season_number
-                                        }
-                                        episodeNumber={
-                                          userShow.progress.currentEpisode.episode_number
-                                        }
-                                        episodeName={
-                                          userShow.progress.currentEpisode.name || undefined
-                                        }
-                                        tmdbId={tmdbId}
-                                      />
-                                    )}
-                                  </>
-                                );
-                              })()}
-                            </div>
-
-                            {/* Rating */}
-                            <div className="mb-3">
-                              <StarRating
-                                rating={userShow.show_rating}
-                                onRating={(rating) => {
-                                  const uid = (userShow as any).user_show_id ?? userShow.id;
-                                  if (uid) rateShow(uid, rating);
-                                }}
-                              />
-                            </div>
-
-                            {/* Streaming Provider - reflect country and provider availability */}
-                            {(() => {
-                              const availableProviders = showProviders[userShow.show.tmdb_id] || [];
-                              const hasProviders = availableProviders.length > 0;
-                              const hasMultipleProviders = availableProviders.length > 1;
-
-                              if (!hasProviders && !userShow.streaming_provider) return null;
-
-                              return (
-                                <div className="mb-3 relative">
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-sm text-gray-600">Streaming on:</span>
-                                    {userShow.streaming_provider ? (
-                                      <div className="flex items-center space-x-2">
-                                        <img
-                                          src={userShow.streaming_provider.logo_path!}
-                                          alt={userShow.streaming_provider.name || 'Provider logo'}
-                                          className="w-6 h-6 rounded"
-                                        />
-                                        <span className="text-sm font-medium">
-                                          {userShow.streaming_provider.name}
-                                        </span>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            userShow.id &&
-                                              updateStreamingProvider(userShow.id, null);
-                                          }}
-                                          className="text-gray-400 hover:text-red-600 text-xs"
-                                          title="Remove streaming provider"
-                                        >
-                                          ×
-                                        </button>
-                                      </div>
-                                    ) : hasMultipleProviders ? (
-                                      <div className="relative">
-                                        <select
-                                          onClick={(e) => e.stopPropagation()}
-                                          onChange={(e) => {
-                                            const value = e.target.value;
-                                            if (value) {
-                                              const [idStr, name, logo_path] = value.split('|');
-                                              const uid =
-                                                (userShow as any).user_show_id ?? userShow.id;
-                                              if (uid && idStr) {
-                                                const id = parseInt(idStr, 10);
-                                                if (!isNaN(id)) {
-                                                  updateStreamingProvider(uid, {
-                                                    id,
-                                                    name: name!,
-                                                    logo_path: logo_path!,
-                                                  });
-                                                }
-                                              }
-                                            }
-                                          }}
-                                          className="text-sm border border-gray-300 rounded px-2 py-1 bg-white min-w-[140px] relative z-10"
-                                          defaultValue=""
-                                        >
-                                          <option value="">Select service...</option>
-                                          {availableProviders.map((provider) => (
-                                            <option
-                                              key={provider.id}
-                                              value={`${provider.id}|${provider.name}|${provider.logo_path}`}
-                                            >
-                                              {provider.name}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                    ) : hasProviders ? (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          const p = availableProviders[0];
-                                          const uid = (userShow as any).user_show_id ?? userShow.id;
-                                          if (uid && p) {
-                                            updateStreamingProvider(uid, {
-                                              id: p.id,
-                                              name: p.name,
-                                              logo_path: p.logo_path,
-                                            });
-                                          }
-                                        }}
-                                        className="inline-flex items-center space-x-2 px-2 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
-                                        title="Set streaming provider"
-                                      >
-                                        {availableProviders[0] && (
-                                          <>
-                                            <img
-                                              src={availableProviders[0].logo_path}
-                                              alt={availableProviders[0].name}
-                                              className="w-5 h-5 rounded"
-                                            />
-                                            <span>Use {availableProviders[0].name}</span>
-                                          </>
-                                        )}
-                                      </button>
-                                    ) : null}
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                            {/* TV Guide settings: Buffer days and per-show country override */}
-                            <div className="mt-3 flex items-end gap-6">
-                              <div>
-                                <label className="block text-xs text-gray-600 mb-1">
-                                  Buffer days
-                                </label>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={30}
-                                  defaultValue={userShow.buffer_days || 0}
-                                  onBlur={(e) => {
-                                    e.stopPropagation();
-                                    const v = Number(e.currentTarget.value) || 0;
-                                    const uid = (userShow as any).user_show_id ?? userShow.id;
-                                    if (!uid) return;
-                                    apiRequest(
-                                      `${API_ENDPOINTS.watchlist.v2}/${uid}/buffer`,
-                                      {
-                                        method: 'PUT',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ bufferDays: v }),
-                                      },
-                                      localStorage.getItem('authToken') || undefined
-                                    ).then(() =>
-                                      setShows((prev) =>
-                                        prev.map((s) =>
-                                          (s as any).user_show_id === uid || s.id === uid
-                                            ? { ...s, buffer_days: v }
-                                            : s
-                                        )
-                                      )
-                                    );
-                                  }}
-                                  className="w-24 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs text-gray-600 mb-1">
-                                  Show Country
-                                </label>
-                                <select
-                                  value={userShow.country_code || ''}
-                                  onChange={(e) => {
-                                    e.stopPropagation();
-                                    const code = e.target.value || null;
-                                    const uid = (userShow as any).user_show_id ?? userShow.id;
-                                    if (!uid) return;
-                                    apiRequest(
-                                      `${API_ENDPOINTS.watchlist.v2}/${uid}/country`,
-                                      {
-                                        method: 'PUT',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ countryCode: code }),
-                                      },
-                                      localStorage.getItem('authToken') || undefined
-                                    ).then(() =>
-                                      setShows((prev) =>
-                                        prev.map((s) =>
-                                          (s as any).user_show_id === uid || s.id === uid
-                                            ? { ...s, country_code: code || null }
-                                            : s
-                                        )
-                                      )
-                                    );
-                                  }}
-                                  className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                >
-                                  <option value="">Default ({country})</option>
-                                  {['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'JP', 'KR', 'IN', 'BR'].map(
-                                    (code) => (
-                                      <option key={code} value={code}>
-                                        {code}
-                                      </option>
-                                    )
-                                  )}
-                                </select>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Expanded content */}
-                      {isExpanded && (
-                        <div
-                          className="mt-6 pt-4 border-t border-gray-200"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {loadingAnalysis[userShow.show.tmdb_id] ? (
-                            <div className="flex items-center justify-center py-8">
-                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                              <span className="ml-3 text-gray-600">Loading show details...</span>
-                            </div>
-                          ) : analysis ? (
-                            <div className="space-y-4">
-                              {/* Season selector */}
-                              <div className="flex items-center space-x-4">
-                                <label className="text-sm font-medium text-gray-700">Season:</label>
-                                <select
-                                  value={selectedSeason || ''}
-                                  onChange={(e) =>
-                                    handleSeasonChange(
-                                      userShow.show.tmdb_id,
-                                      parseInt(e.target.value)
-                                    )
-                                  }
-                                  className="px-3 py-1 border border-gray-300 rounded text-sm"
-                                >
-                                  {analysis.seasonInfo?.map((season: any) => (
-                                    <option key={season.seasonNumber} value={season.seasonNumber}>
-                                      Season {season.seasonNumber} ({season.episodeCount} episodes)
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-
-                              {/* Episode list */}
-                              {episodes && selectedSeason ? (
-                                <div className="space-y-2">
-                                  <h4 className="font-medium text-gray-900">
-                                    Season {selectedSeason} Episodes: ({episodes.length} episodes)
-                                  </h4>
-                                  <div className="max-h-64 overflow-y-auto space-y-1">
-                                    {episodes.map((episode: DisplayEpisode) => {
-                                      const airDate = new Date(episode.airDate);
-                                      const today = new Date();
-                                      const isFutureEpisode = airDate > today;
-
-                                      // Find the next unaired episode (first future episode that hasn't aired yet)
-                                      const futureEpisodes = episodes.filter(
-                                        (ep: DisplayEpisode) => new Date(ep.airDate) > today
-                                      );
-                                      const nextUnaired = futureEpisodes.sort(
-                                        (a: DisplayEpisode, b: DisplayEpisode) =>
-                                          new Date(a.airDate).getTime() -
-                                          new Date(b.airDate).getTime()
-                                      )[0];
-                                      const isAiringNext =
-                                        isFutureEpisode && episode.number === nextUnaired?.number;
-
-                                      return (
-                                        <button
-                                          key={episode.number}
-                                          onClick={() =>
-                                            !isFutureEpisode &&
-                                            markEpisodeWatched(
-                                              userShow.show.tmdb_id,
-                                              selectedSeason,
-                                              episode.number
-                                            )
-                                          }
-                                          disabled={isFutureEpisode}
-                                          className={`w-full text-left p-2 rounded text-sm transition-colors ${
-                                            isAiringNext
-                                              ? 'bg-blue-50 text-blue-700 cursor-not-allowed'
-                                              : isFutureEpisode
-                                                ? 'bg-gray-50 text-gray-500 cursor-not-allowed'
-                                                : episode.watched
-                                                  ? 'bg-green-100 text-green-800'
-                                                  : 'bg-white hover:bg-gray-100'
-                                          }`}
-                                        >
-                                          <div className="flex items-center justify-between">
-                                            <span className="font-medium">
-                                              {isAiringNext
-                                                ? '📅'
-                                                : isFutureEpisode
-                                                  ? '⏳'
-                                                  : episode.watched
-                                                    ? '✓'
-                                                    : `${episode.number}.`}{' '}
-                                              {episode.title}
-                                              {isAiringNext && (
-                                                <span className="ml-2 text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded">
-                                                  Airing Next
-                                                </span>
-                                              )}
-                                            </span>
-                                            <span className="text-xs text-gray-500">
-                                              {new Date(episode.airDate).toLocaleDateString()}
-                                            </span>
-                                          </div>
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-
-                                  {/* Season progress */}
-                                  <div className="space-y-2">
-                                    <div className="text-sm text-gray-600">
-                                      {episodes.filter((ep: DisplayEpisode) => ep.watched).length}/
-                                      {episodes.length} episodes watched in season {selectedSeason}
-                                    </div>
-
-                                    {/* Full show progress bar - simplified version */}
-                                    <div className="space-y-1">
-                                      {(() => {
-                                        const tmdbId = userShow.show.tmdb_id;
-                                        // Prefer API-provided overall progress if present; otherwise derive.
-                                        const prefetch = seriesProgress[tmdbId];
-                                        const overallTotal =
-                                          prefetch?.total && prefetch.total > 0
-                                            ? prefetch.total
-                                            : analysis?.seasonInfo?.reduce(
-                                                (sum: number, s: any) =>
-                                                  sum + (s.episodeCount || 0),
-                                                0
-                                              ) || 0;
-
-                                        const allSeasonData = episodeData[tmdbId] || {};
-                                        const watchedDerived = Object.values(allSeasonData).reduce(
-                                          (acc: number, seasonEps: any) => {
-                                            const arr = (seasonEps as any[]) || [];
-                                            return acc + arr.filter((ep: any) => ep.watched).length;
-                                          },
-                                          0
-                                        );
-                                        const overallWatched = Math.max(
-                                          prefetch?.watched ?? 0,
-                                          watchedDerived
-                                        );
-
-                                        return (
-                                          <ProgressBar
-                                            value={overallWatched}
-                                            total={overallTotal}
-                                            label="Overall series progress"
-                                            size="sm"
-                                          />
-                                        );
-                                      })()}
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : selectedSeason ? (
-                                <div className="text-center py-8 text-gray-500">
-                                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
-                                  Loading episodes for season {selectedSeason}...
-                                </div>
-                              ) : (
-                                <div className="text-center py-4 text-gray-500">
-                                  Select a season to view episodes
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="text-center py-4 text-gray-500">
-                              Failed to load show details
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Actions - always visible */}
-                      <div
-                        className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {userShow.status === 'watchlist' && userShow.id && (
-                          <button
-                            onClick={() => {
-                              const uid = (userShow as any).user_show_id ?? userShow.id;
-                              if (uid) updateShowStatus(uid, 'watching');
-                            }}
-                            className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                          >
-                            Start Watching
-                          </button>
-                        )}
-
-                        {userShow.status === 'watching' && userShow.id && (
-                          <button
-                            onClick={() => {
-                              const uid = (userShow as any).user_show_id ?? userShow.id;
-                              if (uid) updateShowStatus(uid, 'completed');
-                            }}
-                            className="px-3 py-1 bg-purple-600 text-white text-sm rounded hover:bg-purple-700"
-                          >
-                            Mark Completed
-                          </button>
-                        )}
-
-                        {userShow.id && (
-                          <button
-                            onClick={() => {
-                              const uid = (userShow as any).user_show_id ?? userShow.id;
-                              if (uid) removeShow(uid);
-                            }}
-                            className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Notes */}
-                      {userShow.notes && (
-                        <p className="text-sm text-gray-600 mt-2 italic">"{userShow.notes}"</p>
-                      )}
+                    {show.poster ? (
+                      <img
+                        src={`https://image.tmdb.org/t/p/w92${show.poster}`}
+                        alt=""
+                        className="w-10 h-14 rounded object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-14 rounded bg-gray-100 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm text-gray-900 truncate">{show.title}</p>
+                      {show.year && <p className="text-xs text-gray-400">{show.year}</p>}
                     </div>
-                  );
-                })}
+                    <button
+                      onClick={() => addShowFromOnboarding(show)}
+                      disabled={onboardingAdding === show.id || onboardingAdded.has(show.id)}
+                      className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        onboardingAdded.has(show.id)
+                          ? 'bg-green-100 text-green-700 cursor-default'
+                          : 'bg-primary-600 text-white hover:bg-primary-700'
+                      }`}
+                    >
+                      {onboardingAdding === show.id
+                        ? '...'
+                        : onboardingAdded.has(show.id)
+                        ? 'Added!'
+                        : 'Add'}
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
+
+            {/* Fallback link */}
+            <a href="/search" className="text-primary-600 hover:underline text-sm">
+              Go to full search →
+            </a>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4">
+            {shows.map((userShow) => {
+              const posterUrl = getPosterUrl(userShow);
+              const progress = seriesProgress[userShow.show.tmdb_id];
+              const pct = progress?.total ? Math.round((progress.watched / progress.total) * 100) : 0;
+
+              return (
+                <button
+                  key={userShow.id}
+                  onClick={() => openDetail(userShow)}
+                  className="group relative flex flex-col text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded-lg"
+                >
+                  {/* Poster image */}
+                  <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden bg-gray-200 shadow-sm group-hover:shadow-md transition-shadow">
+                    {posterUrl ? (
+                      <img
+                        src={posterUrl}
+                        alt={`${userShow.show.title} poster`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center p-2">
+                        <span className="text-gray-400 text-xs text-center leading-tight">
+                          {userShow.show.title}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Status badge */}
+                    <span
+                      className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-xs font-medium ${getStatusBadgeColor(userShow.status)}`}
+                    >
+                      {userShow.status === 'watchlist' ? 'List' : userShow.status === 'watching' ? 'Watching' : userShow.status === 'completed' ? 'Done' : userShow.status}
+                    </span>
+
+                    {/* Progress bar at bottom of poster */}
+                    {progress && progress.total > 0 && (
+                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30">
+                        <div
+                          className="h-full bg-primary-500 transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Title below poster */}
+                  <p className="mt-1.5 text-xs text-gray-700 font-medium leading-tight line-clamp-2 px-0.5">
+                    {userShow.show.title}
+                  </p>
+                  {progress && progress.total > 0 && (
+                    <p className="text-xs text-gray-400 px-0.5">
+                      {progress.watched}/{progress.total} ep
+                    </p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      {/* Detail slide-over */}
+      {selectedShow && (() => {
+        const userShow = selectedShow;
+        const analysis = showAnalysis[userShow.show.tmdb_id];
+        const selectedSeason = selectedSeasons[userShow.show.tmdb_id];
+        const episodes = selectedSeason !== undefined ? episodeData[userShow.show.tmdb_id]?.[selectedSeason] : undefined;
+        const posterUrl = getPosterUrl(userShow);
+
+        return (
+          <>
+            {/* Backdrop */}
+            <div className="fixed inset-0 bg-black/40 z-40" onClick={closeDetail} />
+
+            {/* Panel */}
+            <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-xl z-50 flex flex-col overflow-hidden">
+              {/* Panel header */}
+              <div className="flex items-start gap-4 p-4 border-b border-gray-100">
+                {posterUrl && (
+                  <img src={posterUrl} alt="" className="w-14 h-20 rounded object-cover shrink-0" />
+                )}
+                <div className="flex-1 min-w-0 pt-1">
+                  <h2 className="font-semibold text-gray-900 leading-tight">{userShow.show.title}</h2>
+                  <span className={`mt-1 inline-block px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(userShow.status)}`}>
+                    {userShow.status}
+                  </span>
+                </div>
+                <button onClick={closeDetail} className="text-gray-400 hover:text-gray-600 text-xl leading-none mt-1">×</button>
+              </div>
+
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* Rating */}
+                <StarRating
+                  rating={userShow.show_rating}
+                  onRating={(rating) => {
+                    const uid = (userShow as any).user_show_id ?? userShow.id;
+                    if (uid) rateShow(uid, rating);
+                  }}
+                />
+
+                {/* Status actions */}
+                <div className="flex flex-wrap gap-2">
+                  {userShow.status === 'watchlist' && userShow.id && (
+                    <button
+                      onClick={() => { const uid = (userShow as any).user_show_id ?? userShow.id; if (uid) updateShowStatus(uid, 'watching'); closeDetail(); }}
+                      className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700"
+                    >
+                      Start Watching
+                    </button>
+                  )}
+                  {userShow.status === 'watching' && userShow.id && (
+                    <button
+                      onClick={() => { const uid = (userShow as any).user_show_id ?? userShow.id; if (uid) updateShowStatus(uid, 'completed'); closeDetail(); }}
+                      className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700"
+                    >
+                      Mark Completed
+                    </button>
+                  )}
+                  {userShow.id && (
+                    <button
+                      onClick={() => { const uid = (userShow as any).user_show_id ?? userShow.id; if (uid) removeShow(uid); closeDetail(); }}
+                      className="px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 text-sm rounded-md hover:bg-red-100"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+
+                {/* Episodes */}
+                {loadingAnalysis[userShow.show.tmdb_id] ? (
+                  <div className="flex items-center gap-2 text-gray-500 py-4">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-500" />
+                    Loading episodes...
+                  </div>
+                ) : analysis ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <label className="text-sm font-medium text-gray-700">Season</label>
+                      <select
+                        value={selectedSeason || ''}
+                        onChange={(e) => handleSeasonChange(userShow.show.tmdb_id, parseInt(e.target.value))}
+                        className="px-2 py-1 border border-gray-300 rounded text-sm"
+                      >
+                        {analysis.seasonInfo?.map((season: any) => (
+                          <option key={season.seasonNumber} value={season.seasonNumber}>
+                            Season {season.seasonNumber} ({season.episodeCount} ep)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {episodes && selectedSeason ? (
+                      <div className="space-y-1">
+                        {episodes.map((episode: DisplayEpisode) => {
+                          const airDate = new Date(episode.airDate);
+                          const today = new Date();
+                          const isFuture = airDate > today;
+                          const futureEps = episodes.filter((ep: DisplayEpisode) => new Date(ep.airDate) > today);
+                          const nextUnaired = [...futureEps].sort((a: DisplayEpisode, b: DisplayEpisode) => new Date(a.airDate).getTime() - new Date(b.airDate).getTime())[0];
+                          const isAiringNext = isFuture && episode.number === nextUnaired?.number;
+
+                          return (
+                            <button
+                              key={episode.number}
+                              onClick={() => !isFuture && markEpisodeWatched(userShow.show.tmdb_id, selectedSeason, episode.number)}
+                              disabled={isFuture}
+                              className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${
+                                isAiringNext ? 'bg-blue-50 text-blue-700' : isFuture ? 'bg-gray-50 text-gray-400' : episode.watched ? 'bg-green-50 text-green-800' : 'hover:bg-gray-50 text-gray-700'
+                              }`}
+                            >
+                              <span className="flex items-center gap-2">
+                                <span className="text-xs w-4">{episode.watched ? '✓' : episode.number}</span>
+                                <span className="truncate">{episode.title}</span>
+                                {isAiringNext && <span className="text-xs bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded shrink-0">Next</span>}
+                              </span>
+                              <span className="text-xs text-gray-400 shrink-0 ml-2">{new Date(episode.airDate).toLocaleDateString()}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : selectedSeason ? (
+                      <div className="text-center py-4 text-gray-400 text-sm">Loading episodes...</div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {/* Notes */}
+                {userShow.notes && (
+                  <p className="text-sm text-gray-500 italic">"{userShow.notes}"</p>
+                )}
+              </div>
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 };

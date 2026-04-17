@@ -194,7 +194,7 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
         </button>
 
         {isOpen && (
-          <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg z-50 border">
+          <div className="absolute right-0 bottom-full mb-2 w-64 bg-white rounded-md shadow-lg z-50 border">
             <div className="py-1">
               <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b">
                 Users
