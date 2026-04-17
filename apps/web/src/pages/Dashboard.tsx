@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Tv, Play, CheckCircle, TrendingUp, Sparkles, Search } from 'lucide-react';
 import { RecommendationCard } from '../components/RecommendationCard';
 import { API_ENDPOINTS, apiRequest } from '../config/api';
 
@@ -127,7 +128,7 @@ const Dashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="p-2 bg-blue-100 rounded-lg">
-              <span className="text-blue-600 text-xl">📺</span>
+              <Tv size={20} className="text-blue-600" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Shows</p>
@@ -141,7 +142,7 @@ const Dashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="p-2 bg-green-100 rounded-lg">
-              <span className="text-green-600 text-xl">▶️</span>
+              <Play size={20} className="text-green-600" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Watching</p>
@@ -155,7 +156,7 @@ const Dashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="p-2 bg-purple-100 rounded-lg">
-              <span className="text-purple-600 text-xl">✅</span>
+              <CheckCircle size={20} className="text-purple-600" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Completed</p>
@@ -169,7 +170,7 @@ const Dashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="p-2 bg-yellow-100 rounded-lg">
-              <span className="text-yellow-600 text-xl">💰</span>
+              <TrendingUp size={20} className="text-yellow-600" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Monthly Savings</p>
@@ -185,19 +186,16 @@ const Dashboard: React.FC = () => {
       {stats?.topRecommendation && (
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">💡 Top Optimization Opportunity</h2>
-            <Link
-              to="/recommendations"
-              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-            >
-              View All Recommendations →
+            <h2 className="text-xl font-semibold text-gray-900">Top Optimization Opportunity</h2>
+            <Link to="/plan" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+              View full plan →
             </Link>
           </div>
           <RecommendationCard
             type="optimization"
             recommendation={stats.topRecommendation}
             onViewDetails={() => {
-              window.location.href = '/recommendations';
+              window.location.href = '/plan';
             }}
           />
         </div>
@@ -236,10 +234,10 @@ const Dashboard: React.FC = () => {
 
             <div className="mt-6">
               <Link
-                to="/calendar"
+                to="/plan"
                 className="block w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-center font-medium"
               >
-                📅 View Savings Calendar
+                View savings plan
               </Link>
             </div>
           </div>
@@ -255,9 +253,9 @@ const Dashboard: React.FC = () => {
               to="/my-shows"
               className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <span className="text-2xl mr-3">📺</span>
+              <Tv size={24} className="mr-3 text-blue-500 shrink-0" />
               <div>
-                <div className="font-medium text-gray-900">Manage My Shows</div>
+                <div className="font-medium text-gray-900">My Shows</div>
                 <div className="text-sm text-gray-600">
                   {stats?.watchlistStats.byStatus.watchlist || 0} in watchlist
                 </div>
@@ -265,21 +263,21 @@ const Dashboard: React.FC = () => {
             </Link>
 
             <Link
-              to="/recommendations"
+              to="/plan"
               className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <span className="text-2xl mr-3">💡</span>
+              <Sparkles size={24} className="mr-3 text-yellow-500 shrink-0" />
               <div>
-                <div className="font-medium text-gray-900">Get Recommendations</div>
-                <div className="text-sm text-gray-600">Optimize subscriptions</div>
+                <div className="font-medium text-gray-900">Your Plan</div>
+                <div className="text-sm text-gray-600">When to pause each service</div>
               </div>
             </Link>
 
             <Link
-              to="/tmdb-testing"
+              to="/search"
               className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
             >
-              <span className="text-2xl mr-3">🔍</span>
+              <Search size={24} className="mr-3 text-gray-400 shrink-0" />
               <div>
                 <div className="font-medium text-gray-900">Search Shows</div>
                 <div className="text-sm text-gray-600">Add to watchlist</div>
