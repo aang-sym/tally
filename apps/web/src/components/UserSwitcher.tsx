@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { API_ENDPOINTS, apiRequest } from '../config/api';
 import { UserManager, User } from '../services/UserManager';
 import { useAuth } from '../context/AuthContext';
+import { ensureDevUserSession } from '../services/devAuth';
 
 interface UserSwitcherProps {
   onUserChange?: (userId: string) => void;
@@ -68,15 +69,7 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
       if (password) {
         try {
           console.log('[USER SWITCH DEBUG] Attempting login for test user:', targetUser.email);
-
-          // Login as the target user
-          const loginData = await apiRequest(API_ENDPOINTS.auth.login, {
-            method: 'POST',
-            body: JSON.stringify({
-              email: targetUser.email,
-              password: password,
-            }),
-          });
+          const loginData = await ensureDevUserSession(targetUser.email, password);
 
           if (loginData.token && loginData.user) {
             console.log('[USER SWITCH DEBUG] Login successful, updating auth context');

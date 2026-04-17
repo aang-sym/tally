@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { API_ENDPOINTS, apiRequest } from '../../config/api';
+import { ensureDevUserSession } from '../../services/devAuth';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -48,40 +49,25 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
   };
 
   const handleTestLogin = async () => {
-    // For development - create a test user if needed
     setEmail('test@example.com');
     setPassword('password123');
     setError('');
     setLoading(true);
 
     try {
-      // Try to login first
-      let response = await apiRequest(API_ENDPOINTS.auth.login, {
-        method: 'POST',
-        body: JSON.stringify({ email: 'test@example.com', password: 'password123' }),
-      });
+      const response = await ensureDevUserSession('test@example.com', 'password123');
 
-      // If login fails, try to register
-      if (!response.success) {
-        response = await apiRequest(API_ENDPOINTS.auth.signup, {
-          method: 'POST',
-          body: JSON.stringify({ email: 'test@example.com', password: 'password123' }),
-        });
-      }
-
-      if (response.success && response.token && response.user) {
+      if (response.token && response.user) {
         localStorage.setItem('authToken', response.token);
         localStorage.setItem('current_user_id', response.user.id);
 
         onLoginSuccess(response.token, response.user);
         onClose();
       } else {
-        setError(
-          'Test login failed. Please check if the password_hash column exists in your database.'
-        );
+        setError('Test login failed. The API did not return a session.');
       }
     } catch (err) {
-      setError(`Test login failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setError(err instanceof Error ? err.message : 'Test login failed');
     } finally {
       setLoading(false);
     }
@@ -157,7 +143,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
             disabled={loading}
             className="w-full py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
           >
-            {loading ? 'Creating test user...' : 'Quick Test Login'}
+            {loading ? 'Signing in...' : 'Quick Test Login'}
           </button>
         </div>
       </div>

@@ -26,19 +26,68 @@ export interface TMDBEnhancedWatchlistItem {
 }
 
 export class TMDBService {
-  private client?: TMDBClient;
+  private client: TMDBClient | undefined;
+  private initializedToken: string | undefined;
 
   constructor() {
-    if (!config.tmdbDevMode && config.tmdbApiReadToken !== 'tmdb-dev-key-placeholder') {
-      this.client = new TMDBClient(config.tmdbApiReadToken);
+    this.ensureClient();
+  }
+
+  private resolveToken(): string | undefined {
+    const envToken = process.env.TMDB_API_READ_TOKEN?.trim();
+    const configToken = config.tmdbApiReadToken?.trim();
+    const token = envToken || configToken;
+
+    if (!token || token === 'tmdb-dev-key-placeholder' || token === 'your_tmdb_read_token_here') {
+      return undefined;
     }
+
+    return token;
+  }
+
+  private ensureClient(): TMDBClient | undefined {
+    if (config.tmdbDevMode) {
+      this.client = undefined;
+      this.initializedToken = undefined;
+      return undefined;
+    }
+
+    const token = this.resolveToken();
+    if (!token) {
+      this.client = undefined;
+      this.initializedToken = undefined;
+      return undefined;
+    }
+
+    if (!this.client || this.initializedToken !== token) {
+      this.client = new TMDBClient(token);
+      this.initializedToken = token;
+    }
+
+    return this.client;
+  }
+
+  getStatus() {
+    const envToken = process.env.TMDB_API_READ_TOKEN?.trim();
+    const configToken = config.tmdbApiReadToken?.trim();
+    const effectiveToken = this.resolveToken();
+
+    return {
+      available: !!this.ensureClient(),
+      devMode: config.tmdbDevMode,
+      hasEnvToken: !!envToken,
+      hasConfigToken: !!configToken && configToken !== 'tmdb-dev-key-placeholder',
+      tokenSource: envToken ? 'process.env' : configToken ? 'config' : 'missing',
+      tokenPrefix: effectiveToken ? `${effectiveToken.slice(0, 6)}...` : null,
+    };
   }
 
   /**
    * Get basic show details + providers without episode analysis
    */
   async getBasicShow(showId: number, country: string = 'US'): Promise<any | null> {
-    if (!this.client) return null;
+    const client = this.ensureClient();
+    if (!client) return null;
     try {
       const languageMap: Record<string, string> = {
         US: 'en-US',
@@ -47,7 +96,7 @@ export class TMDBService {
         CA: 'en-CA',
       };
       const language = languageMap[(country || 'US').toUpperCase()] || 'en-US';
-      const showDetails = await this.client.getTVShow(showId, language);
+      const showDetails = await client.getTVShow(showId, language);
       if (!showDetails) return null;
       let providers: any[] = [];
       try {
@@ -99,7 +148,7 @@ export class TMDBService {
    * Check if TMDB integration is available
    */
   get isAvailable(): boolean {
-    return !!this.client;
+    return !!this.ensureClient();
   }
 
   /**
@@ -109,7 +158,8 @@ export class TMDBService {
     title: string,
     country: string = 'US'
   ): Promise<TMDBEnhancedWatchlistItem | null> {
-    if (!this.client) {
+    const client = this.ensureClient();
+    if (!client) {
       console.log('TMDB service not available (dev mode or missing API key)');
       return null;
     }
@@ -118,7 +168,7 @@ export class TMDBService {
       console.log(`Enhancing watchlist item with TMDB data: "${title}"`);
 
       // Search for the show and detect release pattern
-      const patternResult = await this.client.detectReleasePatternFromTitle(title);
+      const patternResult = await client.detectReleasePatternFromTitle(title);
 
       if (!patternResult) {
         console.log(`No TMDB match found for: "${title}"`);
@@ -139,10 +189,7 @@ export class TMDBService {
       // Get watch providers if we have a TMDB ID
       if (patternResult.tmdbId) {
         try {
-          const providers = await this.client.getWatchProvidersForCountry(
-            patternResult.tmdbId,
-            country
-          );
+          const providers = await client.getWatchProvidersForCountry(patternResult.tmdbId, country);
           enhancement.watchProviders = providers;
         } catch (providerError) {
           console.warn(`Failed to get watch providers for "${title}":`, providerError);
@@ -174,12 +221,13 @@ export class TMDBService {
     pattern: ReleasePattern;
     tmdbId?: number;
   } | null> {
-    if (!this.client) {
+    const client = this.ensureClient();
+    if (!client) {
       return null;
     }
 
     try {
-      const result = await this.client.detectReleasePatternFromTitle(title);
+      const result = await client.detectReleasePatternFromTitle(title);
       if (!result) return null;
 
       const pattern: ReleasePattern =
@@ -198,12 +246,13 @@ export class TMDBService {
    * Get watch providers for a show by TMDB ID
    */
   async getWatchProviders(tmdbId: number, country: string = 'US'): Promise<TMDBWatchProvider[]> {
-    if (!this.client) {
+    const client = this.ensureClient();
+    if (!client) {
       return [];
     }
 
     try {
-      return await this.client.getWatchProvidersForCountry(tmdbId, country);
+      return await client.getWatchProvidersForCountry(tmdbId, country);
     } catch (error) {
       console.warn(`Failed to get watch providers for TMDB ID ${tmdbId}:`, error);
       return [];
@@ -219,7 +268,7 @@ export class TMDBService {
   ): Promise<Map<string, TMDBEnhancedWatchlistItem>> {
     const results = new Map<string, TMDBEnhancedWatchlistItem>();
 
-    if (!this.client || titles.length === 0) {
+    if (!this.ensureClient() || titles.length === 0) {
       return results;
     }
 
@@ -249,7 +298,8 @@ export class TMDBService {
    * Search TV shows for web interface
    */
   async searchTVShows(query: string, country: string = 'US'): Promise<any[]> {
-    if (!this.client) {
+    const client = this.ensureClient();
+    if (!client) {
       return [];
     }
 
@@ -261,7 +311,7 @@ export class TMDBService {
         CA: 'en-CA',
       };
       const language = languageMap[(country || 'US').toUpperCase()] || 'en-US';
-      const searchResults = await this.client.searchTV(query, 1, language);
+      const searchResults = await client.searchTV(query, 1, language);
 
       // Convert to our format for web interface
       return searchResults.results.map((show: any) => ({
@@ -287,7 +337,8 @@ export class TMDBService {
     country: string = 'US',
     seasonNumber?: number
   ): Promise<any | null> {
-    if (!this.client) {
+    const client = this.ensureClient();
+    if (!client) {
       return null;
     }
 
@@ -300,7 +351,7 @@ export class TMDBService {
         CA: 'en-CA',
       };
       const language = languageMap[(country || 'US').toUpperCase()] || 'en-US';
-      const showDetails = await this.client.getTVShow(showId, language);
+      const showDetails = await client.getTVShow(showId, language);
       if (!showDetails) return null;
 
       // Determine which season to analyze
@@ -314,7 +365,7 @@ export class TMDBService {
       // Get season episodes (robust: search backwards to find a season with dated episodes)
       let episodes: any[] = [];
       const fetchSeasonEpisodes = async (sNum: number) => {
-        const seasonData = await this.client!.getSeason(showId, sNum, language);
+        const seasonData = await client.getSeason(showId, sNum, language);
         return (seasonData.episodes || [])
           .filter((ep: any) => !!ep.air_date)
           .map((ep: any) => ({
@@ -519,7 +570,8 @@ export class TMDBService {
    * Debug helper: return raw TMDB season payload and quick counts
    */
   async getSeasonRaw(showId: number, seasonNumber: number, country: string = 'US') {
-    if (!this.client) return { error: 'TMDB client unavailable' } as any;
+    const client = this.ensureClient();
+    if (!client) return { error: 'TMDB client unavailable' } as any;
     const languageMap: Record<string, string> = {
       US: 'en-US',
       GB: 'en-GB',
@@ -527,7 +579,7 @@ export class TMDBService {
       CA: 'en-CA',
     };
     const language = languageMap[(country || 'US').toUpperCase()] || 'en-US';
-    const season = await this.client.getSeason(showId, seasonNumber, language);
+    const season = await client.getSeason(showId, seasonNumber, language);
     const episodes = season.episodes || [];
     const dated = episodes.filter((ep: any) => !!ep.air_date);
     return {
@@ -575,33 +627,36 @@ export class TMDBService {
     regions: string[];
     total: number;
   }> {
-    if (!this.client) {
+    const client = this.ensureClient();
+    if (!client) {
       return { providers: [], regions, total: 0 };
     }
 
-    return await this.client.getAllProviders(regions);
+    return await client.getAllProviders(regions);
   }
 
   /**
    * Get list of available streaming providers for TV shows in a specific region
    */
   async getWatchProvidersList(region: string = 'US'): Promise<any[]> {
-    if (!this.client) {
+    const client = this.ensureClient();
+    if (!client) {
       return [];
     }
 
-    return await this.client.getWatchProvidersList(region);
+    return await client.getWatchProvidersList(region);
   }
 
   /**
    * Get list of available regions for watch providers
    */
   async getWatchProviderRegions(): Promise<any[]> {
-    if (!this.client) {
+    const client = this.ensureClient();
+    if (!client) {
       return [];
     }
 
-    return await this.client.getWatchProviderRegions();
+    return await client.getWatchProviderRegions();
   }
 
   /**

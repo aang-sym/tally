@@ -6,6 +6,20 @@ import { watchlistStorageService } from '../storage/simple-watchlist.js';
 
 const router: Router = Router();
 
+router.get('/status', async (_req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({
+      error: 'NOT_FOUND',
+      message: 'Not found',
+    });
+  }
+
+  return res.json({
+    success: true,
+    status: tmdbService.getStatus(),
+  });
+});
+
 // Search TV shows
 router.get('/search', async (req, res, next) => {
   try {
