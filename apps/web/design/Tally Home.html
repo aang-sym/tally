@@ -1,0 +1,1214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tally — Stop paying for streaming you're not watching</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<script>
+const TWEAKS = /*EDITMODE-BEGIN*/{
+  "accentHue": 360,
+  "heroMode": "clean",
+  "numberStyle": "outline",
+  "authState": "loggedOut"
+}/*EDITMODE-END*/;
+</script>
+
+<style>
+  :root {
+    --bg: #0a0a0c;
+    --bg-2: #101013;
+    --surface: #15151a;
+    --surface-2: #1c1c22;
+    --border: #24242c;
+    --border-2: #2e2e38;
+    --text: #f4f3ef;
+    --text-2: #a5a3a0;
+    --text-3: #6b6a68;
+    --accent-h: 75;
+    --accent: oklch(0.84 0.16 var(--accent-h));
+    --accent-dim: oklch(0.60 0.14 var(--accent-h));
+    --accent-glow: oklch(0.84 0.16 var(--accent-h) / 0.35);
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+  .font-serif { font-family: 'Instrument Serif', serif; font-weight: 400; letter-spacing: -0.01em; }
+  .font-mono { font-family: 'Geist Mono', ui-monospace, monospace; }
+
+  .tally-mark {
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    letter-spacing: -0.04em;
+  }
+
+  /* Grain texture */
+  .grain::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    opacity: 0.35;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+  }
+
+  /* Neon service logo treatment */
+  .neon {
+    filter: drop-shadow(0 0 10px currentColor) drop-shadow(0 0 30px currentColor);
+  }
+
+  /* Scroll carousel */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Outline huge numeral */
+  .outline-num {
+    -webkit-text-stroke: 1.5px var(--text);
+    color: transparent;
+    font-family: 'Instrument Serif', serif;
+    line-height: 0.8;
+  }
+
+  /* Header transitions */
+  .hdr-top { background: linear-gradient(to bottom, rgba(10,10,12,0.75), rgba(10,10,12,0)); backdrop-filter: blur(8px); }
+  .hdr-stuck { background: rgba(10,10,12,0.82); backdrop-filter: blur(16px) saturate(140%); border-bottom: 1px solid var(--border); }
+
+  /* Pill */
+  .pill { border: 1px solid var(--border); border-radius: 9999px; background: rgba(255,255,255,0.02); }
+  .pill:hover { border-color: var(--border-2); background: rgba(255,255,255,0.04); }
+
+  /* Posters */
+  .poster { aspect-ratio: 2/3; background: var(--surface); border-radius: 10px; overflow: hidden; position: relative; isolation: isolate; }
+  .poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .poster::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.6), rgba(0,0,0,0) 45%);
+    pointer-events: none;
+  }
+
+  /* Primary CTA */
+  .btn-primary {
+    background: var(--accent);
+    color: #0a0a0c;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    box-shadow: 0 0 0 1px oklch(0.84 0.16 var(--accent-h) / 0.6), 0 10px 40px -10px var(--accent-glow);
+    transition: transform .15s ease, box-shadow .2s ease;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 0 0 1px oklch(0.88 0.16 var(--accent-h) / 0.8), 0 18px 50px -12px var(--accent-glow); }
+
+  .btn-ghost {
+    border: 1px solid var(--border-2);
+    color: var(--text);
+    background: transparent;
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.04); border-color: var(--text-3); }
+
+  /* Input */
+  .search-input {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  }
+  .search-input:focus-within {
+    border-color: var(--border-2);
+    background: rgba(255,255,255,0.06);
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.03);
+  }
+
+  /* Hero backdrop logos */
+  .floater {
+    position: absolute;
+    font-family: 'Instrument Serif', serif;
+    font-style: italic;
+    letter-spacing: -0.04em;
+    white-space: nowrap;
+    will-change: transform;
+    animation: float 14s ease-in-out infinite;
+    user-select: none;
+  }
+  .floater.sans { font-family: 'Geist', sans-serif; font-style: normal; font-weight: 700; letter-spacing: -0.03em; }
+  @keyframes float {
+    0%,100% { transform: translate3d(0,0,0); }
+    50% { transform: translate3d(0,-14px,0); }
+  }
+
+  /* subtle scanline / dot pattern option */
+  .dots {
+    background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .divider-dot::before { content: "·"; margin: 0 0.5rem; color: var(--text-3); }
+
+  /* fade at edges of carousel */
+  .edge-fade {
+    mask-image: linear-gradient(to right, transparent 0, black 48px, black calc(100% - 48px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0, black 48px, black calc(100% - 48px), transparent 100%);
+  }
+
+  /* Avatar menu */
+  .menu-item { display:flex; align-items:center; gap:10px; padding: 10px 12px; border-radius: 8px; cursor:pointer; color: var(--text); font-size: 14px;}
+  .menu-item:hover { background: rgba(255,255,255,0.05); }
+
+  /* Mobile bottom bar blur */
+  .bottombar { background: rgba(10,10,12,0.85); backdrop-filter: blur(18px) saturate(140%); border-top: 1px solid var(--border); }
+
+  /* Focus */
+  *:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+  /* Entry animations */
+  @keyframes rise { from { opacity:0; transform: translateY(14px);} to { opacity:1; transform:none; } }
+  .rise { animation: rise .7s cubic-bezier(.2,.7,.2,1) both; }
+
+  /* Marquee scroll */
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  .marquee-track { animation: marquee 40s linear infinite; will-change: transform; }
+
+  /* Summary card (logged in) */
+  .summary-card {
+    background:
+      radial-gradient(80% 120% at 100% 0%, oklch(0.84 0.16 var(--accent-h) / 0.12), transparent 60%),
+      linear-gradient(180deg, #15151a, #101013);
+    border: 1px solid var(--border);
+  }
+
+  /* Hide scrollbars in horizontal rails */
+  .rail { scroll-behavior: smooth; }
+
+  /* tweak panel */
+  .tweak-panel {
+    background: rgba(15,15,18,0.92);
+    backdrop-filter: blur(14px) saturate(140%);
+    border: 1px solid var(--border-2);
+  }
+
+  /* small caps label */
+  .label {
+    font-family: 'Geist Mono', monospace;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--text-3);
+  }
+
+  /* Service chip */
+  .chip {
+    display: inline-flex; align-items:center; gap: 6px;
+    padding: 2px 8px; font-size: 11px; border-radius: 999px;
+    font-family: 'Geist Mono', monospace;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+    color: var(--text-2);
+  }
+
+  /* Swatch dot */
+  .sw { width: 8px; height: 8px; border-radius: 50%; display:inline-block; }
+
+  /* logged-in/out state handled via [hidden] attribute toggled in JS */
+  [hidden] { display: none !important; }
+
+  /* Glow ring for avatar */
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: inline-flex; align-items:center; justify-content:center;
+    font-size: 12px; font-weight: 600; color: #0a0a0c;
+    background: var(--accent);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 0 18px -6px var(--accent-glow);
+  }
+
+  /* Poster rank badge — small, top-left, inside poster */
+  .rank-num {
+    position: absolute; left: 8px; top: 8px;
+    min-width: 26px; height: 26px; padding: 0 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: 'Geist Mono', monospace;
+    font-size: 12px; font-weight: 600;
+    color: var(--text);
+    background: rgba(10,10,12,0.7);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 999px;
+    z-index: 2;
+    line-height: 1;
+  }
+  .rank-num.solid { background: var(--accent); color: #0a0a0c; border-color: transparent; }
+
+  /* Track button */
+  .track-btn {
+    backdrop-filter: blur(8px);
+    background: rgba(10,10,12,0.55);
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  /* list row hover */
+  .row { transition: background .15s ease; }
+  .row:hover { background: rgba(255,255,255,0.04); }
+
+  /* Prevent horizontal overflow on mobile from floaters */
+  .hero-wrap { overflow: clip; }
+</style>
+</head>
+<body data-auth="loggedOut" class="min-h-screen">
+
+<!-- ================= HEADER ================= -->
+<header id="site-header" class="fixed top-0 inset-x-0 z-40 hdr-top transition-[background,backdrop-filter,border] duration-300">
+  <div class="max-w-[1320px] mx-auto px-5 lg:px-8 h-16 flex items-center gap-4">
+    <!-- Logo -->
+    <a href="#" class="flex items-center gap-2 shrink-0 group">
+      <span class="tally-mark text-[28px] leading-none">Tally<span style="color:var(--accent)">.</span></span>
+    </a>
+
+    <!-- Desktop search -->
+    <div class="hidden md:flex flex-1 justify-center">
+      <div class="relative w-full max-w-[480px]" id="search-wrap">
+        <div class="search-input flex items-center gap-2 px-4 h-10 rounded-full">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-[var(--text-3)]"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="search-input" type="text" placeholder="Search for a show…" class="bg-transparent outline-none text-[14px] placeholder:text-[var(--text-3)] w-full" autocomplete="off" spellcheck="false" />
+          <span class="hidden sm:inline font-mono text-[11px] text-[var(--text-3)] border border-[var(--border)] rounded px-1.5 py-0.5">⌘K</span>
+        </div>
+        <!-- Typeahead -->
+        <div id="typeahead" class="absolute left-0 right-0 top-[calc(100%+8px)] rounded-2xl border border-[var(--border)] bg-[#0f0f13]/95 backdrop-blur-xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)] overflow-hidden hidden"></div>
+      </div>
+    </div>
+
+    <!-- Right side -->
+    <div class="ml-auto flex items-center gap-2 shrink-0">
+      <!-- mobile search button -->
+      <button id="m-search-btn" class="md:hidden w-10 h-10 rounded-full border border-[var(--border)] flex items-center justify-center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </button>
+
+      <!-- Logged OUT -->
+      <div data-when="logged-out" class="flex items-center gap-1.5">
+        <button class="hidden sm:inline-flex px-3.5 h-9 rounded-full btn-ghost text-[13px] whitespace-nowrap" onclick="setAuth('loggedIn')">Log in</button>
+        <button class="px-3.5 h-9 rounded-full btn-primary text-[13px] whitespace-nowrap" onclick="setAuth('loggedIn')">Sign up</button>
+      </div>
+
+      <!-- Logged IN -->
+      <div data-when="logged-in" class="flex items-center gap-4">
+        <a href="#" class="hidden lg:inline text-[13px] text-[var(--text-2)] hover:text-white whitespace-nowrap">My Shows</a>
+        <a href="#" class="hidden lg:inline text-[13px] text-[var(--text-2)] hover:text-white whitespace-nowrap">Plan</a>
+        <div class="relative">
+          <button id="avatar-btn" class="avatar" aria-haspopup="menu">MR</button>
+          <div id="avatar-menu" class="hidden absolute right-0 top-[calc(100%+10px)] w-56 rounded-xl border border-[var(--border-2)] bg-[#101013]/95 backdrop-blur-xl p-1.5 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)] z-50">
+            <div class="px-3 py-2 border-b border-[var(--border)] mb-1">
+              <div class="text-[13px] font-medium">Mira R.</div>
+              <div class="text-[11px] text-[var(--text-3)] font-mono"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="4a2723382b0a3e2b262633642b3a3a">[email&#160;protected]</a></div>
+            </div>
+            <a href="#" class="menu-item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>My Shows</a>
+            <a href="#" class="menu-item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M12 3v18"/></svg>Plan</a>
+            <a href="#" class="menu-item"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</a>
+            <div class="h-px bg-[var(--border)] my-1"></div>
+            <button class="menu-item w-full text-left" onclick="setAuth('loggedOut')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>Log out</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auth state demo toggle -->
+      <button id="auth-toggle" class="hidden xl:inline-flex items-center gap-1.5 px-2.5 h-7 rounded-full border border-dashed border-[var(--border-2)] font-mono text-[10px] text-[var(--text-3)] hover:text-[var(--text-2)] ml-2 whitespace-nowrap" title="Demo: toggle auth state">
+        <span class="sw" style="background: oklch(0.7 0.15 140)"></span><span id="auth-label">guest</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile search expanded -->
+  <div id="m-search-panel" class="md:hidden hidden border-t border-[var(--border)] bg-[#0c0c0f] px-5 py-3">
+    <div class="search-input flex items-center gap-2 px-4 h-11 rounded-full">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-[var(--text-3)]"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="m-search-input" type="text" placeholder="Search for a show…" class="bg-transparent outline-none text-[14px] placeholder:text-[var(--text-3)] w-full" />
+      <button id="m-search-close" class="text-[var(--text-3)] text-[12px] font-mono">Cancel</button>
+    </div>
+    <div id="m-typeahead" class="mt-3"></div>
+  </div>
+</header>
+
+<!-- ================= HERO ================= -->
+<main class="pt-16">
+
+<!-- Logged-out hero -->
+<section data-when="logged-out" class="relative hero-wrap grain">
+  <!-- Radial vignette + scan glow -->
+  <div class="absolute inset-0 pointer-events-none" aria-hidden="true" style="background:
+    radial-gradient(60% 50% at 50% 0%, oklch(0.84 0.16 var(--accent-h) / 0.08), transparent 60%),
+    radial-gradient(80% 60% at 10% 30%, rgba(180, 40, 200, 0.07), transparent 60%),
+    radial-gradient(80% 60% at 90% 20%, rgba(20, 140, 220, 0.06), transparent 60%);"></div>
+
+  <div class="relative max-w-[1320px] mx-auto px-5 lg:px-8 pt-24 md:pt-32 pb-24 md:pb-32">
+    <div class="max-w-[860px] rise">
+      <div class="label mb-6 flex items-center gap-2">
+        <span class="sw" style="background: var(--accent)"></span>
+        New · April 2026
+      </div>
+      <h1 class="font-serif text-[52px] md:text-[92px] leading-[0.95] tracking-[-0.02em]">
+        You're paying for <span class="italic" style="color:var(--accent)">five</span> streamers.<br/>
+        You're watching <span class="italic">one.</span>
+      </h1>
+      <p class="mt-8 text-[17px] md:text-[19px] text-[var(--text-2)] max-w-[560px] leading-relaxed">
+        Tally tracks the shows you actually watch, spots the gaps between seasons, and tells you exactly when to pause each subscription. Save the months you're not watching.
+      </p>
+      <div class="mt-10 flex flex-wrap items-center gap-3">
+        <button class="btn-primary px-6 h-12 rounded-full text-[15px]" onclick="setAuth('loggedIn')">Get started — it's free</button>
+        <a href="#how" class="btn-ghost px-5 h-12 rounded-full text-[14px] inline-flex items-center gap-2">
+          See how it works
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Interactive demo: service toggles -->
+    <div class="mt-16 md:mt-20 rise" style="animation-delay:.15s">
+      <div class="flex items-end justify-between mb-5 gap-6">
+        <div>
+          <div class="label mb-2" style="color: var(--accent)">Try it</div>
+          <div class="font-serif text-[22px] md:text-[28px] leading-tight tracking-[-0.01em] max-w-[560px]">Tap a service to pause it. Watch your <span class="italic">monthly</span> drop in real time.</div>
+        </div>
+        <div class="text-right shrink-0">
+          <div class="label mb-1">Monthly</div>
+          <div class="font-serif text-[40px] md:text-[56px] leading-none tracking-[-0.02em]" id="demo-total">$102.43</div>
+          <div class="text-[11px] font-mono text-[var(--text-3)] mt-1"><span id="demo-saved" style="color:var(--accent)">$0.00</span> paused</div>
+        </div>
+      </div>
+
+      <div id="service-row" class="flex flex-wrap gap-2.5 md:gap-3">
+        <!-- populated by JS -->
+      </div>
+
+      <div class="mt-6 text-[11px] font-mono text-[var(--text-3)] flex items-center gap-4 flex-wrap">
+        <span class="flex items-center gap-2"><span class="sw" style="background: oklch(0.7 0.14 140)"></span>$47 avg saved / summer</span>
+        <span class="flex items-center gap-2"><span class="sw" style="background: oklch(0.7 0.14 230)"></span>12,408 shows tracked</span>
+        <span class="flex items-center gap-2"><span class="sw" style="background: oklch(0.7 0.14 30)"></span>No credit card</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- bottom fade -->
+  <div class="absolute bottom-0 inset-x-0 h-24 pointer-events-none" style="background: linear-gradient(to bottom, transparent, var(--bg));"></div>
+</section>
+
+<!-- Logged-in summary: data-first -->
+<section data-when="logged-in" class="relative">
+  <div class="max-w-[1320px] mx-auto px-5 lg:px-8 pt-10 pb-6">
+    <div class="flex items-baseline justify-between mb-5">
+      <div class="label">Your plan · Summer 2026</div>
+      <div class="text-[11px] font-mono text-[var(--text-3)]">Updated just now</div>
+    </div>
+    <div class="summary-card rounded-3xl overflow-hidden relative">
+      <div class="absolute -top-20 -right-20 w-[340px] h-[340px] rounded-full pointer-events-none" style="background: radial-gradient(closest-side, var(--accent-glow), transparent 70%)"></div>
+
+      <!-- Top stat strip (JS rendered for drill-down) -->
+      <div id="stat-strip" class="grid grid-cols-2 md:grid-cols-4 relative"></div>
+
+      <!-- Gap table -->
+      <div class="border-t border-[var(--border)] px-5 md:px-7 py-4 md:py-5 relative">
+        <div id="gap-breadcrumb" class="hidden mb-3 flex items-center gap-2 text-[12px] font-mono text-[var(--text-2)]">
+          <button onclick="selectGap(null)" class="inline-flex items-center gap-1 hover:text-[var(--text)]">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+            All gaps
+          </button>
+          <span class="text-[var(--text-3)]">/</span>
+          <span id="gap-crumb-name" style="color:var(--text)"></span>
+        </div>
+        <div class="grid grid-cols-[1.6fr_1.1fr_auto_auto] md:grid-cols-[1.6fr_1.4fr_1fr_auto_auto] gap-x-4 gap-y-0 font-mono text-[11px] text-[var(--text-3)] uppercase tracking-[0.1em] pb-2 border-b border-[var(--border)]">
+          <div>Provider</div>
+          <div class="hidden md:block">Why pause</div>
+          <div>Gap timeline</div>
+          <div class="text-right pr-2">Window</div>
+          <div class="text-right">Save</div>
+        </div>
+        <div id="gap-rows" class="divide-y divide-[var(--border)] text-[14px]">
+          <!-- injected -->
+        </div>
+      </div>
+
+      <!-- CTA row -->
+      <div class="border-t border-[var(--border)] px-5 md:px-7 py-4 flex flex-wrap gap-3 items-center justify-between">
+        <div class="text-[12px] font-mono text-[var(--text-3)]">We'll text you 24h before each pause starts.</div>
+        <div class="flex flex-wrap gap-2">
+          <a href="#" class="btn-ghost px-4 h-10 rounded-full text-[13px]">Manage subscriptions</a>
+          <a href="#" class="btn-primary px-5 h-10 rounded-full text-[13px] inline-flex items-center gap-2">Pause schedule
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Logged-in: subscriptions at a glance + what's next -->
+<section data-when="logged-in" class="relative pt-4 pb-10">
+  <div class="max-w-[1320px] mx-auto px-5 lg:px-8">
+    <div class="grid lg:grid-cols-[1.1fr_1fr] gap-5 md:gap-8">
+      <!-- Subs row -->
+      <div>
+        <div class="flex items-baseline justify-between mb-4">
+          <div class="label">Your subscriptions</div>
+          <a href="#" class="text-[12px] font-mono text-[var(--text-3)] hover:text-[var(--text)]">Manage →</a>
+        </div>
+        <div id="subs-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+      </div>
+
+      <!-- What's next -->
+      <div>
+        <div class="flex items-baseline justify-between mb-4">
+          <div class="label">What's next for you</div>
+          <a href="#" class="text-[12px] font-mono text-[var(--text-3)] hover:text-[var(--text)]">My shows →</a>
+        </div>
+        <div id="whats-next" class="rounded-2xl border border-[var(--border)] bg-[var(--bg-2)] divide-y divide-[var(--border)] overflow-hidden"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- (popular carousel moved below how-it-works) -->
+
+<!-- ================= HOW IT WORKS ================= -->
+<section id="how" data-when="logged-out" class="relative py-20 border-t border-[var(--border)]">
+  <div class="max-w-[1320px] mx-auto px-5 lg:px-8">
+    <div class="flex items-end justify-between mb-12">
+      <div>
+        <div class="label mb-2">How it works</div>
+        <h2 class="font-serif text-[34px] md:text-[44px] leading-none tracking-[-0.02em] max-w-[640px]">Three steps between you and <span class="italic" style="color:var(--accent)">$47 back</span>.</h2>
+      </div>
+      <div class="hidden md:block text-right">
+        <div class="font-mono text-[12px] text-[var(--text-3)]">Avg setup<br/>≈ 2 minutes</div>
+      </div>
+    </div>
+    <div class="grid md:grid-cols-3 gap-4 md:gap-6">
+      <!-- step cards -->
+      <div class="rounded-2xl border border-[var(--border)] p-6 relative overflow-hidden bg-[var(--bg-2)]">
+        <div class="outline-num text-[120px] absolute -top-2 right-3 opacity-60">1</div>
+        <div class="label">Track shows</div>
+        <div class="font-serif text-[24px] leading-[1.1] mt-3 tracking-[-0.01em]">Tell us what you're watching.</div>
+        <p class="text-[13px] text-[var(--text-2)] mt-3 leading-relaxed">Pull your list in seconds. Tally knows the schedule for every show on every platform.</p>
+        <!-- mini viz -->
+        <div class="mt-5 rounded-lg border border-[var(--border)] p-2 flex flex-col gap-1.5 bg-[#0d0d10]">
+          <div class="flex items-center gap-2 text-[11px] font-mono text-[var(--text-2)]"><div class="w-6 h-8 rounded bg-[#1a1a22]"></div>The Long Dusk<span class="ml-auto text-[var(--text-3)]">S2</span></div>
+          <div class="flex items-center gap-2 text-[11px] font-mono text-[var(--text-2)]"><div class="w-6 h-8 rounded bg-[#1a1a22]"></div>Paper Saints<span class="ml-auto text-[var(--text-3)]">S4</span></div>
+          <div class="flex items-center gap-2 text-[11px] font-mono text-[var(--text-2)]"><div class="w-6 h-8 rounded bg-[#1a1a22]"></div>Velvet Rope<span class="ml-auto text-[var(--text-3)]">S1</span></div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-[var(--border)] p-6 relative overflow-hidden bg-[var(--bg-2)]">
+        <div class="outline-num text-[120px] absolute -top-2 right-3 opacity-60">2</div>
+        <div class="label">Find the gaps</div>
+        <div class="font-serif text-[24px] leading-[1.1] mt-3 tracking-[-0.01em]">We spot the quiet months.</div>
+        <p class="text-[13px] text-[var(--text-2)] mt-3 leading-relaxed">Between seasons, there's nothing new. Tally maps the silence across every platform.</p>
+        <!-- timeline viz -->
+        <div class="mt-5 rounded-lg border border-[var(--border)] p-3 bg-[#0d0d10]">
+          <div class="flex items-center gap-1 mb-2">
+            <div class="label text-[9px]">Jun</div><div class="flex-1"></div>
+            <div class="label text-[9px]">Aug</div><div class="flex-1"></div>
+            <div class="label text-[9px]">Oct</div>
+          </div>
+          <div class="space-y-2">
+            <div class="flex items-center gap-1"><div class="w-14 text-[10px] font-mono text-[var(--text-2)]">Netflix</div><div class="flex-1 h-2 rounded-full bg-[#1a1a22] relative"><div class="absolute inset-y-0 left-0 w-[28%] rounded-full" style="background: var(--accent-dim)"></div><div class="absolute inset-y-0 right-0 w-[22%] rounded-full" style="background: var(--accent-dim)"></div></div></div>
+            <div class="flex items-center gap-1"><div class="w-14 text-[10px] font-mono text-[var(--text-2)]">Disney+</div><div class="flex-1 h-2 rounded-full bg-[#1a1a22] relative"><div class="absolute inset-y-0 left-[35%] w-[18%] rounded-full" style="background: var(--accent-dim)"></div></div></div>
+            <div class="flex items-center gap-1"><div class="w-14 text-[10px] font-mono text-[var(--text-2)]">Max</div><div class="flex-1 h-2 rounded-full bg-[#1a1a22] relative"><div class="absolute inset-y-0 left-[10%] w-[20%] rounded-full" style="background: var(--accent-dim)"></div><div class="absolute inset-y-0 right-[5%] w-[15%] rounded-full" style="background: var(--accent-dim)"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-[var(--border)] p-6 relative overflow-hidden" style="background: linear-gradient(180deg, oklch(0.84 0.16 var(--accent-h) / 0.10), var(--bg-2));">
+        <div class="outline-num text-[120px] absolute -top-2 right-3 opacity-70" style="-webkit-text-stroke-color: var(--accent)">3</div>
+        <div class="label" style="color: var(--accent)">Pause &amp; profit</div>
+        <div class="font-serif text-[24px] leading-[1.1] mt-3 tracking-[-0.01em]">Cancel on the right day.</div>
+        <p class="text-[13px] text-[var(--text-2)] mt-3 leading-relaxed">We text you the night before a gap and again the morning it ends. Resume right when your show returns.</p>
+        <!-- receipt viz -->
+        <div class="mt-5 rounded-lg border border-[var(--border)] p-3 font-mono text-[11px] bg-[#0d0d10]">
+          <div class="flex justify-between text-[var(--text-2)]"><span>Jun — Netflix paused</span><span style="color: var(--accent)">+$15.49</span></div>
+          <div class="flex justify-between text-[var(--text-2)] mt-1"><span>Jul — Max paused</span><span style="color: var(--accent)">+$16.99</span></div>
+          <div class="flex justify-between text-[var(--text-2)] mt-1"><span>Aug — Netflix paused</span><span style="color: var(--accent)">+$15.49</span></div>
+          <div class="h-px bg-[var(--border)] my-2"></div>
+          <div class="flex justify-between"><span>Summer total</span><span class="font-semibold" style="color: var(--accent)">+$46.97</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= POPULAR CAROUSEL (moved here) ================= -->
+<section class="relative pt-12 md:pt-20 pb-20 border-t border-[var(--border)]">
+  <div class="max-w-[1320px] mx-auto px-5 lg:px-8">
+    <div class="flex items-end justify-between mb-8">
+      <div>
+        <div class="label mb-2" data-when="logged-in" style="color:var(--text-3)">Discover something new</div>
+        <div class="label mb-2" data-when="logged-out">Popular this week</div>
+        <h2 class="font-serif text-[34px] md:text-[44px] leading-none tracking-[-0.02em]" data-when="logged-out">What people can't stop watching</h2>
+        <h2 class="font-serif text-[30px] md:text-[38px] leading-none tracking-[-0.02em]" data-when="logged-in">New &amp; trending, worth tracking</h2>
+        <p class="text-[13px] text-[var(--text-2)] mt-2 font-mono">Refreshed daily · ranked by Tally users</p>
+      </div>
+      <div class="hidden md:flex items-center gap-2">
+        <button class="pill w-10 h-10 flex items-center justify-center" onclick="rail('popular', -1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button>
+        <button class="pill w-10 h-10 flex items-center justify-center" onclick="rail('popular', 1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></button>
+      </div>
+    </div>
+
+    <div id="popular-rail" class="rail no-scrollbar edge-fade overflow-x-auto -mx-5 lg:-mx-8 px-5 lg:px-8">
+      <div id="popular-track" class="flex gap-5 md:gap-6 pb-2">
+        <!-- populated JS -->
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= QUOTE / VIBE STRIP ================= -->
+<section data-when="logged-out" class="py-16 border-t border-[var(--border)] overflow-hidden">
+  <div class="max-w-[1320px] mx-auto px-5 lg:px-8 mb-8">
+    <div class="label">Why people like us</div>
+  </div>
+  <div class="relative">
+    <div class="marquee-track flex gap-12 whitespace-nowrap">
+      <div class="flex gap-12 items-center shrink-0">
+        <span class="font-serif text-[34px] italic text-[var(--text-2)]">"Finally, a budget tool that watches TV."</span>
+        <span class="text-[var(--text-3)] text-[28px]">✦</span>
+        <span class="font-serif text-[34px] italic text-[var(--text-2)]">Saved me $138 last year.</span>
+        <span class="text-[var(--text-3)] text-[28px]">✦</span>
+        <span class="font-serif text-[34px] italic text-[var(--text-2)]">I only pay for Max two months a year now.</span>
+        <span class="text-[var(--text-3)] text-[28px]">✦</span>
+        <span class="font-serif text-[34px] italic text-[var(--text-2)]">Like Letterboxd for your bank account.</span>
+        <span class="text-[var(--text-3)] text-[28px]">✦</span>
+      </div>
+      <div class="flex gap-12 items-center shrink-0" aria-hidden="true">
+        <span class="font-serif text-[34px] italic text-[var(--text-2)]">"Finally, a budget tool that watches TV."</span>
+        <span class="text-[var(--text-3)] text-[28px]">✦</span>
+        <span class="font-serif text-[34px] italic text-[var(--text-2)]">Saved me $138 last year.</span>
+        <span class="text-[var(--text-3)] text-[28px]">✦</span>
+        <span class="font-serif text-[34px] italic text-[var(--text-2)]">I only pay for Max two months a year now.</span>
+        <span class="text-[var(--text-3)] text-[28px]">✦</span>
+        <span class="font-serif text-[34px] italic text-[var(--text-2)]">Like Letterboxd for your bank account.</span>
+        <span class="text-[var(--text-3)] text-[28px]">✦</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FOOTER ================= -->
+<footer class="border-t border-[var(--border)]">
+  <div class="max-w-[1320px] mx-auto px-5 lg:px-8 py-10 flex items-center justify-between text-[12px] text-[var(--text-3)] font-mono">
+    <div class="flex items-center gap-2">
+      <span class="tally-mark text-[18px] not-italic" style="font-style: italic; color: var(--text)">Tally<span style="color:var(--accent)">.</span></span>
+      <span>· 2026 · Watching your bill.</span>
+    </div>
+    <div class="flex gap-5">
+      <a href="#" class="hover:text-[var(--text)]">Privacy</a>
+      <a href="#" class="hover:text-[var(--text)]">Terms</a>
+    </div>
+  </div>
+  <div class="h-20 md:h-0"></div> <!-- bottom bar spacer -->
+</footer>
+
+</main>
+
+<!-- ================= MOBILE BOTTOM TAB BAR ================= -->
+<nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bottombar">
+  <div class="flex items-stretch justify-around px-2 py-2 pb-[max(8px,env(safe-area-inset-bottom))]">
+    <button class="flex-1 flex flex-col items-center gap-1 py-2 text-[var(--text)]">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>
+      <span class="text-[10px] font-mono">Home</span>
+    </button>
+    <button class="flex-1 flex flex-col items-center gap-1 py-2 text-[var(--text-3)]">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg>
+      <span class="text-[10px] font-mono">My Shows</span>
+    </button>
+    <button class="flex-1 flex flex-col items-center gap-1 py-2 text-[var(--text-3)]">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h18M12 3v18"/></svg>
+      <span class="text-[10px] font-mono">Plan</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ================= TWEAK PANEL ================= -->
+<div id="tweak-panel" class="hidden fixed bottom-5 right-5 z-50 w-[280px] tweak-panel rounded-2xl p-4 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)]">
+  <div class="flex items-center justify-between mb-3">
+    <div class="label">Tweaks</div>
+    <button id="tweak-close" class="text-[var(--text-3)] text-[14px]">×</button>
+  </div>
+  <div class="space-y-4">
+    <div>
+      <div class="text-[11px] font-mono text-[var(--text-2)] mb-2">Accent hue <span id="hueVal" class="text-[var(--text-3)]"></span></div>
+      <input id="hueSlider" type="range" min="0" max="360" class="w-full" />
+    </div>
+    <div>
+      <div class="text-[11px] font-mono text-[var(--text-2)] mb-2">Hero backdrop</div>
+      <div class="flex gap-2" id="heroModes">
+        <button data-v="clean" class="pill flex-1 h-8 text-[11px] font-mono">clean</button>
+        <button data-v="dots" class="pill flex-1 h-8 text-[11px] font-mono">dots</button>
+      </div>
+    </div>
+    <div>
+      <div class="text-[11px] font-mono text-[var(--text-2)] mb-2">Carousel numerals</div>
+      <div class="flex gap-2" id="numStyles">
+        <button data-v="outline" class="pill flex-1 h-8 text-[11px] font-mono">outline</button>
+        <button data-v="solid" class="pill flex-1 h-8 text-[11px] font-mono">solid</button>
+      </div>
+    </div>
+    <div>
+      <div class="text-[11px] font-mono text-[var(--text-2)] mb-2">Auth state</div>
+      <div class="flex gap-2" id="authStates">
+        <button data-v="loggedOut" class="pill flex-1 h-8 text-[11px] font-mono">guest</button>
+        <button data-v="loggedIn" class="pill flex-1 h-8 text-[11px] font-mono">signed in</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SCRIPTS ================= -->
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+/* ---------- Data ---------- */
+// Real streaming services — rendered as typographic pills (colors + set type only; not trademarked logos)
+const services = [
+  { id: 'netflix',    name: 'Netflix',       short: 'N',   color: '#e50914', price: 15.49, shows: 3 },
+  { id: 'disney',     name: 'Disney+',       short: 'D+',  color: '#1b88e0', price: 13.99, shows: 2 },
+  { id: 'prime',      name: 'Prime Video',   short: 'P',   color: '#1399ff', price: 14.99, shows: 4 },
+  { id: 'max',        name: 'Max',           short: 'M',   color: '#9b6bff', price: 16.99, shows: 2 },
+  { id: 'hulu',       name: 'Hulu',          short: 'H',   color: '#1ce783', price: 17.99, shows: 1 },
+  { id: 'paramount',  name: 'Paramount+',    short: 'P+',  color: '#0064ff', price: 12.99, shows: 0 },
+  { id: 'appletv',    name: 'Apple TV+',     short: 'tv',  color: '#f5f5f7', price: 9.99,  shows: 1 },
+];
+
+function posterURL(title, accent, fg="ffffff") {
+  const clean = encodeURIComponent(title.replace(/[:,]/g,'').slice(0, 24));
+  return `https://placehold.co/400x600/${accent}/${fg}/png?font=playfair-display&text=${clean}`;
+}
+
+const shows = [
+  { title: "The Long Dusk",     year: 2025, svc: 'max',       bg: '241f3a', fg: 'f0e7ff' },
+  { title: "Paper Saints",      year: 2024, svc: 'netflix',   bg: '2c0f19', fg: 'ffd7d1' },
+  { title: "Velvet Rope",       year: 2026, svc: 'prime',     bg: '2a1505', fg: 'ffc58a' },
+  { title: "Undersea Signals",  year: 2025, svc: 'hulu',      bg: '05221c', fg: 'b9ffe6' },
+  { title: "Nightshade Academy",year: 2024, svc: 'disney',    bg: '1a0c33', fg: 'd9c2ff' },
+  { title: "Greenroom",         year: 2026, svc: 'appletv',   bg: '0c1a24', fg: 'b7e3ff' },
+  { title: "Static, Ohio",      year: 2025, svc: 'netflix',   bg: '170d0d', fg: 'ffb5b5' },
+  { title: "Glass Almanac",     year: 2023, svc: 'paramount', bg: '200a1a', fg: 'ffc8ee' },
+  { title: "Borrowed Light",    year: 2026, svc: 'prime',     bg: '0a1720', fg: 'a8e0ff' },
+  { title: "The Correspondent", year: 2025, svc: 'max',       bg: '12091e', fg: 'c7aaff' },
+];
+
+/* ---------- Interactive service row (hero demo) ---------- */
+const demoState = {}; // { serviceId: paused bool }
+
+function fmtMoney(n) { return '$' + n.toFixed(2); }
+
+function buildServiceRow() {
+  const row = document.getElementById('service-row');
+  if (!row) return;
+  row.innerHTML = '';
+  // Start with 5 of 7 "active" as if the user is currently paying for them
+  const defaultActive = ['netflix','disney','prime','max','hulu'];
+  services.forEach(s => {
+    demoState[s.id] = defaultActive.includes(s.id) ? false /*not paused*/ : null /*not subbed — dim*/;
+  });
+
+  services.forEach(s => {
+    const chip = document.createElement('button');
+    chip.dataset.svc = s.id;
+    chip.className = 'svc-chip group relative flex items-center gap-3 pl-2 pr-4 h-12 rounded-full border transition-all';
+    chip.style.borderColor = 'var(--border)';
+    chip.style.background = 'rgba(255,255,255,0.03)';
+    const subbed = demoState[s.id] !== null;
+    chip.innerHTML = `
+      <span class="svc-badge inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-[13px] shrink-0"
+            style="background:${s.color}22; color:${s.color}; border: 1px solid ${s.color}55;">${s.short}</span>
+      <span class="flex flex-col items-start leading-tight">
+        <span class="svc-name text-[13px] font-medium">${s.name}</span>
+        <span class="svc-price text-[11px] font-mono text-[var(--text-3)]">$${s.price.toFixed(2)}/mo</span>
+      </span>
+      <span class="svc-tag hidden absolute -top-2 right-3 text-[9px] font-mono uppercase tracking-[0.12em] px-1.5 py-0.5 rounded-full" style="background: var(--accent); color:#0a0a0c;">paused</span>
+    `;
+    chip.addEventListener('click', () => {
+      if (demoState[s.id] === null) {
+        // Not subscribed → clicking "adds" it (toggles to subscribed active)
+        demoState[s.id] = false;
+      } else {
+        demoState[s.id] = !demoState[s.id];
+      }
+      updateServiceRow();
+    });
+    row.appendChild(chip);
+  });
+  updateServiceRow();
+}
+
+function updateServiceRow() {
+  let total = 0, saved = 0;
+  services.forEach(s => {
+    const chip = document.querySelector(`.svc-chip[data-svc="${s.id}"]`);
+    if (!chip) return;
+    const st = demoState[s.id];
+    const tag = chip.querySelector('.svc-tag');
+    const price = chip.querySelector('.svc-price');
+    const name = chip.querySelector('.svc-name');
+    chip.style.boxShadow = '';
+    if (st === null) {
+      // Not subscribed (dim)
+      chip.style.opacity = '0.4';
+      tag.classList.add('hidden');
+      price.style.textDecoration = '';
+      name.style.textDecoration = '';
+    } else if (st === false) {
+      // Active
+      chip.style.opacity = '1';
+      chip.style.borderColor = s.color + '66';
+      chip.style.background = s.color + '10';
+      chip.style.boxShadow = `0 0 0 1px ${s.color}33, 0 8px 24px -12px ${s.color}88`;
+      tag.classList.add('hidden');
+      price.style.textDecoration = '';
+      price.style.color = '';
+      name.style.textDecoration = '';
+      total += s.price;
+    } else {
+      // Paused
+      chip.style.opacity = '0.75';
+      chip.style.borderColor = 'var(--border)';
+      chip.style.background = 'rgba(255,255,255,0.02)';
+      tag.classList.remove('hidden');
+      price.style.textDecoration = 'line-through';
+      price.style.color = 'var(--text-3)';
+      name.style.textDecoration = 'line-through';
+      name.style.textDecorationColor = 'var(--text-3)';
+      saved += s.price;
+    }
+  });
+  const totalEl = document.getElementById('demo-total');
+  const savedEl = document.getElementById('demo-saved');
+  if (totalEl) totalEl.textContent = fmtMoney(total);
+  if (savedEl) savedEl.textContent = fmtMoney(saved);
+}
+
+/* ---------- Logged-in: subscriptions row ---------- */
+const mySubs = ['netflix','disney','prime','max','hulu'];
+const subRenewals = { netflix: 2, disney: 7, prime: 11, max: 18, hulu: 23 };
+const subShows    = { netflix: 3, disney: 2, prime: 1, max: 2, hulu: 1 };
+
+function buildSubs() {
+  const grid = document.getElementById('subs-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  mySubs.forEach(id => {
+    const s = services.find(x => x.id === id);
+    const card = document.createElement('div');
+    card.className = 'rounded-2xl border border-[var(--border)] bg-[var(--bg-2)] p-4 hover:border-[var(--border-2)] transition-colors cursor-pointer';
+    card.innerHTML = `
+      <div class="flex items-center justify-between mb-3">
+        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-[12px]"
+              style="background:${s.color}22; color:${s.color}; border: 1px solid ${s.color}55;">${s.short}</span>
+        <span class="font-mono text-[11px] text-[var(--text-3)]">$${s.price.toFixed(2)}</span>
+      </div>
+      <div class="text-[13px] font-medium mb-0.5">${s.name}</div>
+      <div class="text-[11px] font-mono text-[var(--text-3)]">${subShows[id]} airing · renews ${subRenewals[id]}d</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+/* ---------- Logged-in: what's next ---------- */
+const upcoming = [
+  { show: 'The Long Dusk',     ep: 'S2E4', date: 'May 3',  svc: 'max' },
+  { show: 'Paper Saints',      ep: 'S4E7', date: 'May 8',  svc: 'netflix' },
+  { show: 'Velvet Rope',       ep: 'S1E9', date: 'May 14', svc: 'prime' },
+  { show: 'Nightshade Academy',ep: 'S3E1', date: 'May 19', svc: 'disney' },
+  { show: 'Undersea Signals',  ep: 'S2E3', date: 'May 22', svc: 'hulu' },
+];
+
+function buildWhatsNext() {
+  const el = document.getElementById('whats-next');
+  if (!el) return;
+  el.innerHTML = '';
+  upcoming.forEach(u => {
+    const s = services.find(x => x.id === u.svc);
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-3 px-4 py-3 hover:bg-white/[0.03] transition-colors';
+    row.innerHTML = `
+      <span class="inline-flex items-center justify-center w-7 h-7 rounded-full font-bold text-[10px] shrink-0"
+            style="background:${s.color}22; color:${s.color}; border: 1px solid ${s.color}55;">${s.short}</span>
+      <div class="min-w-0 flex-1">
+        <div class="text-[13px] truncate">${u.show}</div>
+        <div class="text-[11px] font-mono text-[var(--text-3)]">${u.ep} · ${s.name}</div>
+      </div>
+      <div class="text-[12px] font-mono text-[var(--text-2)]">${u.date}</div>
+    `;
+    el.appendChild(row);
+  });
+}
+
+/* ---------- Logged-in: gap table ---------- */
+/* Month bar: each gap describes which months (0=Jan..11=Dec) are in the gap.
+   Shows resuming drives the "back on" copy. */
+const gaps = [
+  {
+    svc: 'netflix',
+    reason: 'Between seasons',
+    window: 'Jun – Aug',
+    gapMonths: [5,6,7],
+    save: 46.47,
+    perMonth: 15.49,
+    shows: ['The Long Dusk', 'Paper Saints'],
+    resumesOn: 'Sep 2',
+    resumesWith: 'The Long Dusk S2'
+  },
+  {
+    svc: 'disney',
+    reason: 'No tracked shows airing',
+    window: 'Oct – Dec',
+    gapMonths: [9,10,11],
+    save: 27.98,
+    perMonth: 13.99,
+    shows: [],
+    resumesOn: 'Jan 14',
+    resumesWith: 'Velvet Rope S2'
+  },
+  {
+    svc: 'max',
+    reason: 'Mid-season break',
+    window: 'Jul only',
+    gapMonths: [6],
+    save: 16.99,
+    perMonth: 16.99,
+    shows: ['Night Freight'],
+    resumesOn: 'Aug 5',
+    resumesWith: 'Night Freight E6'
+  },
+];
+
+let selectedGapIdx = null;
+
+function moneyFmt(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: n % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 }); }
+
+function statStripData(filterIdx) {
+  if (filterIdx !== null && filterIdx !== undefined) {
+    const g = gaps[filterIdx];
+    const s = services.find(x => x.id === g.svc);
+    return [
+      { label: 'Months paused', value: g.gapMonths.length, sub: `of 12 · ${s.name}` },
+      { label: 'You save',      value: moneyFmt(g.save), sub: `${moneyFmt(g.perMonth)} × ${g.gapMonths.length}`, accent: true },
+      { label: 'Back on',       value: g.resumesOn, sub: g.resumesWith, mono: true },
+      { label: 'Shows affected',value: g.shows.length || '—', sub: g.shows.length ? g.shows.join(' · ') : 'nothing you track' }
+    ];
+  }
+  const totalSave = gaps.reduce((a,g) => a + g.save, 0);
+  return [
+    { label: 'Gaps identified', value: gaps.length, sub: `across ${gaps.length} providers` },
+    { label: 'Saving potential', value: moneyFmt(totalSave), sub: 'Jun – Dec 2026', accent: true },
+    { label: 'Active', value: 5, sub: 'subscriptions · $73/mo' },
+    { label: 'Tracking', value: 12, sub: 'shows · 2 airing now' }
+  ];
+}
+
+function renderStatStrip() {
+  const el = document.getElementById('stat-strip');
+  if (!el) return;
+  const data = statStripData(selectedGapIdx);
+  el.innerHTML = data.map((d, i) => `
+    <div class="p-5 md:p-7 ${i < 3 ? 'md:border-r' : ''} ${i < 2 ? 'border-b md:border-b-0' : ''} border-[var(--border)]"
+         style="${d.accent ? 'background: linear-gradient(180deg, oklch(0.84 0.16 var(--accent-h) / 0.10), transparent);' : ''}">
+      <div class="label mb-2" ${d.accent ? 'style="color:var(--accent)"' : ''}>${d.label}</div>
+      <div class="font-serif text-[40px] md:text-[52px] leading-none tracking-[-0.02em] ${d.mono ? 'font-mono text-[28px] md:text-[34px]' : ''}"
+           ${d.accent ? 'style="color:var(--accent)"' : ''}>${d.value}</div>
+      <div class="text-[11px] font-mono text-[var(--text-3)] mt-2 truncate">${d.sub}</div>
+    </div>
+  `).join('');
+}
+
+function monthBar(gapMonths, selected) {
+  const MONTHS = ['J','F','M','A','M','J','J','A','S','O','N','D'];
+  return `<div class="flex items-center gap-[3px]" aria-hidden="true">
+    ${MONTHS.map((m, i) => {
+      const on = gapMonths.includes(i);
+      return `<div class="flex flex-col items-center gap-1">
+        <div style="width:10px; height:18px; border-radius:2px; background:${on ? (selected ? 'var(--accent)' : 'oklch(0.84 0.16 var(--accent-h) / 0.55)') : 'var(--surface)'}; border: 1px solid ${on ? 'transparent' : 'var(--border)'};"></div>
+        <div class="text-[8px] font-mono text-[var(--text-3)] leading-none">${m}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function buildGaps() {
+  const el = document.getElementById('gap-rows');
+  if (!el) return;
+  el.innerHTML = '';
+  const list = selectedGapIdx !== null ? [gaps[selectedGapIdx]] : gaps;
+  const indexMap = selectedGapIdx !== null ? [selectedGapIdx] : gaps.map((_,i) => i);
+  list.forEach((g, i) => {
+    const realIdx = indexMap[i];
+    const s = services.find(x => x.id === g.svc);
+    const selected = selectedGapIdx === realIdx;
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'w-full text-left grid grid-cols-[1.6fr_1.1fr_auto_auto] md:grid-cols-[1.6fr_1.4fr_1fr_auto_auto] gap-x-4 items-center py-4 transition-colors hover:bg-[rgba(255,255,255,0.02)]';
+    row.style.cursor = 'pointer';
+    row.innerHTML = `
+      <div class="flex items-center gap-3 min-w-0">
+        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-[11px] shrink-0"
+              style="background:${s.color}22; color:${s.color}; border: 1px solid ${s.color}55;">${s.short}</span>
+        <div class="min-w-0">
+          <div class="text-[14px] truncate" style="color:var(--text)">${s.name}</div>
+          <div class="text-[11px] font-mono text-[var(--text-3)] mt-0.5 truncate">${g.shows.length ? g.shows.join(' · ') : 'nothing you track'}</div>
+        </div>
+      </div>
+      <div class="hidden md:block min-w-0">
+        <div class="text-[12px] text-[var(--text-2)] truncate">${g.reason}</div>
+        <div class="text-[11px] font-mono text-[var(--text-3)] mt-0.5 truncate">back ${g.resumesOn} · ${g.resumesWith}</div>
+      </div>
+      <div class="hidden md:block">${monthBar(g.gapMonths, selected)}</div>
+      <div class="text-[12px] font-mono text-[var(--text-2)] text-right whitespace-nowrap">${g.window}<div class="text-[10px] text-[var(--text-3)]">${g.gapMonths.length}mo</div></div>
+      <div class="flex items-center justify-end gap-2 whitespace-nowrap">
+        <span class="text-[15px] font-mono" style="color: var(--accent)">+${moneyFmt(g.save)}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-3)"><path d="M9 18l6-6-6-6"/></svg>
+      </div>
+    `;
+    row.addEventListener('click', () => selectGap(selectedGapIdx === realIdx ? null : realIdx));
+    el.appendChild(row);
+  });
+
+  // breadcrumb
+  const bc = document.getElementById('gap-breadcrumb');
+  const name = document.getElementById('gap-crumb-name');
+  if (selectedGapIdx !== null) {
+    bc.classList.remove('hidden'); bc.classList.add('flex');
+    name.textContent = services.find(x => x.id === gaps[selectedGapIdx].svc).name;
+  } else {
+    bc.classList.add('hidden'); bc.classList.remove('flex');
+  }
+}
+
+function selectGap(idx) {
+  selectedGapIdx = idx;
+  renderStatStrip();
+  buildGaps();
+}
+
+/* ---------- Popular carousel ---------- */
+function buildPopular() {
+  const track = document.getElementById('popular-track');
+  track.innerHTML = '';
+  shows.forEach((show, i) => {
+    const svc = services.find(s => s.id === show.svc);
+    const card = document.createElement('div');
+    card.className = 'shrink-0 w-[180px] md:w-[200px] relative group';
+    card.innerHTML = `
+      <div class="rank-num ${TWEAKS.numberStyle === 'solid' ? 'solid' : ''}">${i+1}</div>
+      <div class="poster relative">
+        <img src="${posterURL(show.title, show.bg, show.fg)}" alt="${show.title}" loading="lazy" />
+        <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end p-3" style="background: linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0.2) 60%, transparent);">
+          <button class="track-btn w-full rounded-full h-9 text-[12px] font-medium flex items-center justify-center gap-1.5" data-action="track">
+            <span data-when="logged-out">Log in to track</span>
+            <span data-when="logged-in"><span style="color:var(--accent)">＋</span> Track this show</span>
+          </button>
+        </div>
+      </div>
+      <div class="mt-3 px-0.5 relative z-[2]">
+        <div class="text-[13px] font-medium truncate">${show.title}</div>
+        <div class="flex items-center gap-2 mt-1 text-[11px] font-mono text-[var(--text-3)]">
+          <span>${show.year}</span>
+          <span class="w-1 h-1 rounded-full bg-current opacity-50"></span>
+          <span style="color:${svc.color}">${svc.name}</span>
+        </div>
+      </div>
+    `;
+    track.appendChild(card);
+  });
+}
+
+function rail(name, dir) {
+  const el = document.getElementById(name + '-rail');
+  if (!el) return;
+  const step = el.clientWidth * 0.8;
+  el.scrollBy({ left: step * dir, behavior: 'smooth' });
+}
+
+/* ---------- Search / typeahead ---------- */
+function renderResults(q, mount) {
+  mount.innerHTML = '';
+  if (!q || !q.trim()) { mount.classList.add('hidden'); return; }
+  const query = q.trim().toLowerCase();
+  const matches = shows
+    .filter(s => s.title.toLowerCase().includes(query))
+    .slice(0, 5);
+
+  mount.classList.remove('hidden');
+
+  if (matches.length === 0) {
+    mount.innerHTML = `<div class="p-5 text-[13px] text-[var(--text-3)] font-mono">No matches for "${escapeHtml(q)}"</div>`;
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'py-1.5';
+  matches.forEach(s => {
+    const svc = services.find(sv => sv.id === s.svc);
+    const row = document.createElement('a');
+    row.href = '#';
+    row.className = 'row flex items-center gap-3 px-3 py-2';
+    row.innerHTML = `
+      <div class="w-[36px] h-[54px] rounded-md overflow-hidden bg-[var(--surface)] shrink-0">
+        <img src="${posterURL(s.title, s.bg, s.fg)}" class="w-full h-full object-cover" alt="" />
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="text-[13px] truncate">${highlight(s.title, query)}</div>
+        <div class="text-[11px] font-mono text-[var(--text-3)] mt-0.5">${s.year}</div>
+      </div>
+      <div class="chip" style="color:${svc.color}; border-color: ${svc.color}33;"><span class="sw" style="background:${svc.color}"></span>${svc.name}</div>
+    `;
+    list.appendChild(row);
+  });
+  mount.appendChild(list);
+
+  const footer = document.createElement('a');
+  footer.href = '#';
+  footer.className = 'row flex items-center gap-2 px-4 py-3 border-t border-[var(--border)] text-[13px]';
+  footer.innerHTML = `Show all results for <span class="font-medium" style="color: var(--accent)">"${escapeHtml(q)}"</span>
+    <svg class="ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>`;
+  mount.appendChild(footer);
+}
+
+function highlight(str, q) {
+  const idx = str.toLowerCase().indexOf(q);
+  if (idx < 0) return escapeHtml(str);
+  return escapeHtml(str.slice(0, idx)) + `<span style="color:var(--accent)">${escapeHtml(str.slice(idx, idx+q.length))}</span>` + escapeHtml(str.slice(idx+q.length));
+}
+function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+const sInput = document.getElementById('search-input');
+const sMount = document.getElementById('typeahead');
+sInput.addEventListener('input', e => renderResults(e.target.value, sMount));
+sInput.addEventListener('focus', e => { if (e.target.value) renderResults(e.target.value, sMount); });
+document.addEventListener('click', (e) => {
+  if (!document.getElementById('search-wrap').contains(e.target)) sMount.classList.add('hidden');
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { sMount.classList.add('hidden'); sInput.blur(); }
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); sInput.focus(); }
+});
+
+/* ---------- Mobile search ---------- */
+const mBtn = document.getElementById('m-search-btn');
+const mPanel = document.getElementById('m-search-panel');
+const mInput = document.getElementById('m-search-input');
+const mMount = document.getElementById('m-typeahead');
+const mClose = document.getElementById('m-search-close');
+mBtn?.addEventListener('click', () => {
+  mPanel.classList.toggle('hidden');
+  if (!mPanel.classList.contains('hidden')) setTimeout(() => mInput.focus(), 10);
+});
+mClose?.addEventListener('click', () => { mPanel.classList.add('hidden'); mInput.value=''; renderResults('', mMount); });
+mInput?.addEventListener('input', e => renderResults(e.target.value, mMount));
+
+/* ---------- Auth toggle ---------- */
+function setAuth(state) {
+  document.body.dataset.auth = state;
+  TWEAKS.authState = state;
+  // Toggle [hidden] on [data-when=...] nodes (sidesteps Tailwind specificity)
+  document.querySelectorAll('[data-when="logged-in"]').forEach(el => { el.hidden = (state !== 'loggedIn'); });
+  document.querySelectorAll('[data-when="logged-out"]').forEach(el => { el.hidden = (state === 'loggedIn'); });
+  persist();
+  const lbl = document.getElementById('auth-label');
+  if (lbl) lbl.textContent = state === 'loggedIn' ? 'signed in' : 'guest';
+  syncTweakBtns();
+}
+document.getElementById('auth-toggle')?.addEventListener('click', () => {
+  setAuth(document.body.dataset.auth === 'loggedIn' ? 'loggedOut' : 'loggedIn');
+});
+
+/* Avatar menu */
+const avBtn = document.getElementById('avatar-btn');
+const avMenu = document.getElementById('avatar-menu');
+avBtn?.addEventListener('click', (e) => { e.stopPropagation(); avMenu.classList.toggle('hidden'); });
+document.addEventListener('click', (e) => { if (avMenu && !avMenu.contains(e.target) && e.target !== avBtn) avMenu.classList.add('hidden'); });
+
+/* ---------- Header scroll ---------- */
+const hdr = document.getElementById('site-header');
+function onScroll() {
+  if (window.scrollY > 20) { hdr.classList.remove('hdr-top'); hdr.classList.add('hdr-stuck'); }
+  else { hdr.classList.add('hdr-top'); hdr.classList.remove('hdr-stuck'); }
+}
+window.addEventListener('scroll', onScroll, { passive: true });
+
+/* ---------- Tweaks ---------- */
+function applyTweaks() {
+  document.documentElement.style.setProperty('--accent-h', TWEAKS.accentHue);
+  // hero mode (floaters removed)
+  const heroSection = document.querySelector('section[data-when="logged-out"]');
+  if (heroSection) {
+    heroSection.classList.toggle('dots', TWEAKS.heroMode === 'dots');
+  }
+  // numeral style
+  document.querySelectorAll('.rank-num').forEach(n => n.classList.toggle('solid', TWEAKS.numberStyle === 'solid'));
+  // auth state
+  setAuth(TWEAKS.authState);
+  const lbl = document.getElementById('auth-label');
+  if (lbl) lbl.textContent = TWEAKS.authState === 'loggedIn' ? 'signed in' : 'guest';
+  // hue val
+  const hv = document.getElementById('hueVal');
+  if (hv) hv.textContent = '· ' + TWEAKS.accentHue + '°';
+  syncTweakBtns();
+}
+
+function syncTweakBtns() {
+  document.querySelectorAll('#heroModes button').forEach(b => b.style.borderColor = b.dataset.v === TWEAKS.heroMode ? 'var(--accent)' : '');
+  document.querySelectorAll('#numStyles button').forEach(b => b.style.borderColor = b.dataset.v === TWEAKS.numberStyle ? 'var(--accent)' : '');
+  document.querySelectorAll('#authStates button').forEach(b => b.style.borderColor = b.dataset.v === TWEAKS.authState ? 'var(--accent)' : '');
+  const s = document.getElementById('hueSlider');
+  if (s) s.value = TWEAKS.accentHue;
+}
+
+function persist() {
+  try { window.parent.postMessage({type: '__edit_mode_set_keys', edits: {...TWEAKS}}, '*'); } catch(e){}
+}
+
+// Tweak listeners
+document.getElementById('hueSlider')?.addEventListener('input', e => {
+  TWEAKS.accentHue = +e.target.value;
+  applyTweaks();
+  persist();
+});
+document.getElementById('heroModes')?.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  TWEAKS.heroMode = b.dataset.v; applyTweaks(); persist();
+});
+document.getElementById('numStyles')?.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  TWEAKS.numberStyle = b.dataset.v; applyTweaks(); persist();
+});
+document.getElementById('authStates')?.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  setAuth(b.dataset.v);
+});
+document.getElementById('tweak-close')?.addEventListener('click', () => {
+  document.getElementById('tweak-panel').classList.add('hidden');
+});
+
+/* Edit mode protocol */
+window.addEventListener('message', (e) => {
+  if (!e.data || !e.data.type) return;
+  if (e.data.type === '__activate_edit_mode') {
+    document.getElementById('tweak-panel').classList.remove('hidden');
+  } else if (e.data.type === '__deactivate_edit_mode') {
+    document.getElementById('tweak-panel').classList.add('hidden');
+  }
+});
+try { window.parent.postMessage({type: '__edit_mode_available'}, '*'); } catch(e){}
+
+/* ---------- Init ---------- */
+buildServiceRow();
+buildSubs();
+buildWhatsNext();
+renderStatStrip();
+buildGaps();
+buildPopular();
+applyTweaks();
+onScroll();
+</script>
+</body>
+</html>
