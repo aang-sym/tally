@@ -8,7 +8,12 @@ interface AuthSuccess {
   };
 }
 
-const ALREADY_EXISTS_PATTERNS = ['already exists', 'already registered', 'user already exists'];
+const ALREADY_EXISTS_PATTERNS = [
+  'already exists',
+  'already registered',
+  'user already exists',
+  'registration succeeded but no session',
+];
 
 const INVALID_CREDENTIALS_PATTERNS = ['invalid email or password', 'invalid login credentials'];
 const INVALID_EMAIL_PATTERNS = ['email address', 'is invalid'];
