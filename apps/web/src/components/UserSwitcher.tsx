@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { API_ENDPOINTS, apiRequest } from '../config/api';
 import { UserManager, User } from '../services/UserManager';
 import { useAuth } from '../context/AuthContext';
+import { ensureDevUserSession } from '../services/devAuth';
 
 interface UserSwitcherProps {
   onUserChange?: (userId: string) => void;
@@ -58,25 +59,17 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
 
       // For test users with known passwords, we can auto-login
       const testCredentials: { [key: string]: string } = {
-        'freshtest@example.com': 'testpassword123',
-        'test1@example.com': 'password123',
-        'test2@example.com': 'password123',
-        'admin@test.com': 'password123',
+        'freshtest@tallyapp.dev': 'testpassword123',
+        'test1@tallyapp.dev': 'password123',
+        'test2@tallyapp.dev': 'password123',
+        'admin@tallyapp.dev': 'password123',
       };
 
       const password = testCredentials[targetUser.email];
       if (password) {
         try {
           console.log('[USER SWITCH DEBUG] Attempting login for test user:', targetUser.email);
-
-          // Login as the target user
-          const loginData = await apiRequest(API_ENDPOINTS.auth.login, {
-            method: 'POST',
-            body: JSON.stringify({
-              email: targetUser.email,
-              password: password,
-            }),
-          });
+          const loginData = await ensureDevUserSession(targetUser.email, password);
 
           if (loginData.token && loginData.user) {
             console.log('[USER SWITCH DEBUG] Login successful, updating auth context');
@@ -194,17 +187,17 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
         </button>
 
         {isOpen && (
-          <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg z-50 border">
+          <div className="absolute right-0 bottom-full mb-2 w-64 bg-white rounded-md shadow-lg z-50 border">
             <div className="py-1">
               <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b">
                 Users
               </div>
               {users.map((user) => {
                 const testCredentials = [
-                  'freshtest@example.com',
-                  'test1@example.com',
-                  'test2@example.com',
-                  'admin@test.com',
+                  'freshtest@tallyapp.dev',
+                  'test1@tallyapp.dev',
+                  'test2@tallyapp.dev',
+                  'admin@tallyapp.dev',
                 ];
                 const hasKnownPassword = testCredentials.includes(user.email);
 

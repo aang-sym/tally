@@ -27,20 +27,23 @@ function App() {
 
           {/* Main App Routes (with navigation layout) */}
           <Route path="/" element={<Layout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/my-shows" element={<MyShows />} />
+            <Route path="/search" element={<SearchShows />} />
+            <Route path="/plan" element={<Recommendations />} />
+            <Route path="/settings" element={<Subscriptions />} />
+
+            {/* Secondary routes — not in nav but still accessible */}
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/tv-guide" element={<TVGuide />} />
-            <Route path="/recommendations" element={<Recommendations />} />
-            <Route path="/search" element={<SearchShows />} />
-            <Route path="/settings" element={<Subscriptions />} />
+            <Route path="/recommendations" element={<Navigate to="/plan" replace />} />
 
             {/* Development Routes */}
             {process.env.NODE_ENV === 'development' && <Route path="/admin" element={<Admin />} />}
           </Route>
 
-          {/* Redirect /app to /dashboard for convenience */}
-          <Route path="/app" element={<Navigate to="/dashboard" replace />} />
+          {/* Legacy redirects */}
+          <Route path="/app" element={<Navigate to="/my-shows" replace />} />
 
           {/* Catch all route - redirect to landing */}
           <Route path="*" element={<Navigate to="/" replace />} />

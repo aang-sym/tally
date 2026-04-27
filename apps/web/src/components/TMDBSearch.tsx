@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { debounce } from 'lodash-es';
+import { API_ENDPOINTS } from '../config/api';
 
 interface TMDBShow {
   id: number;
@@ -14,6 +15,11 @@ interface TMDBShow {
 interface TMDBSearchProps {
   onSelectShow: (show: TMDBShow) => void;
   selectedShowId?: number | undefined;
+}
+
+interface TMDBSearchError {
+  error?: string;
+  message?: string;
 }
 
 const TMDBSearch: React.FC<TMDBSearchProps> = ({ onSelectShow, selectedShowId }) => {
@@ -35,10 +41,16 @@ const TMDBSearch: React.FC<TMDBSearchProps> = ({ onSelectShow, selectedShowId })
         setLoading(true);
         setError('');
 
-        const response = await fetch(`/api/tmdb/search?query=${encodeURIComponent(searchQuery)}`);
-        const data = await response.json();
+        const response = await fetch(
+          `${API_ENDPOINTS.tmdb.search}?query=${encodeURIComponent(searchQuery)}`
+        );
+        const data: TMDBSearchError & { results?: TMDBShow[] } = await response.json();
 
         if (!response.ok) {
+          if (response.status === 503 && data.error === 'TMDB_UNAVAILABLE') {
+            throw new Error('Search unavailable — TMDB is not configured on the API server.');
+          }
+
           throw new Error(data.message || 'Search failed');
         }
 

@@ -31,8 +31,9 @@ const hoisted = vi.hoisted(() => {
 
   const supFrom = vi.fn();
   const svcSupFrom = vi.fn();
+  const authGetUser = vi.fn();
   const sup = { from: supFrom };
-  const svcSup = { from: svcSupFrom };
+  const svcSup = { from: svcSupFrom, auth: { getUser: authGetUser } };
 
   return {
     svc,
@@ -40,6 +41,7 @@ const hoisted = vi.hoisted(() => {
     showSvc,
     supFrom,
     svcSupFrom,
+    authGetUser,
     sup,
     svcSup,
   };
@@ -49,6 +51,7 @@ const mockWatchlistService = hoisted.svc;
 const mockShowService = hoisted.showSvc;
 const supabaseFrom = hoisted.supFrom;
 const serviceSupabaseFrom = hoisted.svcSupFrom;
+const serviceSupabaseAuthGetUser = hoisted.authGetUser;
 
 // Provide select()->eq()->single() chains for GET progress
 const chain = () => {
@@ -65,6 +68,27 @@ beforeAll(() => {
   // Make sure JWT secret is available for real middleware
   process.env.JWT_SECRET = TEST_JWT_SECRET;
 });
+
+const mockGetUserFromToken = (token: string) => {
+  try {
+    const decoded = jwt.verify(token, TEST_JWT_SECRET) as { userId?: string; email?: string };
+    if (!decoded.userId) {
+      return { data: { user: null }, error: new Error('Missing userId') };
+    }
+
+    return {
+      data: {
+        user: {
+          id: decoded.userId,
+          email: decoded.email ?? 'test@example.com',
+        },
+      },
+      error: null,
+    };
+  } catch {
+    return { data: { user: null }, error: new Error('Invalid token') };
+  }
+};
 
 // Mock module graph
 vi.mock('../services/WatchlistService.js', () => {
@@ -132,6 +156,9 @@ describe('watchlist PUT endpoints', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    serviceSupabaseAuthGetUser.mockImplementation(async (token: string) =>
+      mockGetUserFromToken(token)
+    );
   });
 
   // Common 401 - no token
@@ -274,6 +301,9 @@ describe('watchlist GET :tmdbId/progress - fixed response shape', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    serviceSupabaseAuthGetUser.mockImplementation(async (token: string) =>
+      mockGetUserFromToken(token)
+    );
 
     // Reset supabase/serviceSupabase FROM chains
     const sb = chain();

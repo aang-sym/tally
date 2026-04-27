@@ -1,28 +1,33 @@
 import React, { useState } from 'react';
-import { Link, useLocation, Outlet } from 'react-router-dom';
+import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
+import { Tv, Search, Sparkles, Settings, LogOut, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import UserSwitcher from './UserSwitcher';
 import LoginModal from './Auth/LoginModal';
 
+const navigation = [
+  { name: 'My Shows', href: '/my-shows', icon: Tv },
+  { name: 'Search', href: '/search', icon: Search },
+  { name: 'Plan', href: '/plan', icon: Sparkles },
+  { name: 'Settings', href: '/settings', icon: Settings },
+];
+
 const Layout: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAuthenticated, user, login, logout } = useAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
-  const handleLoginSuccess = (token: string, user: { id: string; email: string }) => {
-    login(token, user);
+  const handleLoginSuccess = (token: string, userData: { id: string; email: string }) => {
+    login(token, userData);
     setIsLoginModalOpen(false);
+    navigate('/my-shows');
   };
 
-  const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: '🏠' },
-    { name: 'My Shows', href: '/my-shows', icon: '📺' },
-    { name: 'Search Shows', href: '/search', icon: '🔍' },
-    { name: 'TV Guide', href: '/tv-guide', icon: '📋' },
-    { name: 'Calendar', href: '/calendar', icon: '📅' },
-    { name: 'Recommendations', href: '/recommendations', icon: '💡' },
-    { name: 'Subscriptions', href: '/settings', icon: '⚙️' },
-  ];
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -33,67 +38,48 @@ const Layout: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <div className="flex items-center">
-              <Link to="/dashboard" className="text-2xl font-bold text-primary-600">
-                Tally
-              </Link>
-            </div>
+            <Link to="/my-shows" className="text-2xl font-bold text-primary-600">
+              Tally
+            </Link>
 
             {/* Main Navigation */}
-            <nav className="hidden md:flex space-x-8">
-              {navigation.map((item) => (
+            <nav className="hidden md:flex space-x-1">
+              {navigation.map(({ name, href, icon: Icon }) => (
                 <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium transition-colors ${
-                    isActive(item.href)
-                      ? 'text-primary-600 border-b-2 border-primary-500'
-                      : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  key={name}
+                  to={href}
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive(href)
+                      ? 'bg-primary-50 text-primary-700'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
                   }`}
                 >
-                  <span className="mr-2">{item.icon}</span>
-                  {item.name}
+                  <Icon size={16} />
+                  {name}
                 </Link>
               ))}
             </nav>
 
             {/* User Menu */}
-            <div className="flex items-center space-x-4">
-              {/* Dev Admin Link (only in development) */}
-              {process.env.NODE_ENV === 'development' && (
-                <Link
-                  to="/admin"
-                  className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                    isActive('/admin')
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <span className="mr-2">⚙️</span>
-                  Admin
-                </Link>
-              )}
-
-              {/* User Switcher (only in development) */}
-              {process.env.NODE_ENV === 'development' && <UserSwitcher />}
-
-              {/* Authentication Controls */}
+            <div className="flex items-center">
               {isAuthenticated ? (
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm text-gray-600">{user?.email}</span>
+                <div className="flex items-center gap-3">
+                  <span className="hidden sm:block text-sm text-gray-500">{user?.email}</span>
                   <button
-                    onClick={logout}
-                    className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                    onClick={handleLogout}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
                   >
-                    Logout
+                    <LogOut size={16} />
+                    <span className="hidden sm:inline">Log out</span>
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setIsLoginModalOpen(true)}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-colors"
                 >
-                  Login
+                  <LogIn size={16} />
+                  Log in
                 </button>
               )}
             </div>
@@ -102,39 +88,19 @@ const Layout: React.FC = () => {
 
         {/* Mobile Navigation */}
         <div className="md:hidden border-t border-gray-200">
-          <div className="px-2 py-3 space-y-1">
-            {navigation.map((item) => (
+          <div className="flex">
+            {navigation.map(({ name, href, icon: Icon }) => (
               <Link
-                key={item.name}
-                to={item.href}
-                className={`block px-3 py-2 text-base font-medium rounded-md transition-colors ${
-                  isActive(item.href)
-                    ? 'bg-primary-100 text-primary-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                key={name}
+                to={href}
+                className={`flex-1 flex flex-col items-center gap-1 py-3 text-xs font-medium transition-colors ${
+                  isActive(href) ? 'text-primary-700' : 'text-gray-500 hover:text-gray-900'
                 }`}
               >
-                <span className="mr-3">{item.icon}</span>
-                {item.name}
+                <Icon size={20} />
+                {name}
               </Link>
             ))}
-
-            {/* Dev admin in mobile */}
-            {process.env.NODE_ENV === 'development' && (
-              <>
-                <div className="border-t border-gray-200 my-2"></div>
-                <Link
-                  to="/admin"
-                  className={`block px-3 py-2 text-base font-medium rounded-md transition-colors ${
-                    isActive('/admin')
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }`}
-                >
-                  <span className="mr-3">⚙️</span>
-                  Admin
-                </Link>
-              </>
-            )}
           </div>
         </div>
       </header>
@@ -143,6 +109,19 @@ const Layout: React.FC = () => {
       <main>
         <Outlet />
       </main>
+
+      {/* Dev overlay — only in development, not in the header */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
+          <UserSwitcher />
+          <Link
+            to="/admin"
+            className="px-3 py-1.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-md border border-yellow-200 hover:bg-yellow-200 transition-colors"
+          >
+            Admin
+          </Link>
+        </div>
+      )}
 
       {/* Login Modal */}
       <LoginModal
