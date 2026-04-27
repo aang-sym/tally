@@ -59,10 +59,10 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
 
       // For test users with known passwords, we can auto-login
       const testCredentials: { [key: string]: string } = {
-        'freshtest@example.com': 'testpassword123',
-        'test1@example.com': 'password123',
-        'test2@example.com': 'password123',
-        'admin@test.com': 'password123',
+        'freshtest@tallyapp.dev': 'testpassword123',
+        'test1@tallyapp.dev': 'password123',
+        'test2@tallyapp.dev': 'password123',
+        'admin@tallyapp.dev': 'password123',
       };
 
       const password = testCredentials[targetUser.email];
@@ -194,10 +194,10 @@ const UserSwitcher: React.FC<UserSwitcherProps> = ({ onUserChange }) => {
               </div>
               {users.map((user) => {
                 const testCredentials = [
-                  'freshtest@example.com',
-                  'test1@example.com',
-                  'test2@example.com',
-                  'admin@test.com',
+                  'freshtest@tallyapp.dev',
+                  'test1@tallyapp.dev',
+                  'test2@tallyapp.dev',
+                  'admin@tallyapp.dev',
                 ];
                 const hasKnownPassword = testCredentials.includes(user.email);
 

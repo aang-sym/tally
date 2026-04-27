@@ -11,107 +11,12 @@ import { API_ENDPOINTS, apiRequest } from '../config/api';
 import { UserShow, StreamingProvider, StoredEpisodeProgress } from '../types/api';
 import { useAuth } from '../context/AuthContext';
 
-// Shared, accessible progress bar component
-const ProgressBar: React.FC<{
-  value: number;
-  total: number;
-  label?: string;
-  size?: 'sm' | 'md';
-  className?: string;
-}> = ({ value, total, label, size = 'md', className }) => {
-  const denom = Math.max(0, total);
-  const numer = Math.min(Math.max(0, value), denom);
-  const pct = denom ? Math.round((numer / denom) * 100) : 0;
-  return (
-    <div className={className}>
-      {label && (
-        <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
-          <span>{label}</span>
-          <span>
-            {numer}/{denom} episodes
-          </span>
-        </div>
-      )}
-      <div
-        className={
-          size === 'sm'
-            ? 'w-full bg-gray-200 rounded-full h-1.5'
-            : 'w-full bg-gray-200 rounded-full h-2'
-        }
-        role="progressbar"
-        aria-valuenow={pct}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={label || 'progress'}
-      >
-        <div
-          className="bg-blue-600 h-full rounded-full transition-all duration-300"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-};
-
-// Episode Progress Display Component
 interface DisplayEpisode {
   number: number;
   airDate: string;
   title: string;
   watched?: boolean;
 }
-
-const EpisodeProgressDisplay: React.FC<{
-  seasonNumber: number;
-  episodeNumber: number;
-  episodeName?: string | undefined; // Explicitly allow undefined
-  tmdbId: number;
-}> = ({ seasonNumber, episodeNumber, episodeName, tmdbId }) => {
-  const [actualEpisodeTitle, setActualEpisodeTitle] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchEpisodeTitle = async () => {
-      // Only fetch if the current name is generic like "Episode X"
-      if (!episodeName || episodeName.match(/^Episode \d+$/)) {
-        setLoading(true);
-        try {
-          const country = UserManager.getCountry();
-          const response = await fetch(
-            `${API_ENDPOINTS.tmdb.base}/show/${tmdbId}/season/${seasonNumber}/raw?country=${country}`
-          );
-          if (response.ok) {
-            const data = await response.json();
-            const season = data.raw?.season || data.raw;
-            const ep = (season?.episodes || []).find(
-              (e: any) => e.episode_number === episodeNumber
-            );
-            if (ep && ep.name) setActualEpisodeTitle(ep.name);
-          }
-        } catch (error) {
-          console.error('Failed to fetch episode title:', error);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchEpisodeTitle();
-  }, [episodeName, episodeNumber, tmdbId]);
-
-  const displayTitle =
-    actualEpisodeTitle || (episodeName && !episodeName.match(/^Episode \d+$/))
-      ? actualEpisodeTitle || episodeName
-      : '';
-
-  return (
-    <p className="text-xs text-gray-500 mt-1">
-      Next: S{seasonNumber}E{episodeNumber}
-      {loading && <span className="ml-1 text-gray-400">(loading title...)</span>}
-      {!loading && displayTitle && ` - ${displayTitle}`}
-    </p>
-  );
-};
 
 interface WatchlistStats {
   totalShows: number;
@@ -164,15 +69,11 @@ const MyShows: React.FC = () => {
   const [stats, setStats] = useState<WatchlistStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [loadingStats, setLoadingStats] = useState(true); // New loading state for stats
-  const [statsError, setStatsError] = useState<string | null>(null); // New error state for stats
   // Series-wide progress prefetch (keyed by tmdbId)
   const [seriesProgress, setSeriesProgress] = useState<{
     [tmdbId: number]: { total: number; watched: number };
   }>({});
 
-  // Expandable show details state
-  const [expandedShow, setExpandedShow] = useState<string | null>(null);
   const [showAnalysis, setShowAnalysis] = useState<{ [showId: string]: any }>({});
   const [selectedSeasons, setSelectedSeasons] = useState<{ [showId: string]: number }>({});
   const [episodeData, setEpisodeData] = useState<{
@@ -187,7 +88,9 @@ const MyShows: React.FC = () => {
 
   // Onboarding search state (shown when watchlist is empty)
   const [onboardingQuery, setOnboardingQuery] = useState('');
-  const [onboardingResults, setOnboardingResults] = useState<{ id: number; title: string; year?: number; poster?: string; overview: string }[]>([]);
+  const [onboardingResults, setOnboardingResults] = useState<
+    { id: number; title: string; year?: number; poster?: string; overview: string }[]
+  >([]);
   const [onboardingSearching, setOnboardingSearching] = useState(false);
   const [onboardingAdding, setOnboardingAdding] = useState<number | null>(null);
   const [onboardingAdded, setOnboardingAdded] = useState<Set<number>>(new Set());
@@ -213,7 +116,10 @@ const MyShows: React.FC = () => {
 
   // Onboarding: search TMDB inline (debounced via useEffect)
   useEffect(() => {
-    if (!onboardingQuery.trim()) { setOnboardingResults([]); return; }
+    if (!onboardingQuery.trim()) {
+      setOnboardingResults([]);
+      return;
+    }
     const timer = setTimeout(async () => {
       setOnboardingSearching(true);
       try {
@@ -326,8 +232,6 @@ const MyShows: React.FC = () => {
     if (shows) {
       const computed = deriveStats(shows);
       setStats(computed);
-      setLoadingStats(false);
-      setStatsError(null);
     }
   }, [shows]);
 
@@ -362,8 +266,6 @@ const MyShows: React.FC = () => {
 
       setShows(showsList);
       setStats(deriveStats(showsList));
-      setLoadingStats(false);
-      setStatsError(null);
       setError(null);
 
       // Prefetch overall progress so header bars are populated on initial load
@@ -401,8 +303,6 @@ const MyShows: React.FC = () => {
   };
 
   const fetchStats = async () => {
-    setLoadingStats(true);
-    setStatsError(null);
     try {
       const token = localStorage.getItem('authToken') || undefined;
 
@@ -425,10 +325,7 @@ const MyShows: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to fetch stats:', err);
-      setStatsError('Failed to load show statistics.');
       setStats(deriveStats(shows));
-    } finally {
-      setLoadingStats(false);
     }
   };
 
@@ -489,43 +386,6 @@ const MyShows: React.FC = () => {
     }
   };
 
-  // Update streaming provider for a show
-  const updateStreamingProvider = async (
-    userShowId: string,
-    provider: { id: number; name: string; logo_path: string } | null
-  ) => {
-    try {
-      const token = localStorage.getItem('authToken') || undefined;
-      await apiRequest(
-        `${API_ENDPOINTS.watchlist.v2}/${userShowId}/provider`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ provider }),
-        },
-        token
-      );
-
-      // Update local state immediately without full refresh
-      setShows((prevShows) =>
-        prevShows.map((show) =>
-          (show as any).user_show_id === userShowId || show.id === userShowId
-            ? { ...show, streaming_provider: provider }
-            : show
-        )
-      );
-
-      // Show success message
-      const providerName = provider ? provider.name : 'None';
-      console.log(`Streaming provider updated to: ${providerName}`);
-    } catch (err) {
-      console.error('Failed to update streaming provider:', err);
-      alert('Failed to update streaming provider');
-    }
-  };
-
   // Remove show from watchlist
   const removeShow = async (userShowId: string) => {
     if (!confirm('Are you sure you want to remove this show from your watchlist?')) {
@@ -548,16 +408,6 @@ const MyShows: React.FC = () => {
     } catch (err) {
       console.error('Failed to remove show:', err);
       alert('Failed to remove show');
-    }
-  };
-
-  // Handle show expansion
-  const toggleShowExpansion = async (userShow: UserShow) => {
-    const isExpanding = expandedShow !== userShow.id;
-    setExpandedShow(isExpanding ? userShow.id || null : null); // Handle userShow.id being undefined
-
-    if (isExpanding && !showAnalysis[userShow.show.tmdb_id]) {
-      await fetchShowAnalysis(userShow.show.tmdb_id);
     }
   };
 
@@ -1070,7 +920,9 @@ const MyShows: React.FC = () => {
               className="px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               {['US', 'GB', 'CA', 'AU', 'DE', 'FR', 'JP', 'KR', 'IN', 'BR'].map((code) => (
-                <option key={code} value={code}>{code}</option>
+                <option key={code} value={code}>
+                  {code}
+                </option>
               ))}
             </select>
           </div>
@@ -1089,7 +941,9 @@ const MyShows: React.FC = () => {
               }`}
             >
               {tab.label}
-              <span className={`text-xs ${activeTab === tab.key ? 'text-primary-200' : 'text-gray-400'}`}>
+              <span
+                className={`text-xs ${activeTab === tab.key ? 'text-primary-200' : 'text-gray-400'}`}
+              >
                 {tab.count}
               </span>
               {activeTab === tab.key && isBackgroundLoading && (
@@ -1171,8 +1025,8 @@ const MyShows: React.FC = () => {
                       {onboardingAdding === show.id
                         ? '...'
                         : onboardingAdded.has(show.id)
-                        ? 'Added!'
-                        : 'Add'}
+                          ? 'Added!'
+                          : 'Add'}
                     </button>
                   </div>
                 ))}
@@ -1189,7 +1043,9 @@ const MyShows: React.FC = () => {
             {shows.map((userShow) => {
               const posterUrl = getPosterUrl(userShow);
               const progress = seriesProgress[userShow.show.tmdb_id];
-              const pct = progress?.total ? Math.round((progress.watched / progress.total) * 100) : 0;
+              const pct = progress?.total
+                ? Math.round((progress.watched / progress.total) * 100)
+                : 0;
 
               return (
                 <button
@@ -1217,7 +1073,13 @@ const MyShows: React.FC = () => {
                     <span
                       className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded text-xs font-medium ${getStatusBadgeColor(userShow.status)}`}
                     >
-                      {userShow.status === 'watchlist' ? 'List' : userShow.status === 'watching' ? 'Watching' : userShow.status === 'completed' ? 'Done' : userShow.status}
+                      {userShow.status === 'watchlist'
+                        ? 'List'
+                        : userShow.status === 'watching'
+                          ? 'Watching'
+                          : userShow.status === 'completed'
+                            ? 'Done'
+                            : userShow.status}
                     </span>
 
                     {/* Progress bar at bottom of poster */}
@@ -1248,140 +1110,199 @@ const MyShows: React.FC = () => {
       </div>
 
       {/* Detail slide-over */}
-      {selectedShow && (() => {
-        const userShow = selectedShow;
-        const analysis = showAnalysis[userShow.show.tmdb_id];
-        const selectedSeason = selectedSeasons[userShow.show.tmdb_id];
-        const episodes = selectedSeason !== undefined ? episodeData[userShow.show.tmdb_id]?.[selectedSeason] : undefined;
-        const posterUrl = getPosterUrl(userShow);
+      {selectedShow &&
+        (() => {
+          const userShow = selectedShow;
+          const analysis = showAnalysis[userShow.show.tmdb_id];
+          const selectedSeason = selectedSeasons[userShow.show.tmdb_id];
+          const episodes =
+            selectedSeason !== undefined
+              ? episodeData[userShow.show.tmdb_id]?.[selectedSeason]
+              : undefined;
+          const posterUrl = getPosterUrl(userShow);
 
-        return (
-          <>
-            {/* Backdrop */}
-            <div className="fixed inset-0 bg-black/40 z-40" onClick={closeDetail} />
+          return (
+            <>
+              {/* Backdrop */}
+              <div className="fixed inset-0 bg-black/40 z-40" onClick={closeDetail} />
 
-            {/* Panel */}
-            <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-xl z-50 flex flex-col overflow-hidden">
-              {/* Panel header */}
-              <div className="flex items-start gap-4 p-4 border-b border-gray-100">
-                {posterUrl && (
-                  <img src={posterUrl} alt="" className="w-14 h-20 rounded object-cover shrink-0" />
-                )}
-                <div className="flex-1 min-w-0 pt-1">
-                  <h2 className="font-semibold text-gray-900 leading-tight">{userShow.show.title}</h2>
-                  <span className={`mt-1 inline-block px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(userShow.status)}`}>
-                    {userShow.status}
-                  </span>
-                </div>
-                <button onClick={closeDetail} className="text-gray-400 hover:text-gray-600 text-xl leading-none mt-1">×</button>
-              </div>
-
-              {/* Scrollable content */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {/* Rating */}
-                <StarRating
-                  rating={userShow.show_rating}
-                  onRating={(rating) => {
-                    const uid = (userShow as any).user_show_id ?? userShow.id;
-                    if (uid) rateShow(uid, rating);
-                  }}
-                />
-
-                {/* Status actions */}
-                <div className="flex flex-wrap gap-2">
-                  {userShow.status === 'watchlist' && userShow.id && (
-                    <button
-                      onClick={() => { const uid = (userShow as any).user_show_id ?? userShow.id; if (uid) updateShowStatus(uid, 'watching'); closeDetail(); }}
-                      className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700"
-                    >
-                      Start Watching
-                    </button>
+              {/* Panel */}
+              <div className="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-xl z-50 flex flex-col overflow-hidden">
+                {/* Panel header */}
+                <div className="flex items-start gap-4 p-4 border-b border-gray-100">
+                  {posterUrl && (
+                    <img
+                      src={posterUrl}
+                      alt=""
+                      className="w-14 h-20 rounded object-cover shrink-0"
+                    />
                   )}
-                  {userShow.status === 'watching' && userShow.id && (
-                    <button
-                      onClick={() => { const uid = (userShow as any).user_show_id ?? userShow.id; if (uid) updateShowStatus(uid, 'completed'); closeDetail(); }}
-                      className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700"
+                  <div className="flex-1 min-w-0 pt-1">
+                    <h2 className="font-semibold text-gray-900 leading-tight">
+                      {userShow.show.title}
+                    </h2>
+                    <span
+                      className={`mt-1 inline-block px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(userShow.status)}`}
                     >
-                      Mark Completed
-                    </button>
-                  )}
-                  {userShow.id && (
-                    <button
-                      onClick={() => { const uid = (userShow as any).user_show_id ?? userShow.id; if (uid) removeShow(uid); closeDetail(); }}
-                      className="px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 text-sm rounded-md hover:bg-red-100"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-
-                {/* Episodes */}
-                {loadingAnalysis[userShow.show.tmdb_id] ? (
-                  <div className="flex items-center gap-2 text-gray-500 py-4">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-500" />
-                    Loading episodes...
+                      {userShow.status}
+                    </span>
                   </div>
-                ) : analysis ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <label className="text-sm font-medium text-gray-700">Season</label>
-                      <select
-                        value={selectedSeason || ''}
-                        onChange={(e) => handleSeasonChange(userShow.show.tmdb_id, parseInt(e.target.value))}
-                        className="px-2 py-1 border border-gray-300 rounded text-sm"
+                  <button
+                    onClick={closeDetail}
+                    className="text-gray-400 hover:text-gray-600 text-xl leading-none mt-1"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {/* Scrollable content */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {/* Rating */}
+                  <StarRating
+                    rating={userShow.show_rating}
+                    onRating={(rating) => {
+                      const uid = (userShow as any).user_show_id ?? userShow.id;
+                      if (uid) rateShow(uid, rating);
+                    }}
+                  />
+
+                  {/* Status actions */}
+                  <div className="flex flex-wrap gap-2">
+                    {userShow.status === 'watchlist' && userShow.id && (
+                      <button
+                        onClick={() => {
+                          const uid = (userShow as any).user_show_id ?? userShow.id;
+                          if (uid) updateShowStatus(uid, 'watching');
+                          closeDetail();
+                        }}
+                        className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-md hover:bg-green-700"
                       >
-                        {analysis.seasonInfo?.map((season: any) => (
-                          <option key={season.seasonNumber} value={season.seasonNumber}>
-                            Season {season.seasonNumber} ({season.episodeCount} ep)
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {episodes && selectedSeason ? (
-                      <div className="space-y-1">
-                        {episodes.map((episode: DisplayEpisode) => {
-                          const airDate = new Date(episode.airDate);
-                          const today = new Date();
-                          const isFuture = airDate > today;
-                          const futureEps = episodes.filter((ep: DisplayEpisode) => new Date(ep.airDate) > today);
-                          const nextUnaired = [...futureEps].sort((a: DisplayEpisode, b: DisplayEpisode) => new Date(a.airDate).getTime() - new Date(b.airDate).getTime())[0];
-                          const isAiringNext = isFuture && episode.number === nextUnaired?.number;
-
-                          return (
-                            <button
-                              key={episode.number}
-                              onClick={() => !isFuture && markEpisodeWatched(userShow.show.tmdb_id, selectedSeason, episode.number)}
-                              disabled={isFuture}
-                              className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${
-                                isAiringNext ? 'bg-blue-50 text-blue-700' : isFuture ? 'bg-gray-50 text-gray-400' : episode.watched ? 'bg-green-50 text-green-800' : 'hover:bg-gray-50 text-gray-700'
-                              }`}
-                            >
-                              <span className="flex items-center gap-2">
-                                <span className="text-xs w-4">{episode.watched ? '✓' : episode.number}</span>
-                                <span className="truncate">{episode.title}</span>
-                                {isAiringNext && <span className="text-xs bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded shrink-0">Next</span>}
-                              </span>
-                              <span className="text-xs text-gray-400 shrink-0 ml-2">{new Date(episode.airDate).toLocaleDateString()}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : selectedSeason ? (
-                      <div className="text-center py-4 text-gray-400 text-sm">Loading episodes...</div>
-                    ) : null}
+                        Start Watching
+                      </button>
+                    )}
+                    {userShow.status === 'watching' && userShow.id && (
+                      <button
+                        onClick={() => {
+                          const uid = (userShow as any).user_show_id ?? userShow.id;
+                          if (uid) updateShowStatus(uid, 'completed');
+                          closeDetail();
+                        }}
+                        className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700"
+                      >
+                        Mark Completed
+                      </button>
+                    )}
+                    {userShow.id && (
+                      <button
+                        onClick={() => {
+                          const uid = (userShow as any).user_show_id ?? userShow.id;
+                          if (uid) removeShow(uid);
+                          closeDetail();
+                        }}
+                        className="px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 text-sm rounded-md hover:bg-red-100"
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
-                ) : null}
 
-                {/* Notes */}
-                {userShow.notes && (
-                  <p className="text-sm text-gray-500 italic">"{userShow.notes}"</p>
-                )}
+                  {/* Episodes */}
+                  {loadingAnalysis[userShow.show.tmdb_id] ? (
+                    <div className="flex items-center gap-2 text-gray-500 py-4">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-500" />
+                      Loading episodes...
+                    </div>
+                  ) : analysis ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <label className="text-sm font-medium text-gray-700">Season</label>
+                        <select
+                          value={selectedSeason || ''}
+                          onChange={(e) =>
+                            handleSeasonChange(userShow.show.tmdb_id, parseInt(e.target.value))
+                          }
+                          className="px-2 py-1 border border-gray-300 rounded text-sm"
+                        >
+                          {analysis.seasonInfo?.map((season: any) => (
+                            <option key={season.seasonNumber} value={season.seasonNumber}>
+                              Season {season.seasonNumber} ({season.episodeCount} ep)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {episodes && selectedSeason ? (
+                        <div className="space-y-1">
+                          {episodes.map((episode: DisplayEpisode) => {
+                            const airDate = new Date(episode.airDate);
+                            const today = new Date();
+                            const isFuture = airDate > today;
+                            const futureEps = episodes.filter(
+                              (ep: DisplayEpisode) => new Date(ep.airDate) > today
+                            );
+                            const nextUnaired = [...futureEps].sort(
+                              (a: DisplayEpisode, b: DisplayEpisode) =>
+                                new Date(a.airDate).getTime() - new Date(b.airDate).getTime()
+                            )[0];
+                            const isAiringNext = isFuture && episode.number === nextUnaired?.number;
+
+                            return (
+                              <button
+                                key={episode.number}
+                                onClick={() =>
+                                  !isFuture &&
+                                  markEpisodeWatched(
+                                    userShow.show.tmdb_id,
+                                    selectedSeason,
+                                    episode.number
+                                  )
+                                }
+                                disabled={isFuture}
+                                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${
+                                  isAiringNext
+                                    ? 'bg-blue-50 text-blue-700'
+                                    : isFuture
+                                      ? 'bg-gray-50 text-gray-400'
+                                      : episode.watched
+                                        ? 'bg-green-50 text-green-800'
+                                        : 'hover:bg-gray-50 text-gray-700'
+                                }`}
+                              >
+                                <span className="flex items-center gap-2">
+                                  <span className="text-xs w-4">
+                                    {episode.watched ? '✓' : episode.number}
+                                  </span>
+                                  <span className="truncate">{episode.title}</span>
+                                  {isAiringNext && (
+                                    <span className="text-xs bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded shrink-0">
+                                      Next
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="text-xs text-gray-400 shrink-0 ml-2">
+                                  {new Date(episode.airDate).toLocaleDateString()}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : selectedSeason ? (
+                        <div className="text-center py-4 text-gray-400 text-sm">
+                          Loading episodes...
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {/* Notes */}
+                  {userShow.notes && (
+                    <p className="text-sm text-gray-500 italic">"{userShow.notes}"</p>
+                  )}
+                </div>
               </div>
-            </div>
-          </>
-        );
-      })()}
+            </>
+          );
+        })()}
     </div>
   );
 };

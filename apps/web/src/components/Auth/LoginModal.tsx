@@ -49,13 +49,13 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess
   };
 
   const handleTestLogin = async () => {
-    setEmail('test@example.com');
+    setEmail('test@tallyapp.dev');
     setPassword('password123');
     setError('');
     setLoading(true);
 
     try {
-      const response = await ensureDevUserSession('test@example.com', 'password123');
+      const response = await ensureDevUserSession('test@tallyapp.dev', 'password123');
 
       if (response.token && response.user) {
         localStorage.setItem('authToken', response.token);

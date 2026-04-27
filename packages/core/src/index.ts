@@ -27,7 +27,7 @@ export {
 export type { EpisodeMetadata, ReleasePattern, ReleasePatternAnalysis } from './types';
 
 // Export release pattern service
-export { releasePatternService } from './services/release-pattern';
+export { releasePatternService } from './services/release-pattern.js';
 
 // Mock streaming services data
 export const STREAMING_SERVICES = {

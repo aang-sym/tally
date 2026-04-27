@@ -11,6 +11,7 @@ interface AuthSuccess {
 const ALREADY_EXISTS_PATTERNS = ['already exists', 'already registered', 'user already exists'];
 
 const INVALID_CREDENTIALS_PATTERNS = ['invalid email or password', 'invalid login credentials'];
+const INVALID_EMAIL_PATTERNS = ['email address', 'is invalid'];
 
 const normalizeAuthError = (error: unknown, fallback: string): Error => {
   const message = error instanceof Error ? error.message : fallback;
@@ -22,6 +23,10 @@ const normalizeAuthError = (error: unknown, fallback: string): Error => {
 
   if (INVALID_CREDENTIALS_PATTERNS.some((pattern) => normalized.toLowerCase().includes(pattern))) {
     return new Error('That test account exists, but the stored password did not work.');
+  }
+
+  if (INVALID_EMAIL_PATTERNS.every((pattern) => normalized.toLowerCase().includes(pattern))) {
+    return new Error('The configured test email is not accepted by Supabase Auth.');
   }
 
   return new Error(normalized || fallback);

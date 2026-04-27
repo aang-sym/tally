@@ -17,6 +17,7 @@ import {
   handleValidationError,
   asyncHandler,
 } from '../utils/errorHandler.js';
+import { UserService } from '../services/UserService.js';
 
 const router: Router = Router();
 
@@ -423,6 +424,9 @@ router.get('/:id/profile', authenticateUser, async (req: Request, res: Response)
 router.put('/:id', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, error: 'User ID is required' });
+    }
 
     // only allow self-update unless you add role checks
     const authedUserId = (req as any).user?.id;
@@ -446,6 +450,12 @@ router.put('/:id', authenticateUser, async (req: Request, res: Response) => {
 
     if (Object.keys(update).length === 0) {
       return res.status(400).json({ success: false, error: 'No valid fields to update' });
+    }
+
+    const ensureResult = await UserService.ensureUserProfile(id);
+    if (ensureResult.error) {
+      console.error('[users/PUT] Failed to ensure user exists before update', ensureResult.error);
+      return res.status(500).json({ success: false, error: 'Failed to prepare user profile' });
     }
 
     const { data, error } = await serviceSupabase

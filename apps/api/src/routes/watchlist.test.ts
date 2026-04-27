@@ -10,6 +10,34 @@ import { streamingAvailabilityService } from '../services/streaming-availability
 // Mock dependencies
 vi.mock('../storage/index.js');
 vi.mock('../services/streaming-availability.js');
+vi.mock('../db/supabase.js', () => {
+  const authGetUser = async (token: string) => {
+    try {
+      const decoded = jwt.verify(token, TEST_JWT_SECRET) as { userId?: string; email?: string };
+      if (!decoded.userId) {
+        return { data: { user: null }, error: new Error('Missing userId') };
+      }
+
+      return {
+        data: {
+          user: {
+            id: decoded.userId,
+            email: decoded.email ?? 'test@example.com',
+          },
+        },
+        error: null,
+      };
+    } catch {
+      return { data: { user: null }, error: new Error('Invalid token') };
+    }
+  };
+
+  return {
+    supabase: { from: vi.fn() },
+    serviceSupabase: { from: vi.fn(), auth: { getUser: authGetUser } },
+    createUserClient: vi.fn(),
+  };
+});
 
 const app = express();
 app.use(express.json());
@@ -227,7 +255,7 @@ describe('Watchlist Routes with Streaming Availability', () => {
       // With authenticateUser, invalid token returns 401
       expect(response.status).toBe(401);
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('Invalid token');
+      expect(response.body.error).toContain('Invalid or expired token');
     });
   });
 });

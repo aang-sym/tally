@@ -163,15 +163,31 @@ const hoisted = vi.hoisted(() => {
 
   const supabase = { from } as any;
 
-  return { store, supabase, state };
+  const TEST_JWT_SECRET = 'tally_super_secret_jwt_key_2025_production_ready_secure_token_12345';
+  const authGetUser = vi.fn().mockImplementation(async (token: string) => {
+    try {
+      const decoded = jwt.verify(token, TEST_JWT_SECRET) as { userId?: string; email?: string };
+      if (!decoded.userId) return { data: { user: null }, error: new Error('Missing userId') };
+      state.currentUserId = decoded.userId;
+      return {
+        data: { user: { id: decoded.userId, email: decoded.email ?? 'test@test.dev' } },
+        error: null,
+      };
+    } catch {
+      return { data: { user: null }, error: new Error('Invalid token') };
+    }
+  });
+  const serviceSupabase = { from, auth: { getUser: authGetUser } } as any;
+
+  return { store, supabase, serviceSupabase, state };
 });
 
 // Mock supabase module before importing router
 vi.mock('../db/supabase.js', () => {
-  const { supabase } = hoisted;
+  const { supabase, serviceSupabase } = hoisted;
   return {
     supabase,
-    serviceSupabase: supabase,
+    serviceSupabase,
     createUserClient: vi.fn(),
   };
 });

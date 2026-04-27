@@ -3,6 +3,9 @@ import request from 'supertest';
 import express from 'express';
 
 // Use hoisted storage for values referenced by vi.mock factories
+const TEST_JWT_SECRET_HOISTED =
+  'tally_super_secret_jwt_key_2025_production_ready_secure_token_12345';
+
 const hoisted = vi.hoisted(() => {
   const mkChain = () => {
     const q: any = {};
@@ -13,8 +16,25 @@ const hoisted = vi.hoisted(() => {
     return q;
   };
   const serviceFrom = vi.fn();
-  const serviceSupabase = { from: serviceFrom };
-  return { mkChain, serviceFrom, serviceSupabase };
+  const authGetUser = vi.fn().mockImplementation(async (token: string) => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const jwt = await import('jsonwebtoken');
+      const decoded = jwt.default.verify(token, TEST_JWT_SECRET_HOISTED) as {
+        userId?: string;
+        email?: string;
+      };
+      if (!decoded.userId) return { data: { user: null }, error: new Error('Missing userId') };
+      return {
+        data: { user: { id: decoded.userId, email: decoded.email ?? 'test@test.dev' } },
+        error: null,
+      };
+    } catch {
+      return { data: { user: null }, error: new Error('Invalid token') };
+    }
+  });
+  const serviceSupabase = { from: serviceFrom, auth: { getUser: authGetUser } };
+  return { mkChain, serviceFrom, authGetUser, serviceSupabase };
 });
 
 // Mock supabase module before importing router to avoid real env usage

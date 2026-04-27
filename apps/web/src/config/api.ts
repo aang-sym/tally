@@ -180,7 +180,7 @@ export const apiRequest = async (url: string, options: RequestInit = {}, token?:
       error: `HTTP ${response.status}: ${response.statusText}`,
     }));
     console.log('[API DEBUG] Error response:', error);
-    throw new Error(error.error || error.message || 'API request failed');
+    throw new Error(error.message || error.error || 'API request failed');
   }
 
   const result = await response.json();

@@ -9,6 +9,7 @@ import { supabase, createUserClient } from '../db/supabase.js';
 import { serviceSupabase } from '../db/supabase.js'; // Keep serviceSupabase for specific admin tasks if absolutely necessary, but avoid for user-facing ops
 import { showService, Show } from './ShowService.js';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { UserService } from './UserService.js';
 
 export interface UserShow {
   id: string;
@@ -75,6 +76,11 @@ export class WatchlistService {
         clientType: this.client === supabase ? 'anonymous' : 'authenticated_user',
         timestamp: new Date().toISOString(),
       });
+
+      const ensureUserResult = await UserService.ensureUserProfile(userId);
+      if (ensureUserResult.error) {
+        throw ensureUserResult.error;
+      }
 
       // Get or create the show first, using the service client to bypass RLS
       // This is an admin-like operation, so it's acceptable to use serviceSupabase here
