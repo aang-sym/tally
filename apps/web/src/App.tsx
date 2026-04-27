@@ -11,7 +11,7 @@ import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import MyShows from './pages/MyShows';
 import Calendar from './pages/Calendar';
-import Recommendations from './pages/Recommendations';
+import Plan from './pages/Plan';
 import SearchShows from './pages/SearchShows';
 import Subscriptions from './pages/Subscriptions';
 import Admin from './pages/Admin';
@@ -29,7 +29,7 @@ function App() {
           <Route path="/" element={<Layout />}>
             <Route path="/my-shows" element={<MyShows />} />
             <Route path="/search" element={<SearchShows />} />
-            <Route path="/plan" element={<Recommendations />} />
+            <Route path="/plan" element={<Plan />} />
             <Route path="/settings" element={<Subscriptions />} />
 
             {/* Secondary routes — not in nav but still accessible */}

@@ -50,7 +50,8 @@ export const API_ENDPOINTS = {
   // Calendar
   calendar: `${API_BASE_URL}/api/calendar`,
 
-  // Recommendations
+  // Plan / recommendations
+  plan: `${API_BASE_URL}/api/plan`,
   recommendations: `${API_BASE_URL}/api/recommendations`,
 
   // Progress tracking
@@ -97,62 +98,11 @@ export const getAuthHeaders = (token?: string) => {
 };
 
 /**
- * Helper function to decode JWT token and extract user info
- */
-const decodeJWT = (token: string): { userId?: string; email?: string } | null => {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3 || !parts[1]) return null;
-
-    const payload = JSON.parse(atob(parts[1]));
-    return {
-      userId: payload.userId || payload.sub,
-      email: payload.email,
-    };
-  } catch {
-    return null;
-  }
-};
-
-/**
  * Helper function for making authenticated API requests
  */
 export const apiRequest = async (url: string, options: RequestInit = {}, token?: string) => {
-  // Debug logging
   const storedToken = localStorage.getItem('authToken');
-  const storedUserId = localStorage.getItem('current_user_id');
-
-  // Use provided token or fallback to stored token
   const finalToken = token || storedToken;
-
-  console.log('[API DEBUG] Making request to:', url);
-  console.log('[API DEBUG] Token parameter:', token ? `${token.substring(0, 20)}...` : 'undefined');
-  console.log(
-    '[API DEBUG] Stored token:',
-    storedToken ? `${storedToken.substring(0, 20)}...` : 'none'
-  );
-  console.log(
-    '[API DEBUG] Final token:',
-    finalToken ? `${finalToken.substring(0, 20)}...` : 'none'
-  );
-  console.log('[API DEBUG] Stored user ID:', storedUserId);
-
-  // Decode the JWT to confirm which user will be authenticated
-  if (finalToken) {
-    const decoded = decodeJWT(finalToken);
-    if (decoded) {
-      console.log('[API DEBUG] Token contains user ID:', decoded.userId);
-      console.log('[API DEBUG] Token contains email:', decoded.email);
-
-      if (decoded.userId !== storedUserId) {
-        console.warn('[API DEBUG] WARNING: Token user ID does not match stored user ID!');
-        console.warn('[API DEBUG] Token user ID:', decoded.userId);
-        console.warn('[API DEBUG] Stored user ID:', storedUserId);
-      }
-    } else {
-      console.warn('[API DEBUG] Failed to decode JWT token');
-    }
-  }
 
   const config: RequestInit = {
     ...options,
@@ -162,38 +112,16 @@ export const apiRequest = async (url: string, options: RequestInit = {}, token?:
     },
   };
 
-  // Log outgoing headers (masked for security)
-  const headers = config.headers as Record<string, string>;
-  console.log('[API DEBUG] Request headers:', {
-    ...headers,
-    Authorization: headers.Authorization
-      ? `Bearer ${headers.Authorization.substring(7, 27)}...`
-      : 'none',
-  });
-
   const response = await fetch(url, config);
-
-  console.log('[API DEBUG] Response status:', response.status, response.statusText);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({
       error: `HTTP ${response.status}: ${response.statusText}`,
     }));
-    console.log('[API DEBUG] Error response:', error);
     throw new Error(error.message || error.error || 'API request failed');
   }
 
-  const result = await response.json();
-  console.log('[API DEBUG] Success response keys:', Object.keys(result));
-
-  // Log user info from response if available
-  if (result.user) {
-    console.log('[API DEBUG] Response user info:', result.user.id, result.user.email);
-  } else if (result.data?.user) {
-    console.log('[API DEBUG] Response user info:', result.data.user.id, result.data.user.email);
-  }
-
-  return result;
+  return response.json();
 };
 
 export default {

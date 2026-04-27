@@ -10,6 +10,7 @@ import { UserManager } from '../services/UserManager';
 import { API_ENDPOINTS, API_BASE_URL, apiRequest } from '../config/api';
 import TMDBSearch from '../components/TMDBSearch';
 import PatternAnalysis from '../components/PatternAnalysis';
+import { useAuth } from '../context/AuthContext';
 
 interface TMDBShow {
   id: number;
@@ -28,7 +29,9 @@ interface WatchlistAddRequest {
 }
 
 const SearchShows: React.FC = () => {
+  const { user } = useAuth();
   const [selectedShow, setSelectedShow] = useState<TMDBShow | null>(null);
+  const [subscribedProviderIds, setSubscribedProviderIds] = useState<Set<number>>(new Set());
   const [country, setCountry] = useState<string>(UserManager.getCountry());
   const [analysisData, setAnalysisData] = useState<any>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
@@ -329,6 +332,18 @@ const SearchShows: React.FC = () => {
     }
   }, [country]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    apiRequest(API_ENDPOINTS.users.subscriptions(user.id))
+      .then((data) => {
+        const subs: any[] = data.data?.subscriptions ?? [];
+        setSubscribedProviderIds(
+          new Set(subs.map((s) => s.service?.tmdb_provider_id).filter(Boolean))
+        );
+      })
+      .catch(() => {});
+  }, [user?.id]);
+
   // Handle episode click - add show to watchlist and set progress
   const handleEpisodeClick = async (episode: {
     number: number;
@@ -475,6 +490,41 @@ const SearchShows: React.FC = () => {
     }
   };
 
+  const handleAddSubscription = async (provider: { providerId: number; name: string }) => {
+    if (!user?.id) {
+      alert('Please log in to add subscriptions');
+      return;
+    }
+    try {
+      await apiRequest(API_ENDPOINTS.users.subscriptions(user.id), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tmdb_provider_id: provider.providerId, monthly_cost: 0 }),
+      });
+      setSubscribedProviderIds((prev) => new Set([...prev, provider.providerId]));
+      const toast = document.createElement('div');
+      toast.className =
+        'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      toast.textContent = `✓ Added ${provider.name} to your subscriptions`;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        if (document.body.contains(toast)) document.body.removeChild(toast);
+      }, 3000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      const toast = document.createElement('div');
+      toast.className =
+        'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 text-sm';
+      toast.textContent = msg.includes('not found')
+        ? `${provider.name} isn't in our database yet`
+        : `Failed to add: ${msg}`;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        if (document.body.contains(toast)) document.body.removeChild(toast);
+      }, 4000);
+    }
+  };
+
   // Remove show from watchlist
   const removeFromWatchlist = async (show: TMDBShow) => {
     try {
@@ -607,6 +657,8 @@ const SearchShows: React.FC = () => {
                 onEpisodeClick={handleEpisodeClick}
                 showInteractiveEpisodes={true}
                 watchedEpisodes={watchedEpisodes}
+                onAddSubscription={handleAddSubscription}
+                subscribedProviderIds={subscribedProviderIds}
               />
 
               {/* Watchlist Action Buttons */}

@@ -767,17 +767,45 @@ router.get('/:id/subscriptions', authenticateUser, async (req: Request, res: Res
 router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { service_id, monthly_cost, tier = null, is_active = true } = req.body;
+    const {
+      service_id: rawServiceId,
+      tmdb_provider_id,
+      monthly_cost,
+      tier = null,
+      is_active = true,
+    } = req.body;
 
-    if (!service_id || typeof monthly_cost !== 'number') {
+    if (typeof monthly_cost !== 'number') {
       return res.status(400).json({
         success: false,
-        error: 'service_id and monthly_cost are required',
+        error: 'monthly_cost is required',
+      });
+    }
+
+    let service_id = rawServiceId;
+
+    // Accept tmdb_provider_id as an alternative — look up the UUID
+    if (!service_id && tmdb_provider_id) {
+      const { data: svc } = await supabase
+        .from('streaming_services')
+        .select('id')
+        .eq('tmdb_provider_id', tmdb_provider_id)
+        .single();
+      if (!svc) {
+        return res.status(404).json({ success: false, error: 'Streaming service not found' });
+      }
+      service_id = svc.id;
+    }
+
+    if (!service_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'service_id or tmdb_provider_id is required',
       });
     }
 
     // Check if subscription already exists
-    const { data: existing } = await supabase
+    const { data: existing } = await serviceSupabase
       .from('user_streaming_subscriptions')
       .select('id')
       .eq('user_id', id)
@@ -786,7 +814,7 @@ router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Re
 
     if (existing) {
       // Update existing subscription
-      const { data: subscription, error } = await supabase
+      const { data: subscription, error } = await serviceSupabase
         .from('user_streaming_subscriptions')
         .update({
           monthly_cost,
@@ -811,7 +839,7 @@ router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Re
     }
 
     // Create new subscription
-    const { data: subscription, error } = await supabase
+    const { data: subscription, error } = await serviceSupabase
       .from('user_streaming_subscriptions')
       .insert({
         user_id: id,
@@ -924,7 +952,7 @@ router.delete(
     try {
       const { id, subscriptionId } = req.params;
 
-      const { error } = await supabase
+      const { error } = await serviceSupabase
         .from('user_streaming_subscriptions')
         .delete()
         .eq('id', subscriptionId)

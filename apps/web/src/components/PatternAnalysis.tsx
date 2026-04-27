@@ -1,5 +1,13 @@
 import React from 'react';
 
+type ProviderInfo = {
+  providerId: number;
+  name: string;
+  logo: string;
+  type: string;
+  deepLink?: string;
+};
+
 interface PatternAnalysisProps {
   analysis: {
     showDetails: {
@@ -39,13 +47,7 @@ interface PatternAnalysisProps {
         title: string;
       }>;
     };
-    watchProviders: Array<{
-      providerId: number;
-      name: string;
-      logo: string;
-      type: string;
-      deepLink?: string;
-    }>;
+    watchProviders: Array<ProviderInfo>;
     analyzedSeason: number;
     country: string;
   } | null;
@@ -59,36 +61,39 @@ interface PatternAnalysisProps {
   }) => void;
   showInteractiveEpisodes?: boolean;
   watchedEpisodes?: Set<string>;
+  onAddSubscription?: (provider: ProviderInfo) => void;
+  subscribedProviderIds?: Set<number>;
 }
 
-// Simple Provider Card Component
 const ProviderCard: React.FC<{
-  provider: {
-    providerId: number;
-    name: string;
-    logo: string;
-    type: string;
-    deepLink?: string;
-  };
-}> = ({ provider }) => {
+  provider: ProviderInfo;
+  onAddSubscription?: ((provider: ProviderInfo) => void) | undefined;
+  isSubscribed?: boolean | undefined;
+}> = ({ provider, onAddSubscription, isSubscribed }) => {
   return (
     <div className="bg-gray-50 rounded-lg p-3">
-      {/* Logo centered at top */}
       <div className="flex justify-center mb-2">
         {provider.logo && (
           <img src={provider.logo} alt={provider.name} className="w-10 h-10 rounded object-cover" />
         )}
       </div>
-
-      {/* Provider name - full text, no truncation */}
       <div className="text-center mb-1">
         <p className="text-sm font-medium text-gray-900 leading-tight">{provider.name}</p>
       </div>
-
-      {/* Service type */}
-      <div className="text-center">
+      <div className="text-center mb-2">
         <p className="text-xs text-gray-500 capitalize">{provider.type}</p>
       </div>
+      {provider.type === 'subscription' &&
+        (isSubscribed ? (
+          <p className="text-xs text-green-600 font-medium text-center">✓ Subscribed</p>
+        ) : onAddSubscription ? (
+          <button
+            onClick={() => onAddSubscription(provider)}
+            className="w-full text-xs text-blue-600 border border-blue-200 rounded py-1 hover:bg-blue-50 transition-colors"
+          >
+            + Add subscription
+          </button>
+        ) : null)}
     </div>
   );
 };
@@ -100,6 +105,8 @@ const PatternAnalysis: React.FC<PatternAnalysisProps> = ({
   onEpisodeClick,
   showInteractiveEpisodes = false,
   watchedEpisodes = new Set(),
+  onAddSubscription,
+  subscribedProviderIds,
 }) => {
   if (loading) {
     return (
@@ -404,7 +411,12 @@ const PatternAnalysis: React.FC<PatternAnalysisProps> = ({
           <h3 className="font-medium text-gray-900 mb-3">Available on ({analysis.country})</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-3">
             {analysis.watchProviders.map((provider) => (
-              <ProviderCard key={provider.providerId} provider={provider} />
+              <ProviderCard
+                key={provider.providerId}
+                provider={provider}
+                onAddSubscription={onAddSubscription}
+                isSubscribed={subscribedProviderIds?.has(provider.providerId)}
+              />
             ))}
           </div>
 
