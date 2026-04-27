@@ -57,7 +57,7 @@ const ServiceLogo: React.FC<{ name: string; logoPath: string | null }> = ({ name
   if (logoPath) {
     return (
       <img
-        src={`${TMDB_IMAGE_BASE}${logoPath}`}
+        src={logoPath.startsWith('http') ? logoPath : `${TMDB_IMAGE_BASE}${logoPath}`}
         alt={name}
         className="w-10 h-10 rounded-lg object-contain bg-gray-800"
         onError={(e) => {
@@ -179,16 +179,16 @@ const Plan: React.FC = () => {
         setLoading(true);
         const result = await apiRequest(API_ENDPOINTS.users.subscriptions(user.id));
         const subs: Subscription[] = (result.data?.subscriptions ?? [])
-          .filter((s: Subscription) => s.isActive)
+          .filter((s: any) => s.is_active)
           .map((s: any) => ({
             id: s.id,
-            serviceId: s.serviceId,
-            monthlyCost: s.monthlyCost,
-            isActive: s.isActive,
+            serviceId: s.service_id,
+            monthlyCost: s.monthly_cost,
+            isActive: s.is_active,
             service: {
-              id: s.service?.id ?? s.serviceId,
-              name: s.service?.name ?? s.serviceId,
-              logoPath: s.service?.logoPath ?? null,
+              id: s.service?.id ?? s.service_id,
+              name: s.service?.name ?? s.service_id,
+              logoPath: s.service?.logo_path ?? null,
             },
           }));
         setSubscriptions(subs);
