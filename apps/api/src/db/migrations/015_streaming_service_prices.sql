@@ -34,16 +34,16 @@ ON CONFLICT (tmdb_provider_id) DO UPDATE SET name = EXCLUDED.name;
 
 -- Netflix
 INSERT INTO streaming_service_tiers (service_id, tier_name, tier_label, monthly_price_usd, annual_price_usd, max_streams, max_resolution, has_downloads, is_default)
-SELECT id, 'standard_ads',  'Standard with Ads',  6.99,  null,   2, '1080p', false, false FROM streaming_services WHERE tmdb_provider_id = 8
+SELECT id, 'standard_ads',  'Standard with Ads',  6.99,  null::numeric, 2, '1080p', false, false FROM streaming_services WHERE tmdb_provider_id = 8
 UNION ALL
-SELECT id, 'standard',      'Standard',           15.49, null,   2, '1080p', true,  true  FROM streaming_services WHERE tmdb_provider_id = 8
+SELECT id, 'standard',      'Standard',           15.49, null::numeric, 2, '1080p', true,  true  FROM streaming_services WHERE tmdb_provider_id = 8
 UNION ALL
-SELECT id, 'premium',       'Premium',            22.99, null,   4, '4K',    true,  false FROM streaming_services WHERE tmdb_provider_id = 8
+SELECT id, 'premium',       'Premium',            22.99, null::numeric, 4, '4K',    true,  false FROM streaming_services WHERE tmdb_provider_id = 8
 ON CONFLICT (service_id, tier_name) DO UPDATE SET monthly_price_usd = EXCLUDED.monthly_price_usd;
 
 -- Disney+
 INSERT INTO streaming_service_tiers (service_id, tier_name, tier_label, monthly_price_usd, annual_price_usd, max_streams, max_resolution, has_downloads, is_default)
-SELECT id, 'basic_ads', 'Basic (With Ads)',  7.99, null,   4, '1080p', false, false FROM streaming_services WHERE tmdb_provider_id = 337
+SELECT id, 'basic_ads', 'Basic (With Ads)',  7.99, null::numeric, 4, '1080p', false, false FROM streaming_services WHERE tmdb_provider_id = 337
 UNION ALL
 SELECT id, 'standard',  'Standard',         13.99, 139.99, 4, '1080p', true,  true  FROM streaming_services WHERE tmdb_provider_id = 337
 UNION ALL
@@ -52,7 +52,7 @@ ON CONFLICT (service_id, tier_name) DO UPDATE SET monthly_price_usd = EXCLUDED.m
 
 -- Max (HBO Max)
 INSERT INTO streaming_service_tiers (service_id, tier_name, tier_label, monthly_price_usd, annual_price_usd, max_streams, max_resolution, has_downloads, is_default)
-SELECT id, 'with_ads',  'With Ads',   9.99, null,   2, '1080p', false, false FROM streaming_services WHERE tmdb_provider_id = 1899
+SELECT id, 'with_ads',  'With Ads',   9.99, null::numeric, 2, '1080p', false, false FROM streaming_services WHERE tmdb_provider_id = 1899
 UNION ALL
 SELECT id, 'ad_free',   'Ad Free',   15.99, 149.99, 2, '1080p', true,  true  FROM streaming_services WHERE tmdb_provider_id = 1899
 UNION ALL
@@ -63,7 +63,7 @@ ON CONFLICT (service_id, tier_name) DO UPDATE SET monthly_price_usd = EXCLUDED.m
 INSERT INTO streaming_service_tiers (service_id, tier_name, tier_label, monthly_price_usd, annual_price_usd, max_streams, max_resolution, has_downloads, is_default)
 SELECT id, 'with_ads',    'With Ads',         7.99, 79.99,  2, '1080p', false, true  FROM streaming_services WHERE tmdb_provider_id = 15
 UNION ALL
-SELECT id, 'no_ads',      'No Ads',          17.99, null,   2, '1080p', true,  false FROM streaming_services WHERE tmdb_provider_id = 15
+SELECT id, 'no_ads',      'No Ads',          17.99, null::numeric, 2, '1080p', true,  false FROM streaming_services WHERE tmdb_provider_id = 15
 ON CONFLICT (service_id, tier_name) DO UPDATE SET monthly_price_usd = EXCLUDED.monthly_price_usd;
 
 -- Apple TV+
@@ -80,7 +80,7 @@ ON CONFLICT (service_id, tier_name) DO UPDATE SET monthly_price_usd = EXCLUDED.m
 
 -- Amazon Prime Video
 INSERT INTO streaming_service_tiers (service_id, tier_name, tier_label, monthly_price_usd, annual_price_usd, max_streams, max_resolution, has_downloads, is_default)
-SELECT id, 'with_ads', 'With Ads', 8.99,  null,  3, '4K', false, false FROM streaming_services WHERE tmdb_provider_id = 9
+SELECT id, 'with_ads', 'With Ads', 8.99,  null::numeric, 3, '4K', false, false FROM streaming_services WHERE tmdb_provider_id = 9
 UNION ALL
 SELECT id, 'standard', 'Prime',    8.99, 139.00, 3, '4K', true,  true  FROM streaming_services WHERE tmdb_provider_id = 9
 ON CONFLICT (service_id, tier_name) DO UPDATE SET monthly_price_usd = EXCLUDED.monthly_price_usd;

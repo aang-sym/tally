@@ -81,6 +81,7 @@ const MyShows: React.FC = () => {
   }>({});
   const [loadingAnalysis, setLoadingAnalysis] = useState<{ [showId: string]: boolean }>({});
   const [showProviders, setShowProviders] = useState<{ [showId: string]: StreamingProvider[] }>({});
+  const [subscribedServiceIds, setSubscribedServiceIds] = useState<Set<number>>(new Set());
   const [country, setCountry] = useState<string>(UserManager.getCountry());
   const [posterOverrides, setPosterOverrides] = useState<{ [tmdbId: number]: string | undefined }>(
     {}
@@ -213,6 +214,7 @@ const MyShows: React.FC = () => {
 
     // Initial stats fetch on mount; subsequent updates come from mutations or background refresh
     fetchStats();
+    fetchUserSubscriptions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.user?.id]); // Depend on user ID
 
@@ -408,6 +410,53 @@ const MyShows: React.FC = () => {
     } catch (err) {
       console.error('Failed to remove show:', err);
       alert('Failed to remove show');
+    }
+  };
+
+  const fetchUserSubscriptions = async () => {
+    const userId = auth.user?.id;
+    if (!userId) return;
+    try {
+      const data = await apiRequest(API_ENDPOINTS.users.subscriptions(userId));
+      const subs: any[] = data.data?.subscriptions ?? [];
+      setSubscribedServiceIds(
+        new Set(subs.map((s) => s.service?.tmdb_provider_id).filter(Boolean))
+      );
+    } catch {
+      // non-fatal
+    }
+  };
+
+  const addSubscription = async (provider: { id: number; name: string }) => {
+    const userId = auth.user?.id;
+    if (!userId) return;
+    try {
+      await apiRequest(API_ENDPOINTS.users.subscriptions(userId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tmdb_provider_id: provider.id, monthly_cost: 0 }),
+      });
+      setSubscribedServiceIds((prev) => new Set([...prev, provider.id]));
+      const toast = document.createElement('div');
+      toast.className =
+        'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      toast.textContent = `✓ Added ${provider.name} to your subscriptions`;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        if (document.body.contains(toast)) document.body.removeChild(toast);
+      }, 3000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      const toast = document.createElement('div');
+      toast.className =
+        'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 text-sm';
+      toast.textContent = msg.includes('not found')
+        ? `${provider.name} isn't in our database yet`
+        : `Failed to add: ${msg}`;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        if (document.body.contains(toast)) document.body.removeChild(toast);
+      }, 4000);
     }
   };
 
@@ -893,6 +942,9 @@ const MyShows: React.FC = () => {
     if (!showAnalysis[userShow.show.tmdb_id]) {
       fetchShowAnalysis(userShow.show.tmdb_id);
     }
+    if (!showProviders[userShow.show.tmdb_id]) {
+      fetchShowProviders(userShow.show.tmdb_id);
+    }
   };
 
   const closeDetail = () => setSelectedShow(null);
@@ -1293,6 +1345,53 @@ const MyShows: React.FC = () => {
                       ) : null}
                     </div>
                   ) : null}
+
+                  {/* Streaming providers */}
+                  {(() => {
+                    const providers = showProviders[userShow.show.tmdb_id];
+                    if (!providers || providers.length === 0) return null;
+                    return (
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                          Available on ({country})
+                        </p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {providers.map((provider) => {
+                            const isSubscribed = subscribedServiceIds.has(provider.id);
+                            return (
+                              <div
+                                key={provider.id}
+                                className="bg-gray-50 rounded-lg p-2 text-center"
+                              >
+                                {provider.logo_path && (
+                                  <img
+                                    src={provider.logo_path}
+                                    alt={provider.name}
+                                    className="w-8 h-8 rounded mx-auto mb-1 object-cover"
+                                  />
+                                )}
+                                <p className="text-xs font-medium text-gray-800 leading-tight mb-1">
+                                  {provider.name}
+                                </p>
+                                {isSubscribed ? (
+                                  <p className="text-xs text-green-600 font-medium">✓ Subscribed</p>
+                                ) : (
+                                  <button
+                                    onClick={() =>
+                                      addSubscription({ id: provider.id, name: provider.name })
+                                    }
+                                    className="w-full text-xs text-blue-600 border border-blue-200 rounded py-0.5 hover:bg-blue-50 transition-colors"
+                                  >
+                                    + Subscribe
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Notes */}
                   {userShow.notes && (
