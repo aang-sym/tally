@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B65DB8C42E77BCD1009A11F5 /* MCP in Frameworks */ = {isa = PBXBuildFile; productRef = B65DB7502E77B96000000002 /* MCP */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -101,7 +100,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B65DB8C42E77BCD1009A11F5 /* MCP in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -180,7 +178,6 @@
 			);
 			name = Tally;
 			packageProductDependencies = (
-				B65DB7502E77B96000000002 /* MCP */,
 			);
 			productName = Tally;
 			productReference = B688E69A2E73F21400757DB1 /* Tally.app */;
@@ -265,7 +262,6 @@
 			mainGroup = B688E6912E73F21400757DB1;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				B65DB74F2E77B96000000001 /* XCRemoteSwiftPackageReference "swift-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = B688E69B2E73F21400757DB1 /* Products */;
@@ -633,24 +629,6 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		B65DB74F2E77B96000000001 /* XCRemoteSwiftPackageReference "swift-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/modelcontextprotocol/swift-sdk";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.10.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		B65DB7502E77B96000000002 /* MCP */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = B65DB74F2E77B96000000001 /* XCRemoteSwiftPackageReference "swift-sdk" */;
-			productName = MCP;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = B688E6922E73F21400757DB1 /* Project object */;
 }
