@@ -18,6 +18,7 @@ import {
   asyncHandler,
 } from '../utils/errorHandler.js';
 import { UserService } from '../services/UserService.js';
+import { tmdbService } from '../services/tmdb.js';
 
 const router: Router = Router();
 
@@ -775,13 +776,6 @@ router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Re
       is_active = true,
     } = req.body;
 
-    if (typeof monthly_cost !== 'number') {
-      return res.status(400).json({
-        success: false,
-        error: 'monthly_cost is required',
-      });
-    }
-
     let service_id = rawServiceId;
 
     // Accept tmdb_provider_id as an alternative — look up the UUID
@@ -795,6 +789,25 @@ router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Re
         return res.status(404).json({ success: false, error: 'Streaming service not found' });
       }
       service_id = svc.id;
+    }
+
+    // Auto-lookup default price if monthly_cost is 0 or not provided
+    let resolvedCost: number = typeof monthly_cost === 'number' ? monthly_cost : 0;
+    if (resolvedCost === 0 && service_id) {
+      const { data: tierRows } = await serviceSupabase
+        .from('streaming_service_tiers')
+        .select('monthly_price_usd, tier_name, is_default')
+        .eq('service_id', service_id)
+        .order('monthly_price_usd', { ascending: true });
+      if (tierRows && tierRows.length > 0) {
+        // Prefer the default tier, then standard, then lowest price
+        const defaultTier = tierRows.find((p: any) => p.is_default);
+        const standardTier = tierRows.find((p: any) =>
+          (p.tier_name ?? '').toLowerCase().startsWith('standard')
+        );
+        const picked = defaultTier ?? standardTier ?? tierRows[0]!;
+        resolvedCost = picked.monthly_price_usd;
+      }
     }
 
     if (!service_id) {
@@ -817,7 +830,7 @@ router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Re
       const { data: subscription, error } = await serviceSupabase
         .from('user_streaming_subscriptions')
         .update({
-          monthly_cost,
+          monthly_cost: resolvedCost,
           is_active,
           tier,
           updated_at: new Date().toISOString(),
@@ -844,7 +857,7 @@ router.post('/:id/subscriptions', authenticateUser, async (req: Request, res: Re
       .insert({
         user_id: id,
         service_id,
-        monthly_cost,
+        monthly_cost: resolvedCost,
         tier,
         is_active,
         started_date: new Date().toISOString().split('T')[0],
@@ -978,5 +991,394 @@ router.delete(
     }
   }
 );
+
+/**
+ * GET /api/users/:id/plan
+ * Returns pause recommendations for each active subscription based on the user's
+ * watchlist and upcoming episode air dates.
+ */
+router.get('/:id/plan', authenticateUser, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (req.userId !== id) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+
+    // 1. Get user country for TMDB provider lookups
+    const { data: userData } = await serviceSupabase
+      .from('users')
+      .select('country_code')
+      .eq('id', id)
+      .single();
+    const country = ((userData?.country_code as string | null) ?? 'US').toUpperCase();
+
+    // 2. Active subscriptions
+    const { data: subs, error: subsErr } = await serviceSupabase
+      .from('user_streaming_subscriptions')
+      .select(
+        `
+        id,
+        service_id,
+        monthly_cost,
+        streaming_services:service_id (
+          id,
+          tmdb_provider_id,
+          name,
+          logo_path
+        )
+      `
+      )
+      .eq('user_id', id)
+      .eq('is_active', true);
+
+    if (subsErr) throw subsErr;
+    if (!subs || subs.length === 0) {
+      return res.json({ success: true, data: { recommendations: [] } });
+    }
+
+    // Build a set of subscribed tmdb_provider_ids for fast lookup
+    const subsByTmdbId = new Map<number, (typeof subs)[number]>();
+    for (const sub of subs as any[]) {
+      const svc = Array.isArray(sub.streaming_services)
+        ? sub.streaming_services[0]
+        : sub.streaming_services;
+      if (svc?.tmdb_provider_id) {
+        subsByTmdbId.set(svc.tmdb_provider_id, sub);
+      }
+    }
+
+    const BINGE_WATCH_DAYS = 14; // assume a fortnight to watch a binge drop
+
+    // 3. All user shows with show metadata
+    const { data: userShowsRaw } = await serviceSupabase
+      .from('user_shows')
+      .select('id, show_id, selected_service_id, shows:show_id(id, tmdb_id, title, poster_path)')
+      .eq('user_id', id)
+      .in('status', ['watchlist', 'watching']);
+
+    const userShows: Array<{
+      show_id: string;
+      selected_service_id: string | null;
+      tmdb_id: number | null;
+      title: string;
+      poster_path: string | null;
+    }> = (userShowsRaw ?? []).map((r: any) => {
+      const show = Array.isArray(r.shows) ? r.shows[0] : r.shows;
+      return {
+        show_id: r.show_id,
+        selected_service_id: r.selected_service_id ?? null,
+        tmdb_id: show?.tmdb_id ?? null,
+        title: show?.title ?? 'Unknown Show',
+        poster_path: show?.poster_path ?? null,
+      };
+    });
+
+    // 4. Map each show → its subscription service(s)
+    //    a) selected_service_id wins; b) TMDB watch providers as fallback
+    // showsByService: serviceUuid → Set<show_id>
+    const showsByService = new Map<string, Set<string>>();
+
+    for (const us of userShows) {
+      if (us.selected_service_id) {
+        if (!showsByService.has(us.selected_service_id)) {
+          showsByService.set(us.selected_service_id, new Set());
+        }
+        showsByService.get(us.selected_service_id)!.add(us.show_id);
+      } else if (us.tmdb_id && tmdbService.isAvailable) {
+        try {
+          const providers = await tmdbService.getWatchProviders(us.tmdb_id, country);
+          for (const p of providers) {
+            const matchedSub = subsByTmdbId.get(p.provider_id);
+            if (matchedSub) {
+              if (!showsByService.has(matchedSub.service_id)) {
+                showsByService.set(matchedSub.service_id, new Set());
+              }
+              showsByService.get(matchedSub.service_id)!.add(us.show_id);
+            }
+          }
+        } catch {
+          // TMDB lookup failed for this show — skip gracefully
+        }
+      }
+    }
+
+    const now = new Date();
+    const sixMonthsOut = new Date(now.getFullYear(), now.getMonth() + 6, 1);
+
+    type ShowEntry = {
+      title: string;
+      posterPath: string | null;
+      tmdbId: number | null;
+      nextEpisodeName: string | null;
+      nextAirDate: string | null;
+      releasePattern: 'binge' | 'weekly' | 'unknown';
+      // busy window this show occupies on the service
+      busyFrom: Date;
+      busyUntil: Date;
+    };
+
+    const recommendations: Array<{
+      serviceId: string;
+      serviceName: string;
+      monthlyPrice: number;
+      logoPath: string | null;
+      pauseFrom: string | null;
+      pauseUntil: string | null;
+      allGaps: Array<{ from: string; until: string; days: number }>;
+      estimatedSavings: number;
+      whyPause: string | null;
+      whyPauseShow: string | null;
+      whyPauseDate: string | null;
+      reason: string;
+      showCount: number;
+      hasEpisodeData: boolean;
+      upcomingShows: ShowEntry[];
+    }> = [];
+
+    for (const sub of subs as any[]) {
+      const svc = Array.isArray(sub.streaming_services)
+        ? sub.streaming_services[0]
+        : sub.streaming_services;
+
+      const logoPath = svc?.logo_path
+        ? svc.logo_path.startsWith('http')
+          ? svc.logo_path
+          : `https://image.tmdb.org/t/p/w45${svc.logo_path}`
+        : null;
+
+      const showIds = Array.from(showsByService.get(sub.service_id) ?? []);
+
+      if (showIds.length === 0) {
+        const pauseFrom = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        const pauseUntil = new Date(now.getFullYear(), now.getMonth() + 3, 1);
+        recommendations.push({
+          serviceId: sub.service_id,
+          serviceName: svc?.name ?? sub.service_id,
+          monthlyPrice: sub.monthly_cost,
+          logoPath,
+          pauseFrom: pauseFrom.toISOString(),
+          pauseUntil: pauseUntil.toISOString(),
+          allGaps: [{ from: pauseFrom.toISOString(), until: pauseUntil.toISOString(), days: 60 }],
+          estimatedSavings: parseFloat((sub.monthly_cost * 2).toFixed(2)),
+          whyPause: null,
+          whyPauseShow: null,
+          whyPauseDate: null,
+          reason: 'No shows from your watchlist are on this service.',
+          showCount: 0,
+          hasEpisodeData: false,
+          upcomingShows: [],
+        });
+        continue;
+      }
+
+      // 5. For each show on this service, fetch upcoming episodes grouped by show
+      //    so we can compute per-show busy windows and detect binge vs weekly
+      const upcomingShows: ShowEntry[] = [];
+      // busyIntervals: merged list of [busyFrom, busyUntil] across all shows
+      const busyIntervals: Array<{ from: Date; until: Date }> = [];
+
+      for (const showId of showIds) {
+        const showMeta = userShows.find((u) => u.show_id === showId);
+
+        // Get seasons for this show
+        const { data: seasons } = await serviceSupabase
+          .from('seasons')
+          .select('id, season_number')
+          .eq('show_id', showId);
+
+        const seasonIds = (seasons ?? []).map((s: any) => s.id);
+        if (seasonIds.length === 0) continue;
+
+        // Get upcoming episodes for this show
+        const { data: eps } = await serviceSupabase
+          .from('episodes')
+          .select('air_date, name, episode_number, season_id')
+          .in('season_id', seasonIds)
+          .gte('air_date', now.toISOString().slice(0, 10))
+          .lte('air_date', sixMonthsOut.toISOString().slice(0, 10))
+          .order('air_date', { ascending: true });
+
+        if (!eps || eps.length === 0) continue;
+
+        const episodeDates = eps
+          .map((e: any) => new Date(e.air_date))
+          .filter((d: Date) => !isNaN(d.getTime()));
+        if (episodeDates.length === 0) continue;
+
+        const firstDate = episodeDates[0]!;
+        const lastDate = episodeDates[episodeDates.length - 1]!;
+        const firstEp = eps[0] as any;
+
+        // Detect release pattern: binge if all eps within 2 days, else weekly
+        const spanDays = Math.round(
+          (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        const isBinge = eps.length > 1 && spanDays <= 2;
+        const releasePattern: 'binge' | 'weekly' = isBinge ? 'binge' : 'weekly';
+
+        // Compute busy window
+        const busyFrom = firstDate;
+        const busyUntil = isBinge
+          ? new Date(firstDate.getTime() + BINGE_WATCH_DAYS * 24 * 60 * 60 * 1000)
+          : lastDate;
+
+        busyIntervals.push({ from: busyFrom, until: busyUntil });
+
+        upcomingShows.push({
+          title: showMeta?.title ?? 'Unknown Show',
+          posterPath: showMeta?.poster_path
+            ? showMeta.poster_path.startsWith('http')
+              ? showMeta.poster_path
+              : `https://image.tmdb.org/t/p/w92${showMeta.poster_path}`
+            : null,
+          tmdbId: showMeta?.tmdb_id ?? null,
+          nextEpisodeName: firstEp.name ?? null,
+          nextAirDate: firstEp.air_date ?? null,
+          releasePattern,
+          busyFrom,
+          busyUntil,
+        });
+      }
+
+      if (upcomingShows.length === 0) {
+        // Shows exist on this service but no upcoming episode data
+        const pauseFrom = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        const pauseUntil = new Date(now.getFullYear(), now.getMonth() + 3, 1);
+        recommendations.push({
+          serviceId: sub.service_id,
+          serviceName: svc?.name ?? sub.service_id,
+          monthlyPrice: sub.monthly_cost,
+          logoPath,
+          pauseFrom: pauseFrom.toISOString(),
+          pauseUntil: pauseUntil.toISOString(),
+          estimatedSavings: parseFloat((sub.monthly_cost * 2).toFixed(2)),
+          reason: `None of your ${showIds.length} show${showIds.length !== 1 ? 's' : ''} on this service have upcoming episodes in our database yet.`,
+          showCount: showIds.length,
+          hasEpisodeData: false,
+          allGaps: [{ from: pauseFrom.toISOString(), until: pauseUntil.toISOString(), days: 60 }],
+          whyPause: null,
+          whyPauseShow: null,
+          whyPauseDate: null,
+          upcomingShows: [],
+        });
+        continue;
+      }
+
+      // 6. Find ALL gaps in the next 6 months by walking busy intervals
+      busyIntervals.sort((a, b) => a.from.getTime() - b.from.getTime());
+
+      // Merge overlapping busy intervals
+      const merged: Array<{ from: Date; until: Date }> = [];
+      for (const iv of busyIntervals) {
+        const last = merged[merged.length - 1];
+        if (last && iv.from <= last.until) {
+          last.until = iv.until > last.until ? iv.until : last.until;
+        } else {
+          merged.push({ from: iv.from, until: iv.until });
+        }
+      }
+
+      // Walk gaps: [now → first busy], [busy end → next busy], [last busy end → sixMonthsOut]
+      type GapEntry = { from: Date; until: Date; days: number };
+      const allGaps: GapEntry[] = [];
+      let cursor = now;
+
+      for (const iv of merged) {
+        const gapDays = Math.round((iv.from.getTime() - cursor.getTime()) / (1000 * 60 * 60 * 24));
+        if (gapDays >= 1) {
+          allGaps.push({ from: cursor, until: iv.from, days: gapDays });
+        }
+        if (iv.until > cursor) cursor = iv.until;
+      }
+      // Gap after last busy interval
+      const trailingDays = Math.round(
+        (sixMonthsOut.getTime() - cursor.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (trailingDays >= 1) {
+        allGaps.push({ from: cursor, until: sixMonthsOut, days: trailingDays });
+      }
+
+      // Primary gap = first gap (most actionable — you can pause right now)
+      const primaryGap = allGaps[0] ?? null;
+
+      if (!primaryGap) {
+        recommendations.push({
+          serviceId: sub.service_id,
+          serviceName: svc?.name ?? sub.service_id,
+          monthlyPrice: sub.monthly_cost,
+          logoPath,
+          pauseFrom: null,
+          pauseUntil: null,
+          allGaps: [],
+          estimatedSavings: 0,
+          whyPause: null,
+          whyPauseShow: null,
+          whyPauseDate: null,
+          reason: `Your shows air back-to-back — no clear pause window in the next 6 months.`,
+          showCount: showIds.length,
+          hasEpisodeData: true,
+          upcomingShows,
+        });
+        continue;
+      }
+
+      // Calculate savings across ALL gaps (total pause-able days)
+      const totalPauseDays = allGaps.reduce((sum, g) => sum + g.days, 0);
+      const totalPauseMonths = totalPauseDays / 30;
+      const savings = parseFloat((sub.monthly_cost * totalPauseMonths).toFixed(2));
+
+      // "Why pause" — what show resumes after the first gap ends
+      const resumeShow = upcomingShows.find(
+        (s) =>
+          new Date(s.busyFrom).getTime() >= primaryGap.until.getTime() - 2 * 24 * 60 * 60 * 1000
+      );
+      const whyPauseDate = resumeShow?.nextAirDate
+        ? new Date(resumeShow.nextAirDate).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+          })
+        : resumeShow
+          ? 'soon'
+          : null;
+      const whyPauseShow = resumeShow?.title ?? null;
+      const whyPause = whyPauseShow && whyPauseDate ? `${whyPauseShow} airs ${whyPauseDate}` : null;
+
+      const fmt = (d: Date) =>
+        d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+      recommendations.push({
+        serviceId: sub.service_id,
+        serviceName: svc?.name ?? sub.service_id,
+        monthlyPrice: sub.monthly_cost,
+        logoPath,
+        pauseFrom: primaryGap.from.toISOString(),
+        pauseUntil: primaryGap.until.toISOString(),
+        allGaps: allGaps.map((g) => ({
+          from: g.from.toISOString(),
+          until: g.until.toISOString(),
+          days: g.days,
+        })),
+        estimatedSavings: savings,
+        whyPause,
+        whyPauseShow,
+        whyPauseDate,
+        reason: `Pause from ${fmt(primaryGap.from)} until ${fmt(primaryGap.until)} — nothing from your watchlist airs during this window.`,
+        showCount: showIds.length,
+        hasEpisodeData: true,
+        upcomingShows,
+      });
+    }
+
+    res.json({ success: true, data: { recommendations } });
+  } catch (error) {
+    console.error('Failed to generate plan:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate plan',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
 
 export default router;

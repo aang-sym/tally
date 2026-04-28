@@ -22,6 +22,7 @@ export const API_ENDPOINTS = {
     base: `${API_BASE_URL}/api/users`,
     profile: (userId: string) => `${API_BASE_URL}/api/users/${userId}/profile`,
     subscriptions: (userId: string) => `${API_BASE_URL}/api/users/${userId}/subscriptions`,
+    plan: (userId: string) => `${API_BASE_URL}/api/users/${userId}/plan`,
   },
 
   // Watchlist
