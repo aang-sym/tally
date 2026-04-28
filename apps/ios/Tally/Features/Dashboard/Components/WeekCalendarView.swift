@@ -140,7 +140,7 @@ private struct WeekDateCell: View {
             // Day number with emphasis on today
             Text(dayNumber)
                 .font(.system(size: 18, weight: isSelected ? .bold : (isToday ? .semibold : .regular), design: .rounded))
-                .foregroundStyle(isSelected ? .white : (isToday ? .primary : .secondary))
+                .foregroundStyle(isSelected ? Color.white : (isToday ? Color.primary : Color.secondary))
                 .contentTransition(.numericText())
 
             // Provider dots with glass effect - wrapping to multiple rows
@@ -402,18 +402,20 @@ private struct CollapsibleEpisodeCard: View {
                     
                     // Synopsis - tappable to expand/collapse
                     VStack(spacing: 0) {
+                        let isPlaceholder = episode.synopsis.starts(with: "Synopsis not yet available") || episode.synopsis.starts(with: "No description")
+                        let synopsisColor: Color = isPlaceholder ? .secondary : .primary
                         if isSynopsisExpanded {
                             Text(episode.synopsis)
                                 .font(.system(size: 14))
-                                .foregroundStyle(episode.synopsis.starts(with: "Synopsis not yet available") || episode.synopsis.starts(with: "No description") ? .secondary : .primary)
-                                .italic(episode.synopsis.starts(with: "Synopsis not yet available") || episode.synopsis.starts(with: "No description"))
+                                .foregroundStyle(synopsisColor)
+                                .italic(isPlaceholder)
                                 .multilineTextAlignment(.leading)
                                 .transition(.opacity)
                         } else {
                             Text(episode.synopsis)
                                 .font(.system(size: 14))
-                                .foregroundStyle(episode.synopsis.starts(with: "Synopsis not yet available") || episode.synopsis.starts(with: "No description") ? .secondary : .primary)
-                                .italic(episode.synopsis.starts(with: "Synopsis not yet available") || episode.synopsis.starts(with: "No description"))
+                                .foregroundStyle(synopsisColor)
+                                .italic(isPlaceholder)
                                 .multilineTextAlignment(.leading)
                                 .lineLimit(2)
                                 .truncationMode(.tail)
