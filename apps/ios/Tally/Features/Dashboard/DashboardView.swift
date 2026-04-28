@@ -94,7 +94,7 @@ struct DashboardView: View {
             }
 
             // Tab 3: Recommendations (no hero)
-            Tab("Discover", systemImage: "sparkles", value: .recommendations) {
+            Tab("Plan", systemImage: "chart.line.uptrend.xyaxis", value: .recommendations) {
                 recommendationsTabContent
             }
 
@@ -311,7 +311,7 @@ struct DashboardView: View {
     }
 
     private var recommendationsTabContent: some View {
-        RecommendationsPageView(subscriptions: viewModel.activeSubscriptions)
+        PlanTabView(api: api)
     }
 
     private var searchResultsContent: some View {

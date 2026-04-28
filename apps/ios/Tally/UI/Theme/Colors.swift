@@ -13,6 +13,18 @@ extension Color {
     static let tallyPrimary = Color(hex: "#6366F1") // Indigo
     static let tallySecondary = Color(hex: "#8B5CF6") // Purple
 
+    // MARK: - Tally Design System (dark cinematic)
+
+    static let tallyBg = Color(hex: "#08080F")
+    static let tallySurface = Color(hex: "#0f0f16")
+    static let tallyAccent = Color(hex: "#FF3D8B")
+
+    static let tallyText = Color(hex: "#f5f4f0")
+    static let tallyText2 = Color(red: 245/255, green: 244/255, blue: 240/255).opacity(0.55)
+    static let tallyText3 = Color(red: 245/255, green: 244/255, blue: 240/255).opacity(0.30)
+
+    static let tallyBorder = Color.white.opacity(0.08)
+
     // MARK: - Background Colors
 
     /// Main app background (adapts to system appearance)
