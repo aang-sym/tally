@@ -45,6 +45,9 @@ extension ApiClient {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         if let response = try? decoder.decode(AuthResponse.self, from: data) {
+            #if DEBUG
+            print("🔑 Preview token — paste into PreviewHelpers.swift:\n\(response.token)\nUser ID: \(response.user.id)")
+            #endif
             return AuthenticatedUser(
                 id: response.user.id,
                 email: response.user.email ?? email,

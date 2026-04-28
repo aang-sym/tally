@@ -448,7 +448,7 @@ private struct ExpandedDetailsView: View {
                     Spacer()
 
                     // Add to Watchlist action (clock icon)
-                    if let tmdbId = show.tmdbId {
+                    if show.tmdbId != nil {
                         Button {
                             Task {
                                 if let api = viewModel.api {

@@ -132,13 +132,13 @@ struct EpisodeDetailSheet: View {
                 if isUpdating {
                     Spacer()
                     ProgressView()
-                        .tint(.white)
+                        .tint(Color.white)
                 }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
             .background(isWatched ? Color.secondary.opacity(0.2) : Color.blue)
-            .foregroundStyle(isWatched ? .primary : .white)
+            .foregroundStyle(isWatched ? Color.primary : Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .disabled(isUpdating)
