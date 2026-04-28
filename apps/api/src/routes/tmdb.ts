@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { ValidationError } from '../middleware/errorHandler.js';
 import { tmdbService } from '../services/tmdb.js';
 import { watchlistStorageService } from '../storage/simple-watchlist.js';
+import { serviceSupabase } from '../db/supabase.js';
 // Types are inferred from the API responses, no imports needed from @tally/types for this router
 
 const router: Router = Router();
@@ -97,6 +98,44 @@ router.get('/show/:id/analyze', async (req, res, next) => {
       country,
       analysis,
     });
+
+    // Fire-and-forget: persist episode air dates back to DB so the plan endpoint can use them
+    if (analysis?.diagnostics?.episodeDetails?.length) {
+      const analyzedSeason = analysis.analyzedSeason;
+      setImmediate(async () => {
+        try {
+          // Look up our internal show + season IDs
+          const { data: showRow } = await serviceSupabase
+            .from('shows')
+            .select('id')
+            .eq('tmdb_id', showId)
+            .single();
+          if (!showRow) return;
+
+          const { data: seasonRow } = await serviceSupabase
+            .from('seasons')
+            .select('id')
+            .eq('show_id', showRow.id)
+            .eq('season_number', analyzedSeason)
+            .single();
+          if (!seasonRow) return;
+
+          // Update each episode's air_date (and name if we have it)
+          for (const ep of analysis.diagnostics.episodeDetails) {
+            await serviceSupabase
+              .from('episodes')
+              .update({
+                air_date: ep.airDate ? ep.airDate.slice(0, 10) : null,
+                name: ep.title ?? undefined,
+              })
+              .eq('season_id', seasonRow.id)
+              .eq('episode_number', ep.number);
+          }
+        } catch {
+          // Non-critical — don't let this affect the response
+        }
+      });
+    }
   } catch (error) {
     console.error(`Error analyzing show ${req.params.id}:`, error);
     next(error);
