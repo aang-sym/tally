@@ -97,6 +97,7 @@ final class PlanTabViewModel {
     var isLoading = false
     var error: String?
 
+
     var totalSavings: Double {
         recommendations.reduce(0) { $0 + $1.estimatedSavings }
     }

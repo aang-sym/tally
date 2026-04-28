@@ -444,8 +444,117 @@ private struct UpcomingShowRow: View {
 // MARK: - Preview
 
 #if DEBUG
+private struct PlanTabViewPreview: View {
+    @State private var viewModel: PlanTabViewModel = {
+        let vm = PlanTabViewModel()
+        vm.recommendations = [
+            PlanRecommendation(
+                serviceId: "netflix", serviceName: "Netflix", monthlyPrice: 22.99,
+                logoPath: nil,
+                pauseFrom: "2026-06-01T00:00:00Z", pauseUntil: "2026-08-31T00:00:00Z",
+                allGaps: [PlanGap(from: "2026-06-01T00:00:00Z", until: "2026-08-31T00:00:00Z", days: 91)],
+                estimatedSavings: 68.97, whyPause: "No new episodes until September",
+                whyPauseShow: "Stranger Things", whyPauseDate: "Sep 5", showCount: 3,
+                upcomingShows: [
+                    PlanUpcomingShow(title: "Stranger Things", nextAirDate: "2026-09-05", posterPath: nil, tmdbId: nil),
+                    PlanUpcomingShow(title: "Squid Game", nextAirDate: "2026-09-20", posterPath: nil, tmdbId: nil)
+                ]
+            ),
+            PlanRecommendation(
+                serviceId: "disney", serviceName: "Disney+", monthlyPrice: 13.99,
+                logoPath: nil,
+                pauseFrom: "2026-07-01T00:00:00Z", pauseUntil: "2026-09-30T00:00:00Z",
+                allGaps: [PlanGap(from: "2026-07-01T00:00:00Z", until: "2026-09-30T00:00:00Z", days: 92)],
+                estimatedSavings: 41.97, whyPause: "All current shows on hiatus",
+                whyPauseShow: "Andor", whyPauseDate: "Oct 1", showCount: 2,
+                upcomingShows: [
+                    PlanUpcomingShow(title: "Andor", nextAirDate: "2026-10-01", posterPath: nil, tmdbId: nil)
+                ]
+            )
+        ]
+        return vm
+    }()
+    @State private var expandedServiceId: String?
+
+    var body: some View {
+        ZStack {
+            Color.tallyBg.ignoresSafeArea()
+            planBody
+        }
+    }
+
+    private var planBody: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Apr 28 · Welcome back")
+                        .font(.system(size: 11, weight: .regular, design: .monospaced))
+                        .tracking(1.4)
+                        .foregroundColor(.tallyText3)
+                    Text("Angus")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(.tallyText)
+                        .kerning(-0.6)
+                }
+                .padding(.top, 60)
+                .padding(.horizontal, 18)
+
+                GhostContainer(radius: 22) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("YOUR PLAN · Spring 2026")
+                            .font(.system(size: 10, weight: .regular, design: .monospaced))
+                            .tracking(1.2)
+                            .foregroundColor(.tallyAccent)
+                            .padding(.bottom, 10)
+                        Text(viewModel.totalSavingsFormatted)
+                            .font(.system(size: 52, weight: .bold, design: .rounded))
+                            .foregroundColor(.tallyText)
+                            .kerning(-1)
+                        Text("saveable across \(viewModel.gapsCount) gaps found")
+                            .font(.system(size: 13, weight: .regular, design: .monospaced))
+                            .foregroundColor(.tallyText3)
+                            .padding(.top, 6).padding(.bottom, 18)
+                        TallyAccentButton(label: "See pause schedule") { }
+                    }
+                    .padding(20)
+                }
+                .padding(.top, 20).padding(.horizontal, 14)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Gaps found")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.tallyText)
+                        .padding(.horizontal, 14)
+                    GhostContainer(radius: 20) {
+                        VStack(spacing: 0) {
+                            ForEach(Array(viewModel.recommendations.enumerated()), id: \.element.id) { idx, rec in
+                                GapRowView(
+                                    recommendation: rec,
+                                    isExpanded: expandedServiceId == rec.serviceId,
+                                    onToggle: {
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                            expandedServiceId = expandedServiceId == rec.serviceId ? nil : rec.serviceId
+                                        }
+                                    }
+                                )
+                                if idx < viewModel.recommendations.count - 1 {
+                                    FadeSeparator().padding(.horizontal, 15)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                }
+                .padding(.top, 32)
+
+                Spacer().frame(height: 50)
+            }
+        }
+        .scrollIndicators(.hidden)
+    }
+}
+
 #Preview("Plan Tab") {
-    PlanTabView(api: PreviewApiClient())
-        .background(Color.tallyBg)
+    PlanTabViewPreview()
 }
 #endif
