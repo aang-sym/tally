@@ -328,7 +328,6 @@ struct ShowDetailView: View {
                 .foregroundColor(.tallyText3)
             HStack(spacing: 2) {
                 ForEach(episodes.sorted { $0.episodeNumber < $1.episodeNumber }, id: \.episodeNumber) { ep in
-                    let key = "\(seasonNumber)-\(ep.episodeNumber)"
                     let isWatched = ep.status == "watched"
                     RoundedRectangle(cornerRadius: 2)
                         .fill(isWatched ? Color.tallyAccent : Color.white.opacity(0.06))

@@ -9,7 +9,6 @@ import SwiftUI
 
 enum DashboardTab: Hashable {
     case home
-    case calendar
     case recommendations
     case search
 }
@@ -17,7 +16,6 @@ enum DashboardTab: Hashable {
 struct DashboardView: View {
     @ObservedObject var api: ApiClient
     @State private var viewModel = DashboardViewModel()
-    @State private var selectedDate: Date?
     @State private var stableServices: [StreamingService] = []
 
     // Tab selection
@@ -66,7 +64,6 @@ struct DashboardView: View {
         }
         .task {
             await viewModel.load(api: api)
-            await viewModel.loadUpcomingEpisodes(api: api)
             stableServices = viewModel.uniqueServices.sorted { $0.id < $1.id }
         }
         .sheet(isPresented: $showAddSubscription) {
@@ -88,12 +85,6 @@ struct DashboardView: View {
                 homeTabContent
             }
 
-            // Tab 2: Calendar (no hero)
-            Tab("Calendar", systemImage: "calendar", value: .calendar) {
-                calendarTabContent
-            }
-
-            // Tab 3: Recommendations (no hero)
             Tab("Plan", systemImage: "chart.line.uptrend.xyaxis", value: .recommendations) {
                 recommendationsTabContent
             }
@@ -302,14 +293,6 @@ struct DashboardView: View {
         }
     }
 
-    private var calendarTabContent: some View {
-        WeekCalendarView(
-            episodes: $viewModel.upcomingEpisodes,
-            selectedDate: $selectedDate,
-            api: api
-        )
-    }
-
     private var recommendationsTabContent: some View {
         PlanTabView(api: api)
     }
@@ -333,7 +316,7 @@ struct DashboardView: View {
                     lastSelectedTab: selectedTab.tabIndex,
                     onDismiss: {
                         searchText = ""
-                        selectedTab = .calendar
+                        selectedTab = .home
                     }
                 )
             }
@@ -703,9 +686,8 @@ extension DashboardTab {
     var tabIndex: Int {
         switch self {
         case .home: return 0
-        case .calendar: return 1
-        case .recommendations: return 2
-        case .search: return 3
+        case .recommendations: return 1
+        case .search: return 2
         }
     }
 }
